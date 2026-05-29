@@ -1,0 +1,14 @@
+{
+  "name": "aegis-api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "services/aegis-api",
+  "tags": ["type:service", "scope:aegis"],
+  "targets": {
+    "dev": { "executor": "nx:run-script", "options": { "script": "dev" } },
+    "build": { "executor": "nx:run-script", "options": { "script": "build" } },
+    "lint": { "executor": "nx:run-script", "options": { "script": "lint" } },
+    "typecheck": { "executor": "nx:run-script", "options": { "script": "typecheck" } },
+    "test": { "executor": "nx:run-script", "options": { "script": "test" } }
+  }
+}

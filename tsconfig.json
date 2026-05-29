@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.base.json",
+  "include": ["tools/**/*", "packages/attest-sdk-ts/**/*"],
+  "compilerOptions": {
+    "noEmit": true
+  }
+}

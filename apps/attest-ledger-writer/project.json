@@ -1,0 +1,16 @@
+{
+  "name": "attest-ledger-writer",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/attest-ledger-writer/src",
+  "tags": ["type:app", "scope:attest"],
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec tsx src/main.ts",
+        "cwd": "apps/attest-ledger-writer"
+      }
+    }
+  }
+}

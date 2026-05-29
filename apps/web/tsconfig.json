@@ -1,0 +1,63 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@prisma/client": [
+        "../../node_modules/.prisma/client"
+      ],
+      "@prisma/client/*": [
+        "../../node_modules/.prisma/client/*"
+      ],
+      "@/*": [
+        "src/*"
+      ],
+      "@salanor/auth": [
+        "../../packages/auth/src/index.ts"
+      ],
+      "@salanor/auth/server": [
+        "../../packages/auth/src/server.ts"
+      ],
+      "@salanor/auth/auth-config": [
+        "../../packages/auth/src/auth-config.ts"
+      ],
+      "@salanor/attest-sdk-ts": [
+        "../../packages/attest-sdk-ts/src/index.ts"
+      ],
+      "@salanor/attest-sdk-ts/ingest-handler": [
+        "../../packages/attest-sdk-ts/src/ingest-handler.ts"
+      ],
+      "@salanor/attest-bus": [
+        "../../packages/attest-bus/src/index.ts"
+      ],
+      "@salanor/attest-storage": [
+        "../../packages/attest-storage/src/index.ts"
+      ]
+    },
+    "jsx": "preserve",
+    "allowJs": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.ts",
+    "**/*.tsx",
+    "next-env.d.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

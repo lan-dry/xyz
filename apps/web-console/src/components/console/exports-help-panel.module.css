@@ -1,0 +1,77 @@
+.section {
+  margin-bottom: 1.25rem;
+}
+
+.sectionTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--console-fg-subtle);
+}
+
+.lead {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: var(--console-fg-muted);
+  line-height: 1.55;
+}
+
+.fileList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fileItem {
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--console-border, #e2e8e6);
+  border-radius: var(--console-radius, 8px);
+  background: #f4f6f5;
+  background: var(--console-bg, #f4f6f5);
+}
+
+html.dark .fileItem {
+  background: #0f1210;
+  background: var(--console-bg, #0f1210);
+}
+
+.fileItem code {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.fileItem p {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--console-fg-muted);
+  line-height: 1.45;
+}
+
+.bundleList {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.bundleList li {
+  margin-bottom: 0.4rem;
+}
+
+.opsNote {
+  margin: 0;
+  padding: 0.75rem;
+  border-radius: var(--console-radius-sm, 6px);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--console-fg-muted);
+}
+
+.opsNote strong {
+  color: var(--console-fg);
+}

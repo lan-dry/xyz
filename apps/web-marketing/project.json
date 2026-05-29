@@ -1,0 +1,13 @@
+{
+  "name": "@salanor/web-marketing",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/web-marketing",
+  "tags": ["type:app", "scope:marketing"],
+  "targets": {
+    "dev": { "executor": "nx:run-script", "options": { "script": "dev" } },
+    "build": { "executor": "nx:run-script", "options": { "script": "build" } },
+    "lint": { "executor": "nx:run-script", "options": { "script": "lint" } },
+    "typecheck": { "executor": "nx:run-script", "options": { "script": "typecheck" } }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "@salanor/config/typescript/base",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": "src"
+  }
+}

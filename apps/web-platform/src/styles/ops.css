@@ -1,0 +1,54 @@
+html[data-ops-app],
+[data-ops-shell] {
+  --ops-bg: #f4f6f5;
+  --ops-surface: #ffffff;
+  --ops-surface-raised: #ffffff;
+  --ops-surface-hover: #f0f4f3;
+  --ops-border: #e2e8e6;
+  --ops-fg: #0a0c0b;
+  --ops-muted: #5c6e6a;
+  --ops-accent: #2a9d8a;
+  --ops-accent-soft: rgba(42, 157, 138, 0.12);
+  --ops-accent-bright: #1a6e62;
+  --ops-danger: #b91c1c;
+  --ops-danger-soft: #fef2f2;
+  --ops-sidebar-w: 15rem;
+  --ops-topbar-h: 3.25rem;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ops-fg);
+  background: var(--ops-bg);
+}
+
+html.dark[data-ops-app],
+html.dark [data-ops-shell] {
+  --ops-bg: #0a0c0b;
+  --ops-surface: #141917;
+  --ops-surface-raised: #1a211e;
+  --ops-surface-hover: #1d2522;
+  --ops-border: rgba(42, 157, 138, 0.14);
+  --ops-fg: #e8ede9;
+  --ops-muted: #9eb0ac;
+  --ops-accent: #3dbfaa;
+  --ops-accent-soft: rgba(61, 191, 170, 0.15);
+  --ops-accent-bright: #2a9d8a;
+  --ops-danger: #fca5a5;
+  --ops-danger-soft: rgba(185, 28, 28, 0.18);
+}
+
+html[data-ops-app],
+html[data-ops-app] body {
+  height: 100%;
+  margin: 0;
+  color: var(--ops-fg);
+  background: var(--ops-bg);
+}
+
+html[data-ops-app]:has([data-ops-shell]),
+html[data-ops-app]:has([data-ops-shell]) body {
+  overflow: hidden;
+}
+
+[data-ops-shell] .mono {
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.875em;
+}

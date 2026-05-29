@@ -1,0 +1,15 @@
+.centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.card {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.form {
+  width: 100%;
+}

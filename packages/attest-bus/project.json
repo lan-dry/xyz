@@ -1,0 +1,16 @@
+{
+  "name": "attest-bus",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "packages/attest-bus/src",
+  "tags": ["type:lib", "scope:attest"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec vitest run",
+        "cwd": "packages/attest-bus"
+      }
+    }
+  }
+}

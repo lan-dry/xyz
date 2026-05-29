@@ -1,0 +1,3 @@
+BEGIN;
+ALTER TABLE account DROP COLUMN IF EXISTS platform_staff;
+COMMIT;

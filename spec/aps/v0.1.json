@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://salanor.com/schemas/aps/0.1",
+  "title": "APS-1 Event (draft 0.1)",
+  "description": "Minimal required-field subset for Salanor Attest local slice. Internal version pending public freeze.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "aps_version",
+    "event_id",
+    "recorded_at",
+    "actor",
+    "action",
+    "subject",
+    "context",
+    "signature",
+    "chain"
+  ],
+  "properties": {
+    "aps_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 }
+      }
+    },
+    "action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["inputs", "outcome"],
+      "properties": {
+        "inputs": { "type": "object" },
+        "model": { "type": "object" },
+        "policy": { "type": "object" },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "outcome": { "type": "object" }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alg", "value"],
+      "properties": {
+        "alg": {
+          "type": "string",
+          "enum": ["ed25519", "local-placeholder"]
+        },
+        "value": {
+          "type": "string",
+          "pattern": "^(placeholder:[0-9a-f]{64}|local:[0-9a-f]{64})$"
+        }
+      }
+    },
+    "chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prev_event_hash", "event_hash"],
+      "properties": {
+        "prev_event_hash": {
+          "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }]
+        },
+        "event_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

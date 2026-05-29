@@ -1,0 +1,1 @@
+-- No-op: root_event_id backfill is not reversed.

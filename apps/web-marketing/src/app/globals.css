@@ -1,0 +1,122 @@
+:root {
+  --teal: #2a9d8a;
+  --teal-bright: #3dbfaa;
+  --teal-dim: #1a6e62;
+  --teal-glow: rgba(42, 157, 138, 0.15);
+  --bg: #0a0c0b;
+  --bg2: #0f1210;
+  --bg3: #141917;
+  --surface: #171e1c;
+  --surface2: #1d2522;
+  --border: rgba(42, 157, 138, 0.12);
+  --border-bright: rgba(42, 157, 138, 0.3);
+  --text: #e8ede9;
+  --text-muted: #7a8c88;
+  --text-dim: #4a5c58;
+  --header-height: 4.5rem;
+  --section-pad-x: clamp(1rem, 4vw, 3rem);
+  --content-max: 75rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+h1,
+h2,
+h3,
+h4,
+.logo-wordmark {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+a {
+  color: inherit;
+}
+
+[data-marketing-shell] nav a {
+  text-decoration: none;
+}
+
+.section-inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 var(--section-pad-x);
+}
+
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 1.25rem;
+}
+
+.section-label::before {
+  content: "";
+  display: block;
+  width: 1.5rem;
+  height: 1px;
+  background: var(--teal);
+}
+
+.page-placeholder {
+  max-width: 40rem;
+  padding: 4rem var(--section-pad-x) 6rem;
+}
+
+.page-placeholder h1 {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+}
+
+.page-placeholder p {
+  color: var(--text-muted);
+  font-weight: 300;
+  margin: 0 0 1rem;
+}
+
+.page-placeholder a {
+  color: var(--teal-bright);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.page-placeholder a:hover {
+  text-decoration: underline;
+}

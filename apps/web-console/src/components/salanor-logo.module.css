@@ -1,0 +1,38 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  line-height: 1.2;
+}
+
+.mark {
+  display: block;
+  border-radius: 6px;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wordmark {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--console-fg, #0a0c0b);
+}
+
+.sublabel {
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--console-accent, #2a9d8a);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

@@ -1,0 +1,33 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "bundler",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "strict": true,
+    "paths": {
+      "@prisma/client": ["node_modules/.prisma/client"],
+      "@prisma/client/*": ["node_modules/.prisma/client/*"],
+      "@salanor/auth": ["packages/auth/src/index.ts"],
+      "@salanor/auth/server": ["packages/auth/src/server.ts"],
+      "@salanor/auth/auth-config": ["packages/auth/src/auth-config.ts"],
+      "@salanor/attest-sdk-ts": ["packages/attest-sdk-ts/src/index.ts"],
+      "@salanor/attest-sdk-ts/ingest-handler": ["packages/attest-sdk-ts/src/ingest-handler.ts"],
+      "@salanor/attest-bus": ["packages/attest-bus/src/index.ts"],
+      "@salanor/attest-storage": ["packages/attest-storage/src/index.ts"],
+      "@salanor/attest-sdk-ts/merkle": ["packages/attest-sdk-ts/src/merkle.ts"],
+      "@salanor/db": ["packages/db/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp", "dist"]
+}

@@ -1,0 +1,33 @@
+.intro {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: var(--console-fg-muted, #5c6e6a);
+  line-height: 1.55;
+}
+
+.spanCard {
+  margin-bottom: 1rem;
+}
+
+.eventRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--console-border, #e2e8e6);
+}
+
+.eventRow:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.eventMeta {
+  font-size: 0.8125rem;
+  color: var(--console-fg-subtle, #7a8c88);
+}
+
+.orphanSection {
+  margin-top: 1.5rem;
+}

@@ -1,0 +1,77 @@
+[data-console-shell] {
+  --console-bg: #f4f6f5;
+  --console-surface: #ffffff;
+  --console-surface-hover: #f0f4f3;
+  --console-border: #e2e8e6;
+  --console-border-strong: #c5d4d0;
+  --console-fg: #0a0c0b;
+  --console-fg-muted: #5c6e6a;
+  --console-fg-subtle: #7a8c88;
+  --console-accent: #2a9d8a;
+  --console-accent-bright: #1a6e62;
+  --console-accent-soft: rgba(42, 157, 138, 0.1);
+  --console-danger: #b91c1c;
+  --console-danger-soft: #fef2f2;
+  --console-warning: #b45309;
+  --console-warning-soft: #fffbeb;
+  --console-success: #047857;
+  --console-success-soft: #ecfdf5;
+  --console-radius: 8px;
+  --console-radius-lg: 12px;
+  --console-sidebar-w: 15rem;
+  --console-sidebar-collapsed: 4rem;
+  /* Sidebar nav — match Resend row height (~36px) and looser vertical rhythm */
+  --console-nav-font-size: 0.875rem;
+  --console-nav-line-height: 1.25rem;
+  --console-nav-gap: 4px;
+  --console-nav-pad-y: 2px;
+  --console-nav-pad-x: 12px;
+  --console-nav-icon: 16px;
+  --console-nav-row-min: 2.25rem;
+  /* Space between brand header and first nav item (Dashboard) */
+  --console-nav-top-gap: 0.5rem;
+  /* Extra room above viewport bottom (Next dev badge overlaps ~40px locally) */
+  --console-sidebar-footer-pad: 2.75rem;
+  --console-font: var(--font-sans, system-ui, sans-serif);
+  --console-font-mono: var(--font-mono, ui-monospace, monospace);
+  --console-shadow: 0 1px 2px rgba(10, 12, 11, 0.06);
+}
+
+[data-console-shell] {
+  font-family: var(--console-font);
+  color: var(--console-fg);
+  background: var(--console-bg);
+}
+
+[data-console-shell] code,
+[data-console-shell] .mono {
+  font-family: var(--console-font-mono);
+  font-size: 0.8125rem;
+}
+
+/* Dark theme — aligned with marketing (#0a0c0b / teal) */
+html.dark [data-console-shell] {
+  --console-bg: #0a0c0b;
+  --console-surface: #141917;
+  --console-surface-hover: #1d2522;
+  --console-border: rgba(42, 157, 138, 0.12);
+  --console-border-strong: rgba(42, 157, 138, 0.28);
+  --console-fg: #e8ede9;
+  --console-fg-muted: #9eb0ac;
+  --console-fg-subtle: #7a8c88;
+  --console-accent: #3dbfaa;
+  --console-accent-bright: #2a9d8a;
+  --console-accent-soft: rgba(42, 157, 138, 0.15);
+  --console-danger: #fca5a5;
+  --console-danger-soft: rgba(185, 28, 28, 0.15);
+  --console-warning: #fcd34d;
+  --console-warning-soft: rgba(180, 83, 9, 0.2);
+  --console-success: #6ee7b7;
+  --console-success-soft: rgba(4, 120, 87, 0.2);
+  --console-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+html.dark [data-console-shell] .pre {
+  background: #0f1210;
+  border: 1px solid var(--console-border);
+}

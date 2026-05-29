@@ -1,0 +1,25 @@
+{
+  "bundle": "soc2",
+  "version": "2026-05-p1.5",
+  "title": "SOC 2 Type I — agent activity evidence (template)",
+  "controls": [
+    {
+      "id": "CC6.1",
+      "name": "Logical access — agent tool calls logged with policy decision"
+    },
+    {
+      "id": "CC7.2",
+      "name": "System monitoring — events exported to SIEM via OTLP"
+    }
+  ],
+  "artifacts": [
+    "README.md",
+    "events.ndjson",
+    "policies.json",
+    "approvals.ndjson",
+    "audit-log.ndjson",
+    "witness-roots.json",
+    "inclusion-proofs.ndjson",
+    "manifest.json"
+  ]
+}
