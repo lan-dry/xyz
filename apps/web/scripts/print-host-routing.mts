@@ -4,15 +4,15 @@
  *
  * Expected (NODE_ENV unset/development, PUBLIC_SITE_URL=http://localhost:3000):
  *
- *   localhost:3000 /attest          → rewrite /attest (no cross-host redirect)
- *   localhost:3000 /attest/pricing  → rewrite /attest/pricing
- *   127.0.0.1:3000 /attest          → rewrite /attest
- *   [::1]:3000 /attest              → rewrite /attest
- *   attest.localhost:3000 /         → rewrite /attest
- *   attest.localhost:3000 /docs     → redirect http://docs.attest.localhost:3000/
+ *   localhost:3000 /aegis          → rewrite /aegis (no cross-host redirect)
+ *   localhost:3000 /aegis/pricing  → rewrite /aegis/pricing
+ *   127.0.0.1:3000 /aegis          → rewrite /aegis
+ *   [::1]:3000 /aegis              → rewrite /aegis
+ *   aegis.localhost:3000 /         → rewrite /aegis
+ *   aegis.localhost:3000 /docs     → redirect http://docs.aegis.localhost:3000/
  *   foo.localhost:3000 /            → unknown (middleware → localhost fallback)
- *   salanor.com /attest             → redirect https://attest.salanor.com/ (when NODE_ENV=production)
- *   evil.example.com /attest        → unknown
+ *   salanor.com /aegis             → redirect https://aegis.salanor.com/ (when NODE_ENV=production)
+ *   evil.example.com /aegis        → unknown
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -57,33 +57,33 @@ type ExpectedAction = {
 const cases: Array<{ host: string; pathname: string; expected: ExpectedAction }> = [
   {
     host: "localhost:3000",
-    pathname: "/attest",
-    expected: { action: "rewrite", pathname: "/attest" },
+    pathname: "/aegis",
+    expected: { action: "rewrite", pathname: "/aegis" },
   },
   {
     host: "localhost:3000",
-    pathname: "/attest/pricing",
-    expected: { action: "rewrite", pathname: "/attest/pricing" },
+    pathname: "/aegis/pricing",
+    expected: { action: "rewrite", pathname: "/aegis/pricing" },
   },
   {
     host: "127.0.0.1:3000",
-    pathname: "/attest",
-    expected: { action: "rewrite", pathname: "/attest" },
+    pathname: "/aegis",
+    expected: { action: "rewrite", pathname: "/aegis" },
   },
   {
     host: "[::1]:3000",
-    pathname: "/attest",
-    expected: { action: "rewrite", pathname: "/attest" },
+    pathname: "/aegis",
+    expected: { action: "rewrite", pathname: "/aegis" },
   },
   {
-    host: "attest.localhost:3000",
+    host: "aegis.localhost:3000",
     pathname: "/",
-    expected: { action: "rewrite", pathname: "/attest" },
+    expected: { action: "rewrite", pathname: "/aegis" },
   },
   {
-    host: "attest.localhost:3000",
+    host: "aegis.localhost:3000",
     pathname: "/docs",
-    expected: { action: "redirect", location: "http://docs.attest.localhost:3000/", status: 302 },
+    expected: { action: "redirect", location: "http://docs.aegis.localhost:3000/", status: 302 },
   },
   {
     host: "foo.localhost:3000",
@@ -92,12 +92,12 @@ const cases: Array<{ host: string; pathname: string; expected: ExpectedAction }>
   },
   {
     host: "salanor.com",
-    pathname: "/attest",
-    expected: { action: "redirect", location: "https://attest.salanor.com/", status: 301 },
+    pathname: "/aegis",
+    expected: { action: "redirect", location: "https://aegis.salanor.com/", status: 301 },
   },
   {
     host: "evil.example.com",
-    pathname: "/attest",
+    pathname: "/aegis",
     expected: { action: "unknown" },
   },
 ];
@@ -116,7 +116,7 @@ function matchesExpected(actual: ExpectedAction, expected: ExpectedAction): bool
 
 resetPublicSiteCache();
 
-// Production-shaped salanor.com /attest case
+// Production-shaped salanor.com /aegis case
 process.env.NODE_ENV = "production";
 process.env.PUBLIC_SITE_URL = process.env.PUBLIC_SITE_URL ?? "https://salanor.com";
 resetPublicSiteCache();

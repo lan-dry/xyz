@@ -6,18 +6,18 @@ import {
   loadBusConfig,
   runIngestConsumer,
   type IngestEnvelope,
-} from "@salanor/attest-bus";
-import { canonicalize, validateEvent } from "@salanor/attest-sdk-ts";
-import { createBlobStore, putContentAddressed } from "@salanor/attest-storage";
+} from "@salanor/aegis-bus";
+import { canonicalize, validateEvent } from "@salanor/aegis-ledger-sdk";
+import { createBlobStore, putContentAddressed } from "@salanor/aegis-storage";
 import type { JsMsg } from "nats";
 
 const DEV_ORG_ID =
-  process.env.ATTEST_DEV_ORGANIZATION_ID?.trim() ?? "00000000-0000-4000-8000-000000000010";
+  process.env.AEGIS_DEV_ORGANIZATION_ID?.trim() ?? "00000000-0000-4000-8000-000000000010";
 
 const blobStore = createBlobStore();
 const anchor = createAnchorProvider(blobStore);
 const log = consoleBusLogger;
-const BATCH_SIZE = Number(process.env.ATTEST_LEDGER_BATCH_SIZE ?? "1");
+const BATCH_SIZE = Number(process.env.AEGIS_LEDGER_BATCH_SIZE ?? "1");
 
 let pendingHashes: string[] = [];
 let pendingEventIds: string[] = [];
@@ -32,7 +32,7 @@ async function flushBatch(): Promise<void> {
     eventCount: pendingHashes.length,
   });
 
-  const batch = await prisma.attestLedgerBatch.create({
+  const batch = await prisma.aegisLedgerBatch.create({
     data: {
       merkleRoot,
       eventCount: pendingHashes.length,
@@ -43,7 +43,7 @@ async function flushBatch(): Promise<void> {
     },
   });
 
-  await prisma.attestIngestEvent.updateMany({
+  await prisma.aegisIngestEvent.updateMany({
     where: { id: { in: pendingEventIds } },
     data: { batchId: batch.id },
   });
@@ -63,7 +63,7 @@ async function persistEnvelope(envelope: IngestEnvelope): Promise<string> {
   const event = validateEvent(envelope.event);
 
   if (envelope.idempotency_key) {
-    const existing = await prisma.attestIngestEvent.findUnique({
+    const existing = await prisma.aegisIngestEvent.findUnique({
       where: { idempotencyKey: envelope.idempotency_key },
     });
     if (existing) {
@@ -77,7 +77,7 @@ async function persistEnvelope(envelope: IngestEnvelope): Promise<string> {
     payloadBlobKey = stored.key;
   }
 
-  const row = await prisma.attestIngestEvent.create({
+  const row = await prisma.aegisIngestEvent.create({
     data: {
       organizationId: envelope.organization_id ?? DEV_ORG_ID,
       traceId: envelope.trace_id,
@@ -102,10 +102,10 @@ async function main(): Promise<void> {
   log({
     level: "info",
     trace_id: "system",
-    msg: "attest_ledger_writer_start",
+    msg: "aegis_ledger_writer_start",
     stream: config.streamName,
     consumer: config.consumerName,
-    detail: `blob=${blobStore ? "on" : "off"} anchor=${process.env.ATTEST_ANCHOR_MODE ?? "stub"}`,
+    detail: `blob=${blobStore ? "on" : "off"} anchor=${process.env.AEGIS_ANCHOR_MODE ?? "stub"}`,
   });
 
   const shutdown = async () => {

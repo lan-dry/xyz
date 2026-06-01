@@ -21,17 +21,17 @@
       "@salanor/auth/auth-config": [
         "../../packages/auth/src/auth-config.ts"
       ],
-      "@salanor/attest-sdk-ts": [
-        "../../packages/attest-sdk-ts/src/index.ts"
+      "@salanor/aegis-ledger-sdk": [
+        "../../packages/aegis-ledger-sdk/src/index.ts"
       ],
-      "@salanor/attest-sdk-ts/ingest-handler": [
-        "../../packages/attest-sdk-ts/src/ingest-handler.ts"
+      "@salanor/aegis-ledger-sdk/ingest-handler": [
+        "../../packages/aegis-ledger-sdk/src/ingest-handler.ts"
       ],
-      "@salanor/attest-bus": [
-        "../../packages/attest-bus/src/index.ts"
+      "@salanor/aegis-bus": [
+        "../../packages/aegis-bus/src/index.ts"
       ],
-      "@salanor/attest-storage": [
-        "../../packages/attest-storage/src/index.ts"
+      "@salanor/aegis-storage": [
+        "../../packages/aegis-storage/src/index.ts"
       ]
     },
     "jsx": "preserve",

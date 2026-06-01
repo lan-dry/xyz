@@ -1,0 +1,12 @@
+{
+  "name": "@salanor/aegis-ledger-writer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@salanor/aegis-bus": "workspace:*",
+    "@salanor/aegis-ledger-sdk": "workspace:*",
+    "@salanor/aegis-storage": "workspace:*",
+    "@salanor/db": "workspace:*"
+  }
+}

@@ -13,9 +13,9 @@ const nextConfig = withNx({
   },
   transpilePackages: [
     "@salanor/auth",
-    "@salanor/attest-sdk-ts",
-    "@salanor/attest-bus",
-    "@salanor/attest-storage",
+    "@salanor/aegis-ledger-sdk",
+    "@salanor/aegis-bus",
+    "@salanor/aegis-storage",
   ],
 });
 
