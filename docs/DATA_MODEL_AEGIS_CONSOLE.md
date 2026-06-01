@@ -1,8 +1,8 @@
-# Data model — Attest console metadata (tenancy & control plane)
+# Data model — Aegis console metadata (tenancy & control plane)
 
-**Purpose:** Application metadata for **authenticated** Attest product surfaces — **distinct** from APS-1 high-volume event storage (those tables defined in Attest backend migrations phasewise).
+**Purpose:** Application metadata for **authenticated** Aegis product surfaces — **distinct** from APS-1 high-volume event storage (those tables defined in Aegis backend migrations phasewise).
 
-Logical DB suggestion: **`attest_meta`** on Neon OR schema `attest` inside same Neon project until split.
+Logical DB suggestion: **`aegis_meta`** on Neon OR schema `aegis` inside same Neon project until split.
 
 ---
 
@@ -144,11 +144,11 @@ Superadmin capabilities governed strictly in **`ACCESS_CONTROL_MATRIX.md`**.
 
 ### `event_index_stub` (optional Phase 3+)
 
-Lightweight mapping for console search before full Clickhouse/ES — may store `(organization_id, aps_event_id, recorded_at, action)` — **only if** query load demands; else query Attest read-plane service.
+Lightweight mapping for console search before full Clickhouse/ES — may store `(organization_id, aps_event_id, recorded_at, action)` — **only if** query load demands; else query Aegis read-plane service.
 
 ---
 
 ## Related
 
 - **`ACCESS_CONTROL_MATRIX.md`**  
-- **`FUNCTIONAL_REQUIREMENTS_SPEC.md`** (FR-attest-console-*)  
+- **`FUNCTIONAL_REQUIREMENTS_SPEC.md`** (FR-aegis-console-*)  

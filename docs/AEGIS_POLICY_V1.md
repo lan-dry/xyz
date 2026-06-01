@@ -1,4 +1,4 @@
-# Attest Policy v1 (MVP)
+# Aegis Policy v1 (MVP)
 
 **Status:** Shipped in P6 (engineering complete)  
 **Updated:** 2026-05-16
@@ -123,4 +123,4 @@ When denied:
 ## Deferred to P6.5 / P7
 
 - **P6.5 governance:** Rego/OPA DSL, approval workflows, staged rollout policies, auto-replay checks in verify/export pipelines.
-- **P7 assurance:** stronger signature custody (KMS/HSM), external trust attestations, policy provenance chain integration, and multi-anchor policy evidence linkage.
+- **P7 assurance:** stronger signature custody (KMS/HSM), external trust confirmations, policy provenance chain integration, and multi-anchor policy evidence linkage.

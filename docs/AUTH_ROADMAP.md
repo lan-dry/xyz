@@ -14,7 +14,7 @@ This document is the **single source of truth** for identity and access work. It
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  apps/web, apps/console-attest (future), …                  │
+│  apps/web, apps/console-aegis (future), …                  │
 │  Thin: middleware, routes, UI                               │
 └───────────────────────────┬─────────────────────────────────┘
                             │
@@ -45,8 +45,8 @@ This document is the **single source of truth** for identity and access work. It
 |-------|-----|--------|--------------|--------|
 | **A1 — Foundation** | `AUTH-A1` | Email magic link, sessions (Prisma), admin allowlist (`ADMIN_EMAILS` + `sal_internal_users`), `/admin` gate | **P1** | **Shipped** · 2026-05-16 |
 | **A2 — Social OAuth** | `AUTH-A2` | Google + GitHub sign-in (staff + future console users) | **P1 complete** or early **P2** | **Shipped** · 2026-05-16 |
-| **A3 — 2FA + sign-in audit** | `AUTH-A3` | TOTP (authenticator app); optional WebAuthn later; every sign-in/sign-out/fail → `console_audit_log` | **Before Attest console GA** (~**P4**) | **Near-complete** · 2026-05-16 — TOTP enrollment/challenge shipped, backup codes still TODO |
-| **A4 — Tenants & RBAC** | `AUTH-A4` | Organizations, memberships, roles (`owner`, `admin`, `developer`, `compliance`, `viewer`); enforce `ACCESS_CONTROL_MATRIX.md` | **P4** (Attest console) | **Engineering complete** · 2026-05-16 |
+| **A3 — 2FA + sign-in audit** | `AUTH-A3` | TOTP (authenticator app); optional WebAuthn later; every sign-in/sign-out/fail → `console_audit_log` | **Before Aegis console GA** (~**P4**) | **Near-complete** · 2026-05-16 — TOTP enrollment/challenge shipped, backup codes still TODO |
+| **A4 — Tenants & RBAC** | `AUTH-A4` | Organizations, memberships, roles (`owner`, `admin`, `developer`, `compliance`, `viewer`); enforce `ACCESS_CONTROL_MATRIX.md` | **P4** (Aegis console) | **Engineering complete** · 2026-05-16 |
 | **A5 — Enterprise SSO** | `AUTH-A5` | SAML via **WorkOS** (or equivalent) plugged into `@salanor/auth`; map IdP user → our `User` | **P6** or first enterprise deal (**whichever comes first**) | Planned — **not an oversight** |
 
 **Explicit commitment:** Stages **A2–A5 are scheduled work**, not “maybe later.” A5 is tied to **enterprise sales**; if a bank requires SAML before P6, **A5 moves up** (document the date in this file when that happens).
@@ -110,7 +110,7 @@ This document is the **single source of truth** for identity and access work. It
 
 **Work:**
 
-- Implement `DATA_MODEL_ATTEST_CONSOLE.md` models: `organizations`, `organization_memberships`, API keys
+- Implement `DATA_MODEL_AEGIS_CONSOLE.md` models: `organizations`, `organization_memberships`, API keys
 - **Not** a third-party org product — we own tenancy in Prisma
 - Session carries `userId`; app resolves active `organizationId` + role
 - Enforce matrix in `ACCESS_CONTROL_MATRIX.md` at API + UI layers
@@ -125,8 +125,8 @@ This document is the **single source of truth** for identity and access work. It
 - `@salanor/auth` sign-in allows **admin allowlist OR org membership** (`packages/auth/src/console.ts`)
 - **`ADMIN_EMAILS` gates `/admin` only** — console authorization is `organization_memberships.role`
 - API: `/api/console/*` with `requireRole` (viewer / developer / admin / compliance)
-- Env: `ATTEST_CONSOLE_AUTO_PROVISION=1` for local dev org bootstrap
-- Ingest auth accepts hashed org API keys (`Bearer` or `X-Attest-Api-Key`) with `ATTEST_INGEST_DEV_KEY` as optional local fallback
+- Env: `AEGIS_CONSOLE_AUTO_PROVISION=1` for local dev org bootstrap
+- Ingest auth accepts hashed org API keys (`Bearer` or `X-Aegis-Api-Key`) with `AEGIS_INGEST_DEV_KEY` as optional local fallback
 - RBAC contract tests verify critical route gates (viewer / developer / compliance / admin)
 
 ---
@@ -151,18 +151,18 @@ This document is the **single source of truth** for identity and access work. It
 
 | If you build A1–A5 immediately | Consequence |
 |--------------------------------|-------------|
-| ~4–8+ weeks auth-only | **Attest Phase 0** (SDK, `record()`, replay) slips — product story stalls |
+| ~4–8+ weeks auth-only | **Aegis Phase 0** (SDK, `record()`, replay) slips — product story stalls |
 | SAML before customers | Paid WorkOS + integration cost with no revenue |
 
 **Recommended execution order:**
 
 1. **Finish A1** (prove admin + contact + build).
-2. **Attest Phase 0** (product wedge) — parallel only if A1 is done.
+2. **Aegis Phase 0** (product wedge) — parallel only if A1 is done.
 3. **A2** (OAuth) — quick win in `@salanor/auth`.
-4. **P4 prep:** **A3 + A4** with Attest console.
+4. **P4 prep:** **A3 + A4** with Aegis console.
 5. **A5** when sales or **P6** demands it.
 
-This roadmap **does not drop** A2–A5; it **sequences** them so authentication is complete **by the time Attest console ships**, with SAML ready for enterprise.
+This roadmap **does not drop** A2–A5; it **sequences** them so authentication is complete **by the time Aegis console ships**, with SAML ready for enterprise.
 
 ---
 
@@ -170,7 +170,7 @@ This roadmap **does not drop** A2–A5; it **sequences** them so authentication 
 
 | Option | Why not default |
 |--------|------------------|
-| **Clerk** | Vendor lock-in on core identity; MAU cost; audit/RBAC still ours for Attest |
+| **Clerk** | Vendor lock-in on core identity; MAU cost; audit/RBAC still ours for Aegis |
 | **Supabase Auth** | Couples auth to another platform; we use Neon + Prisma |
 | **Auth0-only** | Heavier/costlier early; may revisit for niche enterprise |
 
@@ -184,7 +184,7 @@ This roadmap **does not drop** A2–A5; it **sequences** them so authentication 
 | **`packages/auth/README.md`** | Developer usage + 2FA hooks |
 | **`INFRASTRUCTURE_DECISIONS.md`** | Auth.js decision |
 | **`ACCESS_CONTROL_MATRIX.md`** | Roles (authorization) |
-| **`DATA_MODEL_ATTEST_CONSOLE.md`** | Tenant tables |
+| **`DATA_MODEL_AEGIS_CONSOLE.md`** | Tenant tables |
 | **`IMPLEMENTATION_PLAN.md`** | Product phases P0–P6 |
 
 When a stage ships, update **Status** column above and add a line to **`IMPLEMENTATION_PLAN.md`** changelog section.

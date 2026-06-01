@@ -63,19 +63,19 @@ Salanor aims to become a **durable, global innovator**: a company known for ship
                            |
          +-----------------+-----------------+
          |                 |                 |
-      AETHER             ATTEST         [Future lines]
+      AETHER             AEGIS         [Future lines]
    Environment        Agent trust      as validated
 ```
 
 | Level | Name | Role |
 |-------|------|------|
 | **Company** | Salanor | Identity, trust, careers, investment narrative, shared policies |
-| **Product lines** | Aether, Attest, … | Named innovations with their own story, site, and roadmap |
-| **Phases** | e.g. Attest Phase 0 | Honest scope labels inside a product line |
+| **Product lines** | Aether, Aegis, … | Named innovations with their own story, site, and roadmap |
+| **Phases** | e.g. Aegis Phase 0 | Honest scope labels inside a product line |
 
 ### 3.2 Naming in public communication
 
-- **Correct:** “Attest by Salanor,” “Salanor’s Aether program,” “Salanor builds …”  
+- **Correct:** “Aegis by Salanor,” “Salanor’s Aether program,” “Salanor builds …”  
 - **Avoid:** Describing Salanor only as an environmental or air-quality company on the corporate homepage  
 - **Trademark note:** Reinforce **Salanor** as the parent brand; evaluate product names with counsel before major spend.
 
@@ -98,7 +98,7 @@ Alternatives:
 
 | Product | Domain | Primary audience | Commercial focus | Public site |
 |---------|--------|------------------|------------------|-------------|
-| **Attest** | Accountability for AI agents and automated actions | Developers and teams shipping agents; later security and compliance leaders | **Active** — primary company focus (near term) | `attest.salanor.com` |
+| **Aegis** | Accountability for AI agents and automated actions | Developers and teams shipping agents; later security and compliance leaders | **Active** — primary company focus (near term) | `aegis.salanor.com` |
 | **Aether** | Environmental intelligence for planning and health | Cities, researchers, NGOs, industrial partners (pilots) | **Program** — partner-led; honest about GTM learnings | `aether.salanor.com` |
 | **Future lines** | TBD (e.g. electronics, services, other data systems) | TBD | **R&D** — only promoted when scoped | — |
 
@@ -136,7 +136,7 @@ A Salanor product line for **environmental data and intelligence**—sensing, fu
 
 ---
 
-### 4.3 Product: Attest
+### 4.3 Product: Aegis
 
 **One line**  
 Forensics and accountability for AI agents—see what ran, replay it, catch dangerous patterns before they spread.
@@ -148,16 +148,16 @@ Organizations want to deploy **autonomous agents** (tools, APIs, workflows), but
 - Debugging production failures is painful  
 - Policy and audit requirements (e.g. emerging AI regulation) demand **traceability** and **human oversight**
 
-**What Attest is (today — Phase 0)**  
+**What Aegis is (today — Phase 0)**  
 The **first shippable layer** of a longer trust roadmap:
 
 - Capture agent runs (tool calls, steps, outcomes)  
 - Store runs in a reviewable form  
 - Replay and inspect a run end-to-end  
 - Flag suspicious patterns (e.g. loops, repeated failures, abnormal cost or volume)  
-- Keep humans in the loop—Attest supports accountability; it does not replace it  
+- Keep humans in the loop—Aegis supports accountability; it does not replace it  
 
-**What Attest is (roadmap — later phases)**  
+**What Aegis is (roadmap — later phases)**  
 Internal north star includes stronger integrity guarantees, policy enforcement, cross-system identity, and enterprise governance—**only marketed when delivered**.
 
 **Positioning**  
@@ -199,17 +199,17 @@ Future lines get a **name, subsite, and status** (R&D / Pilot / Active)—not au
 | URL | Purpose |
 |-----|---------|
 | `https://salanor.com` | Corporate home: vision, products, about, contact |
-| `https://attest.salanor.com` | Attest product: value prop, docs, install, updates |
+| `https://aegis.salanor.com` | Aegis product: value prop, docs, install, updates |
 | `https://aether.salanor.com` | Aether program: mission, status, partners |
-| `https://app.attest.salanor.com` | *(When ready)* Team dashboard / cloud product |
-| `https://docs.attest.salanor.com` | Documentation subdomain (rewrites to `/attest/docs` in `apps/web`) |
+| `https://app.aegis.salanor.com` | *(When ready)* Team dashboard / cloud product |
+| `https://docs.aegis.salanor.com` | Documentation subdomain (rewrites to `/aegis/docs` in `apps/web`) |
 
-**Local dev (implemented):** `attest.localhost` and `docs.attest.localhost` → same rewrites as production hosts (`/attest/*`). See `docs/LOCAL_DEV.md`.
+**Local dev (implemented):** `aegis.localhost` and `docs.aegis.localhost` → same rewrites as production hosts (`/aegis/*`). See `docs/LOCAL_DEV.md`.
 
 **Email (recommended)**  
 - `hello@salanor.com` — general  
 - `security@salanor.com` — security disclosures  
-- Product-specific addresses later (e.g. `attest@salanor.com`)
+- Product-specific addresses later (e.g. `aegis@salanor.com`)
 
 ### 5.2 Site map — salanor.com (company)
 
@@ -223,7 +223,7 @@ Future lines get a **name, subsite, and status** (R&D / Pilot / Active)—not au
 /legal                Privacy policy, terms of use
 ```
 
-### 5.3 Site map — attest.salanor.com
+### 5.3 Site map — aegis.salanor.com
 
 ```
 /                     Product home — promise, demo, get started
@@ -247,11 +247,11 @@ Future lines get a **name, subsite, and status** (R&D / Pilot / Active)—not au
 **Order of message (top to bottom):**
 
 1. **Company hero** — Salanor builds trustworthy data and automation products for high-stakes domains.  
-2. **Product grid** — Attest (Active) · Aether (Program) · Future (R&D).  
+2. **Product grid** — Aegis (Active) · Aether (Program) · Future (R&D).  
 3. **Principles strip** — Evidence, human accountability, phased honesty.  
 4. **Proof** — Only real metrics: pilots, partners, open-source activity, testimonials.  
 5. **Founder / company story** — Global ambition, based in Africa, building for the world.  
-6. **Primary CTA** — Try Attest / Contact Salanor / Partner on Aether.
+6. **Primary CTA** — Try Aegis / Contact Salanor / Partner on Aether.
 
 **Never:** Lead with air quality only, or imply all products are equally mature.
 
@@ -270,13 +270,13 @@ Future lines get a **name, subsite, and status** (R&D / Pilot / Active)—not au
 
 - Modern, minimal, generous whitespace  
 - Consistent header/footer linking back to Salanor on all subsites  
-- Distinct but related treatment per product (Aether: environment/data; Attest: traces/timelines)  
+- Distinct but related treatment per product (Aether: environment/data; Aegis: traces/timelines)  
 - Avoid generic stock “corporate handshake” imagery; prefer abstract data, maps, or product UI  
 
 ### 6.3 Shared navigation pattern
 
 **Header (all sites):**  
-Salanor logo → Products (dropdown: Attest, Aether) → About → Contact → Product CTA (contextual)
+Salanor logo → Products (dropdown: Aegis, Aether) → About → Contact → Product CTA (contextual)
 
 **Footer (all sites):**  
 © Salanor · Products · Privacy · Contact · Social
@@ -297,7 +297,7 @@ Salanor logo → Products (dropdown: Attest, Aether) → About → Contact → P
               ┌───────────────┴───────────────┐
               ▼                               ▼
 ┌─────────────────────────┐     ┌─────────────────────────┐
-│  ATTEST PRODUCT         │     │  AETHER PRODUCT         │
+│  AEGIS PRODUCT         │     │  AETHER PRODUCT         │
 │  Capture → review →     │     │  Sense → fuse →         │
 │  alert → (later govern) │     │  inform → partner APIs  │
 └─────────────────────────┘     └─────────────────────────┘
@@ -318,7 +318,7 @@ Salanor logo → Products (dropdown: Attest, Aether) → About → Contact → P
 - Central analytics and contact routing (proportionate to stage)  
 - Single GitHub organization (or equivalent) for open initiatives  
 
-### 7.2 Attest — capability phases (product)
+### 7.2 Aegis — capability phases (product)
 
 | Phase | User value | Audience |
 |-------|------------|----------|
@@ -349,13 +349,13 @@ Salanor logo → Products (dropdown: Attest, Aether) → About → Contact → P
 
 | Product | Typical sensitive data | Phase 0 stance |
 |---------|------------------------|----------------|
-| Attest | Prompts, tool payloads, credentials in traces | Prefer local processing; redact secrets in logs |
+| Aegis | Prompts, tool payloads, credentials in traces | Prefer local processing; redact secrets in logs |
 | Aether | Location, environmental readings, partner data | Governed by pilot agreements |
 
 ### 8.3 Public pages to maintain
 
 - Company privacy policy (`salanor.com/legal`)  
-- Product security overview (Attest when cloud exists)  
+- Product security overview (Aegis when cloud exists)  
 - Data processing summary for teams evaluating pilots  
 
 ---
@@ -364,35 +364,35 @@ Salanor logo → Products (dropdown: Attest, Aether) → About → Contact → P
 
 ### 9.1 Company elevator pitch
 
-> **Salanor** builds products where data and automation must be trustworthy—from environmental intelligence to agent accountability. We’re focused on shipping **Attest** for teams running AI agents in production, while **Aether** advances through partners and funded pilots.
+> **Salanor** builds products where data and automation must be trustworthy—from environmental intelligence to agent accountability. We’re focused on shipping **Aegis** for teams running AI agents in production, while **Aether** advances through partners and funded pilots.
 
 ### 9.2 Investor / accelerator narrative
 
 1. **Company:** Salanor — multi-product tech company, disciplined focus  
 2. **Insight:** High-stakes domains need evidence and audit trails, not black boxes  
-3. **Now:** Attest Phase 0 — demonstrable product, developer adoption path  
+3. **Now:** Aegis Phase 0 — demonstrable product, developer adoption path  
 4. **Portfolio:** Aether — mission retained, commercial path honest  
 5. **Ask:** Intros, design partners, pre-seed / program support — tied to real milestones  
 
 ### 9.3 Transparent pivot language (template)
 
-> We invested [time] in **Aether** and confirmed the environmental need is real. Our bottleneck was **buyer speed and deployment economics**, not the mission. **Salanor** remains committed to Aether as a program. Our **near-term commercial focus** is **Attest**, applying the same principles—evidence and accountability—to AI agents, where teams feel urgency today.
+> We invested [time] in **Aether** and confirmed the environmental need is real. Our bottleneck was **buyer speed and deployment economics**, not the mission. **Salanor** remains committed to Aether as a program. Our **near-term commercial focus** is **Aegis**, applying the same principles—evidence and accountability—to AI agents, where teams feel urgency today.
 
 ### 9.4 Social and founder presence
 
 - **LinkedIn headline:** Founder, **Salanor** (not “air quality startup” only)  
 - **Pinned post:** Company thesis + two products + current focus  
-- **Product posts:** Label Attest or Aether in the first line  
+- **Product posts:** Label Aegis or Aether in the first line  
 
 ---
 
 ## 10. Roadmap (company level)
 
-| Period | Salanor (company) | Attest | Aether |
+| Period | Salanor (company) | Aegis | Aether |
 |--------|-------------------|--------|--------|
 | **Current quarter** | Rebrand to multi-product company; clear web IA | Ship Phase 0; public launch; design partners | Maintain program page; partner outreach |
 | **Next 2 quarters** | First revenue milestone; refine brand proof | Team tier; cloud retention | Pilot only if funded |
-| **12+ months** | Optional second product or scale Attest | Governance features as validated | Scale if economics work |
+| **12+ months** | Optional second product or scale Aegis | Governance features as validated | Scale if economics work |
 
 ---
 
@@ -401,8 +401,8 @@ Salanor logo → Products (dropdown: Attest, Aether) → About → Contact → P
 | Metric | Owner | Notes |
 |--------|-------|-------|
 | Corporate site clarity (bounce, time on /products) | Marketing | Qualitative UX reviews count early |
-| Attest: active installations / weekly users | Product | Honest adoption |
-| Attest: design partners or paid pilots | CEO | Revenue learning |
+| Aegis: active installations / weekly users | Product | Honest adoption |
+| Aegis: design partners or paid pilots | CEO | Revenue learning |
 | Aether: qualified partner conversations | Aether lead | Not vanity press |
 | Inbound investor / accelerator interest | CEO | Track intros and follow-ups |
 
@@ -411,9 +411,9 @@ Salanor logo → Products (dropdown: Attest, Aether) → About → Contact → P
 ## 12. Design deliverables checklist
 
 - [ ] Salanor wordmark and brand guidelines  
-- [ ] Attest and Aether sub-brand marks (optional icons)  
+- [ ] Aegis and Aether sub-brand marks (optional icons)  
 - [ ] Corporate homepage wireframe (company-first)  
-- [ ] Product page wireframes (Attest, Aether)  
+- [ ] Product page wireframes (Aegis, Aether)  
 - [ ] Status badge system: Active · Program · R&D  
 - [ ] Slide template: Salanor cover + product divider slides  
 - [ ] Social banner kit (company + products)  
@@ -423,7 +423,7 @@ Salanor logo → Products (dropdown: Attest, Aether) → About → Contact → P
 ## 13. Governance and intellectual property
 
 - Product IP should reside with **Salanor** (or the incorporated entity) via founder assignment when formalized  
-- Open-source components (e.g. Attest SDK) should use an explicit license chosen before public launch  
+- Open-source components (e.g. Aegis SDK) should use an explicit license chosen before public launch  
 - Trademark strategy: prioritize **Salanor**; evaluate product names with counsel before major spend  
 
 ---
@@ -434,15 +434,15 @@ Salanor logo → Products (dropdown: Attest, Aether) → About → Contact → P
 |---------|------|---------|
 | 1.0 | May 2026 | Initial platform documentation (vision-first; no technology stack) |
 
-**Next review:** After corporate site redesign and Attest Phase 0 public launch.
+**Next review:** After corporate site redesign and Aegis Phase 0 public launch.
 
 ---
 
 ## Appendix A — Homepage product card copy
 
-**Attest** · `Active`  
+**Aegis** · `Active`  
 Forensics for AI agents—trace, replay, and catch runaway behavior.  
-→ Explore at attest.salanor.com
+→ Explore at aegis.salanor.com
 
 **Aether** · `Program`  
 Environmental intelligence for cities and research partners.  
@@ -462,7 +462,7 @@ Trusted systems from data.
 Salanor builds focused products where evidence and accountability matter—from environmental intelligence to AI agent forensics.
 
 **CTA pair:**  
-[Explore Attest] · [Contact Salanor]
+[Explore Aegis] · [Contact Salanor]
 
 ---
 

@@ -1,4 +1,4 @@
-# Digital architecture — Salanor & Attest
+# Digital architecture — Salanor & Aegis
 
 **Version:** 2.0 · **Aligns Website Spec v2.0 canonical paths**
 
@@ -14,8 +14,8 @@ This document reconciles earlier subdomain brainstorming with **`Salanor_Website
 |------|---------|
 | `/` | Home |
 | `/about` | Company story |
-| `/attest` | Flagship product marketing |
-| `/attest/docs` | Technical documentation index (**Phase 2 public launch** per Website Spec note) |
+| `/aegis` | Flagship product marketing |
+| `/aegis/docs` | Technical documentation index (**Phase 2 public launch** per Website Spec note) |
 | `/aether` | Research programme |
 | `/research` | Research index |
 | `/research/[slug]` | Article |
@@ -25,31 +25,31 @@ This document reconciles earlier subdomain brainstorming with **`Salanor_Website
 | `/contact` | Routed form |
 | `/legal/*` | Privacy, terms, security disclosure, subprocessors |
 
-**Global nav (5):** Attest · Aether · Research · About · Careers — **Contact** persistent secondary CTA (per spec).
+**Global nav (5):** Aegis · Aether · Research · About · Careers — **Contact** persistent secondary CTA (per spec).
 
 ---
 
-## 2) Attest product subdomains (same `apps/web` deploy)
+## 2) Aegis product subdomains (same `apps/web` deploy)
 
 Marketing hosts are **first-class product URLs** (middleware rewrite, not 301 to `salanor.com`):
 
 | Host | Public path | Internal route |
 |------|-------------|----------------|
-| `attest.salanor.com` | `/` | `/attest` |
-| `attest.salanor.com` | `/pricing` | `/attest/pricing` |
-| `attest.salanor.com` | `/docs` | `/attest/docs` |
-| `attest.salanor.com` | `/console` | `/console` (same app) |
-| `docs.attest.salanor.com` | `/` (+ paths) | `/attest/docs` (+ suffix) |
+| `aegis.salanor.com` | `/` | `/aegis` |
+| `aegis.salanor.com` | `/pricing` | `/aegis/pricing` |
+| `aegis.salanor.com` | `/docs` | `/aegis/docs` |
+| `aegis.salanor.com` | `/console` | `/console` (same app) |
+| `docs.aegis.salanor.com` | `/` (+ paths) | `/aegis/docs` (+ suffix) |
 
-Configure `MARKETING_HOSTS`, `ATTEST_PUBLIC_HOST`, `ATTEST_DOCS_PUBLIC_HOST`, and `CONSOLE_PUBLIC_HOST` in `.env` / Vercel. Unknown hosts are rejected (see **`docs/HOST_ROUTING.md`**). Corporate paths (`/attest`, `/attest/pricing`, …) remain valid on `salanor.com` and `localhost` for dev.
+Configure `MARKETING_HOSTS`, `AEGIS_PUBLIC_HOST`, `AEGIS_DOCS_PUBLIC_HOST`, and `CONSOLE_PUBLIC_HOST` in `.env` / Vercel. Unknown hosts are rejected (see **`docs/HOST_ROUTING.md`**). Corporate paths (`/aegis`, `/aegis/pricing`, …) remain valid on `salanor.com` and `localhost` for dev.
 
 ---
 
-## 3) Authenticated console (Attest product UI)
+## 3) Authenticated console (Aegis product UI)
 
-**Recommended host:** `https://app.attest.salanor.com` **or** path `https://salanor.com/console` **only if** cookie isolation complexity accepted.
+**Recommended host:** `https://app.aegis.salanor.com` **or** path `https://salanor.com/console` **only if** cookie isolation complexity accepted.
 
-Default:** separate subdomain + separate Next deploy target** (`apps/console-attest`) for session boundary clarity.
+Default:** separate subdomain + separate Next deploy target** (`apps/console-aegis`) for session boundary clarity.
 
 | Surface | Purpose |
 |---------|---------|
@@ -85,7 +85,7 @@ Handles:
 | Auth | Auth.js (`@salanor/auth`) — see `AUTH_ROADMAP.md` |
 | Email | Postmark / Buttondown |
 | Analytics | Plausible |
-| Attest backends | Containers + NATS + object storage |
+| Aegis backends | Containers + NATS + object storage |
 
 ---
 
@@ -97,4 +97,4 @@ Implement per Website Specification §13 (`<title>` length, OG, JobPosting schem
 
 ## 7) Deprecated / superseded notions
 
-Older proposals privileging **`docs.attest.salanor.com` as canonical** are **secondary** unless marketing strategy pivots — **Website Spec paths win** unless product marketing decides otherwise (**document change + version bump**).
+Older proposals privileging **`docs.aegis.salanor.com` as canonical** are **secondary** unless marketing strategy pivots — **Website Spec paths win** unless product marketing decides otherwise (**document change + version bump**).

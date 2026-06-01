@@ -1,4 +1,4 @@
-# Attest Phase 1 — Corporate Web, CMS-Light, Neon + Auth.js Shell
+# Aegis Phase 1 — Corporate Web, CMS-Light, Neon + Auth.js Shell
 
 **Phase ID:** P1  
 **Objective:** Deliver **public credibility surface** aligning with **`Salanor_Website_Specification.pdf`**.
@@ -27,9 +27,9 @@
 
 | Item | Deferred |
 |------|----------|
-| `/attest/docs` exhaustive reference | Increment P1→P2 (stub page ok) deep nav |
+| `/aegis/docs` exhaustive reference | Increment P1→P2 (stub page ok) deep nav |
 | Pagefind indexing automation | Finish when content volume warrants |
-| Attest ingestion cloud | P2 |
+| Aegis ingestion cloud | P2 |
 
 ---
 
@@ -38,7 +38,7 @@
 1. Lighthouse thresholds spec §13 ±10% concession documented if fail with rationale ticket.  
 2. Contact SLA: INSERT <300ms median excluding Slack sidecar.  
 3. `contact_messages` RLS posture documented—even if iterative app guard first.  
-4. Content parity: flagship `/attest` sections present per spec headings.  
+4. Content parity: flagship `/aegis` sections present per spec headings.  
 
 ---
 
@@ -46,11 +46,11 @@
 
 | Criterion | Status | Notes |
 |-----------|--------|-------|
-| Canonical routes (`/`, `/about`, `/attest`, `/aether`, `/research`, `/careers`, `/contact`, `/standards`, `/legal/privacy`, `/admin`, `/sign-in`) | Done | `/attest/docs` stub; `/sign-up` → `/sign-in` |
+| Canonical routes (`/`, `/about`, `/aegis`, `/aether`, `/research`, `/careers`, `/contact`, `/standards`, `/legal/privacy`, `/admin`, `/sign-in`) | Done | `/aegis/docs` stub; `/sign-up` → `/sign-in` |
 | Contact API persist + rate limit + honeypot | Done | `POST /api/contact` |
 | Slack notify (optional) | Done | `SLACK_CONTACT_WEBHOOK_URL`; non-blocking |
 | Admin Auth.js magic link + allowlist | Done | `AUTH-A1`; `@salanor/auth` with route-grouped admin shell |
-| `/attest` SDK snippet + `pnpm attest:demo` | Done | `FR-WEB-ATTEST-CODE` |
+| `/aegis` SDK snippet + `pnpm aegis:demo` | Done | `FR-WEB-AEGIS-CODE` |
 | Research index + RSS | Done | `/research/feed.xml` |
 | Careers from Prisma seed | Done | `pnpm db:seed` |
 | JobPosting JSON-LD | Done | `/careers/[slug]` |

@@ -36,7 +36,7 @@ Actor: Visitor
 
 ---
 
-### C. Customer tenant console (`app.attest…`)
+### C. Customer tenant console (`app.aegis…`)
 
 | Role | Invite users | Manage billing | API keys | View events | Trigger export | Change org policy settings |
 |------|-------------|---------------|----------|-------------|---------------|---------------------------|
@@ -63,7 +63,7 @@ Keys rotated; stored hashed with metadata row.
 
 ---
 
-## 3) Attest Policy pillar (future)
+## 3) Aegis Policy pillar (future)
 
 Policy decisions emitted as **their own APS-1 events** with `action` prefix `policy.*` — auditors see allow/deny + rule id/version.
 

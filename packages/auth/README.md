@@ -40,7 +40,7 @@ See repo root `.env.example`:
 |----------|---------|
 | `AUTH_SECRET` | Session signing (`openssl rand -hex 32`) |
 | `AUTH_URL` | Canonical Auth.js base URL (e.g. `http://localhost:3000`) |
-| `AUTH_TRUST_HOST` | Set `true` so magic links use the sign-in host (`app.attest.localhost:3000`, etc.). When `true` + local dev, `/api/auth` handlers use the **request origin** instead of rewriting to `AUTH_URL` (NextAuth’s default `reqWithEnvURL` breaks `*.localhost`). Post-login redirects stay on that host. |
+| `AUTH_TRUST_HOST` | Set `true` so magic links use the sign-in host (`app.aegis.localhost:3000`, etc.). When `true` + local dev, `/api/auth` handlers use the **request origin** instead of rewriting to `AUTH_URL` (NextAuth’s default `reqWithEnvURL` breaks `*.localhost`). Post-login redirects stay on that host. |
 | `AUTH_COOKIE_DOMAIN` | Dev only; defaults to `.localhost` for `*.localhost` session sharing (`none`/`off` disables) |
 | `SALANOR_ENV` | Set `local` to enable `.localhost` cookies when `NODE_ENV=production` (`next start` on loopback) |
 | `ADMIN_EMAILS` | Dev bootstrap allowlist (optional; see above) |

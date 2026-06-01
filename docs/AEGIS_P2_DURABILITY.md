@@ -1,7 +1,7 @@
-# Attest P2 — Durability & RPO (prototype)
+# Aegis P2 — Durability & RPO (prototype)
 
 **Phase:** P2 cloud ingest bridge  
-**Storage:** Synchronous `INSERT` into Postgres (`attest_ingest_events`)
+**Storage:** Synchronous `INSERT` into Postgres (`aegis_ingest_events`)
 
 ## Recovery point objective (RPO)
 
@@ -17,7 +17,7 @@ For this prototype, each accepted ingest request is committed with a single Pris
 
 ## Replay / reconcile test
 
-`packages/attest-sdk-ts/src/ingest-handler.test.ts` simulates pod restart by:
+`packages/aegis-ledger-sdk/src/ingest-handler.test.ts` simulates pod restart by:
 
 1. Writing through `handleIngest` into an in-memory store backed by maps (same contract as Prisma adapter).
 2. Cloning persisted rows into a fresh store instance (new “client” after restart).
@@ -25,6 +25,6 @@ For this prototype, each accepted ingest request is committed with a single Pris
 
 ## Future (P3+)
 
-- Durable bus (NATS JetStream) between edge and ledger writer — see `FR-ATT-BUS-ORDER`.
-- Merkle batching and anchoring — see `FR-ATT-LEDGER-MERKLE`, `FR-ATT-ANCHOR-OTS`.
+- Durable bus (NATS JetStream) between edge and ledger writer — see `FR-AEG-BUS-ORDER`.
+- Merkle batching and anchoring — see `FR-AEG-LEDGER-MERKLE`, `FR-AEG-ANCHOR-OTS`.
 - Sustained ≥200 evt/s load test on dev cluster — optional micro-bench stub; not a P2 gate.

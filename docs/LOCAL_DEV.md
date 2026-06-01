@@ -9,16 +9,16 @@
 Optional: if you still open legacy `*.localhost` bookmarks, add:
 
 ```
-127.0.0.1 attest.localhost docs.attest.localhost app.attest.localhost
+127.0.0.1 aegis.localhost docs.aegis.localhost app.aegis.localhost
 ```
 
 Middleware redirects those hosts to path-based URLs on `localhost:3000`.
 
 | Legacy URL | Redirects to |
 |------------|----------------|
-| http://attest.localhost:3000 | http://localhost:3000/attest |
-| http://docs.attest.localhost:3000 | http://localhost:3000/docs/attest |
-| http://app.attest.localhost:3000 | http://localhost:3000/app/console/attest |
+| http://aegis.localhost:3000 | http://localhost:3000/aegis |
+| http://docs.aegis.localhost:3000 | http://localhost:3000/docs/aegis |
+| http://app.aegis.localhost:3000 | http://localhost:3000/app/console/aegis |
 
 ## Environment
 
@@ -36,7 +36,7 @@ Restart `pnpm dev` after changing env.
 ## Verify routing
 
 ```powershell
-curl -I http://localhost:3000/app/console/attest
+curl -I http://localhost:3000/app/console/aegis
 ```
 
 Expect a rewrite to `/console` (or sign-in redirect when unauthenticated), not a redirect to `https://salanor.com`.

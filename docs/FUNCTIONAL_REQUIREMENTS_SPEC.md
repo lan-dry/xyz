@@ -1,6 +1,6 @@
 # Functional requirements specification (master backlog)
 
-**Version:** 1.0 · **Coverage:** Attest Product Specification · Salanor Website Specification v2 · Attest Policy pillar · Access & data models
+**Version:** 1.0 · **Coverage:** Aegis Product Specification · Salanor Website Specification v2 · Aegis Policy pillar · Access & data models
 
 Each requirement has `Phase` tag: **P0 … P6** (see `IMPLEMENTATION_PLAN.md`).
 
@@ -18,9 +18,9 @@ Status values: `planned` | `building` | `done` | `dropped` (rare; needs ADR)
 | P3 | PDF **MVP backbone** (collector + bus + ledger + anchor + replay/export) |
 | P4 | Tenant console + RBAC hardening + API keys |
 | P5 | Evidence pipeline polish + SLA hooks |
-| P6 | **Attest Policy** enforcement + analytics + roadmap v2 features |
+| P6 | **Aegis Policy** enforcement + analytics + roadmap v2 features |
 
-*(Phases mirrored in ATTEST_PHASE_*.md files.)*
+*(Phases mirrored in AEGIS_PHASE_*.md files.)*
 
 ---
 
@@ -30,7 +30,7 @@ Status values: `planned` | `building` | `done` | `dropped` (rare; needs ADR)
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-WEB-DES-IA | Routes match **DIGITAL_ARCHITECTURE.md** (canonical `/attest`, `/research`, ...) | P1 |
+| FR-WEB-DES-IA | Routes match **DIGITAL_ARCHITECTURE.md** (canonical `/aegis`, `/research`, ...) | P1 |
 | FR-WEB-Voice | Editorial tone obeys Spec §15 guardrails | P1 |
 | FR-WEB-Perf | Lighthouse budgets §13 honored on key routes | P1 |
 
@@ -47,13 +47,13 @@ Status values: `planned` | `building` | `done` | `dropped` (rare; needs ADR)
 |----|-------------|-------|
 | FR-WEB-ABOUT | Copy + principles + team placeholder | P1 |
 
-### `/attest`
+### `/aegis`
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-WEB-ATTEST-HERO | Full flagship copy incl. **four primitives** explainer | P1 |
-| FR-WEB-ATTEST-CODE | Sample snippet (TS) matches documented SDK import path | P1 |
-| FR-WEB-ATTEST-CTA | Request access + technical overview links | P1 |
+| FR-WEB-AEGIS-HERO | Full flagship copy incl. **four primitives** explainer | P1 |
+| FR-WEB-AEGIS-CODE | Sample snippet (TS) matches documented SDK import path | P1 |
+| FR-WEB-AEGIS-CTA | Request access + technical overview links | P1 |
 
 ### `/aether`
 
@@ -113,14 +113,14 @@ Status values: `planned` | `building` | `done` | `dropped` (rare; needs ADR)
 
 ---
 
-# Part B — Attest product (capture / anchor / replay / export)
+# Part B — Aegis product (capture / anchor / replay / export)
 
 ### APS-1 schema & SDK
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
 | FR-APS-SCHEMA-V1 public draft | Minimal JSON Schema published | P0/P2 |
-| FR-APS-SDK-TS | Typed `attest.record` surface | P0→P4 |
+| FR-APS-SDK-TS | Typed `aegis.record` surface | P0→P4 |
 | FR-APS-SDK-PY | Idiomatic Python package | P0→P4 |
 | FR-APS-SDK-GO | Go module | P3 |
 | FR-APS-HTTP-FALLBACK | JSON POST shim for polyglot | P3 |
@@ -129,86 +129,86 @@ Status values: `planned` | `building` | `done` | `dropped` (rare; needs ADR)
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-ATT-LOCAL-REC | Record calls append structured events locally | P0 |
-| FR-ATT-LOCAL-REPLAY | Deterministic reconstruction Tier A simple path | P0 |
-| FR-ATT-LOCAL-VERIFY-CLI stub | Early integrity check (hash chain local) | P0 |
+| FR-AEG-LOCAL-REC | Record calls append structured events locally | P0 |
+| FR-AEG-LOCAL-REPLAY | Deterministic reconstruction Tier A simple path | P0 |
+| FR-AEG-LOCAL-VERIFY-CLI stub | Early integrity check (hash chain local) | P0 |
 
 ### Cloud ingest bridge (P2 prototype)
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-ATT-P2-INGEST | Authenticated `POST /api/attest/ingest` persists APS events to Postgres | P2 |
-| FR-ATT-P2-REMOTE | SDK `attest.recordCloud` posts validated events to ingest endpoint | P2 |
+| FR-AEG-P2-INGEST | Authenticated `POST /api/aegis/ingest` persists APS events to Postgres | P2 |
+| FR-AEG-P2-REMOTE | SDK `aegis.recordCloud` posts validated events to ingest endpoint | P2 |
 
 ### Edge collector (hot path)
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-ATT-COLLECT-LAT | p50/p99 latency targets from PDF §4 | P3 |
-| FR-ATT-COLLECT-SIGN | Customer key signs inbound event | P3 |
-| FR-ATT-COLLECT-BUF | Local disk buffer if bus down | P3 |
+| FR-AEG-COLLECT-LAT | p50/p99 latency targets from PDF §4 | P3 |
+| FR-AEG-COLLECT-SIGN | Customer key signs inbound event | P3 |
+| FR-AEG-COLLECT-BUF | Local disk buffer if bus down | P3 |
 
 ### Event bus
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-ATT-BUS-ORDER | Ordered durable streams (NATS JetStream) | P3 |
-| FR-ATT-BUS-SCALE | Horizontal scale baseline | P3 |
+| FR-AEG-BUS-ORDER | Ordered durable streams (NATS JetStream) | P3 |
+| FR-AEG-BUS-SCALE | Horizontal scale baseline | P3 |
 
 ### Ledger writer
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-ATT-LEDGER-MERKLE | Batch Merkle roots (250ms default) | P3 |
-| FR-ATT-LEDGER-PG | Postgres persistence for events index | P3 |
-| FR-ATT-LEDGER-OBJ | Large blob object storage content-addressed | P3 |
+| FR-AEG-LEDGER-MERKLE | Batch Merkle roots (250ms default) | P3 |
+| FR-AEG-LEDGER-PG | Postgres persistence for events index | P3 |
+| FR-AEG-LEDGER-OBJ | Large blob object storage content-addressed | P3 |
 
 ### Anchor service
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-ATT-ANCHOR-OTS | OpenTimestamps Bitcoin anchoring default | P3 |
-| FR-ATT-ANCHOR-CADENCE | Configurable anchor windows | P3 |
+| FR-AEG-ANCHOR-OTS | OpenTimestamps Bitcoin anchoring default | P3 |
+| FR-AEG-ANCHOR-CADENCE | Configurable anchor windows | P3 |
 
 ### Replay & export plane
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-ATT-REPLAY-TIER-A | Deterministic replay | P3 |
-| FR-ATT-REPLAY-TIER-C | Witness mode for externals | P3 |
-| FR-ATT-REPLAY-TIER-B | Best-effort bounded LLM variance capture | P5 |
-| FR-ATT-EXPORT-PACK | Signed PDF+JSON evidence pack | P3 |
-| FR-ATT-VERIFY-OSS | Offline verify CLI | P3 |
+| FR-AEG-REPLAY-TIER-A | Deterministic replay | P3 |
+| FR-AEG-REPLAY-TIER-C | Witness mode for externals | P3 |
+| FR-AEG-REPLAY-TIER-B | Best-effort bounded LLM variance capture | P5 |
+| FR-AEG-EXPORT-PACK | Signed PDF+JSON evidence pack | P3 |
+| FR-AEG-VERIFY-OSS | Offline verify CLI | P3 |
 
 ### Admin UI (product)
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-ATT-UI-SEARCH | Event search | P3 |
-| FR-ATT-UI-DRILL | Single decision drill-down | P3 |
-| FR-ATT-UI-EXPORTJOB | Generate pack job UX | P4 |
+| FR-AEG-UI-SEARCH | Event search | P3 |
+| FR-AEG-UI-DRILL | Single decision drill-down | P3 |
+| FR-AEG-UI-EXPORTJOB | Generate pack job UX | P4 |
 
 ### Deployment topologies
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-ATT-DEP-MGD | Managed regions (US-East, EU-West baseline) | P3 |
-| FR-ATT-DEP-HYBRID | Helm hybrid chart | P3 |
-| FR-ATT-DEP-AIRGAP | Deferred post MVP (PDF out-of-scope) | P6 |
+| FR-AEG-DEP-MGD | Managed regions (US-East, EU-West baseline) | P3 |
+| FR-AEG-DEP-HYBRID | Helm hybrid chart | P3 |
+| FR-AEG-DEP-AIRGAP | Deferred post MVP (PDF out-of-scope) | P6 |
 
 ### Roadmap PDF extras
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
-| FR-ATT-V11-MULTIANCHOR | Multi-chain anchors | P6 |
-| FR-ATT-V11-STREAM | Streaming replay long traces | P6 |
-| FR-ATT-V12-AIRGAP | Air-gapped self-host | P6 |
-| FR-ATT-V13-TIERB-GA | Tier B GA + provider hooks | P6 |
-| FR-ATT-V20-GRAPH | Cross-system provenance graph | P6 |
+| FR-AEG-V11-MULTIANCHOR | Multi-chain anchors | P6 |
+| FR-AEG-V11-STREAM | Streaming replay long traces | P6 |
+| FR-AEG-V12-AIRGAP | Air-gapped self-host | P6 |
+| FR-AEG-V13-TIERB-GA | Tier B GA + provider hooks | P6 |
+| FR-AEG-V20-GRAPH | Cross-system provenance graph | P6 |
 
 ---
 
-# Part C — Attest Policy (enforcement / authorization gate)
+# Part C — Aegis Policy (enforcement / authorization gate)
 
 | ID | Requirement | Phase |
 |----|-------------|-------|
@@ -259,8 +259,8 @@ Status values: `planned` | `building` | `done` | `dropped` (rare; needs ADR)
 | Source | FR groups |
 |--------|-----------|
 | Website Spec | FR-WEB-* |
-| Attest PDF MVP | FR-ATT-* (P3 core) |
-| Attest PDF roadmap | FR-ATT-V* |
+| Aegis PDF MVP | FR-AEG-* (P3 core) |
+| Aegis PDF roadmap | FR-AEG-V* |
 | Policy pillar | FR-POL-* |
 | Console model | FR-CON-* |
 
@@ -270,4 +270,4 @@ Status values: `planned` | `building` | `done` | `dropped` (rare; needs ADR)
 
 1. Propose FR with next free ID.  
 2. Tag phase or justify reprioritization (ADR).  
-3. Update **IMPLEMENTATION_PLAN** + relevant **ATTEST_PHASE_**.md acceptance lists.
+3. Update **IMPLEMENTATION_PLAN** + relevant **AEGIS_PHASE_**.md acceptance lists.

@@ -1,4 +1,4 @@
-# Attest Phase 6 — Attest Policy + Roadmap Expansion
+# Aegis Phase 6 — Aegis Policy + Roadmap Expansion
 
 **Phase ID:** P6  
 **Status:** Engineering complete (deferments tracked)  
@@ -8,7 +8,7 @@
 
 ## Streams
 
-### A. Attest Policy (enforcement)
+### A. Aegis Policy (enforcement)
 
 | Deliverable |
 |-------------|
@@ -23,10 +23,10 @@ Ordered selection from FUNCTIONAL_REQUIREMENTS § roadmap cluster:
 
 | ID | Feature |
 |----|---------|
-| FR-ATT-V11-MULTIANCHOR | Secondary chain anchor redundancy |
-| FR-ATT-V11-STREAM | Streaming long traces |
-| FR-ATT-V12-AIRGAP | Packaging for sovereign customers |
-| FR-ATT-V20-GRAPH | Decision provenance DAG queries |
+| FR-AEG-V11-MULTIANCHOR | Secondary chain anchor redundancy |
+| FR-AEG-V11-STREAM | Streaming long traces |
+| FR-AEG-V12-AIRGAP | Packaging for sovereign customers |
+| FR-AEG-V20-GRAPH | Decision provenance DAG queries |
 
 Selections require **ADR** per item.
 
@@ -48,13 +48,13 @@ Demonstrable Tier A/C revenue path + operational maturity from P5.
 
 ### Slice 1 — Policy engine MVP v1
 
-- [x] Add policy persistence model (`attest_policies`) scoped per organization
+- [x] Add policy persistence model (`aegis_policies`) scoped per organization
 - [x] Add policy evaluation audit model (`policy_evaluation_log`)
 - [x] Implement policy evaluator with v1 rules (`require_fields`, `deny_if_missing_actor`, `max_payload_bytes`)
 - [x] Integrate ingest-time policy enforcement after APS validation (deny returns HTTP 422)
 - [x] Add console policy page (`/console/policy`) with active policy JSON + template
 - [x] Add tests for evaluator logic and ingest deny integration
-- [x] Add policy schema doc (`ATTEST_POLICY_V1.md`)
+- [x] Add policy schema doc (`AEGIS_POLICY_V1.md`)
 
 ### Slice 2 — Policy editor (admin+)
 

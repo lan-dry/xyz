@@ -11,10 +11,10 @@ This document freezes cross-cutting infrastructure choices credible for B2B/SaaS
 | Plane | Responsibility | Hosting pattern |
 |-------|----------------|-----------------|
 | **Web / CMS / Admin** | `salanor.com` surfaces, Postgres CMS-light (Prisma), admin auth | **Vercel** (edge SSR) |
-| **Attest backend** | Collector(s), buses, ledger writer, anchors, replay/export services | **Container platform** — default **Fly.io** (alternate: Railway/AWS ECS documented in runbooks) |
+| **Aegis backend** | Collector(s), buses, ledger writer, anchors, replay/export services | **Container platform** — default **Fly.io** (alternate: Railway/AWS ECS documented in runbooks) |
 | **Object storage** | Content-addressed evidence blobs | **Cloudflare R2** or AWS S3 (S3-compatible) |
-| **Product DB metadata** | Tenants, API keys (hashed), roles — **distinct** from APS-1 high-volume paths when scaling | Neon Postgres (recommended separate **logical DB** `attest_app` vs `salanor_web`) |
-| **Message bus** | Durable ordering for events | **NATS JetStream** (per Attest specification) |
+| **Product DB metadata** | Tenants, API keys (hashed), roles — **distinct** from APS-1 high-volume paths when scaling | Neon Postgres (recommended separate **logical DB** `aegis_app` vs `salanor_web`) |
+| **Message bus** | Durable ordering for events | **NATS JetStream** (per Aegis specification) |
 
 ---
 
@@ -44,14 +44,14 @@ This document freezes cross-cutting infrastructure choices credible for B2B/SaaS
 
 - **Self-hosted, portable** session + email magic-link flow aligned with Neon Postgres (Prisma adapter).
 - Monorepo library **`packages/auth`** (`@salanor/auth`) centralizes providers, allowlist, and future 2FA hooks; apps stay thin (route handler + middleware).
-- Clear boundary: **authentication** with Auth.js; **authorization truth** in Postgres (`sal_internal_users`, tenant RBAC tables when Attest console ships).
+- Clear boundary: **authentication** with Auth.js; **authorization truth** in Postgres (`sal_internal_users`, tenant RBAC tables when Aegis console ships).
 
 **Configuration guidance**
 
 | Application | Recommendation |
 |--------------|----------------|
 | **Marketing / internal admin** (`salanor.com` `/admin`) | Auth.js **Nodemailer** (Postmark SMTP) + `ADMIN_EMAILS` env and/or `sal_internal_users` allowlist. |
-| **Customer console** (future `app.attest.*`) | Reuse `@salanor/auth`; org membership + RBAC in product DB (`AUTH-A4` in `AUTH_ROADMAP.md`). |
+| **Customer console** (future `app.aegis.*`) | Reuse `@salanor/auth`; org membership + RBAC in product DB (`AUTH-A4` in `AUTH_ROADMAP.md`). |
 
 **MFA**
 
@@ -141,5 +141,5 @@ SOC2 / HIPAA language **only appears on site when programs exist** — link trus
 Major version bump revisit when adding:
 
 - Dedicated regional deployment (EU data residency mandates)
-- Air-gapped / self-hosted Attest binaries for enterprise
+- Air-gapped / self-hosted Aegis binaries for enterprise
 - Multi-cloud anchor redundancy

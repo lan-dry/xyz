@@ -1,4 +1,4 @@
-# Attest Phase 5 — Evidence Polish & Tier B Exploration
+# Aegis Phase 5 — Evidence Polish & Tier B Exploration
 
 **Phase ID:** P5  
 
@@ -42,7 +42,7 @@ Stable P4 customer pilot signal (design partner agreements).
 
 - [x] API for signed-in user to create org + owner membership
 - [x] UI for org creation flow in console (`/console/orgs/new` + entry points)
-- [x] Reconcile with `ATTEST_CONSOLE_AUTO_PROVISION` in local dev copy/flow
+- [x] Reconcile with `AEGIS_CONSOLE_AUTO_PROVISION` in local dev copy/flow
 
 ### Slice 3+ (deferred)
 

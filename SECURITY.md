@@ -23,4 +23,4 @@ We aim to acknowledge reports within **5 business days** and will coordinate dis
 
 ## Scope (P0)
 
-The local Attest slice (`@salanor/attest-sdk-ts`, `salanor-attest`) stores events on disk in the developer environment. Treat ledger paths as sensitive if they contain production-like data.
+The local Aegis slice (`@salanor/aegis-ledger-sdk`, `salanor-aegis-ledger`) stores events on disk in the developer environment. Treat ledger paths as sensitive if they contain production-like data.

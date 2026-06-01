@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://salanor.com/schemas/aps/0.1",
   "title": "APS-1 Event (draft 0.1)",
-  "description": "Minimal required-field subset for Salanor Attest local slice. Internal version pending public freeze.",
+  "description": "Minimal required-field subset for Salanor Aegis local slice. Internal version pending public freeze.",
   "type": "object",
   "additionalProperties": false,
   "required": [

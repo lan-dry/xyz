@@ -1,16 +1,16 @@
-# Attest P0 — local hot-path micro-benchmark
+# Aegis P0 — local hot-path micro-benchmark
 
 Run on your machine (Windows PowerShell example):
 
 ```powershell
 cd d:\PROJECTS\salanor
-pnpm attest:bench
+pnpm aegis:bench
 ```
 
 ## Sample output (laptop-class hardware, indicative)
 
 ```
-Attest local hot path (10000 events)
+Aegis local hot path (10000 events)
   record: 0.05–0.15 ms/event
   replay: < 50 ms (10000 events)
   verify: < 80 ms (10000 events)

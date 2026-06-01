@@ -1,4 +1,4 @@
-# Attest Phase 0 — Foundations & Local Developer Slice
+# Aegis Phase 0 — Foundations & Local Developer Slice
 
 **Phase ID:** P0  
 **Objective:** Produce a **credible, testable spine** engineers can fork without provisioning cloud cryptography infrastructure.
@@ -10,7 +10,7 @@
 | Area | Deliverable |
 |------|-------------|
 | Monorepo | Nx bootstrap (`apps/` placeholder web stub optional) |
-| Packages | Minimal TypeScript `/` Python attest SDK scaffolding |
+| Packages | Minimal TypeScript `/` Python aegis SDK scaffolding |
 | APS-1 | Draft JSON defining **minimal required fields subset** internally versioned `0.1` pending public freeze |
 | Local recording | `record()` persists append-only NDJSON **or** sqlite file with stable ordering |
 | Replay | CLI or script reconstructs deterministic Tier-A toy examples |
@@ -33,7 +33,7 @@
 
 ## Acceptance criteria
 
-1. Contributor can run **`pnpm attest:demo`** (or Makefile) generating ≥3 deterministic replay-equal runs.  
+1. Contributor can run **`pnpm aegis:demo`** (or Makefile) generating ≥3 deterministic replay-equal runs.  
 2. Unit tests cover schema validation rejections (`missing actor`, malformed signature placeholder).  
 3. ` nx graph` cleanly lists projects.  
 4. GitHub Actions: **green** main branch required check.  

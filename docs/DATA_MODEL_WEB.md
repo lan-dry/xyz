@@ -2,7 +2,7 @@
 
 **Source of truth:** `Salanor_Website_Specification.pdf` §12 (CMS-light schema).
 
-**DB:** Logical database `salanor_web` on Neon (recommended separation from Attest operational DB).
+**DB:** Logical database `salanor_web` on Neon (recommended separation from Aegis operational DB).
 
 ---
 

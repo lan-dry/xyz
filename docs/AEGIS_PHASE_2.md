@@ -1,4 +1,4 @@
-# Attest Phase 2 — Cloud Ingest Bridge (Prototype)
+# Aegis Phase 2 — Cloud Ingest Bridge (Prototype)
 
 **Phase ID:** P2  
 **Objective:** Demonstrate SDK → authenticated edge → persisted durable primitive **without** full PDF surface area.
@@ -43,12 +43,12 @@ P1 infra secrets management operational.
 
 | # | Criterion | Status |
 |---|-----------|--------|
-| 1 | `attest_ingest_events` Prisma model + `pnpm db:push` | Done |
-| 2 | `POST /api/attest/ingest` — API key auth, APS validation, `trace_id`, structured logs | Done |
-| 3 | `@salanor/attest-sdk-ts` `attest.recordCloud` / `remoteRecord` | Done |
-| 4 | Durability test + `docs/ATTEST_P2_DURABILITY.md` (RPO ~0 sync Postgres) | Done |
+| 1 | `aegis_ingest_events` Prisma model + `pnpm db:push` | Done |
+| 2 | `POST /api/aegis/ingest` — API key auth, APS validation, `trace_id`, structured logs | Done |
+| 3 | `@salanor/aegis-ledger-sdk` `aegis.recordCloud` / `remoteRecord` | Done |
+| 4 | Durability test + `docs/AEGIS_P2_DURABILITY.md` (RPO ~0 sync Postgres) | Done |
 | 5 | `/standards` APS-1 v0.1 summary (FR-WEB-APS-PUBLIC) | Done |
-| 6 | `pnpm attest:ingest-demo` + `.env.example` `ATTEST_INGEST_DEV_KEY` | Done |
-| 7 | `pnpm attest:test` + `pnpm build` green in CI | Verify locally |
+| 6 | `pnpm aegis:ingest-demo` + `.env.example` `AEGIS_INGEST_DEV_KEY` | Done |
+| 7 | `pnpm aegis:test` + `pnpm build` green in CI | Verify locally |
 
 **Deferred (P3+):** NATS/Kafka bus, Merkle anchoring, multi-region HA, ≥200 evt/s sustained load test.

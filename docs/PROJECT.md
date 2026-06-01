@@ -7,7 +7,7 @@
 ## 1. Mission anchor
 
 Salanor builds **trust & accountability infrastructure** for autonomous and AI-driven systems.  
-**Attest** is the flagship product: a **verifiable decision record** — capture, anchor, replay, export — with a later **Policy (enforcement)** pillar.  
+**Aegis** is the flagship product: a **verifiable decision record** — capture, anchor, replay, export — with a later **Policy (enforcement)** pillar.  
 **Aether** is the public research programme (standards incl. APS-1 drafting).
 
 Authoritative narrative + copy for marketing live in **`Salanor_Website_Specification.pdf`**. Visuals in **`Salanor_Website_Design.pdf`** (layout only).
@@ -37,8 +37,8 @@ Authoritative narrative + copy for marketing live in **`Salanor_Website_Specific
 | Plane | Code location (proposed) | Data |
 |-------|-------------------------|------|
 | Corporate site + admin | `apps/web` (Nx) | DB: `salanor_web` logical |
-| Attest console | `apps/console-attest` (future) | Same Neon project **separate DB** `attest_meta` OR isolated schema + strict code boundaries |
-| SDKs | `packages/attest-sdk-*` | Published artifacts |
+| Aegis console | `apps/console-aegis` (future) | Same Neon project **separate DB** `aegis_meta` OR isolated schema + strict code boundaries |
+| SDKs | `packages/aegis-sdk-*` | Published artifacts |
 | Backend services | `services/*` | Containers on Fly.io (default) |
 
 Hard rule: **marketing contact rows never co-mingle** with cryptographic event storage tables at scale.
@@ -53,7 +53,7 @@ Functional truth: **`FUNCTIONAL_REQUIREMENTS_SPEC.md`** (FR IDs).
 
 Sequencing truth: **`IMPLEMENTATION_PLAN.md`**.
 
-Slice truth: **`ATTEST_PHASE_*.md`**.
+Slice truth: **`AEGIS_PHASE_*.md`**.
 
 Infrastructure truth: **`INFRASTRUCTURE_DECISIONS.md`**.
 
@@ -77,7 +77,7 @@ A feature is DONE when:
 
 | Term | Meaning |
 |------|--------|
-| **Attest Policy** | Product pillar for **authorization / enforcement gates** (allow/deny) before or while recording — every policy decision also evented. |
+| **Aegis Policy** | Product pillar for **authorization / enforcement gates** (allow/deny) before or while recording — every policy decision also evented. |
 | **APS-1** | Public wire event schema (draft). |
 | **Tenant** | Customer organization (`organization_id` / `tenant_id`). |
 
@@ -87,7 +87,7 @@ Words to avoid in public copy: hype adjectives from Website Spec “don’t” l
 
 ## 7. Non-goals (explicit)
 
-- Building training / custom models for customer scoring (Attest records; it does not compete with model builders).  
+- Building training / custom models for customer scoring (Aegis records; it does not compete with model builders).  
 - Promising **court-admissible** outcomes before counsel review.  
 - Merging unsecured admin routes into public ISR pages.
 
@@ -95,4 +95,4 @@ Words to avoid in public copy: hype adjectives from Website Spec “don’t” l
 
 ## 8. Appendix A — phased delivery pointer
 
-Concrete engineering slices: **`ATTEST_PHASE_0.md`** → **`ATTEST_PHASE_6.md`**.
+Concrete engineering slices: **`AEGIS_PHASE_0.md`** → **`AEGIS_PHASE_6.md`**.

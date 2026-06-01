@@ -2,12 +2,12 @@
 
 **Version:** 1.0**
 
-Phases align with **`ATTEST_PHASE_0.md` … `ATTEST_PHASE_6.md`**.
+Phases align with **`AEGIS_PHASE_0.md` … `AEGIS_PHASE_6.md`**.
 
 Dependency graph (simplified):
 
 ```
-P0 Foundations & local attest slice
+P0 Foundations & local aegis slice
  │
  ├──────────────┐
  ▼              ▼
@@ -31,10 +31,10 @@ P1 Web+CMS       P2 Minimal cloud ingest path (bridge)
 | P0 | Engineering bedrock + **local** APS-like recording/replay demos | OSS repo public; CI green; DX story reproducible README |
 | P1 | **salanor.com** stack live (staging) Spec-compliant pages + CMS + Auth.js admin (`AUTH-A1`) | `/contact` → DB + Slack; Lighthouse baseline |
 | P2 | Narrow cloud path (dev ingestion) bridging SDK → persisted remote event prototype | Demonstrate single multi-hop write durability test |
-| P3 | **Attest PDF MVP backbone** parity (managed + hybrid alpha) | **Done (engineering)** — E2E smoke, OTS reconcile, S3 blobs, Tier C witness; Rust collector → P3.5 |
+| P3 | **Aegis PDF MVP backbone** parity (managed + hybrid alpha) | **Done (engineering)** — E2E smoke, OTS reconcile, S3 blobs, Tier C witness; Rust collector → P3.5 |
 | P4 | Tenant **console**, RBAC enforcement, api keys hashed | Tenant isolation fuzz tests passing |
 | P5 | Production hardening Tier B exploratory + operational SLO dashboards | Incident runbooks drafted |
-| P6 | **Attest Policy** + roadmap (multi-anchor etc.) prioritized by ADRs | GA feature flags documented |
+| P6 | **Aegis Policy** + roadmap (multi-anchor etc.) prioritized by ADRs | GA feature flags documented |
 
 ---
 
@@ -44,7 +44,7 @@ P1 Web+CMS       P2 Minimal cloud ingest path (bridge)
 |-----------|-------------|
 | Web & Editorial | Frontend + DX writer |
 | Data & Prisma | Backend TS |
-| Attest Collector/Bus/Ledger | Rust + infra |
+| Aegis Collector/Bus/Ledger | Rust + infra |
 | Security | Fractional reviewer (eventually FTE) |
 
 ---
