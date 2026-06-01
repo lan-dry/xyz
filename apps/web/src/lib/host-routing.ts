@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import {
-  CONSOLE_ATTEST_BASE,
-  DOCS_ATTEST_BASE,
+  CONSOLE_AEGIS_BASE,
+  DOCS_AEGIS_BASE,
 } from "@/lib/app-paths";
 import {
   getMarketingFallbackUrl,
@@ -42,22 +42,22 @@ function withRedirectReason(
 
 function rewriteDevPathAliases(request: NextRequest): NextResponse | null {
   const { pathname } = request.nextUrl;
-  if (pathname === CONSOLE_ATTEST_BASE || pathname.startsWith(`${CONSOLE_ATTEST_BASE}/`)) {
-    const suffix = pathname.slice(CONSOLE_ATTEST_BASE.length);
+  if (pathname === CONSOLE_AEGIS_BASE || pathname.startsWith(`${CONSOLE_AEGIS_BASE}/`)) {
+    const suffix = pathname.slice(CONSOLE_AEGIS_BASE.length);
     const url = cloneRequestUrl(request);
     url.pathname = `/console${suffix}`;
     return NextResponse.rewrite(url);
   }
-  if (pathname === DOCS_ATTEST_BASE || pathname.startsWith(`${DOCS_ATTEST_BASE}/`)) {
-    const suffix = pathname.slice(DOCS_ATTEST_BASE.length);
+  if (pathname === DOCS_AEGIS_BASE || pathname.startsWith(`${DOCS_AEGIS_BASE}/`)) {
+    const suffix = pathname.slice(DOCS_AEGIS_BASE.length);
     const url = cloneRequestUrl(request);
-    url.pathname = `/attest/docs${suffix}`;
+    url.pathname = `/aegis/docs${suffix}`;
     return NextResponse.rewrite(url);
   }
   if (pathname === "/console" || pathname.startsWith("/console/")) {
     const suffix = pathname === "/console" ? "" : pathname.slice("/console".length);
     const url = cloneRequestUrl(request);
-    url.pathname = `${CONSOLE_ATTEST_BASE}${suffix}`;
+    url.pathname = `${CONSOLE_AEGIS_BASE}${suffix}`;
     return NextResponse.redirect(url, 308);
   }
   return null;

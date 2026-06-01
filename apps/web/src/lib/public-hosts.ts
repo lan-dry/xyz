@@ -4,10 +4,10 @@
  */
 
 import {
-  CONSOLE_ATTEST_BASE,
-  CONSOLE_ATTEST_PUBLIC_PREFIX,
-  DOCS_ATTEST_BASE,
-  DOCS_ATTEST_PUBLIC_PREFIX,
+  CONSOLE_AEGIS_BASE,
+  CONSOLE_AEGIS_PUBLIC_PREFIX,
+  DOCS_AEGIS_BASE,
+  DOCS_AEGIS_PUBLIC_PREFIX,
 } from "@/lib/app-paths";
 
 export function normalizePublicHostname(host: string): string {
@@ -164,21 +164,21 @@ export function isConsolePublicHost(hostHeader: string | null | undefined): bool
   return isAppPublicHost(hostHeader);
 }
 
-/** @deprecated Attest marketing is path-based on the marketing host in Pattern C. */
-export function isAttestPublicHost(hostHeader: string | null | undefined): boolean {
+/** @deprecated Aegis marketing is path-based on the marketing host in Pattern C. */
+export function isAegisPublicHost(hostHeader: string | null | undefined): boolean {
   return false;
 }
 
 /** @deprecated Use isDocsPublicHost. */
-export function isAttestDocsPublicHost(hostHeader: string | null | undefined): boolean {
+export function isAegisDocsPublicHost(hostHeader: string | null | undefined): boolean {
   return isDocsPublicHost(hostHeader);
 }
 
-export function isAttestProductSurface(
+export function isAegisProductSurface(
   _hostHeader: string | null | undefined,
   pathname: string,
 ): boolean {
-  return pathname === "/attest" || pathname.startsWith("/attest/");
+  return pathname === "/aegis" || pathname.startsWith("/aegis/");
 }
 
 export function getMarketingFallbackUrl(requestHost?: string | null): string {
@@ -246,12 +246,12 @@ function joinPublicUrl(base: string, pathname: string): string {
   return `${baseClean}${path}`;
 }
 
-export function getAttestProductPublicUrl(requestHost?: string | null): string {
+export function getAegisProductPublicUrl(requestHost?: string | null): string {
   const site = getParsedSiteUrl();
   if (isLoopbackApexHost(requestHost) || site.hostname === "localhost") {
-    return joinPublicUrl(site.origin, "/attest");
+    return joinPublicUrl(site.origin, "/aegis");
   }
-  return joinPublicUrl(site.origin, "/attest");
+  return joinPublicUrl(site.origin, "/aegis");
 }
 
 export function resolveProductPublicUrlFromSite(
@@ -259,46 +259,46 @@ export function resolveProductPublicUrlFromSite(
   productId: string,
   requestHost?: string | null,
 ): string {
-  if (productId !== "attest") return siteUrl;
+  if (productId !== "aegis") return siteUrl;
   if (requestHost && isLoopbackApexHost(requestHost)) {
-    return getAttestProductPublicUrl(requestHost);
+    return getAegisProductPublicUrl(requestHost);
   }
   const site = parseSiteUrl(siteUrl.replace(/\/$/, ""));
   if (!site) return siteUrl;
   if (site.hostname === "localhost") {
-    return joinPublicUrl(site.origin, "/attest");
+    return joinPublicUrl(site.origin, "/aegis");
   }
-  return joinPublicUrl(site.origin, "/attest");
+  return joinPublicUrl(site.origin, "/aegis");
 }
 
 export function getDocsPublicUrl(requestHost?: string | null): string {
   const site = getParsedSiteUrl();
   if (isLoopbackApexHost(requestHost) || site.hostname === "localhost") {
-    return joinPublicUrl(site.origin, DOCS_ATTEST_BASE);
+    return joinPublicUrl(site.origin, DOCS_AEGIS_BASE);
   }
-  return buildPublicUrl(DOCS_HOST, DOCS_ATTEST_PUBLIC_PREFIX, requestHost);
+  return buildPublicUrl(DOCS_HOST, DOCS_AEGIS_PUBLIC_PREFIX, requestHost);
 }
 
 export function getConsolePublicUrl(hostHeader?: string | null): string {
   if (isAppPublicHost(hostHeader)) {
-    return CONSOLE_ATTEST_PUBLIC_PREFIX;
+    return CONSOLE_AEGIS_PUBLIC_PREFIX;
   }
   const site = getParsedSiteUrl();
   if (isLoopbackApexHost(hostHeader) || site.hostname === "localhost") {
-    return CONSOLE_ATTEST_BASE;
+    return CONSOLE_AEGIS_BASE;
   }
-  return buildPublicUrl(APP_HOST, CONSOLE_ATTEST_PUBLIC_PREFIX, hostHeader);
+  return buildPublicUrl(APP_HOST, CONSOLE_AEGIS_PUBLIC_PREFIX, hostHeader);
 }
 
-export function getAttestProductConfig(): { id: string; pathPrefix: string } {
-  return { id: "attest", pathPrefix: "/attest" };
+export function getAegisProductConfig(): { id: string; pathPrefix: string } {
+  return { id: "aegis", pathPrefix: "/aegis" };
 }
 
-export function getAttestPublicHost(): string {
+export function getAegisPublicHost(): string {
   return "salanor.com";
 }
 
-export function getAttestDocsPublicHost(): string {
+export function getAegisDocsPublicHost(): string {
   return DOCS_HOST;
 }
 
@@ -325,8 +325,8 @@ function prodAppHostRewrite(pathname: string): string | null {
   if (pathname === "/" || pathname === "") {
     return "/console";
   }
-  if (pathname === CONSOLE_ATTEST_PUBLIC_PREFIX || pathname.startsWith(`${CONSOLE_ATTEST_PUBLIC_PREFIX}/`)) {
-    const suffix = pathname.slice(CONSOLE_ATTEST_PUBLIC_PREFIX.length);
+  if (pathname === CONSOLE_AEGIS_PUBLIC_PREFIX || pathname.startsWith(`${CONSOLE_AEGIS_PUBLIC_PREFIX}/`)) {
+    const suffix = pathname.slice(CONSOLE_AEGIS_PUBLIC_PREFIX.length);
     return `/console${suffix || ""}`;
   }
   return null;
@@ -335,11 +335,11 @@ function prodAppHostRewrite(pathname: string): string | null {
 function prodDocsHostRewrite(pathname: string): string | null {
   if (passthroughPath(pathname)) return null;
   if (pathname === "/" || pathname === "") {
-    return "/attest/docs";
+    return "/aegis/docs";
   }
-  if (pathname === DOCS_ATTEST_PUBLIC_PREFIX || pathname.startsWith(`${DOCS_ATTEST_PUBLIC_PREFIX}/`)) {
-    const suffix = pathname.slice(DOCS_ATTEST_PUBLIC_PREFIX.length);
-    return `/attest/docs${suffix || ""}`;
+  if (pathname === DOCS_AEGIS_PUBLIC_PREFIX || pathname.startsWith(`${DOCS_AEGIS_PUBLIC_PREFIX}/`)) {
+    const suffix = pathname.slice(DOCS_AEGIS_PUBLIC_PREFIX.length);
+    return `/aegis/docs${suffix || ""}`;
   }
   return null;
 }
@@ -355,29 +355,29 @@ function legacyDevSubdomainRedirect(hostHeader: string, pathname: string): HostA
   const site = getParsedSiteUrl();
   const origin = site.origin.replace(/\/$/, "");
 
-  if (host === "app.attest.localhost" || host === "console.localhost") {
+  if (host === "app.aegis.localhost" || host === "console.localhost") {
     const path =
       pathname === "/" || pathname === ""
-        ? CONSOLE_ATTEST_BASE
+        ? CONSOLE_AEGIS_BASE
         : pathname.startsWith("/console")
-          ? `${CONSOLE_ATTEST_BASE}${pathname.slice("/console".length)}`
-          : `${CONSOLE_ATTEST_BASE}${pathname}`;
+          ? `${CONSOLE_AEGIS_BASE}${pathname.slice("/console".length)}`
+          : `${CONSOLE_AEGIS_BASE}${pathname}`;
     return { action: "redirect", location: `${origin}${path}`, status: 302 };
   }
-  if (host === "docs.attest.localhost") {
+  if (host === "docs.aegis.localhost") {
     const path =
       pathname === "/" || pathname === ""
-        ? DOCS_ATTEST_BASE
-        : `${DOCS_ATTEST_BASE}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
+        ? DOCS_AEGIS_BASE
+        : `${DOCS_AEGIS_BASE}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
     return { action: "redirect", location: `${origin}${path}`, status: 302 };
   }
-  if (host === "attest.localhost") {
+  if (host === "aegis.localhost") {
     const path =
       pathname === "/" || pathname === ""
-        ? "/attest"
-        : pathname.startsWith("/attest")
+        ? "/aegis"
+        : pathname.startsWith("/aegis")
           ? pathname
-          : `/attest${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
+          : `/aegis${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
     return { action: "redirect", location: `${origin}${path}`, status: 302 };
   }
   return { action: "unknown" };
@@ -403,8 +403,8 @@ function prodMarketingPathRedirect(pathname: string, requestHost?: string | null
   if (pathname === "/console" || pathname.startsWith("/console/")) {
     const suffix =
       pathname === "/console"
-        ? CONSOLE_ATTEST_PUBLIC_PREFIX
-        : `${CONSOLE_ATTEST_PUBLIC_PREFIX}${pathname.slice("/console".length)}`;
+        ? CONSOLE_AEGIS_PUBLIC_PREFIX
+        : `${CONSOLE_AEGIS_PUBLIC_PREFIX}${pathname.slice("/console".length)}`;
     return {
       action: "redirect",
       location: buildPublicUrl(APP_HOST, suffix, requestHost),
@@ -474,5 +474,5 @@ export function shouldGuardAgainstProductionRedirects(
 
 /** @deprecated PRODUCT_HOST_REGISTRY removed in Pattern C. */
 export const PRODUCT_HOST_REGISTRY = [
-  { id: "attest", pathPrefix: "/attest", productSubdomain: "attest", devProductAlias: "attest.localhost" },
+  { id: "aegis", pathPrefix: "/aegis", productSubdomain: "aegis", devProductAlias: "aegis.localhost" },
 ] as const;

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CONSOLE_ATTEST_BASE, CONSOLE_ATTEST_PUBLIC_PREFIX } from "@/lib/app-paths";
+import { CONSOLE_AEGIS_BASE, CONSOLE_AEGIS_PUBLIC_PREFIX } from "@/lib/app-paths";
 import {
   getAllowedHosts,
   getConsolePublicUrl,
@@ -39,7 +39,7 @@ describe("public-hosts (Pattern C)", () => {
     resetPublicSiteCache();
     vi.stubEnv("PUBLIC_SITE_URL", "https://salanor.com");
     expect(resolveHostRewritePath("app.salanor.com", "/")).toBe("/console");
-    expect(resolveHostRewritePath("app.salanor.com", "/console/attest/api-keys")).toBe(
+    expect(resolveHostRewritePath("app.salanor.com", "/console/aegis/api-keys")).toBe(
       "/console/api-keys",
     );
     expect(resolveHostAction("app.salanor.com", "/")).toEqual({
@@ -48,27 +48,27 @@ describe("public-hosts (Pattern C)", () => {
     });
   });
 
-  it("rewrites docs host /attest to /attest/docs", () => {
+  it("rewrites docs host /aegis to /aegis/docs", () => {
     resetPublicSiteCache();
     vi.stubEnv("PUBLIC_SITE_URL", "https://salanor.com");
-    expect(resolveHostRewritePath("docs.salanor.com", "/attest")).toBe("/attest/docs");
-    expect(resolveHostRewritePath("docs.salanor.com", "/")).toBe("/attest/docs");
+    expect(resolveHostRewritePath("docs.salanor.com", "/aegis")).toBe("/aegis/docs");
+    expect(resolveHostRewritePath("docs.salanor.com", "/")).toBe("/aegis/docs");
   });
 
   it("allows loopback paths without cross-host redirects", () => {
-    expect(resolveHostAction("localhost:3000", "/attest")).toEqual({ action: "allow" });
-    expect(resolveHostAction("localhost:3000", CONSOLE_ATTEST_BASE)).toEqual({ action: "allow" });
+    expect(resolveHostAction("localhost:3000", "/aegis")).toEqual({ action: "allow" });
+    expect(resolveHostAction("localhost:3000", CONSOLE_AEGIS_BASE)).toEqual({ action: "allow" });
   });
 
   it("redirects legacy *.localhost subdomains to path-based localhost URLs", () => {
-    expect(resolveHostAction("app.attest.localhost:3000", "/")).toEqual({
+    expect(resolveHostAction("app.aegis.localhost:3000", "/")).toEqual({
       action: "redirect",
-      location: `http://localhost:3000${CONSOLE_ATTEST_BASE}`,
+      location: `http://localhost:3000${CONSOLE_AEGIS_BASE}`,
       status: 302,
     });
-    expect(resolveHostAction("attest.localhost:3000", "/pricing")).toEqual({
+    expect(resolveHostAction("aegis.localhost:3000", "/pricing")).toEqual({
       action: "redirect",
-      location: "http://localhost:3000/attest/pricing",
+      location: "http://localhost:3000/aegis/pricing",
       status: 302,
     });
   });
@@ -79,26 +79,26 @@ describe("public-hosts (Pattern C)", () => {
     vi.stubEnv("PUBLIC_SITE_URL", "https://salanor.com");
     expect(resolveHostAction("salanor.com", "/console")).toEqual({
       action: "redirect",
-      location: `https://app.salanor.com${CONSOLE_ATTEST_PUBLIC_PREFIX}`,
+      location: `https://app.salanor.com${CONSOLE_AEGIS_PUBLIC_PREFIX}`,
       status: 301,
     });
     expect(resolveHostAction("salanor.com", "/console/settings")).toEqual({
       action: "redirect",
-      location: "https://app.salanor.com/console/attest/settings",
+      location: "https://app.salanor.com/console/aegis/settings",
       status: 301,
     });
   });
 
   it("returns dev console URL on loopback", () => {
-    expect(getConsolePublicUrl("localhost:3000")).toBe(CONSOLE_ATTEST_BASE);
-    expect(getDocsPublicUrl("localhost:3000")).toBe("http://localhost:3000/docs/attest");
+    expect(getConsolePublicUrl("localhost:3000")).toBe(CONSOLE_AEGIS_BASE);
+    expect(getDocsPublicUrl("localhost:3000")).toBe("http://localhost:3000/docs/aegis");
   });
 
   it("returns production console URL from marketing context", () => {
     resetPublicSiteCache();
     vi.stubEnv("PUBLIC_SITE_URL", "https://salanor.com");
     expect(getConsolePublicUrl("salanor.com")).toBe(
-      `https://app.salanor.com${CONSOLE_ATTEST_PUBLIC_PREFIX}`,
+      `https://app.salanor.com${CONSOLE_AEGIS_PUBLIC_PREFIX}`,
     );
   });
 

@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 
 import { salanorAuthConfig } from "@salanor/auth/auth-config";
 import { TOTP_CHALLENGE_COOKIE_NAME, validateTotpChallengeCookie } from "@/lib/totp/challenge-cookie";
-import { isAppSurfacePath, isConsoleAttestPath } from "@/lib/app-paths";
+import { isAppSurfacePath, isConsoleAegisPath } from "@/lib/app-paths";
 import { handleHostRouting } from "@/lib/host-routing";
 
 const { auth } = NextAuth({
@@ -19,7 +19,7 @@ export default auth(async (req) => {
   const { pathname } = req.nextUrl;
   const legacyConsole =
     pathname === "/console" || pathname.startsWith("/console/");
-  if ((pathname.startsWith("/admin") || isConsoleAttestPath(pathname) || legacyConsole) && !req.auth) {
+  if ((pathname.startsWith("/admin") || isConsoleAegisPath(pathname) || legacyConsole) && !req.auth) {
     const signIn = new URL("/sign-in", req.nextUrl.origin);
     signIn.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(signIn);
