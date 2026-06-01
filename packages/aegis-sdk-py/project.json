@@ -1,0 +1,16 @@
+{
+  "name": "aegis-sdk-py",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "packages/aegis-sdk-py/salanor_aegis_ledger",
+  "tags": ["type:lib", "scope:aegis"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python -m pytest",
+        "cwd": "packages/aegis-sdk-py"
+      }
+    }
+  }
+}

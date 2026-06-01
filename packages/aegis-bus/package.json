@@ -1,0 +1,20 @@
+{
+  "name": "@salanor/aegis-bus",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@salanor/aegis-ledger-sdk": "workspace:*",
+    "@salanor/aegis-storage": "workspace:*",
+    "nats": "^2.28.2"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.5"
+  }
+}

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "salanor-aegis-ledger"
+version = "0.0.1"
+description = "Salanor Aegis Python SDK (P0 local slice scaffolding)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "jsonschema>=4.23.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["salanor_aegis_ledger"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
