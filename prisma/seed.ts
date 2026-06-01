@@ -27,12 +27,12 @@ async function main() {
     create: {
       slug: "staff-security-engineer",
       title: "Staff Security Engineer",
-      team: "Attest",
+      team: "Aegis",
       location: "Remote (US time zones)",
       seniority: "Staff",
       employmentType: "full_time",
       summary:
-        "Own hardening and review for the attest stack.\n\nYou will shape how we think about trust boundaries and evidence.",
+        "Own hardening and review for the aegis stack.\n\nYou will shape how we think about trust boundaries and evidence.",
       requirements: "Strong systems background, cryptographic intuition, and appetite for clear writing.",
       compensationRange: null,
       postedAt: new Date(),

@@ -159,7 +159,7 @@ model SalInternalUser {
   @@map("sal_internal_users")
 }
 
-// Attest P4 — console tenancy (see docs/DATA_MODEL_ATTEST_CONSOLE.md)
+// Aegis P4 — console tenancy (see docs/DATA_MODEL_AEGIS_CONSOLE.md)
 enum OrganizationRole {
   owner
   admin
@@ -211,15 +211,15 @@ model Organization {
   memberships  OrganizationMembership[]
   apiKeys      ApiKey[]
   invites      OrganizationInvite[]
-  ingestEvents AttestIngestEvent[]
+  ingestEvents AegisIngestEvent[]
   auditLogs    ConsoleAuditLog[]
-  policies     AttestPolicy[]
+  policies     AegisPolicy[]
   policyLogs   PolicyEvaluationLog[]
 
   @@map("organizations")
 }
 
-model AttestPolicy {
+model AegisPolicy {
   id             String       @id @default(uuid()) @db.Uuid
   organizationId String       @map("organization_id") @db.Uuid
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -232,7 +232,7 @@ model AttestPolicy {
   evaluationLogs PolicyEvaluationLog[]
 
   @@index([organizationId, enabled, createdAt(sort: Desc)])
-  @@map("attest_policies")
+  @@map("aegis_policies")
 }
 
 model PolicyEvaluationLog {
@@ -240,7 +240,7 @@ model PolicyEvaluationLog {
   organizationId String        @map("organization_id") @db.Uuid
   organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   policyId       String?       @map("policy_id") @db.Uuid
-  policy         AttestPolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  policy         AegisPolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
   traceId        String        @map("trace_id")
   eventId        String        @map("event_id")
   decision       String
@@ -323,8 +323,8 @@ model ConsoleAuditLog {
   @@map("console_audit_log")
 }
 
-// Attest P2/P3 — ledger index (P3: sole writer = attest-ledger-writer consumer)
-model AttestIngestEvent {
+// Aegis P2/P3 — ledger index (P3: sole writer = aegis-ledger-writer consumer)
+model AegisIngestEvent {
   id              String              @id @default(uuid()) @db.Uuid
   organizationId  String?             @map("organization_id") @db.Uuid
   organization    Organization?       @relation(fields: [organizationId], references: [id])
@@ -334,16 +334,16 @@ model AttestIngestEvent {
   receivedAt      DateTime            @default(now()) @map("received_at") @db.Timestamptz(6)
   idempotencyKey  String?             @unique @map("idempotency_key")
   batchId         String?             @map("batch_id") @db.Uuid
-  batch           AttestLedgerBatch?  @relation(fields: [batchId], references: [id])
+  batch           AegisLedgerBatch?  @relation(fields: [batchId], references: [id])
 
   @@index([organizationId, receivedAt(sort: Desc)])
   @@index([traceId, receivedAt(sort: Desc)])
   @@index([batchId])
-  @@map("attest_ingest_events")
+  @@map("aegis_ingest_events")
 }
 
-// Attest P3 — Merkle batch + anchor stub (OTS interface later)
-model AttestLedgerBatch {
+// Aegis P3 — Merkle batch + anchor stub (OTS interface later)
+model AegisLedgerBatch {
   id             String              @id @default(uuid()) @db.Uuid
   merkleRoot     String              @map("merkle_root")
   eventCount     Int                 @map("event_count")
@@ -352,8 +352,8 @@ model AttestLedgerBatch {
   localChainRoot String?             @map("local_chain_root")
   otsBlobKey     String?             @map("ots_blob_key")
   createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  events         AttestIngestEvent[]
+  events         AegisIngestEvent[]
 
   @@index([createdAt(sort: Desc)])
-  @@map("attest_ledger_batches")
+  @@map("aegis_ledger_batches")
 }
