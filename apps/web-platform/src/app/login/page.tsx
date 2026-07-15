@@ -11,7 +11,6 @@ import {
   applyOpsTheme,
   persistOpsTheme,
   resolveOpsTheme,
-  toggleOpsTheme,
   type OpsTheme,
 } from "@/lib/ops-theme";
 import { platformApi } from "@/lib/platform-api";
