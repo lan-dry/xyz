@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/console/button";
-import { consoleAttestPath } from "@/lib/app-paths";
+import { consoleAegisPath } from "@/lib/app-paths";
 import { isValidOrganizationSlug, slugifyOrganizationSlug } from "@/lib/console/orgs";
 
 type CreateOrganizationFormProps = {
@@ -60,7 +60,7 @@ export function CreateOrganizationForm({
           if (onSuccess) {
             onSuccess();
           } else {
-            router.push(consoleAttestPath());
+            router.push(consoleAegisPath());
           }
         });
       }}

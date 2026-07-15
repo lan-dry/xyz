@@ -12,8 +12,8 @@ const { evaluatePolicyForReplay } = vi.hoisted(() => ({
   evaluatePolicyForReplay: vi.fn(),
 }));
 
-const { attestIngestEventFindFirst } = vi.hoisted(() => ({
-  attestIngestEventFindFirst: vi.fn(),
+const { aegisIngestEventFindFirst } = vi.hoisted(() => ({
+  aegisIngestEventFindFirst: vi.fn(),
 }));
 
 vi.mock("@/lib/console/session", () => ({
@@ -24,14 +24,14 @@ vi.mock("@/lib/console/api-route", () => ({
   withConsoleOrg,
 }));
 
-vi.mock("@/lib/attest/ingest-policy", () => ({
+vi.mock("@/lib/aegis/ingest-policy", () => ({
   evaluatePolicyForReplay,
 }));
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    attestIngestEvent: {
-      findFirst: attestIngestEventFindFirst,
+    aegisIngestEvent: {
+      findFirst: aegisIngestEventFindFirst,
     },
   },
 }));
@@ -51,7 +51,7 @@ describe("POST /api/console/events/[id]/replay-check", () => {
           membership: { role: "viewer" },
         }),
     );
-    attestIngestEventFindFirst.mockResolvedValue({
+    aegisIngestEventFindFirst.mockResolvedValue({
       id: "row-1",
       traceId: "trace-1",
       payload: {
@@ -88,7 +88,7 @@ describe("POST /api/console/events/[id]/replay-check", () => {
   });
 
   it("returns 404 when event is missing", async () => {
-    attestIngestEventFindFirst.mockResolvedValue(null);
+    aegisIngestEventFindFirst.mockResolvedValue(null);
     const route = await import("./route");
     const res = await route.POST(
       new Request("http://localhost/api/console/events/missing/replay-check", {

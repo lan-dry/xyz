@@ -5,5 +5,15 @@
     "outDir": "dist",
     "rootDir": "src"
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../../packages/platform-auth"
+    },
+    {
+      "path": "../../packages/observability"
+    }
+  ]
 }

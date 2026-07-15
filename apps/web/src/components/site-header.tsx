@@ -9,7 +9,7 @@ import { marketingInkCtaClass } from "@/components/marketing-cta";
 import { SalanorLogo } from "@/components/salanor-logo";
 
 const PRODUCT_LINKS = [
-  { href: "/attest", label: "Attest", description: "Verifiable decision records" },
+  { href: "/aegis", label: "Aegis", description: "Verifiable decision records" },
   { href: "/aether", label: "Aether", description: "Accountable autonomy research" },
   { href: "/standards", label: "APS-1", description: "Agent Provenance Standard" },
 ] as const;

@@ -35,6 +35,6 @@ export const salanorAuthConfig = {
       return session;
     },
   },
-  /** Honor request Host for magic-link callbacks (app.attest.localhost vs localhost). */
+  /** Honor request Host for magic-link callbacks (app.aegis.localhost vs localhost). */
   trustHost: process.env.AUTH_TRUST_HOST !== "false",
 } satisfies NextAuthConfig;

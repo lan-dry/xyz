@@ -139,4 +139,4 @@ pnpm billing:usage-backfill   # optional usage reconcile
 3. **Prod env** — `SENTRY_DSN`, `COMPLIANCE_EXPORT_DIR`, daily `pnpm compliance:worker` cron.  
 4. **Sales** — update marketing PDF (Ed25519, SDK instrumentation).  
 5. **First paying customer triggers** — SSO (B-303), SIEM auth headers, B-204 approvals at scale, or OpenSearch (B-207) per deal.
-
+

@@ -7,7 +7,7 @@ const { findUnique } = vi.hoisted(() => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     organizationMembership: { findUnique },
-    attestIngestEvent: { findMany: vi.fn() },
+    aegisIngestEvent: { findMany: vi.fn() },
   },
 }));
 

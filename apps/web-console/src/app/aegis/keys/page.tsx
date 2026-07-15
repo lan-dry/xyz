@@ -221,7 +221,7 @@ export default function IngestKeysPage() {
         <EmptyStatePanel
           icon={KeyRound}
           title="No API keys yet"
-          description="API keys let your agents post signed events to Aegis. Create a key, copy the secret once, and use it as a Bearer token on ingest."
+          description="API keys authenticate ingest to your org. Agent signing keys (Agents page) sign APS-1 events; use this Bearer token on POST /v1/aegis/events."
           action={
             <button
               type="button"

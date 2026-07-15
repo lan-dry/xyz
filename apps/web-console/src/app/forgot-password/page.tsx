@@ -35,7 +35,7 @@ export default function ForgotPasswordPage() {
     <div className={styles.shell}>
       <PlatformAuthAside
         title="Account recovery"
-        description="Reset access to the Salanor console. Links expire in one hour. In local dev, the reset URL is printed in the Salanor ID service terminal."
+        description="Reset access to the Salanor console. Reset links expire in one hour."
       />
 
       <div className={styles.formPanel}>
@@ -50,9 +50,8 @@ export default function ForgotPasswordPage() {
             <div className={styles.success} role="status">
               <strong>Check your inbox</strong>
               <p>
-                If an account exists for that email, a reset link was sent. In development, look
-                for <code className={styles.inlineCode}>Password reset</code> in the ID service
-                logs.
+                If an account exists for that email, a reset link was sent. Check your inbox and
+                spam folder.
               </p>
             </div>
           ) : (

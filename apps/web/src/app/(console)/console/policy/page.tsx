@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ConsolePageHeader } from "@/components/console/console-page-header";
 import { PolicyEditorPanel } from "@/components/console/policy-editor-panel";
 import { roleMeetsMinimum } from "@/lib/console/roles";
-import { consoleAttestPath } from "@/lib/app-paths";
+import { consoleAegisPath } from "@/lib/app-paths";
 import { resolveConsoleContext } from "@/lib/console/session";
 import { prisma } from "@/lib/prisma";
 
@@ -12,7 +12,7 @@ export default async function ConsolePolicyPage() {
   if (!ctx) return null;
 
   const [activePolicy, recentPolicies] = await Promise.all([
-    prisma.attestPolicy.findFirst({
+    prisma.aegisPolicy.findFirst({
       where: {
         organizationId: ctx.activeOrgId,
         enabled: true,
@@ -27,7 +27,7 @@ export default async function ConsolePolicyPage() {
         rules: true,
       },
     }),
-    prisma.attestPolicy.findMany({
+    prisma.aegisPolicy.findMany({
       where: {
         organizationId: ctx.activeOrgId,
       },
@@ -53,7 +53,7 @@ export default async function ConsolePolicyPage() {
         subtitle="Configure ingest policy rules. Admins and owners can validate and publish policy versions."
         actions={
           <Link
-            href={consoleAttestPath("/policy/log")}
+            href={consoleAegisPath("/policy/log")}
             className="inline-flex rounded-lg border border-black/15 px-3 py-2 text-sm font-medium text-ink no-underline transition-colors duration-150 hover:bg-black/[0.03]"
           >
             View policy evaluation log

@@ -4,13 +4,15 @@
 
 BEGIN;
 
-INSERT INTO organization (organization_id, name, slug)
+INSERT INTO organization (organization_id, name, slug, onboarding_completed_at)
 VALUES (
   '11111111-1111-4111-8111-111111111111',
   'Dev Organization',
-  'dev-org'
+  'dev-org',
+  now()
 )
-ON CONFLICT (slug) DO NOTHING;
+ON CONFLICT (slug) DO UPDATE SET
+  onboarding_completed_at = COALESCE(organization.onboarding_completed_at, now());
 
 INSERT INTO account (account_id, email, display_name)
 SELECT
@@ -58,10 +60,10 @@ VALUES (
   now()
 )
 ON CONFLICT (key_id) DO UPDATE SET
-  key_hash = EXCLUDED.key_hash,
-  key_prefix = EXCLUDED.key_prefix,
-  active = true,
-  revoked_at = NULL;
+  public_key_b64 = EXCLUDED.public_key_b64,
+  kms_provider = EXCLUDED.kms_provider,
+  revoked = false,
+  valid_from = EXCLUDED.valid_from;
 
 INSERT INTO ingest_api_key (
   key_id,
@@ -167,7 +169,10 @@ WHERE lower(email) = 'dev@salanor.local';
 
 -- Re-apply dev env passwords after re-seed (clears hash from prior login / forgot-password)
 UPDATE account
-SET password_hash = NULL, updated_at = now()
+SET password_hash = NULL,
+    email_verified_at = COALESCE(email_verified_at, now()),
+    active = true,
+    updated_at = now()
 WHERE lower(email) = 'dev@salanor.local';
 
 COMMIT;

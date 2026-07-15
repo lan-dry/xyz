@@ -19,10 +19,10 @@ export default function ConsoleHelpPage() {
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
-              href="/docs/attest"
+              href="/docs/aegis"
               className={`inline-flex rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors duration-150 ${consoleInkCtaClass}`}
             >
-              Attest docs
+              Aegis docs
             </Link>
             <Link
               href="/standards"
@@ -39,7 +39,7 @@ export default function ConsoleHelpPage() {
             Email the founders with your org slug, what you tried, and any event or trace IDs.
           </p>
           <a
-            href="mailto:founders@salanor.com?subject=Attest%20Console%20Support"
+            href="mailto:founders@salanor.com?subject=Aegis%20Console%20Support"
             className={`mt-4 inline-flex rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors duration-150 ${consoleInkCtaClass}`}
           >
             founders@salanor.com

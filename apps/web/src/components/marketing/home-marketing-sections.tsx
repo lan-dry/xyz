@@ -71,7 +71,7 @@ const ARCH_FEATURES = [
 const SDK_PROPS = [
   {
     strong: "Returns immediately.",
-    rest: "attest.record() writes to local SQLite spool and returns the event_id. Network is fully async.",
+    rest: "aegis.record() writes to local SQLite spool and returns the event_id. Network is fully async.",
   },
   {
     strong: "Never raises on network errors.",
@@ -214,11 +214,11 @@ export function HomeMarketingSections() {
         </MarketingContainer>
       </section>
 
-      <section id="attest" className="scroll-mt-28 bg-bone py-20 sm:py-28 lg:py-32">
+      <section id="aegis" className="scroll-mt-28 bg-bone py-20 sm:py-28 lg:py-32">
         <MarketingContainer>
           <div className="grid gap-10 lg:grid-cols-2 lg:items-end lg:gap-16">
             <div>
-              <SectionLabel>Attest — flagship product</SectionLabel>
+              <SectionLabel>Aegis — flagship product</SectionLabel>
               <h2 className="mt-4 font-serif text-3xl leading-[1.1] tracking-tight sm:text-4xl lg:text-[3.25rem]">
                 Four primitives.
                 <br />
@@ -226,7 +226,7 @@ export function HomeMarketingSections() {
               </h2>
             </div>
             <p className="text-base leading-relaxed text-muted">
-              Attest is a verifiable decision record for AI agents and automated systems. Drop in the SDK, and every
+              Aegis is a verifiable decision record for AI agents and automated systems. Drop in the SDK, and every
               consequential decision your stack makes is recorded to a tamper-evident ledger your auditors and
               regulators can replay end-to-end.
             </p>
@@ -256,7 +256,7 @@ export function HomeMarketingSections() {
             Not in front of it.
           </h2>
           <p className="mt-4 max-w-xl text-base text-muted">
-            Attest instruments application code in-process. No traffic proxied. No latency added to the decision path
+            Aegis instruments application code in-process. No traffic proxied. No latency added to the decision path
             beyond the SDK call itself.
           </p>
 
@@ -269,7 +269,7 @@ export function HomeMarketingSections() {
                 <div className="flex flex-wrap items-center gap-3">
                   <ArchBox highlight>Your application</ArchBox>
                   <ArchArrow />
-                  <ArchBox highlight>attest.record()</ArchBox>
+                  <ArchBox highlight>aegis.record()</ArchBox>
                   <ArchArrow />
                   <ArchBox>Local spool · SQLite</ArchBox>
                   <ArchArrow />
@@ -279,7 +279,7 @@ export function HomeMarketingSections() {
               <hr className="border-dashed border-white/10" />
               <div>
                 <p className="mb-3 font-mono text-[0.625rem] tracking-[0.15em] text-white/25 uppercase">
-                  Attest control plane · HTTPS + Ed25519
+                  Aegis control plane · HTTPS + Ed25519
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
                   <ArchBox>Ingest API</ArchBox>

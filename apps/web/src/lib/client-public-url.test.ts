@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CONSOLE_ATTEST_BASE } from "@/lib/app-paths";
+import { CONSOLE_AEGIS_BASE } from "@/lib/app-paths";
 import {
-  getClientAttestProductUrl,
+  getClientAegisProductUrl,
   getClientConsolePublicUrl,
   getClientDocsPublicUrl,
   getClientMarketingHomeUrl,
@@ -28,16 +28,16 @@ describe("client-public-url", () => {
   });
 
   it("uses path-based localhost URLs in dev", () => {
-    expect(getClientAttestProductUrl("localhost:3000")).toBe("http://localhost:3000/attest");
-    expect(getClientConsolePublicUrl("localhost:3000")).toBe(CONSOLE_ATTEST_BASE);
-    expect(getClientDocsPublicUrl("localhost:3000")).toBe("http://localhost:3000/docs/attest");
+    expect(getClientAegisProductUrl("localhost:3000")).toBe("http://localhost:3000/aegis");
+    expect(getClientConsolePublicUrl("localhost:3000")).toBe(CONSOLE_AEGIS_BASE);
+    expect(getClientDocsPublicUrl("localhost:3000")).toBe("http://localhost:3000/docs/aegis");
     expect(getClientMarketingHomeUrl("localhost:3000")).toBe("http://localhost:3000");
   });
 
   it("uses production-shaped relative paths when env is salanor.com", () => {
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://salanor.com");
-    expect(getClientAttestProductUrl()).toBe("/attest");
-    expect(getClientConsolePublicUrl()).toBe("/console/attest");
-    expect(getClientDocsPublicUrl()).toBe("https://docs.salanor.com/attest");
+    expect(getClientAegisProductUrl()).toBe("/aegis");
+    expect(getClientConsolePublicUrl()).toBe("/console/aegis");
+    expect(getClientDocsPublicUrl()).toBe("https://docs.salanor.com/aegis");
   });
 });

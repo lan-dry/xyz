@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { createPolicyManifest, resolvePolicySigningKey } from "@/lib/attest/policy-manifest";
+import { createPolicyManifest, resolvePolicySigningKey } from "@/lib/aegis/policy-manifest";
 import { withConsoleOrg } from "@/lib/console/api-route";
 import { requireConsoleContextApi } from "@/lib/console/session";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +18,7 @@ export async function GET() {
       );
     }
 
-    const activePolicy = await prisma.attestPolicy.findFirst({
+    const activePolicy = await prisma.aegisPolicy.findFirst({
       where: {
         organizationId: scoped.activeOrgId,
         enabled: true,

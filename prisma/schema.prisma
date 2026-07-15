@@ -6,10 +6,10 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  // Neon: use unpooled URL for migrations/introspection; local dev can duplicate DATABASE_URL.
-  directUrl = env("DIRECT_DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // Neon production: set DIRECT_DATABASE_URL to the unpooled URL for `prisma migrate`.
+  // Local dev: DATABASE_URL alone is enough for `db push`.
 }
 
 model Author {
@@ -68,6 +68,7 @@ model OpenRole {
 model ContactMessage {
   id           String   @id @default(uuid()) @db.Uuid
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   name         String
   email        String
   organization String?
@@ -78,8 +79,10 @@ model ContactMessage {
   ipHash       String   @map("ip_hash")
   status       String   @default("new")
   adminNotes   String?  @map("admin_notes")
+  updatedBy    String?  @map("updated_by")
 
   @@index([status, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
   @@map("contact_messages")
 }
 

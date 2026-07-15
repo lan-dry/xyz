@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from "crypto";
-import { mkdir, appendFile } from "fs/promises";
-import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+
+import { insertContactMessage } from "@/lib/contact-store";
+import { sendContactNotification } from "@/lib/send-contact-email";
 
 const CONTACT_REASONS = [
   "design_partner",
@@ -54,13 +55,6 @@ function isContactReason(v: unknown): v is ContactReason {
   return typeof v === "string" && (CONTACT_REASONS as readonly string[]).includes(v);
 }
 
-async function persistMessage(row: Record<string, unknown>): Promise<void> {
-  const dir = process.env.CONTACT_DATA_DIR?.trim() ?? path.join(process.cwd(), ".data", "contact");
-  await mkdir(dir, { recursive: true });
-  const file = path.join(dir, "messages.jsonl");
-  await appendFile(file, `${JSON.stringify(row)}\n`, "utf8");
-}
-
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try {
@@ -69,7 +63,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  if (typeof body.website === "string" && body.website.trim().length > 0) {
+  const trap =
+    (typeof body._gotcha === "string" ? body._gotcha : "") ||
+    (typeof body.website === "string" ? body.website : "");
+  if (trap.trim().length > 0) {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
   }
 
@@ -106,12 +103,10 @@ export async function POST(req: NextRequest) {
   }
 
   const id = randomUUID();
-  const createdAt = new Date().toISOString();
 
   try {
-    await persistMessage({
+    await insertContactMessage({
       id,
-      createdAt,
       name,
       email,
       organization: organization || null,
@@ -128,6 +123,21 @@ export async function POST(req: NextRequest) {
       { error: "Could not save your message. Email partners@salanor.com." },
       { status: 500 },
     );
+  }
+
+  try {
+    await sendContactNotification({
+      id,
+      name,
+      email,
+      organization: organization || null,
+      role: senderRole || null,
+      reason,
+      message,
+      sourcePath,
+    });
+  } catch (err) {
+    console.error("[contact] email notify failed", err);
   }
 
   console.info(`[contact] ${id} ${reason} ${email}`);

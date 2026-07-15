@@ -18,6 +18,10 @@
     "db:migrate": "pnpm --filter aegis-api db:migrate",
     "db:migrate:down": "pnpm --filter aegis-api db:migrate:down",
     "db:seed": "pnpm --filter aegis-api db:seed",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:push:web": "prisma db push",
+    "db:migrate:web": "prisma migrate dev",
     "demo:ingest": "pnpm --filter @salanor/demo-tools ingest-one-event",
     "demo:verify-chain": "pnpm --filter @salanor/demo-tools verify-chain",
     "demo:proxy": "pnpm --filter @salanor/demo-tools proxy-fetch",
@@ -38,19 +42,20 @@
     "demo:verify-inclusion": "pnpm --filter @salanor/demo-tools verify-inclusion",
     "verifier:public": "node tools/verifier/verify.mts",
     "compliance:worker": "pnpm --filter aegis-api compliance:worker",
-    "demo:full-system": "pnpm --filter @salanor/demo-tools full-system",
     "build": "nx run-many -t build --all"
   },
   "devDependencies": {
-    "@salanor/config": "workspace:*",
     "@nx/eslint": "21.2.0",
     "@nx/eslint-plugin": "21.2.0",
     "@nx/js": "21.2.0",
     "@nx/next": "21.2.0",
     "@nx/node": "21.2.0",
     "@nx/workspace": "21.2.0",
+    "@prisma/client": "6.3.1",
+    "@salanor/config": "workspace:*",
     "eslint": "^9.28.0",
     "nx": "21.2.0",
+    "prisma": "6.3.1",
     "typescript": "^5.8.3"
   }
 }

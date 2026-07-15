@@ -54,6 +54,15 @@
   background: rgba(42, 157, 138, 0.08);
 }
 
+.brandLine {
+  font-size: 1.0625rem;
+  font-weight: 500;
+  color: var(--teal-bright);
+  max-width: 40rem;
+  line-height: 1.55;
+  margin: 0 0 1rem;
+}
+
 .subhead {
   font-size: 1.125rem;
   font-weight: 300;

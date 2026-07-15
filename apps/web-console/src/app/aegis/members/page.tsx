@@ -171,7 +171,7 @@ export default function MembersPage() {
         <div className={`${ui.alert} ${ui.alertSuccess}`} style={{ marginBottom: "1.5rem" }}>
           <strong>Invitation sent</strong>
           <p style={{ margin: "0.5rem 0 0", fontSize: "0.8125rem" }}>
-            Share this link with your teammate (also logged in Salanor ID terminal):
+            Share this link with your teammate:
           </p>
           <div
             style={{

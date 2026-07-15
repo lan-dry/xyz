@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -31,7 +31,9 @@ function SignupFallback() {
 
 function SignupForm() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  const fromOauth = searchParams.get("from") === "oauth";
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [orgName, setOrgName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +94,13 @@ function SignupForm() {
             You become the org admin. Password at least 10 characters. We email a
             verification link before console access.
           </p>
+          {fromOauth && email ? (
+            <p className={styles.oauthHint}>
+              No account for <strong>{email}</strong> yet. You can also use{" "}
+              <Link href="/login">Sign in → Continue with GitHub/Google</Link> to create an account
+              and name your company on the next screen.
+            </p>
+          ) : null}
           <form onSubmit={onSubmit}>
             <label className={styles.field}>
               <span>Company name</span>

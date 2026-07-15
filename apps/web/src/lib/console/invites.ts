@@ -102,14 +102,14 @@ export async function sendOrganizationInviteEmail(input: {
   const from = process.env.EMAIL_FROM?.trim() || "Salanor <no-reply@salanor.local>";
   const transport = nodemailer.createTransport(server);
   const expires = input.expiresAt.toLocaleString();
-  const subject = `You're invited to ${input.orgName} on Attest Console`;
+  const subject = `You're invited to ${input.orgName} on Aegis Console`;
 
   await transport.sendMail({
     from,
     to: input.toEmail,
     subject,
     text: [
-      `You were invited to join "${input.orgName}" on Attest Console.`,
+      `You were invited to join "${input.orgName}" on Aegis Console.`,
       `Role: ${input.role}`,
       `Invited by: ${input.invitedByEmail}`,
       "",
@@ -117,7 +117,7 @@ export async function sendOrganizationInviteEmail(input: {
       `This invite expires at ${expires}.`,
     ].join("\n"),
     html: `
-      <p>You were invited to join <strong>${input.orgName}</strong> on Attest Console.</p>
+      <p>You were invited to join <strong>${input.orgName}</strong> on Aegis Console.</p>
       <p><strong>Role:</strong> ${input.role}<br /><strong>Invited by:</strong> ${input.invitedByEmail}</p>
       <p><a href="${input.acceptUrl}">Accept invite</a></p>
       <p>This invite expires at ${expires}.</p>

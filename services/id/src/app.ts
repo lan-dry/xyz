@@ -2,9 +2,20 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import {
+  auditAuthLoginDenied,
+  auditAuthLoginFailed,
+  auditAuthLoginSuccess,
+  auditConsoleEvent,
   authenticateDevUser,
+  cleanupAbandonedPendingOrganizations,
+  createPasswordResetToken,
   createSession,
   deleteSession,
+  getClientIp,
+  isEmailVerified,
+  recordAccountLoginEvent,
+  resetPasswordWithToken,
+  resolveAuditContextForAccount,
   resolveSession,
   SALANOR_SESSION_COOKIE,
   sessionCookieOptions,
@@ -14,6 +25,8 @@ import { pingDatabase, getPool } from "./db/pool.js";
 import { buildMePayload, identityRoutes } from "./routes/identity.js";
 import { platformRoutes } from "./routes/platform.js";
 import { sendEmailVerificationEmail } from "./email/send-email-verification.js";
+import { registerOAuthRoutes } from "./auth/oauth-handlers.js";
+import { registerSsoRoutes } from "./auth/sso-workos.js";
 
 const consoleOrigin =
   process.env.CONSOLE_ORIGIN ?? "http://localhost:3000";
@@ -23,6 +36,9 @@ const marketingOrigin =
   process.env.MARKETING_ORIGIN ?? "http://localhost:3001";
 
 export const app = new Hono();
+
+registerOAuthRoutes(app);
+registerSsoRoutes(app);
 
 app.use(
   "*",
@@ -89,12 +105,58 @@ app.post("/v1/id/auth/login", async (c) => {
     );
   }
 
+  const ip = getClientIp(c.req.raw.headers);
+  const userAgent = c.req.header("user-agent") ?? null;
+  const email = body.email.trim().toLowerCase();
+
   let client;
   try {
     client = await getPool().connect();
-    const auth = await authenticateDevUser(client, body.email, body.password);
+    const auth = await authenticateDevUser(client, email, body.password);
     if (!auth) {
+      await auditAuthLoginFailed(client, { email, reason: "invalid_credentials", ip });
+      const failedAccount = await client.query<{ account_id: string }>(
+        `SELECT account_id FROM account WHERE lower(email) = $1 AND active = true`,
+        [email],
+      );
+      if (failedAccount.rows[0]) {
+        await recordAccountLoginEvent(client, {
+          accountId: failedAccount.rows[0].account_id,
+          method: "password",
+          success: false,
+          failureReason: "invalid_credentials",
+          ipAddress: ip,
+          userAgent,
+        });
+      }
       return c.json({ error: "Invalid credentials" }, 401);
+    }
+
+    const verified = await isEmailVerified(client, auth.accountId);
+    if (!verified) {
+      await auditAuthLoginDenied(client, {
+        email,
+        reason: "email_unverified",
+        code: "email_unverified",
+        organizationId: auth.organizationId,
+        ip,
+      });
+      await recordAccountLoginEvent(client, {
+        accountId: auth.accountId,
+        organizationId: auth.organizationId,
+        method: "password",
+        success: false,
+        failureReason: "email_unverified",
+        ipAddress: ip,
+        userAgent,
+      });
+      return c.json(
+        {
+          error: "Verify your email before signing in.",
+          code: "email_unverified",
+        },
+        403,
+      );
     }
 
     const organizationId = body.organization_id ?? auth.organizationId;
@@ -103,6 +165,21 @@ app.post("/v1/id/auth/login", async (c) => {
       auth.accountId,
       organizationId,
     );
+    await auditAuthLoginSuccess(client, {
+      organizationId: session.organizationId,
+      membershipId: session.userId,
+      email: session.email,
+      source: "salanor-id",
+      ip,
+    });
+    await recordAccountLoginEvent(client, {
+      accountId: auth.accountId,
+      organizationId: session.organizationId,
+      method: "password",
+      success: true,
+      ipAddress: ip,
+      userAgent,
+    });
     setCookie(c, SALANOR_SESSION_COOKIE, token, sessionCookieOptions(60 * 60 * 24 * 7));
     return c.json(await buildMePayload(session));
   } catch (err) {
@@ -196,10 +273,25 @@ app.post("/v1/id/auth/reset-password", async (c) => {
 
 app.post("/v1/id/auth/logout", async (c) => {
   const token = getCookie(c, SALANOR_SESSION_COOKIE);
+  let accountId: string | null = null;
   if (token) {
+    const session = await resolveSession(getPool(), token);
+    accountId = session?.accountId ?? null;
     await deleteSession(getPool(), token);
   }
   deleteCookie(c, SALANOR_SESSION_COOKIE, { path: "/" });
+
+  if (accountId && process.env.DATABASE_URL) {
+    const client = await getPool().connect();
+    try {
+      await cleanupAbandonedPendingOrganizations(client, accountId);
+    } catch (err) {
+      console.error("[id] abandon onboarding cleanup", err);
+    } finally {
+      client.release();
+    }
+  }
+
   return c.json({ ok: true });
 });
 
@@ -236,4 +328,4 @@ app.post("/v1/id/auth/validate", async (c) => {
   }
   return c.json({ session });
 });
-
+

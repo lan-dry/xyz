@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
+import { createAgentWithSigningKey, type AgentCredentials } from "./agent-provisioning.js";
 import { hashInviteToken } from "./invite-token.js";
 import { hashPassword } from "./password.js";
 
@@ -9,6 +10,7 @@ export type OrganizationRow = {
   organization_id: string;
   name: string;
   slug: string;
+  needs_onboarding: boolean;
 };
 
 export type MembershipRow = {
@@ -28,7 +30,8 @@ export async function listOrganizationsForAccount(
   accountId: string,
 ): Promise<OrganizationRow[]> {
   const result = await client.query<OrganizationRow>(
-    `SELECT o.organization_id, o.name, o.slug
+    `SELECT o.organization_id, o.name, o.slug,
+            (o.onboarding_completed_at IS NULL) AS needs_onboarding
      FROM membership m
      JOIN organization o ON o.organization_id = m.organization_id
      WHERE m.account_id = $1 AND m.status = 'active' AND o.active = true
@@ -562,11 +565,14 @@ export async function provisionOrganization(
     adminDisplayName?: string | null;
     adminPasswordHash?: string | null;
     plan?: string;
+    /** When true, user must complete /onboarding (company name + slug) before console use. */
+    deferOnboarding?: boolean;
   },
 ): Promise<{
   organization_id: string;
   account_id: string;
   membership_id: string;
+  default_agent: AgentCredentials;
 }> {
   const slug = input.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
   const email = input.adminEmail.trim().toLowerCase();
@@ -579,9 +585,11 @@ export async function provisionOrganization(
     throw new Error(`Invalid plan: ${plan}`);
   }
 
+  const onboardingAt = input.deferOnboarding ? null : new Date();
   const orgInsert = await client.query<{ organization_id: string }>(
-    `INSERT INTO organization (name, slug, plan) VALUES ($1, $2, $3) RETURNING organization_id`,
-    [input.name.trim(), slug, plan],
+    `INSERT INTO organization (name, slug, plan, onboarding_completed_at)
+     VALUES ($1, $2, $3, $4) RETURNING organization_id`,
+    [input.name.trim(), slug, plan, onboardingAt],
   );
   const organizationId = orgInsert.rows[0]?.organization_id;
   if (!organizationId) {
@@ -620,21 +628,30 @@ export async function provisionOrganization(
     [accountId, organizationId],
   );
 
+  const membershipId = membership.rows[0]!.membership_id;
+
   await client.query(
     `INSERT INTO audit_log (organization_id, user_id, action, resource_type, resource_id, metadata)
      VALUES ($1, $2, 'organization.provisioned', 'organization', $3, $4::jsonb)`,
     [
       organizationId,
-      membership.rows[0]?.membership_id ?? null,
+      membershipId,
       organizationId,
       JSON.stringify({ slug, admin_email: email }),
     ],
   );
 
+  const default_agent = await createAgentWithSigningKey(client, {
+    organizationId,
+    organizationSlug: slug,
+    auditActorId: membershipId,
+  });
+
   return {
     organization_id: organizationId,
     account_id: accountId,
-    membership_id: membership.rows[0]!.membership_id,
+    membership_id: membershipId,
+    default_agent,
   };
 }
 

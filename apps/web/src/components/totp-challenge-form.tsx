@@ -32,7 +32,7 @@ export function TotpChallengeForm({ callbackUrl }: TotpChallengeFormProps) {
     }
 
     const data = (await response.json()) as { callbackUrl?: string };
-    router.push(data.callbackUrl || callbackUrl || "/app/console/attest");
+    router.push(data.callbackUrl || callbackUrl || "/app/console/aegis");
     router.refresh();
   }
 

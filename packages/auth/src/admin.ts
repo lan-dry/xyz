@@ -3,7 +3,7 @@ import { type InternalRole, isInternalRole } from "./internal-roles";
 
 /** Shown on sign-in when the account is not allowed (internal admin, console org, or invite). */
 export const ADMIN_ALLOWLIST_DENIED_MESSAGE =
-  "Your account must be listed in sal_internal_users (with an admin role), belong to an Attest organization, or have a pending invite. Contact your administrator for access.";
+  "Your account must be listed in sal_internal_users (with an admin role), belong to an Aegis organization, or have a pending invite. Contact your administrator for access.";
 
 export const PLATFORM_SUSPENDED_MESSAGE =
   "This account has been suspended by a platform administrator. Contact support if you believe this is an error.";

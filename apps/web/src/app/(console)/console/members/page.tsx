@@ -53,7 +53,7 @@ export default async function ConsoleMembersPage() {
     <section className="space-y-6">
       <ConsolePageHeader
         title="Members"
-        subtitle="Manage organization members and invite teammates to this Attest organization."
+        subtitle="Manage organization members and invite teammates to this Aegis organization."
       />
       <div className="mt-6">
         <MembersPanel

@@ -1,3 +1,5 @@
+import { EmailDeliveryError, getInviteFromAddress, getResendApiKey } from "./email-delivery.js";
+
 export type VerifyEmailInput = {
   to: string;
   verifyUrl: string;
@@ -6,8 +8,7 @@ export type VerifyEmailInput = {
 export async function sendEmailVerificationEmail(
   input: VerifyEmailInput,
 ): Promise<void> {
-  const from =
-    process.env.INVITE_EMAIL_FROM ?? "Salanor <invites@notifications.salanor.com>";
+  const from = getInviteFromAddress();
   const subject = "Verify your Salanor account";
   const bodyText = [
     "Welcome to Salanor Aegis.",
@@ -18,16 +19,7 @@ export async function sendEmailVerificationEmail(
     "This link expires in 24 hours.",
   ].join("\n");
 
-  console.log("\n[salanor-id] ── Email verification ───────────────────────");
-  console.log(`  To:      ${input.to}`);
-  console.log(`  Verify:  ${input.verifyUrl}`);
-  console.log("[salanor-id] ─────────────────────────────────────────────────\n");
-
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
-    return;
-  }
-
+  const apiKey = getResendApiKey();
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -48,5 +40,6 @@ export async function sendEmailVerificationEmail(
   if (!response.ok) {
     const errText = await response.text().catch(() => "");
     console.error("[salanor-id] Resend verification failed:", response.status, errText);
+    throw new EmailDeliveryError("email_send_failed", "Failed to send verification email");
   }
 }

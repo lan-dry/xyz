@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
-import { consoleAttestPath } from "@/lib/app-paths";
+import { consoleAegisPath } from "@/lib/app-paths";
 import { formatDateTime } from "@/lib/format-datetime";
 
 export function InviteAcceptPanel({
@@ -54,7 +54,7 @@ export function InviteAcceptPanel({
       {accepted ? (
         <div className="mt-6 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
           Invite accepted. Continue to{" "}
-          <Link className="underline" href={consoleAttestPath("/members")}>
+          <Link className="underline" href={consoleAegisPath("/members")}>
             console members
           </Link>
           .

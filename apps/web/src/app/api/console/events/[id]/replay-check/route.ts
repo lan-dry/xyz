@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import type { ApsEvent } from "@salanor/attest-sdk-ts";
+import type { ApsEvent } from "@salanor/aegis-ledger-sdk";
 
-import { evaluatePolicyForReplay } from "@/lib/attest/ingest-policy";
+import { evaluatePolicyForReplay } from "@/lib/aegis/ingest-policy";
 import { withConsoleOrg } from "@/lib/console/api-route";
 import { requireConsoleContextApi } from "@/lib/console/session";
 import { prisma } from "@/lib/prisma";
@@ -21,7 +21,7 @@ export async function POST(_req: Request, { params }: RouteParams) {
   const { id } = await params;
   const ctx = await requireConsoleContextApi();
   return withConsoleOrg(ctx.activeOrgId, "viewer", async (scoped) => {
-    const row = await prisma.attestIngestEvent.findFirst({
+    const row = await prisma.aegisIngestEvent.findFirst({
       where: {
         id,
         organizationId: scoped.activeOrgId,

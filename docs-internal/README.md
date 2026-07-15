@@ -21,7 +21,7 @@ Generated **2026-05-18**. Copy this folder into `salanor/salanor/docs-internal/`
 | [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) | Stages 0–12, exit tests, **+ summary of work shipped since the plan** |
 | [REMAINING_WORK.md](./REMAINING_WORK.md) | **Only open work**, categorized (pilots → P2 → P3 → infra) |
 | [PLATFORM_OPS.md](./PLATFORM_OPS.md) | Salanor staff app (`:3003` / `ops.salanor.com`) vs customer console |
-| [adr/0001-product-url-slug.md](./adr/0001-product-url-slug.md) | Use `aegis`, not `attest` |
+| [adr/0001-product-url-slug.md](./adr/0001-product-url-slug.md) | Canonical product URL slug is `aegis` |
 | [adr/0002-organization-vs-tenant.md](./adr/0002-organization-vs-tenant.md) | Use **organization** in DB/API |
 | [adr/0003-p0-console-authentication.md](./adr/0003-p0-console-authentication.md) | API keys + session auth |
 | [aps/APS-1-draft-0.1.md](./aps/APS-1-draft-0.1.md) | Event JSON + JCS + Ed25519 |

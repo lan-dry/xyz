@@ -1,9 +1,9 @@
 # @salanor/aegis (TypeScript)
 
-Full Aegis SDK for Node 18+ (ESM). See **[`../README.md`](../README.md)** for the full SDK layout.
+Customer-facing APS-1 SDK — sign events, ingest to Aegis, wrap `fetch` with policy gates.
 
 ```bash
-pnpm add @salanor/aegis
+pnpm --filter @salanor/aegis build
 ```
 
-Build: `pnpm build` · Conformance: `pnpm sdk:conformance` (from monorepo root).
+Package lives at **`sdks/typescript/`** (npm name `@salanor/aegis`). Conformance vectors: `sdks/conformance/`.

@@ -36,10 +36,6 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
-        source: "/salanor-logo.png",
-        destination: "/salanor-logo.svg",
-      },
-      {
         source: "/api/console/:path*",
         destination: `${aegisApiUrl}/v1/console/:path*`,
       },

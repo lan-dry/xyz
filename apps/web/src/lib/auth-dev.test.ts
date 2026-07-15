@@ -36,7 +36,7 @@ describe("shouldPreserveAuthRequestOrigin", () => {
 describe("normalizeLoopbackCallbackUrl", () => {
   it("collapses absolute sibling localhost URLs to a relative path", () => {
     expect(
-      normalizeLoopbackCallbackUrl("http://app.attest.localhost:3000/console", "localhost:3000"),
+      normalizeLoopbackCallbackUrl("http://app.aegis.localhost:3000/console", "localhost:3000"),
     ).toBe("/console");
   });
 
@@ -44,8 +44,8 @@ describe("normalizeLoopbackCallbackUrl", () => {
     expect(normalizeLoopbackCallbackUrl("/admin", "localhost:3000")).toBe("/admin");
   });
 
-  it("defaults to /app/console/attest when missing", () => {
-    expect(normalizeLoopbackCallbackUrl(undefined, "localhost:3000")).toBe("/app/console/attest");
+  it("defaults to /app/console/aegis when missing", () => {
+    expect(normalizeLoopbackCallbackUrl(undefined, "localhost:3000")).toBe("/app/console/aegis");
   });
 });
 
@@ -53,7 +53,7 @@ describe("resolveSalanorAuthRedirectUrl", () => {
   it("remaps absolute callback URLs on sibling *.localhost hosts to baseUrl origin", () => {
     expect(
       resolveSalanorAuthRedirectUrl({
-        url: "http://app.attest.localhost:3000/console",
+        url: "http://app.aegis.localhost:3000/console",
         baseUrl: "http://localhost:3000",
       }),
     ).toBe("http://localhost:3000/console");
@@ -63,27 +63,27 @@ describe("resolveSalanorAuthRedirectUrl", () => {
     expect(
       resolveSalanorAuthRedirectUrl({
         url: "/console",
-        baseUrl: "http://app.attest.localhost:3000",
+        baseUrl: "http://app.aegis.localhost:3000",
       }),
-    ).toBe("http://app.attest.localhost:3000/console");
+    ).toBe("http://app.aegis.localhost:3000/console");
   });
 
   it("keeps redirects on the same origin", () => {
     expect(
       resolveSalanorAuthRedirectUrl({
-        url: "http://app.attest.localhost:3000/console",
-        baseUrl: "http://app.attest.localhost:3000",
+        url: "http://app.aegis.localhost:3000/console",
+        baseUrl: "http://app.aegis.localhost:3000",
       }),
-    ).toBe("http://app.attest.localhost:3000/console");
+    ).toBe("http://app.aegis.localhost:3000/console");
   });
 });
 
 describe("areLoopbackSiblingOrigins", () => {
-  it("treats localhost and app.attest.localhost as siblings", () => {
+  it("treats localhost and app.aegis.localhost as siblings", () => {
     expect(
       areLoopbackSiblingOrigins(
         "http://localhost:3000",
-        "http://app.attest.localhost:3000",
+        "http://app.aegis.localhost:3000",
       ),
     ).toBe(true);
   });
@@ -118,9 +118,9 @@ describe("formatAuthSignInHost", () => {
   it("uses the magic link URL host when trustHost builds console links", () => {
     expect(
       formatAuthSignInHost(
-        "http://app.attest.localhost:3000/api/auth/callback/email?token=abc&email=user%40example.com",
+        "http://app.aegis.localhost:3000/api/auth/callback/email?token=abc&email=user%40example.com",
       ),
-    ).toBe("app.attest.localhost:3000");
+    ).toBe("app.aegis.localhost:3000");
   });
 
   it("uses localhost when the link targets the apex dev host", () => {

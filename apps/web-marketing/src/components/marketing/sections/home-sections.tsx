@@ -4,8 +4,9 @@ import { DataPointField } from "@/components/marketing/data-point-field";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 import btn from "@/components/marketing/buttons.module.css";
 import { HeroDataVisual } from "@/components/marketing/hero-data-visual";
-import { consoleAppUrl, contactUrl, publicVerifyUrl } from "@/lib/site-urls";
+import { contactUrl, publicVerifyUrl } from "@/lib/site-urls";
 import {
+  BRAND,
   COMPLIANCE_STRIP,
   FOUNDING_PULL_QUOTE,
   HOW_IT_WORKS,
@@ -31,6 +32,7 @@ export function HeroSection() {
             <br />
             <span className={s.heroAccent}>agentic systems</span>
           </h1>
+          <p className={s.heroTagline}>{BRAND.taglineFull}</p>
           <p className={s.heroSub}>
             Salanor is the platform for provenance, identity, and liability coverage as enterprises
             deploy autonomous agents.{" "}
@@ -99,7 +101,7 @@ export function ProductsTeaserSection() {
           <p className="section-label">Products</p>
           <h2>Two products. One trust platform.</h2>
           <p>
-            Aegis is provenance and audit (2026). Aether is intelligence and risk (2027). Same company,
+            {BRAND.taglineShort} ships first (2026). Aether is intelligence and risk (2027). Same company,
             same ledger.
           </p>
         </ScrollReveal>

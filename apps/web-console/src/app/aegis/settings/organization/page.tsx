@@ -1,11 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ErrorAlert, ui } from "@/components/console/console-ui";
 import { consoleApi } from "@/lib/api";
-import { idApi } from "@/lib/id-api";
+import { IdApiError, idApi } from "@/lib/id-api";
 import type { MeResponse } from "@/lib/types";
 
 import settings from "../settings.module.css";
@@ -29,6 +29,10 @@ type PlanUsage = {
 export default function OrganizationSettingsPage() {
   const queryClient = useQueryClient();
   const [newOrgName, setNewOrgName] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editSlug, setEditSlug] = useState("");
+  const [editSlugTouched, setEditSlugTouched] = useState(false);
+  const [editMessage, setEditMessage] = useState<string | null>(null);
 
   const meQuery = useQuery({
     queryKey: ["id", "me"],
@@ -70,6 +74,30 @@ export default function OrganizationSettingsPage() {
     },
   });
 
+  const updateOrg = useMutation({
+    mutationFn: async (input: { organization_name?: string; organization_slug?: string }) => {
+      const orgId = meQuery.data?.organization.organization_id;
+      if (!orgId) throw new Error("No organization");
+      return idApi<{
+        ok: boolean;
+        organization: { name: string; slug: string };
+        slug_changed?: boolean;
+        message?: string;
+      }>(`/orgs/${orgId}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      });
+    },
+    onSuccess: (data) => {
+      setEditMessage(data.message ?? "Organization updated.");
+      void queryClient.invalidateQueries({ queryKey: ["id"] });
+      void queryClient.invalidateQueries({ queryKey: ["console"] });
+    },
+    onError: (err: Error) => {
+      setEditMessage(err instanceof IdApiError ? err.message : "Could not update organization.");
+    },
+  });
+
   const createOrg = useMutation({
     mutationFn: async (organizationName: string) => {
       return idApi<MeResponse>("/orgs/create", {
@@ -91,6 +119,16 @@ export default function OrganizationSettingsPage() {
   const org = meQuery.data?.organization;
   const usage = planQuery.data?.plan_usage;
   const isAdmin = meQuery.data?.user.role === "admin";
+  const onboardingDone = org && !org.needs_onboarding;
+
+  useEffect(() => {
+    if (org) {
+      setEditName(org.name);
+      setEditSlug(org.slug);
+      setEditSlugTouched(false);
+      setEditMessage(null);
+    }
+  }, [org?.organization_id]);
   const eventCap = usage?.limits.events_per_month;
   const eventUsed = usage?.usage.events_this_month ?? 0;
   const eventPct =
@@ -126,6 +164,82 @@ export default function OrganizationSettingsPage() {
               </dd>
             </div>
           </dl>
+        ) : null}
+        {isAdmin && onboardingDone ? (
+          <form
+            className={settings.settingsForm}
+            style={{ marginTop: "1.25rem", maxWidth: "28rem" }}
+            onSubmit={(e) => {
+              e.preventDefault();
+              setEditMessage(null);
+              const payload: { organization_name?: string; organization_slug?: string } = {};
+              if (editName.trim() !== org?.name) {
+                payload.organization_name = editName.trim();
+              }
+              if (editSlug.trim() !== org?.slug) {
+                payload.organization_slug = editSlug.trim();
+              }
+              if (!payload.organization_name && !payload.organization_slug) {
+                setEditMessage("No changes to save.");
+                return;
+              }
+              updateOrg.mutate(payload);
+            }}
+          >
+            <h3 style={{ fontSize: "0.9375rem", margin: "0 0 0.75rem" }}>Rename organization</h3>
+            <p className={ui.muted} style={{ fontSize: "0.8125rem", marginBottom: "0.75rem" }}>
+              Display name can change anytime. Changing the URL slug updates API paths and rebinds
+              agent DIDs (<span className="mono">did:salanor:…</span>) — coordinate with your team
+              before saving.
+            </p>
+            <label>
+              <span className={ui.muted} style={{ fontSize: "0.75rem" }}>
+                Company name
+              </span>
+              <input
+                className="input"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                minLength={2}
+                maxLength={120}
+                required
+              />
+            </label>
+            <label>
+              <span className={ui.muted} style={{ fontSize: "0.75rem" }}>
+                Organization URL
+              </span>
+              <input
+                className="input mono"
+                value={editSlug}
+                onChange={(e) => {
+                  setEditSlugTouched(true);
+                  setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+                }}
+                minLength={2}
+                maxLength={48}
+                pattern="[a-z0-9][a-z0-9-]*"
+                required
+              />
+            </label>
+            {editMessage ? (
+              <p
+                style={{
+                  fontSize: "0.8125rem",
+                  color: updateOrg.isError ? "var(--console-danger, #b91c1c)" : undefined,
+                }}
+              >
+                {editMessage}
+              </p>
+            ) : null}
+            <button
+              type="submit"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              disabled={updateOrg.isPending}
+            >
+              {updateOrg.isPending ? "Saving…" : "Save changes"}
+            </button>
+          </form>
         ) : null}
       </section>
 

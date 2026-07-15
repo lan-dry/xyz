@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { signOut } from "@/auth";
-import { CONSOLE_ATTEST_BASE, consoleAttestPath } from "@/lib/app-paths";
+import { CONSOLE_AEGIS_BASE, consoleAegisPath } from "@/lib/app-paths";
 
 import { OrgSwitcher } from "./org-switcher";
 
@@ -24,32 +24,32 @@ export function ConsoleHeader({
   return (
     <header className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-black/10 pb-4">
       <div className="flex flex-wrap items-center gap-6">
-        <Link href={CONSOLE_ATTEST_BASE} className="text-xl font-semibold text-ink">
-          Attest Console
+        <Link href={CONSOLE_AEGIS_BASE} className="text-xl font-semibold text-ink">
+          Aegis Console
         </Link>
         <nav className="flex flex-wrap gap-4 text-sm">
-          <Link href={consoleAttestPath("/events")} className="text-ink/80 hover:text-ink">
+          <Link href={consoleAegisPath("/events")} className="text-ink/80 hover:text-ink">
             Events
           </Link>
-          <Link href={consoleAttestPath("/members")} className="text-ink/80 hover:text-ink">
+          <Link href={consoleAegisPath("/members")} className="text-ink/80 hover:text-ink">
             Members
           </Link>
-          <Link href={consoleAttestPath("/api-keys")} className="text-ink/80 hover:text-ink">
+          <Link href={consoleAegisPath("/api-keys")} className="text-ink/80 hover:text-ink">
             API keys
           </Link>
-          <Link href={consoleAttestPath("/billing")} className="text-ink/80 hover:text-ink">
+          <Link href={consoleAegisPath("/billing")} className="text-ink/80 hover:text-ink">
             Billing
           </Link>
-          <Link href={consoleAttestPath("/audit")} className="text-ink/80 hover:text-ink">
+          <Link href={consoleAegisPath("/audit")} className="text-ink/80 hover:text-ink">
             Audit log
           </Link>
-          <Link href={consoleAttestPath("/policy")} className="text-ink/80 hover:text-ink">
+          <Link href={consoleAegisPath("/policy")} className="text-ink/80 hover:text-ink">
             Policy
           </Link>
-          <Link href={consoleAttestPath("/policy/log")} className="text-ink/80 hover:text-ink">
+          <Link href={consoleAegisPath("/policy/log")} className="text-ink/80 hover:text-ink">
             Policy log
           </Link>
-          <Link href={consoleAttestPath("/settings")} className="text-ink/80 hover:text-ink">
+          <Link href={consoleAegisPath("/settings")} className="text-ink/80 hover:text-ink">
             Settings
           </Link>
         </nav>

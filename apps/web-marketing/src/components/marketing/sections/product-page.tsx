@@ -32,6 +32,9 @@ export function ProductPageContent({ product }: { product: Product }) {
             <p className="section-label">{product.tag}</p>
             <span className={s.status}>{product.status}</span>
             <h1>{product.headline}</h1>
+            {"brandLine" in product && product.brandLine ? (
+              <p className={s.brandLine}>{product.brandLine}</p>
+            ) : null}
             <p className={s.subhead}>{product.subhead}</p>
             {"legalNote" in product && product.legalNote ? (
               <p className={s.legalNote}>{product.legalNote}</p>

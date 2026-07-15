@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type FormEvent } from "react";
+import { useCallback, useRef, useState, type FormEvent } from "react";
 
 import styles from "./contact-form.module.css";
 
@@ -20,13 +20,13 @@ const REASON_LABELS: Record<ContactReason, string> = {
 };
 
 export function ContactForm() {
+  const gotchaRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [organization, setOrganization] = useState("");
   const [senderRole, setSenderRole] = useState("");
   const [reason, setReason] = useState<ContactReason>("design_partner");
   const [message, setMessage] = useState("");
-  const [honeypot, setHoneypot] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [feedback, setFeedback] = useState<string | null>(null);
 
@@ -34,6 +34,13 @@ export function ContactForm() {
     async (e: FormEvent) => {
       e.preventDefault();
       setFeedback(null);
+
+      if (gotchaRef.current?.value?.trim()) {
+        setStatus("error");
+        setFeedback("Something went wrong. Please try again or email partners@salanor.com.");
+        return;
+      }
+
       setStatus("loading");
 
       const sourcePath =
@@ -42,19 +49,20 @@ export function ContactForm() {
           : "/contact";
 
       try {
+        const payload: Record<string, string> = {
+          name,
+          email,
+          reason,
+          message,
+          sourcePath,
+        };
+        if (organization.trim()) payload.organization = organization.trim();
+        if (senderRole.trim()) payload.role = senderRole.trim();
+
         const res = await fetch("/api/contact", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            name,
-            email,
-            organization: organization.trim() || undefined,
-            role: senderRole.trim() || undefined,
-            reason,
-            message,
-            sourcePath,
-            website: honeypot,
-          }),
+          body: JSON.stringify(payload),
         });
 
         const data = (await res.json().catch(() => ({}))) as { error?: string; id?: string };
@@ -77,7 +85,7 @@ export function ContactForm() {
         setFeedback("Network error. Email partners@salanor.com directly.");
       }
     },
-    [name, email, organization, senderRole, reason, message, honeypot],
+    [name, email, organization, senderRole, reason, message],
   );
 
   const disabled =
@@ -86,15 +94,15 @@ export function ContactForm() {
   return (
     <form className={styles.form} onSubmit={onSubmit} noValidate>
       <div className={styles.honeypot} aria-hidden="true">
-        <label htmlFor="website">Website</label>
+        <label htmlFor="contact-gotcha">Leave blank</label>
         <input
-          id="website"
-          name="website"
+          ref={gotchaRef}
+          id="contact-gotcha"
+          name="_gotcha"
           type="text"
           tabIndex={-1}
           autoComplete="off"
-          value={honeypot}
-          onChange={(e) => setHoneypot(e.target.value)}
+          defaultValue=""
         />
       </div>
 

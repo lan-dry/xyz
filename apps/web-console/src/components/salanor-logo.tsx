@@ -2,7 +2,7 @@ import Image from "next/image";
 
 import styles from "./salanor-logo.module.css";
 
-const LOGO_SRC = "/salanor-logo.svg";
+const LOGO_SRC = "/salanor-logo.png";
 
 export function SalanorLogo({
   size = 28,

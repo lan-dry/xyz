@@ -1,3 +1,4 @@
+import "./load-env.js";
 import { closePool } from "./pool.js";
 import { migrateDown, migrateUp } from "./migrate.js";
 

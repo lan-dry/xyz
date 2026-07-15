@@ -37,7 +37,7 @@ export async function listOrgEvents(
   organizationId: string,
   limit = 50,
 ): Promise<ConsoleEventRow[]> {
-  const rows = await prisma.attestIngestEvent.findMany(orgEventsQueryArgs(organizationId, limit));
+  const rows = await prisma.aegisIngestEvent.findMany(orgEventsQueryArgs(organizationId, limit));
   return rows.map((row) => ({
     rowId: row.id,
     receivedAt: row.receivedAt,

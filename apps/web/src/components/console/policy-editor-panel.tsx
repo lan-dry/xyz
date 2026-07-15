@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 
 import { Button } from "@/components/console/button";
 import { StatusChip } from "@/components/console/status-chip";
-import { DEFAULT_POLICY_TEMPLATE } from "@/lib/attest/policy";
+import { DEFAULT_POLICY_TEMPLATE } from "@/lib/aegis/policy";
 import { formatDateTime } from "@/lib/format-datetime";
 
 type PolicySummary = {
@@ -137,7 +137,7 @@ export function PolicyEditorPanel({
       setError(payload.error ?? "Could not load policy manifest.");
       return;
     }
-    const fileName = `attest-policy-v${payload.manifest.version ?? "latest"}.json`;
+    const fileName = `aegis-policy-v${payload.manifest.version ?? "latest"}.json`;
     const blob = new Blob([`${JSON.stringify(payload.manifest, null, 2)}\n`], {
       type: "application/json",
     });

@@ -2,7 +2,7 @@
 
 import { consoleInkCtaClass } from "./console-cta";
 
-export const OPEN_CREATE_API_KEY_EVENT = "attest:open-create-api-key";
+export const OPEN_CREATE_API_KEY_EVENT = "aegis:open-create-api-key";
 
 export function CreateApiKeyButton() {
   return (

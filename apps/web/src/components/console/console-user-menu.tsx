@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BookOpen, Home, Moon, User } from "lucide-react";
 
-import { consoleAttestPath } from "@/lib/app-paths";
+import { consoleAegisPath } from "@/lib/app-paths";
 import {
   applyConsoleTheme,
   readStoredConsoleTheme,
@@ -107,7 +107,7 @@ export function ConsoleUserMenu({
             </kbd>
           </button>
           <Link
-            href={consoleAttestPath("/settings")}
+            href={consoleAegisPath("/settings")}
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 no-underline hover:bg-gray-100"
             onClick={() => setOpen(false)}
           >
@@ -123,7 +123,7 @@ export function ConsoleUserMenu({
             Salanor homepage
           </Link>
           <Link
-            href="/attest/docs"
+            href="/aegis/docs"
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 no-underline hover:bg-gray-100"
             onClick={() => setOpen(false)}
           >

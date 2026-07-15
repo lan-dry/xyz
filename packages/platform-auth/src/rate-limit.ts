@@ -57,6 +57,10 @@ export function loginRateLimitKey(ip: string): string {
   return `login:${ip}`;
 }
 
+export function oauthRateLimitKey(ip: string): string {
+  return `oauth:${ip}`;
+}
+
 export function readRateLimitEnv(
   name: string,
   fallback: number,

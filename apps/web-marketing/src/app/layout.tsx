@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     template: "%s · Salanor",
   },
   description:
-    "Cryptographic provenance, policy enforcement, and compliance exports for production AI agents.",
+    "Aegis, by Salanor — the provenance and liability layer for AI agents. Signed APS-1 events, policy enforcement, and compliance exports.",
 };
 
 export default function RootLayout({

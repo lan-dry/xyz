@@ -10,7 +10,7 @@ import {
 import { ConsoleEmptyState } from "@/components/console/console-empty-state";
 import { ConsolePageHeader } from "@/components/console/console-page-header";
 import { StatusChip } from "@/components/console/status-chip";
-import { consoleAttestPath } from "@/lib/app-paths";
+import { consoleAegisPath } from "@/lib/app-paths";
 import { resolveConsoleContext } from "@/lib/console/session";
 import { formatDateTime } from "@/lib/format-datetime";
 import { prisma } from "@/lib/prisma";
@@ -58,7 +58,7 @@ export default async function ConsolePolicyLogPage() {
         subtitle="Recent ingest and replay policy outcomes for this organization."
         actions={
           <Link
-            href={consoleAttestPath("/policy")}
+            href={consoleAegisPath("/policy")}
             className="inline-flex h-9 items-center rounded-lg border border-gray-200 px-3 text-sm font-medium text-gray-700 no-underline transition-colors duration-150 hover:bg-gray-50"
           >
             Back to policy

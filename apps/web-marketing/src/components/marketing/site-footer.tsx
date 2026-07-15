@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BRAND } from "@/lib/marketing-content";
 import { docsUrl } from "@/lib/site-urls";
 
 import { SalanorLogo } from "./salanor-logo";
@@ -8,11 +9,12 @@ import styles from "./site-footer.module.css";
 const PRODUCT_LINKS = [
   { href: "/products/aegis", label: "Aegis" },
   { href: "/products/aether", label: "Aether" },
-  { href: docsUrl("aegis"), label: "APS-1 Standard", external: true },
+  { href: "/spec", label: "APS-1 & did:agent" },
   { href: "/contact", label: "Pricing" },
 ] as const;
 
 const DEVELOPER_LINKS = [
+  { href: "/spec", label: "APS-1 & did:agent" },
   { href: docsUrl("aegis"), label: "Aegis docs", external: true },
   { href: docsUrl("aegis"), label: "@salanor/aegis SDK", external: true },
   { href: docsUrl("aether"), label: "Aether docs", external: true },
@@ -71,9 +73,7 @@ export function SiteFooter() {
           <div className={styles.logoRow}>
             <SalanorLogo showWordmark />
           </div>
-          <p className={styles.tagline}>
-            Provenance, identity, and liability infrastructure for autonomous AI agents.
-          </p>
+          <p className={styles.tagline}>{BRAND.taglineFull}</p>
         </div>
         <div className={styles.cols}>
           <FooterColumn title="Products" links={PRODUCT_LINKS} />

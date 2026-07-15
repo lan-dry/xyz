@@ -37,7 +37,7 @@ vi.mock("@/lib/console/api-route", () => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    attestPolicy: {
+    aegisPolicy: {
       findFirst: vi.fn().mockResolvedValue(null),
       updateMany: vi.fn(),
       create: vi.fn(),
@@ -45,7 +45,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
       callback({
-        attestPolicy: {
+        aegisPolicy: {
           updateMany: vi.fn(),
           create: vi.fn().mockResolvedValue({
             id: "policy-1",

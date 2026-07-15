@@ -25,7 +25,7 @@ export function SalanorLogo({
   );
 }
 
-/** Company mark — gradient S on dark (see /salanor-logo.png). */
+/** Company mark — gradient S (public/salanor-logo.png). */
 export function SalanorMark({
   className,
   size = 32,
@@ -34,7 +34,7 @@ export function SalanorMark({
   void props;
   return (
     <Image
-      src="/salanor-logo.svg"
+      src="/salanor-logo.png"
       alt=""
       width={size}
       height={size}

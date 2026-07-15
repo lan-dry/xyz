@@ -6,15 +6,11 @@ export type InviteEmailInput = {
   invitedByEmail?: string | null;
 };
 
-/**
- * Dev: always logs the invite link to the ID service terminal.
- * Production: set RESEND_API_KEY to deliver via Resend (no extra npm deps).
- */
+import { EmailDeliveryError, getInviteFromAddress, getResendApiKey } from "./email-delivery.js";
 import { buildInviteEmailHtml } from "./invite-html.js";
 
 export async function sendInviteEmail(input: InviteEmailInput): Promise<void> {
-  const from =
-    process.env.INVITE_EMAIL_FROM ?? "Salanor <invites@notifications.salanor.com>";
+  const from = getInviteFromAddress();
   const subject = `Join ${input.organizationName} on Salanor`;
   const html = buildInviteEmailHtml(input);
   const bodyText = [
@@ -30,18 +26,7 @@ export async function sendInviteEmail(input: InviteEmailInput): Promise<void> {
     .filter(Boolean)
     .join("\n");
 
-  console.log("\n[salanor-id] ── Organization invite ─────────────────────────");
-  console.log(`  To:      ${input.to}`);
-  console.log(`  Org:     ${input.organizationName}`);
-  console.log(`  Role:    ${input.role}`);
-  console.log(`  Accept:  ${input.inviteUrl}`);
-  console.log("[salanor-id] ─────────────────────────────────────────────────\n");
-
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
-    return;
-  }
-
+  const apiKey = getResendApiKey();
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -60,6 +45,6 @@ export async function sendInviteEmail(input: InviteEmailInput): Promise<void> {
   if (!response.ok) {
     const errText = await response.text().catch(() => "");
     console.error("[salanor-id] Resend delivery failed:", response.status, errText);
-    throw new Error("Failed to send invite email");
+    throw new EmailDeliveryError("email_send_failed", "Failed to send invite email");
   }
 }

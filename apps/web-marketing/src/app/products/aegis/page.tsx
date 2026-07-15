@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 
 import { ProductPageContent } from "@/components/marketing/sections/product-page";
-import { PRODUCTS } from "@/lib/marketing-content";
+import { BRAND, PRODUCTS } from "@/lib/marketing-content";
 
 export const metadata: Metadata = {
   title: "Aegis",
-  description: PRODUCTS.aegis.subhead,
+  description: BRAND.taglineFull,
 };
 
 export default function AegisProductPage() {

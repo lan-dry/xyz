@@ -1,14 +1,14 @@
 "use client";
 
 import {
-  CONSOLE_ATTEST_BASE,
-  CONSOLE_ATTEST_PUBLIC_PREFIX,
-  DOCS_ATTEST_BASE,
-  DOCS_ATTEST_PUBLIC_PREFIX,
+  CONSOLE_AEGIS_BASE,
+  CONSOLE_AEGIS_PUBLIC_PREFIX,
+  DOCS_AEGIS_BASE,
+  DOCS_AEGIS_PUBLIC_PREFIX,
 } from "@/lib/app-paths";
 import {
-  getAttestDocsPublicHost,
-  getAttestProductPublicUrl,
+  getAegisDocsPublicHost,
+  getAegisProductPublicUrl,
   getConsolePublicUrl,
   getDocsPublicUrl,
   getMarketingHomeUrl,
@@ -49,32 +49,32 @@ export function getClientMarketingHomeUrl(hostHint?: string | null): string {
   return getMarketingHomeUrl(host);
 }
 
-export function getClientAttestProductUrl(hostHint?: string | null): string {
+export function getClientAegisProductUrl(hostHint?: string | null): string {
   const host = resolveEffectiveRequestHost(hostHint);
   if (host && shouldUseLocalDevProductHosts(host)) {
-    return getAttestProductPublicUrl(host);
+    return getAegisProductPublicUrl(host);
   }
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (siteUrl && isProductionSalanorOrigin(siteUrl) && !host) {
-    return "/attest";
+    return "/aegis";
   }
   if (siteUrl) {
-    return resolveProductPublicUrlFromSite(siteUrl, "attest", host);
+    return resolveProductPublicUrlFromSite(siteUrl, "aegis", host);
   }
-  return getAttestProductPublicUrl(host);
+  return getAegisProductPublicUrl(host);
 }
 
 export function getClientDocsPublicUrl(hostHint?: string | null): string {
   const host = resolveEffectiveRequestHost(hostHint);
   if (host && isDocsPublicHost(host)) {
-    return isLoopbackApexHost(host) ? DOCS_ATTEST_BASE : DOCS_ATTEST_PUBLIC_PREFIX;
+    return isLoopbackApexHost(host) ? DOCS_AEGIS_BASE : DOCS_AEGIS_PUBLIC_PREFIX;
   }
   if (host && shouldUseLocalDevProductHosts(host)) {
     return getDocsPublicUrl(host);
   }
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (siteUrl && isProductionSalanorOrigin(siteUrl) && !host) {
-    return `https://${getAttestDocsPublicHost()}${DOCS_ATTEST_PUBLIC_PREFIX}`;
+    return `https://${getAegisDocsPublicHost()}${DOCS_AEGIS_PUBLIC_PREFIX}`;
   }
   return getDocsPublicUrl(host);
 }
@@ -82,14 +82,14 @@ export function getClientDocsPublicUrl(hostHint?: string | null): string {
 export function getClientConsolePublicUrl(hostHint?: string | null): string {
   const host = resolveEffectiveRequestHost(hostHint);
   if (host && isAppPublicHost(host)) {
-    return CONSOLE_ATTEST_PUBLIC_PREFIX;
+    return CONSOLE_AEGIS_PUBLIC_PREFIX;
   }
   if (host && shouldUseLocalDevProductHosts(host)) {
-    return CONSOLE_ATTEST_BASE;
+    return CONSOLE_AEGIS_BASE;
   }
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (siteUrl && isProductionSalanorOrigin(siteUrl) && !host) {
-    return CONSOLE_ATTEST_PUBLIC_PREFIX;
+    return CONSOLE_AEGIS_PUBLIC_PREFIX;
   }
   return getConsolePublicUrl(host);
 }

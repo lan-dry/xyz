@@ -13,7 +13,7 @@ import { normalizeLoopbackCallbackUrl } from "@salanor/auth/auth-request-origin"
 import { auth } from "@/auth";
 import { SignInForm } from "@/components/sign-in-form";
 import { prisma } from "@/lib/prisma";
-import { CONSOLE_ATTEST_BASE } from "@/lib/app-paths";
+import { CONSOLE_AEGIS_BASE } from "@/lib/app-paths";
 import { isAppPublicHost } from "@/lib/public-hosts";
 
 function signInErrorMessage(error: string | undefined): string | null {
@@ -36,7 +36,7 @@ type PageProps = {
 
 async function defaultCallbackUrl(email: string | null | undefined): Promise<string> {
   if (await isAllowedAdminEmail(email, prisma)) return "/admin";
-  return CONSOLE_ATTEST_BASE;
+  return CONSOLE_AEGIS_BASE;
 }
 
 export default async function SignInPage({ searchParams }: PageProps) {
@@ -57,15 +57,15 @@ export default async function SignInPage({ searchParams }: PageProps) {
       <h1 className="text-xl font-semibold text-ink">Sign in</h1>
       {isConsole ? (
         <p className="mt-2 text-sm leading-relaxed text-ink/80">
-          Sign in to the Attest tenant console. Access is granted through organization membership or a pending
+          Sign in to the Aegis tenant console. Access is granted through organization membership or a pending
           invite.
         </p>
       ) : (
         <p className="mt-2 text-sm leading-relaxed text-ink/80">
           Salanor admin (<code className="text-xs">/admin</code>) requires a row in{" "}
           <code className="text-xs">sal_internal_users</code> with role <code className="text-xs">superadmin</code>,{" "}
-          <code className="text-xs">eng</code>, or <code className="text-xs">support</code>. Attest console (
-          <code className="text-xs">{CONSOLE_ATTEST_BASE}</code>) uses organization membership and RBAC.
+          <code className="text-xs">eng</code>, or <code className="text-xs">support</code>. Aegis console (
+          <code className="text-xs">{CONSOLE_AEGIS_BASE}</code>) uses organization membership and RBAC.
         </p>
       )}
       {errorMessage ? (

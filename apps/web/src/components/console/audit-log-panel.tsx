@@ -11,7 +11,7 @@ import {
   ConsoleTh,
 } from "@/components/console/console-data-table";
 import { ConsoleEmptyState } from "@/components/console/console-empty-state";
-import { consoleAttestPath } from "@/lib/app-paths";
+import { consoleAegisPath } from "@/lib/app-paths";
 import { formatDateTime } from "@/lib/format-datetime";
 
 export type AuditLogEntry = {
@@ -69,7 +69,7 @@ export function AuditLogPanel({
         else next.set(key, value);
       }
       startTransition(() => {
-        router.push(`${consoleAttestPath("/audit")}?${next.toString()}`);
+        router.push(`${consoleAegisPath("/audit")}?${next.toString()}`);
       });
     },
     [router, searchParams],

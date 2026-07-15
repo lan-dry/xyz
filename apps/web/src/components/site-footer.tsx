@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const PRODUCT_LINKS = [
-  { href: "/attest", label: "Attest" },
+  { href: "/aegis", label: "Aegis" },
   { href: "/standards", label: "APS-1 Standard" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/standards", label: "Documentation" },

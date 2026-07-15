@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "policyId is required" }, { status: 400 });
     }
 
-    const target = await prisma.attestPolicy.findFirst({
+    const target = await prisma.aegisPolicy.findFirst({
       where: {
         id: policyId,
         organizationId: scoped.activeOrgId,
@@ -40,17 +40,17 @@ export async function POST(req: NextRequest) {
 
     if (enabled) {
       await prisma.$transaction(async (tx) => {
-        await tx.attestPolicy.updateMany({
+        await tx.aegisPolicy.updateMany({
           where: { organizationId: scoped.activeOrgId, enabled: true },
           data: { enabled: false },
         });
-        await tx.attestPolicy.update({
+        await tx.aegisPolicy.update({
           where: { id: target.id },
           data: { enabled: true },
         });
       });
     } else {
-      await prisma.attestPolicy.update({
+      await prisma.aegisPolicy.update({
         where: { id: target.id },
         data: { enabled: false },
       });
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       organizationId: scoped.activeOrgId,
       actorIdentityId: scoped.identityLinkId,
       action: "policy_updated",
-      targetType: "attest_policy",
+      targetType: "aegis_policy",
       targetId: target.id,
       metadata: {
         operation: enabled ? "enable" : "disable",

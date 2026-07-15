@@ -1,3 +1,12 @@
+/** Locked public brand lines — use consistently on site, deck, SDK README, outreach. */
+export const BRAND = {
+  company: "Salanor",
+  product: "Aegis",
+  taglineShort: "Aegis by Salanor",
+  taglineFull: "Aegis, by Salanor — the provenance and liability layer for AI agents.",
+  platformLine: "Trust infrastructure for agentic systems",
+} as const;
+
 export const INTEGRATION_LOGOS = [
   "LangGraph",
   "OpenAI Agents SDK",
@@ -99,6 +108,7 @@ export const PRODUCTS = {
     tag: "Provenance & Audit",
     status: "GA Q4 2026",
     icon: "🔐",
+    brandLine: BRAND.taglineFull,
     headline: "Litigation-ready provenance for every agent action",
     subhead:
       "Cryptographically signed, append-only infrastructure. One SDK, zero changes to agent logic. The trust substrate enterprises deploy before scaling autonomy.",

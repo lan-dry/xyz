@@ -27,7 +27,7 @@ export default async function TotpSignInPage({ searchParams }: PageProps) {
     where: { id: userId },
     select: { totpEnabledAt: true },
   });
-  const callbackUrl = (await searchParams).callbackUrl || "/app/console/attest";
+  const callbackUrl = (await searchParams).callbackUrl || "/app/console/aegis";
 
   if (!user?.totpEnabledAt) {
     redirect(callbackUrl);

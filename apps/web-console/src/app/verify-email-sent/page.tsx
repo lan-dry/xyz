@@ -28,11 +28,14 @@ function VerifyEmailSentContent() {
     setLoading(true);
     setMessage(null);
     try {
-      await idApi("/auth/resend-verification", {
+      const res = await idApi<{ ok: boolean; message?: string }>("/auth/resend-verification", {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      setMessage("If your account is pending verification, we sent a new link.");
+      setMessage(
+        res.message ??
+          "If your account is pending verification, we sent a new link to that address.",
+      );
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Could not resend");
     } finally {
@@ -53,9 +56,8 @@ function VerifyEmailSentContent() {
             We sent a verification link to{" "}
             <strong>{email || "your address"}</strong>. Open it on this device, then sign in.
           </p>
-          <p className={styles.cardSub} style={{ fontSize: "0.75rem" }}>
-            Local dev: the link is printed in the <code>id</code> service terminal when{" "}
-            <code>RESEND_API_KEY</code> is not set.
+          <p className={styles.cardSub}>
+            Did not receive it? Check spam or request another link below.
           </p>
           {message ? <p className={styles.cardSub}>{message}</p> : null}
           <button

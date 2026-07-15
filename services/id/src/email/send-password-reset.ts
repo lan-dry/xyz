@@ -1,3 +1,5 @@
+import { EmailDeliveryError, getInviteFromAddress, getResendApiKey } from "./email-delivery.js";
+
 export type PasswordResetEmailInput = {
   to: string;
   resetUrl: string;
@@ -6,28 +8,18 @@ export type PasswordResetEmailInput = {
 export async function sendPasswordResetEmail(
   input: PasswordResetEmailInput,
 ): Promise<void> {
-  const from =
-    process.env.INVITE_EMAIL_FROM ?? "Salanor <invites@notifications.salanor.com>";
+  const from = getInviteFromAddress();
   const subject = "Reset your Salanor password";
   const bodyText = [
     "You requested a password reset for your Salanor account.",
     "",
-    `Reset your password:`,
+    "Reset your password:",
     input.resetUrl,
     "",
     "This link expires in 1 hour. If you did not request this, ignore this email.",
   ].join("\n");
 
-  console.log("\n[salanor-id] ── Password reset ─────────────────────────────");
-  console.log(`  To:     ${input.to}`);
-  console.log(`  Reset:  ${input.resetUrl}`);
-  console.log("[salanor-id] ─────────────────────────────────────────────────\n");
-
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
-    return;
-  }
-
+  const apiKey = getResendApiKey();
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -47,7 +39,7 @@ export async function sendPasswordResetEmail(
 
   if (!response.ok) {
     const errText = await response.text().catch(() => "");
-    console.error("[salanor-id] Resend delivery failed:", response.status, errText);
-    throw new Error("Failed to send password reset email");
+    console.error("[salanor-id] Resend password reset failed:", response.status, errText);
+    throw new EmailDeliveryError("email_send_failed", "Failed to send password reset email");
   }
 }

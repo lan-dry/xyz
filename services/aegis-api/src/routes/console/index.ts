@@ -60,6 +60,7 @@ import {
 } from "../../repo/spans.js";
 import { buildReplayManifest } from "../../trace/replay-manifest.js";
 import { groupEventsIntoSpans } from "../../trace/span-grouping.js";
+import { agentRoutes } from "./agents.js";
 import { organizationRoutes } from "./organization.js";
 import { policyRoutes } from "./policies.js";
 import { approvalRoutes } from "./approvals.js";
@@ -195,6 +196,8 @@ function parseTraceListFilters(c: {
 
 export const consoleRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
+consoleRoutes.route("/", agentRoutes);
+consoleRoutes.route("/", organizationRoutes);
 consoleRoutes.route("/", policyRoutes);
 consoleRoutes.route("/", approvalRoutes);
 consoleRoutes.route("/", verifyRoutes);

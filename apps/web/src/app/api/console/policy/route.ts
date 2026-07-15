@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { ApsEvent } from "@salanor/attest-sdk-ts";
+import type { ApsEvent } from "@salanor/aegis-ledger-sdk";
 
-import { evaluatePolicy, parsePolicyRules } from "@/lib/attest/policy";
+import { evaluatePolicy, parsePolicyRules } from "@/lib/aegis/policy";
 import { appendConsoleAudit } from "@/lib/console/audit";
 import { withConsoleOrg } from "@/lib/console/api-route";
 import { requireConsoleContextApi } from "@/lib/console/session";
@@ -41,14 +41,14 @@ export async function GET() {
   const ctx = await requireConsoleContextApi();
   return withConsoleOrg(ctx.activeOrgId, "admin", async (scoped) => {
     const [activePolicy, recentPolicies] = await Promise.all([
-      prisma.attestPolicy.findFirst({
+      prisma.aegisPolicy.findFirst({
         where: {
           organizationId: scoped.activeOrgId,
           enabled: true,
         },
         orderBy: [{ version: "desc" }, { createdAt: "desc" }],
       }),
-      prisma.attestPolicy.findMany({
+      prisma.aegisPolicy.findMany({
         where: {
           organizationId: scoped.activeOrgId,
         },
@@ -125,7 +125,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ valid: true, details: [] });
     }
 
-    const existingActive = await prisma.attestPolicy.findFirst({
+    const existingActive = await prisma.aegisPolicy.findFirst({
       where: {
         organizationId: scoped.activeOrgId,
         enabled: true,
@@ -139,14 +139,14 @@ export async function PUT(req: NextRequest) {
     const nextVersion = (existingActive?.version ?? 0) + 1;
 
     const created = await prisma.$transaction(async (tx) => {
-      await tx.attestPolicy.updateMany({
+      await tx.aegisPolicy.updateMany({
         where: {
           organizationId: scoped.activeOrgId,
           enabled: true,
         },
         data: { enabled: false },
       });
-      return tx.attestPolicy.create({
+      return tx.aegisPolicy.create({
         data: {
           organizationId: scoped.activeOrgId,
           name,
@@ -161,7 +161,7 @@ export async function PUT(req: NextRequest) {
       organizationId: scoped.activeOrgId,
       actorIdentityId: scoped.identityLinkId,
       action: existingActive ? "policy_updated" : "policy_created",
-      targetType: "attest_policy",
+      targetType: "aegis_policy",
       targetId: created.id,
       metadata: {
         version: created.version,

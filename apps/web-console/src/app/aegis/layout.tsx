@@ -60,6 +60,14 @@ export default function AegisLayout({ children }: { children: React.ReactNode })
       router.replace(
         `/verify-email-sent?email=${encodeURIComponent(meQuery.data.account.email)}`,
       );
+      return;
+    }
+    if (
+      meQuery.data &&
+      (meQuery.data.needs_onboarding || meQuery.data.organization.needs_onboarding) &&
+      !meQuery.data.impersonation?.active
+    ) {
+      router.replace(`/onboarding?return=${encodeURIComponent(pathname)}`);
     }
   }, [isLogin, meQuery.isError, meQuery.data, pathname, router]);
 

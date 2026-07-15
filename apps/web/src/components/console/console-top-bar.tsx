@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { consoleAttestPath } from "@/lib/app-paths";
+import { consoleAegisPath } from "@/lib/app-paths";
 
 import { consoleInkCtaClass } from "./console-cta";
 
@@ -24,7 +24,7 @@ export function ConsoleTopBar() {
 
   function sendFeedback() {
     const body = encodeURIComponent(message.trim() || "(no message)");
-    window.location.href = `mailto:founders@salanor.com?subject=Attest%20Console%20Feedback&body=${body}`;
+    window.location.href = `mailto:founders@salanor.com?subject=Aegis%20Console%20Feedback&body=${body}`;
     setOpen(false);
     setMessage("");
   }
@@ -74,7 +74,7 @@ export function ConsoleTopBar() {
           ) : null}
         </div>
         <Link
-          href={consoleAttestPath("/help")}
+          href={consoleAegisPath("/help")}
           className="text-[var(--console-fg-subtle)] no-underline transition-colors duration-150 hover:text-[var(--console-fg)]"
         >
           Help

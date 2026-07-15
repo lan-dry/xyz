@@ -25,7 +25,7 @@ export default function StandardsPage() {
     <div className="mx-auto max-w-4xl px-4 py-12">
       <h1 className="text-3xl font-semibold text-ink">APS-1 · Agent Provenance Standard</h1>
       <p className="mt-4 leading-relaxed text-ink/90">
-        <strong>Version:</strong> draft <code className="text-sm">0.1</code> (APS-1). Salanor Attest records and
+        <strong>Version:</strong> draft <code className="text-sm">0.1</code> (APS-1). Salanor Aegis records and
         replays events that conform to this JSON Schema on the wire and at rest.
       </p>
 
@@ -52,7 +52,7 @@ export default function StandardsPage() {
           <Link href="https://github.com/salanor/salanor/blob/main/spec/aps/v0.1.json" className="text-teal underline underline-offset-2">
             spec/aps/v0.1.json
           </Link>{" "}
-          in the Salanor monorepo. SDK validation uses the same file via <code className="text-sm">@salanor/attest-sdk-ts</code>.
+          in the Salanor monorepo. SDK validation uses the same file via <code className="text-sm">@salanor/aegis-ledger-sdk</code>.
         </p>
         <pre className="mt-4 overflow-x-auto rounded-lg border border-ink/10 bg-bone/50 p-4 text-sm text-ink/90">{SCHEMA_EXCERPT}</pre>
       </section>
@@ -60,9 +60,9 @@ export default function StandardsPage() {
       <section className="mt-10">
         <h2 className="text-xl font-semibold text-ink">Cloud ingest (P2 prototype)</h2>
         <p className="mt-4 leading-relaxed text-ink/90">
-          Validated events can be posted to <code className="text-sm">POST /api/attest/ingest</code> with API key
-          auth. See <code className="text-sm">docs/ATTEST_PHASE_2.md</code> and{" "}
-          <code className="text-sm">docs/ATTEST_P2_DURABILITY.md</code> for durability notes. Message bus and anchoring
+          Validated events can be posted to <code className="text-sm">POST /api/aegis/ingest</code> with API key
+          auth. See <code className="text-sm">docs/AEGIS_PHASE_2.md</code> and{" "}
+          <code className="text-sm">docs/AEGIS_P2_DURABILITY.md</code> for durability notes. Message bus and anchoring
           are planned for later phases.
         </p>
       </section>

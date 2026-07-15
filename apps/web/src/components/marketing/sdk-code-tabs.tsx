@@ -36,14 +36,14 @@ export function SdkCodeTabs() {
       <div className="p-5 font-mono text-[0.8125rem] leading-[1.85] sm:p-7" role="tabpanel">
         {active === "python" && (
           <pre className="overflow-x-auto whitespace-pre text-white/85">
-            <span className="text-teal">from</span> salanor_attest <span className="text-teal">import</span> attest{"\n\n"}
+            <span className="text-teal">from</span> salanor_aegis_ledger <span className="text-teal">import</span> aegis{"\n\n"}
             <span className="text-white/25"># Set once via env or config</span>
             {"\n"}
-            <span className="text-white/25"># ATTEST_API_KEY=key_live_...</span>
+            <span className="text-white/25"># AEGIS_API_KEY=key_live_...</span>
             {"\n"}
-            <span className="text-white/25"># ATTEST_TENANT_ID=ten_acme</span>
+            <span className="text-white/25"># AEGIS_TENANT_ID=ten_acme</span>
             {"\n\n"}
-            decision = attest.record({"{"}
+            decision = aegis.record({"{"}
             {"\n"}
             {"  "}subject={`{{"kind": "loan_application", "id": app.id}}`},{"\n"}
             {"  "}action=&quot;underwriting.decline&quot;,{"\n"}
@@ -61,9 +61,9 @@ export function SdkCodeTabs() {
         )}
         {active === "typescript" && (
           <pre className="overflow-x-auto whitespace-pre text-white/85">
-            <span className="text-teal">import</span> {"{ attest }"} <span className="text-teal">from</span>{" "}
-            <span className="text-teal-soft">&apos;@salanor/attest&apos;</span>;{"\n\n"}
-            <span className="text-teal">const</span> decision = <span className="text-teal">await</span> attest.record({"{"}
+            <span className="text-teal">import</span> {"{ aegis }"} <span className="text-teal">from</span>{" "}
+            <span className="text-teal-soft">&apos;@salanor/aegis&apos;</span>;{"\n\n"}
+            <span className="text-teal">const</span> decision = <span className="text-teal">await</span> aegis.record({"{"}
             {"\n"}
             {"  "}subject: {"{ kind: "}
             <span className="text-teal-soft">&quot;loan_application&quot;</span>, id: app.id {"}"},{"\n"}
@@ -87,9 +87,9 @@ export function SdkCodeTabs() {
         {active === "verify" && (
           <pre className="overflow-x-auto whitespace-pre text-white/85">
             <span className="text-white/25"># Install the open-source verification CLI</span>
-            {"\n"}$ pip install attest-verify{"\n\n"}
+            {"\n"}$ pip install aegis-verify{"\n\n"}
             <span className="text-white/25"># Verify any evidence pack — no Salanor account required</span>
-            {"\n"}$ attest-verify verify ./pack_01J7XZ.zip{"\n\n"}
+            {"\n"}$ aegis-verify verify ./pack_01J7XZ.zip{"\n\n"}
             <span className="text-emerald-400">✓</span> APS-1 schema valid{"\n"}
             <span className="text-emerald-400">✓</span> Ed25519 signature verified (key: cust-key-1){"\n"}
             <span className="text-emerald-400">✓</span> Merkle inclusion proof valid{"\n"}

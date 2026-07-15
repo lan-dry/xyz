@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AttestCodeWindow } from "@/components/marketing/attest-code-window";
+import { AegisCodeWindow } from "@/components/marketing/aegis-code-window";
 import { HomeMarketingSections } from "@/components/marketing/home-marketing-sections";
 import { marketingInkCtaClass } from "@/components/marketing-cta";
 
@@ -21,11 +21,11 @@ const STATS = [
 
 const PRODUCT_LINES = [
   {
-    name: "Attest",
+    name: "Aegis",
     badge: "ACTIVE",
     badgeClass: "bg-teal-active text-bone",
-    vanityLabel: "attest.salanor.com",
-    href: "/attest",
+    vanityLabel: "aegis.salanor.com",
+    href: "/aegis",
     description:
       "A verifiable decision record for AI agents and automated systems. SDK-first, ledger-backed, replayable end-to-end.",
   },
@@ -66,7 +66,7 @@ export default function Page() {
             contestable — wherever software acts on behalf of people and institutions.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/attest" className={`${ctaBase} ${marketingInkCtaClass}`}>
+            <Link href="/aegis" className={`${ctaBase} ${marketingInkCtaClass}`}>
               Explore our work
             </Link>
             <Link
@@ -79,7 +79,7 @@ export default function Page() {
         </div>
 
         <div className="marketing-fade-in-delayed mt-10 lg:mt-0 lg:justify-self-end">
-          <AttestCodeWindow />
+          <AegisCodeWindow />
         </div>
       </section>
 
@@ -118,7 +118,7 @@ export default function Page() {
           </div>
           <p className="mt-3 max-w-3xl font-sans text-sm leading-relaxed text-muted sm:text-[0.9375rem]">
             The public wire format for verifiable agent decisions — who acted, on what, with what context, plus
-            signatures and a hash chain. Attest records, validates, and replays events that conform to APS-1 draft{" "}
+            signatures and a hash chain. Aegis records, validates, and replays events that conform to APS-1 draft{" "}
             <code className="text-ink/80">0.1</code>.
           </p>
           <p className="mt-5">

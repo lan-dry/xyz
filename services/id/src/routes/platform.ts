@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
 import { getCookie, setCookie } from "hono/cookie";
 import { Hono } from "hono";
 import {
@@ -28,6 +26,11 @@ import {
   updatePlanCatalogRow,
 } from "@salanor/platform-auth";
 import { getPool } from "../db/pool.js";
+import {
+  listContactLeads,
+  updateContactLead,
+  type LeadStatus,
+} from "../lib/contact-leads.js";
 
 export const platformRoutes = new Hono();
 
@@ -373,31 +376,63 @@ platformRoutes.get("/contact-leads", async (c) => {
   const access = await requirePlatformPermission(c, "platform:read");
   if (!access.ok) return c.json({ error: access.error }, 403);
 
-  const repoRoot = resolve(import.meta.dirname, "../../../..");
-  const dir =
-    process.env.CONTACT_DATA_DIR?.trim() ??
-    join(repoRoot, ".data", "contact");
-  const file = join(dir, "messages.jsonl");
-  try {
-    const raw = await readFile(file, "utf8");
-    const lines = raw
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
-    const messages = lines
-      .slice(-200)
-      .reverse()
-      .map((line) => {
-        try {
-          return JSON.parse(line) as Record<string, unknown>;
-        } catch {
-          return { raw: line };
-        }
-      });
-    return c.json({ messages, path: file });
-  } catch {
-    return c.json({ messages: [], path: file });
+  const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 20), 1), 100);
+  const offset = Math.max(Number(c.req.query("offset") ?? 0), 0);
+  const q = c.req.query("q")?.trim();
+  const reason = c.req.query("reason")?.trim();
+  const statusRaw = c.req.query("status")?.trim();
+  const allowed = new Set(["new", "contacted", "qualified", "closed", "spam"]);
+  const status =
+    statusRaw && allowed.has(statusRaw) ? (statusRaw as LeadStatus) : undefined;
+
+  const result = await listContactLeads(getPool(), {
+    limit,
+    offset,
+    q,
+    reason,
+    status,
+  });
+
+  return c.json({
+    leads: result.leads,
+    total: result.total,
+    limit: result.limit,
+    offset: result.offset,
+    stats: result.stats,
+    source: result.source,
+  });
+});
+
+platformRoutes.patch("/contact-leads/:leadId", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:orgs.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  if (!access.staff?.email) {
+    return c.json({ error: "Staff session required" }, 403);
   }
+
+  const leadId = c.req.param("leadId");
+  let body: { status?: string; notes?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+
+  const allowed = new Set(["new", "contacted", "qualified", "closed", "spam"]);
+  const patch: { status?: LeadStatus; notes?: string } = {};
+  if (typeof body.status === "string" && allowed.has(body.status)) {
+    patch.status = body.status as LeadStatus;
+  }
+  if (typeof body.notes === "string") {
+    patch.notes = body.notes.slice(0, 8000);
+  }
+  if (!patch.status && patch.notes === undefined) {
+    return c.json({ error: "No valid fields to update" }, 422);
+  }
+
+  const lead = await updateContactLead(getPool(), leadId, patch, access.staff.email);
+  if (!lead) return c.json({ error: "Not found" }, 404);
+  return c.json({ ok: true, lead });
 });
 
 platformRoutes.post("/organizations/:organizationId/impersonate", async (c) => {

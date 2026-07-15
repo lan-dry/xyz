@@ -12,6 +12,7 @@ export type ConsoleOrganization = {
   organization_id: string;
   name: string;
   slug: string;
+  needs_onboarding?: boolean;
 };
 
 export type ConsoleAccount = {
@@ -41,6 +42,7 @@ export type MeResponse = {
   user: ConsoleUser;
   organization: ConsoleOrganization;
   organizations: ConsoleOrganization[];
+  needs_onboarding?: boolean;
   impersonation?: ConsoleImpersonation | null;
 };
 
@@ -70,6 +72,34 @@ export type InvitePreview = {
   email: string;
   role: string;
   expires_at: string;
+};
+
+export type AgentSigningKeySummary = {
+  key_id: string;
+  public_key_b64: string;
+  kms_provider: string | null;
+  revoked: boolean;
+  valid_from: string;
+  created_at: string;
+};
+
+export type AgentSummary = {
+  agent_id: string;
+  slug: string;
+  display_name: string | null;
+  did: string;
+  active: boolean;
+  created_at: string;
+  signing_keys: AgentSigningKeySummary[];
+};
+
+export type AgentCredentialsPayload = {
+  agent_id: string;
+  key_id: string;
+  organization_id: string;
+  organization_slug: string;
+  private_key_b64: string;
+  public_key_b64: string;
 };
 
 export type TraceSummary = {

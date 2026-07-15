@@ -22,7 +22,7 @@ export default async function ConsoleBillingPage() {
 
   return (
     <section className="space-y-6">
-      <ConsolePageHeader title="Billing" subtitle="Organization-level billing controls for your Attest plan." />
+      <ConsolePageHeader title="Billing" subtitle="Organization-level billing controls for your Aegis plan." />
       <BillingPanel
         key={ctx.activeOrgId}
         canManageBilling={roleMeetsMinimum(ctx.membership.role, "admin")}

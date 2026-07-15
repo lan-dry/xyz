@@ -26,12 +26,27 @@ import {
   sessionCookieOptions,
   switchSessionOrganization,
   RegisterError,
+  registerSelfServeOrganization,
+  createEmailVerificationToken,
+  verifyEmailWithToken,
+  isEmailVerified,
+  completeOrganizationOnboarding,
+  OnboardingError,
+  slugifyOrganizationName,
+  updateOrganizationProfile,
+  OrganizationProfileError,
+  recordAccountLoginEvent,
+  listAccountLoginEvents,
+  describeUserAgent,
+  getClientIp,
   writeAuditEvent,
   getAccountPlatformRole,
   type ConsoleSession,
   type OrgRole,
 } from "@salanor/platform-auth";
 import { sendInviteEmail } from "../email/send-invite.js";
+import { EmailDeliveryError } from "../email/email-delivery.js";
+import { sendEmailVerificationEmail } from "../email/send-email-verification.js";
 import { getPool } from "../db/pool.js";
 
 const consoleOrigin = process.env.CONSOLE_ORIGIN ?? "http://localhost:3000";
@@ -63,6 +78,221 @@ function requireAdmin(session: ConsoleSession, organizationId: string): boolean 
 }
 
 export const identityRoutes = new Hono();
+
+function selfServeSignupEnabled(): boolean {
+  const v = process.env.SELF_SERVE_SIGNUP_ENABLED?.trim();
+  return v === "1" || v?.toLowerCase() === "true";
+}
+
+identityRoutes.post("/auth/register", async (c) => {
+  if (!selfServeSignupEnabled()) {
+    return c.json(
+      {
+        error:
+          "Self-serve signup is disabled. Request access via salanor.com/contact or use an invitation.",
+      },
+      403,
+    );
+  }
+
+  let body: {
+    email?: string;
+    password?: string;
+    organization_name?: string;
+    organization_slug?: string;
+    display_name?: string;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+
+  const email = body.email?.trim();
+  const password = body.password;
+  const organizationName = body.organization_name?.trim();
+  if (!email || !password || !organizationName) {
+    return c.json({ error: "email, password, and organization_name required" }, 422);
+  }
+
+  const client = await getPool().connect();
+  try {
+    const result = await registerSelfServeOrganization(client, {
+      email,
+      password,
+      organizationName,
+      organizationSlug: body.organization_slug,
+      displayName: body.display_name,
+    });
+
+    const verifyToken = await createEmailVerificationToken(client, result.account_id);
+    const verifyUrl = `${consoleOrigin}/verify-email?token=${encodeURIComponent(verifyToken)}`;
+    await sendEmailVerificationEmail({ to: email.toLowerCase(), verifyUrl });
+
+    return c.json({
+      ok: true,
+      verify_required: true,
+      email: email.toLowerCase(),
+      organization_id: result.organization_id,
+      organization_slug: result.organization_slug,
+    });
+  } catch (err) {
+    if (err instanceof RegisterError) {
+      const status = err.code === "email_taken" ? 409 : 422;
+      return c.json({ error: err.message, code: err.code }, status);
+    }
+    if (err instanceof EmailDeliveryError) {
+      return c.json(
+        {
+          error:
+            "We could not send a verification email. Try again later or contact support.",
+          code: err.code,
+        },
+        err.code === "email_not_configured" ? 503 : 502,
+      );
+    }
+    console.error("[id] register", err);
+    return c.json({ error: "Registration failed" }, 500);
+  } finally {
+    client.release();
+  }
+});
+
+identityRoutes.post("/auth/resend-verification", async (c) => {
+  let body: { email?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+  const email = body.email?.trim().toLowerCase();
+  if (!email) {
+    return c.json({ error: "email required" }, 422);
+  }
+
+  const client = await getPool().connect();
+  try {
+    const pending = await client.query<{ account_id: string }>(
+      `SELECT account_id FROM account
+       WHERE lower(email) = $1 AND active = true AND email_verified_at IS NULL`,
+      [email],
+    );
+    const accountId = pending.rows[0]?.account_id;
+    if (accountId) {
+      const verifyToken = await createEmailVerificationToken(client, accountId);
+      const verifyUrl = `${consoleOrigin}/verify-email?token=${encodeURIComponent(verifyToken)}`;
+      await sendEmailVerificationEmail({ to: email, verifyUrl });
+    }
+    return c.json({
+      ok: true,
+      message:
+        "If your account is pending verification, we sent a new link to that address.",
+    });
+  } catch (err) {
+    if (err instanceof EmailDeliveryError) {
+      return c.json(
+        {
+          error: "Verification email could not be sent. Try again later.",
+          code: err.code,
+        },
+        503,
+      );
+    }
+    console.error("[id] resend-verification", err);
+    return c.json({ error: "Could not resend verification email" }, 500);
+  } finally {
+    client.release();
+  }
+});
+
+identityRoutes.post("/auth/onboarding/complete", async (c) => {
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  if (session.role !== "admin") {
+    return c.json({ error: "Only organization admins can complete onboarding" }, 403);
+  }
+
+  let body: { organization_name?: string; organization_slug?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+
+  const organizationName = body.organization_name?.trim();
+  if (!organizationName) {
+    return c.json({ error: "organization_name required" }, 422);
+  }
+
+  const client = await getPool().connect();
+  try {
+    const org = await completeOrganizationOnboarding(client, {
+      organizationId: session.organizationId,
+      membershipId: session.userId,
+      organizationName,
+      organizationSlug: body.organization_slug,
+    });
+    return c.json({
+      ok: true,
+      organization: {
+        organization_id: org.organization_id,
+        name: org.name,
+        slug: org.slug,
+        needs_onboarding: false,
+      },
+    });
+  } catch (err) {
+    if (err instanceof OnboardingError) {
+      const status = err.code === "slug_taken" ? 409 : 422;
+      return c.json({ error: err.message, code: err.code }, status);
+    }
+    console.error("[id] onboarding complete", err);
+    return c.json({ error: "Failed to complete onboarding" }, 500);
+  } finally {
+    client.release();
+  }
+});
+
+identityRoutes.get("/auth/onboarding/slug-preview", async (c) => {
+  const name = c.req.query("name")?.trim() ?? "";
+  if (!name) {
+    return c.json({ slug: "" });
+  }
+  return c.json({ slug: slugifyOrganizationName(name) });
+});
+
+identityRoutes.post("/auth/verify-email", async (c) => {
+  let body: { token?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+  const token = body.token?.trim();
+  if (!token) {
+    return c.json({ error: "token required" }, 422);
+  }
+
+  const client = await getPool().connect();
+  try {
+    const verified = await verifyEmailWithToken(client, token);
+    if (!verified) {
+      return c.json({ error: "Invalid or expired verification link" }, 422);
+    }
+
+    const { token: sessionToken, session } = await createSession(
+      client,
+      verified.accountId,
+      verified.organizationId,
+    );
+    setCookie(c, SALANOR_SESSION_COOKIE, sessionToken, sessionCookieOptions(60 * 60 * 24 * 7));
+    return c.json(await buildMePayload(session));
+  } finally {
+    client.release();
+  }
+});
 
 identityRoutes.post("/orgs/switch", async (c) => {
   const token = getCookie(c, SALANOR_SESSION_COOKIE);
@@ -112,6 +342,56 @@ identityRoutes.post("/orgs/switch", async (c) => {
     organization,
     organizations,
   });
+});
+
+identityRoutes.patch("/orgs/:orgId", async (c) => {
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const orgId = c.req.param("orgId");
+  if (!requireAdmin(session, orgId)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  let body: { organization_name?: string; organization_slug?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+
+  const client = await getPool().connect();
+  try {
+    const updated = await updateOrganizationProfile(client, {
+      organizationId: orgId,
+      membershipId: session.userId,
+      name: body.organization_name,
+      slug: body.organization_slug,
+    });
+    return c.json({
+      ok: true,
+      organization: {
+        organization_id: updated.organization_id,
+        name: updated.name,
+        slug: updated.slug,
+      },
+      slug_changed: updated.slug_changed,
+      message: updated.slug_changed
+        ? "Organization updated. Agent DIDs were rebound to the new URL slug."
+        : "Organization updated.",
+    });
+  } catch (err) {
+    if (err instanceof OrganizationProfileError) {
+      const status =
+        err.code === "slug_taken" ? 409 : err.code === "not_found" ? 404 : 422;
+      return c.json({ error: err.message, code: err.code }, status);
+    }
+    console.error("[id] patch org", err);
+    return c.json({ error: "Failed to update organization" }, 500);
+  } finally {
+    client.release();
+  }
 });
 
 identityRoutes.post("/orgs/create", async (c) => {
@@ -509,6 +789,30 @@ identityRoutes.patch("/account/profile", async (c) => {
   return c.json(await buildMePayload(updated));
 });
 
+identityRoutes.get("/account/login-events", async (c) => {
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const limitRaw = Number(c.req.query("limit") ?? "30");
+  const limit = Number.isFinite(limitRaw) ? limitRaw : 30;
+  const events = await listAccountLoginEvents(getPool(), session.accountId, limit);
+
+  return c.json({
+    events: events.map((e) => ({
+      event_id: e.event_id,
+      method: e.method,
+      success: e.success,
+      failure_reason: e.failure_reason,
+      ip_address: e.ip_address,
+      user_agent: e.user_agent,
+      device: describeUserAgent(e.user_agent),
+      created_at: e.created_at.toISOString(),
+    })),
+  });
+});
+
 identityRoutes.post("/account/password", async (c) => {
   const session = await requireSession(c);
   if (!session) {
@@ -624,6 +928,8 @@ export async function buildMePayload(session: ConsoleSession) {
   );
   const platformRole = await getAccountPlatformRole(getPool(), session.accountId);
 
+  const needsOnboarding = organization.needs_onboarding === true;
+
   return {
     account: {
       account_id: session.accountId,
@@ -637,6 +943,7 @@ export async function buildMePayload(session: ConsoleSession) {
     user: serializeUser(session),
     organization,
     organizations,
+    needs_onboarding: needsOnboarding,
     impersonation: session.impersonation
       ? {
           active: true,

@@ -89,6 +89,31 @@ const MIGRATIONS = [
     up: "016_spans_search_action_kinds.up.sql",
     down: "016_spans_search_action_kinds.down.sql",
   },
+  {
+    version: "017_contact_messages",
+    up: "017_contact_messages.up.sql",
+    down: "017_contact_messages.down.sql",
+  },
+  {
+    version: "018_account_oauth",
+    up: "018_account_oauth.up.sql",
+    down: "018_account_oauth.down.sql",
+  },
+  {
+    version: "019_organization_sso",
+    up: "019_organization_sso.up.sql",
+    down: "019_organization_sso.down.sql",
+  },
+  {
+    version: "020_organization_onboarding",
+    up: "020_organization_onboarding.up.sql",
+    down: "020_organization_onboarding.down.sql",
+  },
+  {
+    version: "021_account_login_events",
+    up: "021_account_login_events.up.sql",
+    down: "021_account_login_events.down.sql",
+  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {

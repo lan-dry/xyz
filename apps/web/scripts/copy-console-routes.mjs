@@ -4,9 +4,9 @@ import { fileURLToPath } from "node:url";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "app");
 const src = path.join(root, "(console)", "console");
-const dest = path.join(root, "app", "console", "attest");
-const docsSrc = path.join(root, "(marketing)", "attest", "docs", "page.tsx");
-const docsDest = path.join(root, "docs", "attest", "page.tsx");
+const dest = path.join(root, "app", "console", "aegis");
+const docsSrc = path.join(root, "(marketing)", "aegis", "docs", "page.tsx");
+const docsDest = path.join(root, "docs", "aegis", "page.tsx");
 
 function copyDir(from, to) {
   fs.mkdirSync(to, { recursive: true });

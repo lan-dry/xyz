@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   const response = NextResponse.json({
     ok: true,
-    callbackUrl: body.callbackUrl ?? "/app/console/attest",
+    callbackUrl: body.callbackUrl ?? "/app/console/aegis",
   });
   response.cookies.set(TOTP_CHALLENGE_COOKIE_NAME, await issueTotpChallengeCookie(userId), {
     httpOnly: true,

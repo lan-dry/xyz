@@ -8,13 +8,13 @@ import { ConsoleShell } from "@/components/console/console-shell";
 import { logConsoleSignIn, resolveConsoleContextWithDiagnostics } from "@/lib/console/session";
 
 export const metadata: Metadata = {
-  title: "Attest Console",
+  title: "Aegis Console",
 };
 
 export default async function ConsoleLayout({ children }: { children: ReactNode }) {
   const session = await auth();
   if (!session?.user?.id || !session.user.email) {
-    redirect(`/sign-in?callbackUrl=${encodeURIComponent("/app/console/attest")}`);
+    redirect(`/sign-in?callbackUrl=${encodeURIComponent("/app/console/aegis")}`);
   }
 
   const resolved = await resolveConsoleContextWithDiagnostics();
@@ -23,7 +23,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
   if (!ctx) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16">
-        <h1 className="text-2xl font-semibold text-ink">Attest Console</h1>
+        <h1 className="text-2xl font-semibold text-ink">Aegis Console</h1>
         <p className="mt-4 leading-relaxed text-ink/90">{CONSOLE_ACCESS_DENIED_MESSAGE}</p>
         {resolved.autoProvisionEnabled ? (
           resolved.autoProvisionError ? (
@@ -35,13 +35,13 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
           ) : (
             <p className="mt-4 text-sm text-ink/70">
               Auto-provision is enabled but no membership was created. Confirm{" "}
-              <code className="text-xs">ATTEST_DEV_ORGANIZATION_ID</code> is valid and restart{" "}
+              <code className="text-xs">AEGIS_DEV_ORGANIZATION_ID</code> is valid and restart{" "}
               <code className="text-xs">pnpm dev</code> after any <code className="text-xs">.env</code> changes.
             </p>
           )
         ) : (
           <p className="mt-4 text-sm text-ink/70">
-            For local dev, set <code className="text-xs">ATTEST_CONSOLE_AUTO_PROVISION=1</code> and restart{" "}
+            For local dev, set <code className="text-xs">AEGIS_CONSOLE_AUTO_PROVISION=1</code> and restart{" "}
             <code className="text-xs">pnpm dev</code>.
           </p>
         )}

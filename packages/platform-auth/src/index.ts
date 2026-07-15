@@ -20,12 +20,47 @@ export {
   setAccountPassword,
   type DevLoginResult,
 } from "./dev-login.js";
+export {
+  findAccountIdByOAuth,
+  linkOAuthIdentity,
+  resolveOAuthLogin,
+  resolveOrCreateOAuthLogin,
+  registerSelfServeViaOAuth,
+  OAuthLoginError,
+  type OAuthLoginResult,
+  type OAuthProvider,
+} from "./oauth-account.js";
+export {
+  completeOrganizationOnboarding,
+  organizationNeedsOnboarding,
+  slugifyOrganizationName,
+  OnboardingError,
+  rebindOrganizationSlug,
+} from "./onboarding.js";
+export {
+  updateOrganizationProfile,
+  OrganizationProfileError,
+} from "./organization-profile.js";
+export { cleanupAbandonedPendingOrganizations } from "./abandon-onboarding.js";
+export {
+  provisionJitSsoMember,
+  resolveSsoOrganizationBySlug,
+  type SsoOrgContext,
+} from "./sso-jit.js";
+export {
+  recordAccountLoginEvent,
+  listAccountLoginEvents,
+  describeUserAgent,
+  type AccountLoginEventRow,
+  type LoginMethod,
+} from "./login-events.js";
 export { hashPassword, verifyPassword } from "./password.js";
 export {
   checkRateLimit,
   getClientIp,
   ingestRateLimitKey,
   loginRateLimitKey,
+  oauthRateLimitKey,
   rateLimitResponse,
   readRateLimitEnv,
   type RateLimitResult,

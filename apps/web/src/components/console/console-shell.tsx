@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-import { CONSOLE_ATTEST_BASE, consoleAttestPath } from "@/lib/app-paths";
+import { CONSOLE_AEGIS_BASE, consoleAegisPath } from "@/lib/app-paths";
 
 import { ConsoleUserMenu } from "./console-user-menu";
 import { OrgSwitcher } from "./org-switcher";
@@ -31,26 +31,26 @@ type OrgOption = {
   role: string;
 };
 
-const COLLAPSED_KEY = "attest.console.sidebar.collapsed";
+const COLLAPSED_KEY = "aegis.console.sidebar.collapsed";
 
 const navItems: Array<{
   href: string;
   label: string;
   icon: LucideIcon;
 }> = [
-  { href: CONSOLE_ATTEST_BASE, label: "Dashboard", icon: LayoutDashboard },
-  { href: consoleAttestPath("/events"), label: "Events", icon: Activity },
-  { href: consoleAttestPath("/api-keys"), label: "API keys", icon: KeyRound },
-  { href: consoleAttestPath("/members"), label: "Members", icon: Users },
-  { href: consoleAttestPath("/audit"), label: "Audit log", icon: FileClock },
-  { href: consoleAttestPath("/policy"), label: "Policy", icon: ShieldCheck },
-  { href: consoleAttestPath("/policy/log"), label: "Policy log", icon: BadgeCheck },
-  { href: consoleAttestPath("/billing"), label: "Billing", icon: CreditCard },
-  { href: consoleAttestPath("/settings"), label: "Settings", icon: Settings },
+  { href: CONSOLE_AEGIS_BASE, label: "Dashboard", icon: LayoutDashboard },
+  { href: consoleAegisPath("/events"), label: "Events", icon: Activity },
+  { href: consoleAegisPath("/api-keys"), label: "API keys", icon: KeyRound },
+  { href: consoleAegisPath("/members"), label: "Members", icon: Users },
+  { href: consoleAegisPath("/audit"), label: "Audit log", icon: FileClock },
+  { href: consoleAegisPath("/policy"), label: "Policy", icon: ShieldCheck },
+  { href: consoleAegisPath("/policy/log"), label: "Policy log", icon: BadgeCheck },
+  { href: consoleAegisPath("/billing"), label: "Billing", icon: CreditCard },
+  { href: consoleAegisPath("/settings"), label: "Settings", icon: Settings },
 ];
 
 function isActivePath(pathname: string, href: string): boolean {
-  if (href === CONSOLE_ATTEST_BASE) {
+  if (href === CONSOLE_AEGIS_BASE) {
     return pathname === href;
   }
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -105,10 +105,10 @@ export function ConsoleShell({
         <div className={`mb-6 flex ${collapsed ? "justify-center" : "items-center justify-between"}`}>
           {!collapsed ? (
             <Link
-              href={CONSOLE_ATTEST_BASE}
+              href={CONSOLE_AEGIS_BASE}
               className="text-sm font-semibold tracking-tight text-[var(--console-fg)] no-underline"
             >
-              Attest Console
+              Aegis Console
             </Link>
           ) : null}
           <button

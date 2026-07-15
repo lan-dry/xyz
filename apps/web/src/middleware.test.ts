@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CONSOLE_ATTEST_BASE } from "@/lib/app-paths";
+import { CONSOLE_AEGIS_BASE } from "@/lib/app-paths";
 import { resetPublicSiteCache } from "@/lib/public-hosts";
 
 type MiddlewareHandlerCtx = {
@@ -73,7 +73,7 @@ describe("middleware host routing", () => {
 
   it("rewrites dev console path before auth", async () => {
     const middleware = (await import("./middleware")).default;
-    const res = await middleware(createReq(CONSOLE_ATTEST_BASE, null), middlewareCtx);
+    const res = await middleware(createReq(CONSOLE_AEGIS_BASE, null), middlewareCtx);
     expect(res?.headers.get("x-middleware-rewrite")).toContain("/console");
   });
 
@@ -92,6 +92,6 @@ describe("middleware host routing", () => {
     const middleware = (await import("./middleware")).default;
     const res = await middleware(createReq("/console", null, "salanor.com"), middlewareCtx);
     expect(res?.status).toBe(301);
-    expect(res?.headers.get("location")).toBe("https://app.salanor.com/console/attest");
+    expect(res?.headers.get("location")).toBe("https://app.salanor.com/console/aegis");
   });
 });

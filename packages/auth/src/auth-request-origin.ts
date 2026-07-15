@@ -28,13 +28,13 @@ export function areLoopbackSiblingOrigins(a: string, b: string): boolean {
 
 /**
  * Collapse absolute loopback callback URLs to a same-origin path so Auth.js
- * does not persist a sibling host (e.g. app.attest.localhost) when signing in on localhost.
+ * does not persist a sibling host (e.g. app.aegis.localhost) when signing in on localhost.
  */
 export function normalizeLoopbackCallbackUrl(
   callbackUrl: string | undefined,
   _requestHost?: string | null,
 ): string {
-  const fallback = "/app/console/attest";
+  const fallback = "/app/console/aegis";
   if (!callbackUrl?.trim()) return fallback;
   const trimmed = callbackUrl.trim();
   if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed;

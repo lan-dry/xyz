@@ -2,7 +2,7 @@ import type { AuthUserIdRow, IdentityLinkMembershipsRow, SalanorAuthPrisma } fro
 
 /** Shown when sign-in succeeds for auth but user has no console org membership. */
 export const CONSOLE_ACCESS_DENIED_MESSAGE =
-  "Your account is not a member of any Attest organization. Ask your administrator for an invite.";
+  "Your account is not a member of any Aegis organization. Ask your administrator for an invite.";
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -61,7 +61,7 @@ export async function isAllowedProductSignIn(
   isAdmin: (e: string | null | undefined) => Promise<boolean>,
 ): Promise<boolean> {
   if (await isAdmin(email)) return true;
-  if (process.env.ATTEST_CONSOLE_AUTO_PROVISION === "1" && email?.trim()) {
+  if (process.env.AEGIS_CONSOLE_AUTO_PROVISION === "1" && email?.trim()) {
     return true;
   }
   if (await hasPendingConsoleInviteByEmail(prisma, email)) {

@@ -19,7 +19,7 @@ export default async function AdminOrganizationsPage() {
     <section className="space-y-6">
       <AdminPageHeader
         title="Organizations"
-        subtitle="Tenant records synced from Attest console provisioning."
+        subtitle="Tenant records synced from Aegis console provisioning."
         actions={<AdminReadOnlyBadge />}
       />
 

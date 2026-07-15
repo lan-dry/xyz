@@ -16,6 +16,7 @@
     "@hono/node-server": "^1.14.4",
     "@salanor/observability": "workspace:*",
     "@salanor/platform-auth": "workspace:*",
+    "@workos-inc/node": "^7.41.0",
     "dotenv": "^16.4.7",
     "hono": "^4.7.11",
     "pg": "^8.16.0"

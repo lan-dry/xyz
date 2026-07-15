@@ -1,4 +1,4 @@
-export const CONSOLE_THEME_KEY = "attest.console.theme";
+export const CONSOLE_THEME_KEY = "aegis.console.theme";
 
 export type ConsoleTheme = "light" | "dark";
 

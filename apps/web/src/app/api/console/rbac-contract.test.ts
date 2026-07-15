@@ -20,10 +20,10 @@ const {
   organizationInviteFindMany,
   organizationInviteFindFirst,
   organizationInviteUpdate,
-  attestPolicyFindFirst,
-  attestPolicyFindMany,
-  attestPolicyUpdateMany,
-  attestPolicyUpdate,
+  aegisPolicyFindFirst,
+  aegisPolicyFindMany,
+  aegisPolicyUpdateMany,
+  aegisPolicyUpdate,
   prismaTransaction,
 } = vi.hoisted(() => ({
   apiKeyFindMany: vi.fn(),
@@ -37,10 +37,10 @@ const {
   organizationInviteFindMany: vi.fn(),
   organizationInviteFindFirst: vi.fn(),
   organizationInviteUpdate: vi.fn(),
-  attestPolicyFindFirst: vi.fn(),
-  attestPolicyFindMany: vi.fn(),
-  attestPolicyUpdateMany: vi.fn(),
-  attestPolicyUpdate: vi.fn(),
+  aegisPolicyFindFirst: vi.fn(),
+  aegisPolicyFindMany: vi.fn(),
+  aegisPolicyUpdateMany: vi.fn(),
+  aegisPolicyUpdate: vi.fn(),
   prismaTransaction: vi.fn(),
 }));
 
@@ -67,11 +67,11 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: organizationInviteFindFirst,
       update: organizationInviteUpdate,
     },
-    attestPolicy: {
-      findFirst: attestPolicyFindFirst,
-      findMany: attestPolicyFindMany,
-      updateMany: attestPolicyUpdateMany,
-      update: attestPolicyUpdate,
+    aegisPolicy: {
+      findFirst: aegisPolicyFindFirst,
+      findMany: aegisPolicyFindMany,
+      updateMany: aegisPolicyUpdateMany,
+      update: aegisPolicyUpdate,
     },
     $transaction: prismaTransaction,
   },
@@ -143,7 +143,7 @@ describe("console route role gates", () => {
     organizationInviteUpdate.mockResolvedValue({
       id: "invite-1",
     });
-    attestPolicyFindFirst.mockResolvedValue({
+    aegisPolicyFindFirst.mockResolvedValue({
       id: "policy-1",
       name: "Default policy",
       version: 1,
@@ -151,16 +151,16 @@ describe("console route role gates", () => {
       rules: {},
       createdAt: new Date("2024-01-01T00:00:00.000Z"),
     });
-    attestPolicyFindMany.mockResolvedValue([]);
-    attestPolicyUpdate.mockResolvedValue({
+    aegisPolicyFindMany.mockResolvedValue([]);
+    aegisPolicyUpdate.mockResolvedValue({
       id: "policy-1",
     });
-    attestPolicyUpdateMany.mockResolvedValue({ count: 1 });
+    aegisPolicyUpdateMany.mockResolvedValue({ count: 1 });
     prismaTransaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
       callback({
-        attestPolicy: {
-          updateMany: attestPolicyUpdateMany,
-          update: attestPolicyUpdate,
+        aegisPolicy: {
+          updateMany: aegisPolicyUpdateMany,
+          update: aegisPolicyUpdate,
         },
       }),
     );

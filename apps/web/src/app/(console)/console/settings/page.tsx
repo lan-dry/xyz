@@ -10,7 +10,7 @@ import {
 } from "@/components/console/console-data-table";
 import { ConsolePageHeader } from "@/components/console/console-page-header";
 import { TotpSettingsCard } from "@/components/console/totp-settings-card";
-import { consoleAttestPath } from "@/lib/app-paths";
+import { consoleAegisPath } from "@/lib/app-paths";
 import { resolveConsoleContext } from "@/lib/console/session";
 import { prisma } from "@/lib/prisma";
 
@@ -99,7 +99,7 @@ export default async function ConsoleSettingsPage() {
         <p className="mt-2 text-sm text-ink/80">Manage plan and payment state for your active organization.</p>
         <Link
           className="mt-3 inline-flex rounded-lg border border-black/15 px-3 py-2 text-sm font-medium text-ink no-underline transition-colors duration-150 hover:bg-black/[0.03]"
-          href={consoleAttestPath("/billing")}
+          href={consoleAegisPath("/billing")}
         >
           Open billing
         </Link>

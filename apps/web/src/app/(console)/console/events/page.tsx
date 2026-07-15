@@ -12,7 +12,7 @@ import { ConsoleEmptyState } from "@/components/console/console-empty-state";
 import { ConsolePageHeader } from "@/components/console/console-page-header";
 import { StatusChip } from "@/components/console/status-chip";
 import { listOrgEvents } from "@/lib/console/events";
-import { consoleAttestPath } from "@/lib/app-paths";
+import { consoleAegisPath } from "@/lib/app-paths";
 import { resolveConsoleContext } from "@/lib/console/session";
 import { formatDateTime } from "@/lib/format-datetime";
 import { prisma } from "@/lib/prisma";
@@ -23,7 +23,7 @@ export default async function ConsoleEventsPage() {
 
   const [events, hasActivePolicy] = await Promise.all([
     listOrgEvents(ctx.activeOrgId, 100),
-    prisma.attestPolicy.findFirst({
+    prisma.aegisPolicy.findFirst({
       where: { organizationId: ctx.activeOrgId, enabled: true },
       select: { id: true },
     }),
@@ -60,7 +60,7 @@ export default async function ConsoleEventsPage() {
           description="Create an API key and ingest a demo payload to start seeing event logs."
           action={
             <Link
-              href={consoleAttestPath("/api-keys")}
+              href={consoleAegisPath("/api-keys")}
               className={`inline-flex rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors duration-150 ${consoleInkCtaClass}`}
             >
               Create API key

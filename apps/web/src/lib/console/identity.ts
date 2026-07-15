@@ -10,7 +10,7 @@ import { ConsoleForbiddenError, roleMeetsMinimum } from "./roles";
 const AUTO_PROVISION_TRUTHY = new Set(["1", "true", "yes", "on"]);
 
 export function isConsoleAutoProvisionEnabled(): boolean {
-  const raw = process.env.ATTEST_CONSOLE_AUTO_PROVISION;
+  const raw = process.env.AEGIS_CONSOLE_AUTO_PROVISION;
   if (!raw) {
     return false;
   }

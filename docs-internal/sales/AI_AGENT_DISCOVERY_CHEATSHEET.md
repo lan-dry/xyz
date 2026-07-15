@@ -70,7 +70,7 @@
 | CISO / AppSec | blast radius, tool sprawl, shadow AI | Allow/deny, identity, no silent exfil |
 | Compliance / Legal | accountability, human oversight | Named approver, policy version, export |
 | Internal audit | sample testing, control effectiveness | Sample traces ↔ policy |
-| Risk / Insurance | loss control, attestation | Deny rate, approvals, anomaly signals |
+| Risk / Insurance | loss control, cryptographic proof | Deny rate, approvals, anomaly signals |
 | Engineering | debuggability, repro | Trace, tool I/O (redacted), errors |
 | Business owner | trust with customers | Plain English: “blocked because rule X” |
 
