@@ -1,0 +1,9 @@
+{
+  "name": "@salanor/sdk-conformance-runner",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@salanor/aegis": "workspace:*"
+  }
+}

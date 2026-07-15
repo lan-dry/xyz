@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "salanor-aegis"
+version = "0.2.0"
+description = "Salanor Aegis APS-1 signing, ingest, spans, and policy (Python pilot-ready)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+dependencies = [
+  "jcs>=0.2.1",
+  "PyNaCl>=1.5.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["salanor_aegis"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

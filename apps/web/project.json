@@ -1,0 +1,54 @@
+{
+  "name": "web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/web/src",
+  "tags": ["type:app", "scope:web"],
+  "targets": {
+    "db-generate": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["{workspaceRoot}/prisma/schema.prisma"],
+      "options": {
+        "command": "prisma generate",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["db-generate"],
+      "cache": true,
+      "inputs": ["default", "^production", { "externalDependencies": ["next"] }],
+      "outputs": [
+        "{workspaceRoot}/apps/web/.next",
+        "{workspaceRoot}/apps/web/.next/!(cache)"
+      ],
+      "options": {
+        "command": "next build",
+        "cwd": "apps/web",
+        "tty": false
+      }
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "next dev",
+        "cwd": "apps/web"
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "next start",
+        "cwd": "apps/web"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec vitest run --config apps/web/vitest.config.ts"
+      }
+    }
+  }
+}

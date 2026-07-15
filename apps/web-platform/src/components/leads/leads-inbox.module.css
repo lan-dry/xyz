@@ -1,0 +1,247 @@
+.when {
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  color: var(--console-fg-muted);
+}
+
+.searchInput {
+  padding-left: 2.75rem !important;
+}
+
+.nameBtn {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 500;
+  color: var(--console-accent-bright);
+  cursor: pointer;
+  text-align: left;
+}
+
+.nameBtn:hover {
+  text-decoration: underline;
+}
+
+.email {
+  font-size: 0.75rem;
+  color: var(--console-fg-muted);
+  margin-top: 0.125rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.badge_new {
+  background: rgba(59, 214, 195, 0.15);
+  color: var(--console-accent-bright);
+}
+
+.badge_contacted {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.badge_qualified {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.badge_closed {
+  background: var(--console-bg-subtle);
+  color: var(--console-fg-muted);
+}
+
+.badge_spam {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.75rem 0;
+}
+
+.pageInfo {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--console-fg-muted);
+}
+
+.pageControls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pageNum {
+  font-size: 0.8125rem;
+  color: var(--console-fg-muted);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer {
+  width: min(32rem, 100%);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--console-surface);
+  border-left: 1px solid var(--console-border);
+  padding: 1.5rem;
+  box-shadow: var(--console-shadow);
+}
+
+.drawerHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.drawerTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.drawerMeta {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--console-fg-muted);
+}
+
+.closeBtn {
+  border: none;
+  background: var(--console-bg-subtle);
+  border-radius: 8px;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--console-fg-muted);
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+  margin: 0 0 1.25rem;
+  font-size: 0.8125rem;
+}
+
+.metaGrid dt {
+  color: var(--console-fg-subtle);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.125rem;
+}
+
+.metaGrid dd {
+  margin: 0;
+}
+
+.messageBlock h3,
+.adminBlock > .field > span {
+  margin: 0 0 0.5rem;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--console-fg-subtle);
+  font-weight: 600;
+}
+
+.messageBody {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  font-size: 0.9375rem;
+  padding: 1rem 1.125rem;
+  border-radius: var(--console-radius-lg);
+  border: 1px solid var(--console-border);
+  background: var(--console-bg-subtle);
+  color: var(--console-fg);
+}
+
+.adminBlock {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--console-border);
+}
+
+.field {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.control {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--console-radius);
+  border: 1px solid var(--console-border);
+  background: var(--console-bg);
+  color: var(--console-fg);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.notesArea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 7.5rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--console-radius-lg);
+  border: 1px solid var(--console-border);
+  background: var(--console-bg);
+  color: var(--console-fg);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.notesArea:focus,
+.control:focus {
+  outline: none;
+  border-color: var(--console-accent);
+  box-shadow: 0 0 0 2px rgba(59, 214, 195, 0.15);
+}
+
+.notesArea::placeholder {
+  color: var(--console-fg-subtle);
+}
+
+.drawerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.error {
+  margin-top: 0.75rem;
+  color: var(--console-danger);
+  font-size: 0.8125rem;
+}

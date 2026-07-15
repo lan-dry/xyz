@@ -1,0 +1,572 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0b1f1c;
+  --color-muted: #5a6b68;
+  --color-bone: #f5f1e8;
+  --color-parchment: #e8e2d4;
+  --color-gold: #c9a24a;
+  --color-gold-program: #c9a24d;
+  --color-teal-active: #1e6b65;
+  --color-teal: #1e7f76;
+  --color-teal-deep: #0f4f49;
+  --color-teal-soft: #9fcfc7;
+  --color-console-bg: #f8faf9;
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  --font-serif: var(--font-instrument-serif), Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-bone);
+  color: var(--color-ink);
+}
+
+[data-console-shell] {
+  --console-bg: #f9fafb;
+  --console-surface: #ffffff;
+  --console-surface-muted: #f3f4f6;
+  --console-surface-hover: #f3f4f6;
+  --console-fg: #0b1f1c;
+  --console-fg-muted: #6b7280;
+  --console-fg-subtle: #9ca3af;
+  --console-border: #e5e7eb;
+  --console-border-subtle: #f3f4f6;
+  --console-nav-active-bg: #f3f4f6;
+  --console-nav-active-fg: #111827;
+  --console-nav-fg: #374151;
+  --console-nav-hover-bg: #f3f4f6;
+  --console-input-bg: #ffffff;
+  --console-input-fg: #111827;
+  --console-alert-warning-bg: #fffbeb;
+  --console-alert-warning-border: #fde68a;
+  --console-alert-warning-fg: #451a03;
+}
+
+.console-surface {
+  background: var(--console-surface);
+  border: 1px solid var(--console-border);
+  border-radius: 0.75rem;
+}
+
+.console-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--console-surface);
+  border: 1px solid var(--console-border);
+  border-radius: 0.75rem;
+}
+
+.console-input,
+.console-select {
+  height: 2.25rem;
+  border: 1px solid var(--console-border);
+  border-radius: 0.5rem;
+  background: var(--console-input-bg);
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--console-input-fg);
+}
+
+.console-input:focus,
+.console-select:focus {
+  outline: none;
+  border-color: var(--color-teal);
+}
+
+.console-alert-warning {
+  border: 1px solid var(--console-alert-warning-border);
+  background: var(--console-alert-warning-bg);
+  color: var(--console-alert-warning-fg);
+}
+
+.console-checkbox {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  border: 1px solid var(--console-border);
+  background-color: var(--console-input-bg);
+  accent-color: var(--color-ink);
+}
+
+.console-token-badge {
+  border-radius: 0.375rem;
+  border: 1px solid var(--console-border);
+  background: var(--console-surface-muted);
+  padding: 0.125rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--console-fg-muted);
+}
+
+a {
+  color: var(--color-teal);
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+[data-marketing-shell] {
+  --site-header-offset: 5.25rem;
+}
+
+@keyframes marketing-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.marketing-fade-in {
+  animation: marketing-fade-in 0.65s ease-out both;
+}
+
+.marketing-fade-in-delayed {
+  animation: marketing-fade-in 0.75s ease-out 0.12s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-fade-in,
+  .marketing-fade-in-delayed {
+    animation: none;
+  }
+}
+
+[data-marketing-shell] header .marketing-nav-link,
+[data-marketing-shell] header .marketing-nav-link:hover,
+[data-marketing-shell] header a.no-underline:not(.bg-ink) {
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+[data-marketing-shell] header a.bg-ink,
+[data-marketing-shell] header a.bg-ink:hover {
+  color: var(--color-bone) !important;
+  text-decoration: none;
+}
+
+.marketing-nav-link {
+  position: relative;
+}
+
+.marketing-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -0.125rem;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.2s ease;
+}
+
+.marketing-nav-link:hover::after,
+.marketing-nav-link:focus-visible::after {
+  transform: scaleX(1);
+}
+
+[data-marketing-shell] header [role="menu"] a,
+[data-marketing-shell] header [role="menu"] a:hover {
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+[data-console-shell] a:not(.bg-ink),
+[data-console-shell] a:not(.bg-ink):hover,
+[data-admin-shell] a,
+[data-admin-shell] a:hover {
+  color: #374151;
+  text-decoration: none;
+}
+
+[data-console-shell] a:not(.bg-ink):hover,
+[data-admin-shell] a:hover {
+  color: #111827;
+}
+
+[data-console-shell] a.bg-ink,
+[data-console-shell] a.bg-ink:hover {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.dark [data-console-shell] {
+  --console-bg: #000000;
+  --console-surface: #0a0a0a;
+  --console-surface-muted: #111111;
+  --console-surface-hover: #1a1a1a;
+  --console-fg: #f3f4f6;
+  --console-fg-muted: #d1d5db;
+  --console-fg-subtle: #9ca3af;
+  --console-border: #1f2937;
+  --console-border-subtle: #1f2937;
+  --console-nav-active-bg: #1a1a1a;
+  --console-nav-active-fg: #ffffff;
+  --console-nav-fg: #9ca3af;
+  --console-nav-hover-bg: #141414;
+  --console-input-bg: #0a0a0a;
+  --console-input-fg: #f3f4f6;
+  --console-alert-warning-bg: #1c1408;
+  --console-alert-warning-border: #78350f;
+  --console-alert-warning-fg: #fde68a;
+
+  background-color: var(--console-bg);
+  color: var(--console-fg);
+}
+
+.dark [data-console-shell] aside {
+  background-color: var(--console-surface);
+  border-color: var(--console-border);
+}
+
+.dark [data-console-shell] main {
+  background-color: var(--console-bg);
+}
+
+.dark [data-console-shell] .border-gray-200,
+.dark [data-console-shell] .border-gray-100,
+.dark [data-console-shell] .border-black\/10,
+.dark [data-console-shell] .border-black\/15,
+.dark [data-console-shell] .border-black\/20 {
+  border-color: var(--console-border);
+}
+
+.dark [data-console-shell] .bg-white {
+  background-color: var(--console-surface);
+}
+
+.dark [data-console-shell] .bg-gray-50,
+.dark [data-console-shell] .bg-gray-50\/70,
+.dark [data-console-shell] .bg-gray-50\/95,
+.dark [data-console-shell] thead.bg-gray-50,
+.dark [data-console-shell] .bg-gray-100 {
+  background-color: var(--console-surface-muted);
+}
+
+.dark [data-console-shell] .console-checkbox {
+  accent-color: var(--console-nav-active-fg);
+}
+
+.dark [data-console-shell] .hover\:bg-gray-50:hover,
+.dark [data-console-shell] .hover\:bg-gray-100:hover {
+  background-color: var(--console-surface-hover);
+}
+
+.dark [data-console-shell] .text-gray-900,
+.dark [data-console-shell] .text-gray-800,
+.dark [data-console-shell] .text-gray-700 {
+  color: var(--console-fg);
+}
+
+.dark [data-console-shell] .text-gray-600,
+.dark [data-console-shell] .text-gray-500,
+.dark [data-console-shell] .text-gray-400 {
+  color: var(--console-fg-subtle);
+}
+
+.dark [data-console-shell] .text-ink {
+  color: var(--console-fg);
+}
+
+.dark [data-console-shell] .text-ink\/90 {
+  color: #f3f4f6;
+}
+
+.dark [data-console-shell] .text-ink\/80 {
+  color: #e5e7eb;
+}
+
+.dark [data-console-shell] .text-ink\/70 {
+  color: #d1d5db;
+}
+
+.dark [data-console-shell] .text-ink\/60 {
+  color: #9ca3af;
+}
+
+.dark [data-console-shell] .text-ink\/50 {
+  color: #6b7280;
+}
+
+.dark [data-console-shell] .border-amber-200.bg-amber-50,
+.dark [data-console-shell] .bg-amber-50 {
+  background-color: var(--console-alert-warning-bg);
+  border-color: var(--console-alert-warning-border);
+  color: var(--console-alert-warning-fg);
+}
+
+.dark [data-console-shell] .text-amber-950,
+.dark [data-console-shell] .text-amber-900 {
+  color: var(--console-alert-warning-fg);
+}
+
+.dark [data-console-shell] .border-amber-300\/80.bg-white\/90,
+.dark [data-console-shell] .border-amber-300\/80 {
+  background-color: #292524;
+  border-color: var(--console-alert-warning-border);
+  color: var(--console-alert-warning-fg);
+}
+
+.dark [data-console-shell] .text-red-700,
+.dark [data-console-shell] .text-red-800 {
+  color: #fca5a5;
+}
+
+.dark [data-console-shell] .text-emerald-700 {
+  color: #6ee7b7;
+}
+
+.dark [data-console-shell] .hover\:bg-black\/\[0\.03\]:hover {
+  background-color: rgb(255 255 255 / 0.06);
+}
+
+.dark [data-console-shell] a:not(.bg-ink),
+.dark [data-console-shell] a:not(.bg-ink):hover {
+  color: var(--console-fg-muted);
+}
+
+.dark [data-console-shell] a:not(.bg-ink):hover {
+  color: var(--console-fg);
+}
+
+.dark [data-console-shell] a.bg-ink,
+.dark [data-console-shell] a.bg-ink:hover {
+  color: #ffffff;
+}
+
+.dark [data-console-shell] nav a.bg-gray-100 {
+  background-color: var(--console-nav-active-bg);
+  color: var(--console-nav-active-fg) !important;
+}
+
+.dark [data-console-shell] .bg-emerald-100 {
+  background-color: #052e16;
+}
+
+.dark [data-console-shell] .text-emerald-800 {
+  color: #6ee7b7;
+}
+
+.dark [data-console-shell] .bg-amber-100 {
+  background-color: #422006;
+}
+
+.dark [data-console-shell] .bg-red-100 {
+  background-color: #450a0a;
+}
+
+[data-admin-shell] {
+  --admin-bg: #f9fafb;
+  --admin-surface: #ffffff;
+  --admin-surface-muted: #f3f4f6;
+  --admin-surface-hover: #f3f4f6;
+  --admin-fg: #0b1f1c;
+  --admin-fg-muted: #6b7280;
+  --admin-fg-subtle: #9ca3af;
+  --admin-border: #e5e7eb;
+  --admin-border-subtle: #f3f4f6;
+  --admin-nav-active-bg: #f3f4f6;
+  --admin-nav-active-fg: #111827;
+  --admin-nav-fg: #374151;
+  --admin-nav-hover-bg: #f3f4f6;
+  --admin-input-bg: #ffffff;
+  --admin-input-fg: #111827;
+  --admin-alert-warning-bg: #fffbeb;
+  --admin-alert-warning-border: #fde68a;
+  --admin-alert-warning-fg: #451a03;
+}
+
+.admin-surface {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 0.75rem;
+}
+
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 0.75rem;
+}
+
+.admin-input,
+.admin-select,
+.admin-textarea {
+  border: 1px solid var(--admin-border);
+  border-radius: 0.5rem;
+  background: var(--admin-input-bg);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--admin-input-fg);
+}
+
+.admin-input:focus,
+.admin-select:focus,
+.admin-textarea:focus {
+  outline: none;
+  border-color: var(--color-teal);
+}
+
+.admin-token-badge {
+  border-radius: 0.375rem;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface-muted);
+  padding: 0.125rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--admin-fg-muted);
+}
+
+[data-admin-shell] a:not(.bg-ink),
+[data-admin-shell] a:not(.bg-ink):hover {
+  color: var(--admin-nav-fg);
+  text-decoration: none;
+}
+
+[data-admin-shell] a:not(.bg-ink):hover {
+  color: var(--admin-nav-active-fg);
+}
+
+[data-admin-shell] a.bg-ink,
+[data-admin-shell] a.bg-ink:hover {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.dark [data-admin-shell] {
+  --admin-bg: #000000;
+  --admin-surface: #0a0a0a;
+  --admin-surface-muted: #111111;
+  --admin-surface-hover: #1a1a1a;
+  --admin-fg: #f3f4f6;
+  --admin-fg-muted: #d1d5db;
+  --admin-fg-subtle: #9ca3af;
+  --admin-border: #1f2937;
+  --admin-border-subtle: #1f2937;
+  --admin-nav-active-bg: #1a1a1a;
+  --admin-nav-active-fg: #ffffff;
+  --admin-nav-fg: #9ca3af;
+  --admin-nav-hover-bg: #141414;
+  --admin-input-bg: #0a0a0a;
+  --admin-input-fg: #f3f4f6;
+  --admin-alert-warning-bg: #1c1408;
+  --admin-alert-warning-border: #78350f;
+  --admin-alert-warning-fg: #fde68a;
+
+  background-color: var(--admin-bg);
+  color: var(--admin-fg);
+}
+
+.dark [data-admin-shell] aside {
+  background-color: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+.dark [data-admin-shell] main {
+  background-color: var(--admin-bg);
+}
+
+.dark [data-admin-shell] .border-gray-200,
+.dark [data-admin-shell] .border-gray-100,
+.dark [data-admin-shell] .border-black\/10,
+.dark [data-admin-shell] .border-black\/15,
+.dark [data-admin-shell] .border-black\/20 {
+  border-color: var(--admin-border);
+}
+
+.dark [data-admin-shell] .bg-white {
+  background-color: var(--admin-surface);
+}
+
+.dark [data-admin-shell] .bg-gray-50,
+.dark [data-admin-shell] .bg-gray-50\/70,
+.dark [data-admin-shell] .bg-gray-50\/95,
+.dark [data-admin-shell] thead.bg-gray-50,
+.dark [data-admin-shell] .bg-gray-100 {
+  background-color: var(--admin-surface-muted);
+}
+
+.dark [data-admin-shell] .hover\:bg-gray-50:hover,
+.dark [data-admin-shell] .hover\:bg-gray-100:hover {
+  background-color: var(--admin-surface-hover);
+}
+
+.dark [data-admin-shell] .text-gray-900,
+.dark [data-admin-shell] .text-gray-800,
+.dark [data-admin-shell] .text-gray-700 {
+  color: var(--admin-fg);
+}
+
+.dark [data-admin-shell] .text-gray-600,
+.dark [data-admin-shell] .text-gray-500,
+.dark [data-admin-shell] .text-gray-400 {
+  color: var(--admin-fg-subtle);
+}
+
+.dark [data-admin-shell] .text-ink {
+  color: var(--admin-fg);
+}
+
+.dark [data-admin-shell] .text-ink\/90 {
+  color: #f3f4f6;
+}
+
+.dark [data-admin-shell] .text-ink\/80 {
+  color: #e5e7eb;
+}
+
+.dark [data-admin-shell] .text-ink\/70 {
+  color: #d1d5db;
+}
+
+.dark [data-admin-shell] .text-ink\/60 {
+  color: #9ca3af;
+}
+
+.dark [data-admin-shell] .text-ink\/50 {
+  color: #6b7280;
+}
+
+.dark [data-admin-shell] a:not(.bg-ink),
+.dark [data-admin-shell] a:not(.bg-ink):hover {
+  color: var(--admin-fg-muted);
+}
+
+.dark [data-admin-shell] a:not(.bg-ink):hover {
+  color: var(--admin-fg);
+}
+
+.dark [data-admin-shell] a.bg-ink,
+.dark [data-admin-shell] a.bg-ink:hover {
+  color: #ffffff;
+}
+
+.dark [data-admin-shell] .bg-teal.text-bone {
+  background-color: var(--admin-nav-active-fg);
+  color: var(--admin-bg);
+}

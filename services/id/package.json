@@ -1,0 +1,37 @@
+{
+  "name": "id",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Salanor ID — unified console authentication (Stage 11)",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "@salanor/observability": "workspace:*",
+    "@salanor/platform-auth": "workspace:*",
+    "@workos-inc/node": "^7.41.0",
+    "dotenv": "^16.4.7",
+    "hono": "^4.7.11",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@salanor/config": "workspace:*",
+    "@types/node": "^22.15.21",
+    "@types/pg": "^8.15.4",
+    "eslint": "^9.28.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.0",
+    "vitest": "^3.2.4"
+  },
+  "nx": {
+    "tags": ["type:service", "scope:platform"]
+  }
+}

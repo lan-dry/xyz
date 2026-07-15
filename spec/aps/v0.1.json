@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://salanor.com/schemas/aps/0.1",
+  "title": "APS-1 Event 0.1",
+  "description": "Normative JSON Schema for APS-1 events as implemented by @salanor/aegis and Salanor Aegis ingest. Events are canonicalized (JCS), signed with Ed25519 (sig_alg + sig_value_b64), and verified by digest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "organization_id",
+    "trace_id",
+    "agent_id",
+    "key_id",
+    "emitted_at",
+    "actor_type",
+    "actor_principal",
+    "action_kind",
+    "policy_decision",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "APS-1 envelope major version."
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 64,
+      "description": "Unique event identifier (evt_* recommended)."
+    },
+    "organization_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Tenant / organization UUID."
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 64,
+      "description": "Correlates events in one agent run (trc_* recommended)."
+    },
+    "agent_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Logical agent identifier; binds to did:agent in console."
+    },
+    "key_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Signing key id used for sig_value_b64."
+    },
+    "emitted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when the action occurred."
+    },
+    "actor_type": {
+      "type": "string",
+      "enum": ["agent", "human", "system"]
+    },
+    "actor_principal": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human email, service account, or agent sub-principal."
+    },
+    "action_kind": {
+      "type": "string",
+      "enum": [
+        "tool_call",
+        "llm_invocation",
+        "policy_decision",
+        "human_approval",
+        "result",
+        "provenance_claim",
+        "decision",
+        "data_access",
+        "span_start",
+        "span_end"
+      ]
+    },
+    "policy_decision": {
+      "type": "string",
+      "enum": ["allow", "deny", "allow_with_obligation", "allow_retro_audit"]
+    },
+    "payload": {
+      "type": "object",
+      "description": "Action-specific body; may include tool args, model metadata, etc.",
+      "additionalProperties": true
+    },
+    "span_id": { "type": "string", "minLength": 1 },
+    "parent_span_id": { "type": "string", "minLength": 1 },
+    "parent_event_id": { "type": "string", "minLength": 1 },
+    "policy_id": { "type": "string", "minLength": 1 },
+    "tool_name": { "type": "string", "minLength": 1 },
+    "args_hash": {
+      "type": "string",
+      "description": "Hex or prefixed digest of tool arguments."
+    },
+    "args_redacted": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "result_status": { "type": "string" },
+    "output_hash": { "type": "string" },
+    "policy_obligations": {},
+    "sig_alg": {
+      "type": "string",
+      "const": "ed25519",
+      "description": "Present on signed events submitted to ingest."
+    },
+    "sig_value_b64": {
+      "type": "string",
+      "minLength": 16,
+      "description": "Base64 Ed25519 signature over the canonical signing digest."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["sig_alg"]
+      },
+      "then": {
+        "required": ["sig_value_b64"]
+      }
+    }
+  ]
+}

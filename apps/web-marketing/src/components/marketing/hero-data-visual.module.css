@@ -1,0 +1,98 @@
+.visual {
+  position: relative;
+  width: 100%;
+  min-height: 22rem;
+  aspect-ratio: 1.1;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: linear-gradient(145deg, var(--surface) 0%, var(--bg2) 100%);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.ambient {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    420px circle at var(--mx) var(--my),
+    rgba(42, 157, 138, 0.18),
+    transparent 55%
+  );
+  transition: background 0.15s ease-out;
+  pointer-events: none;
+}
+
+.edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.edge {
+  stroke: rgba(42, 157, 138, 0.15);
+  stroke-width: 0.35;
+  transition: stroke 0.35s ease;
+}
+
+.edgeActive {
+  stroke: rgba(61, 191, 170, 0.55);
+  stroke-width: 0.5;
+}
+
+.node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(10, 12, 11, 0.75);
+  backdrop-filter: blur(8px);
+  cursor: default;
+  text-align: left;
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s ease,
+    box-shadow 0.35s ease,
+    background 0.35s ease;
+  box-shadow: 0 0 0 transparent;
+}
+
+.node:hover,
+.nodeActive {
+  transform: translate(-50%, -50%) scale(1.06);
+  border-color: var(--border-bright);
+  background: rgba(23, 30, 28, 0.92);
+  box-shadow:
+    0 0 24px rgba(42, 157, 138, 0.2),
+    0 8px 32px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+
+.nodeValue {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--teal-bright);
+  letter-spacing: 0.02em;
+}
+
+.nodeLabel {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .visual {
+    min-height: 18rem;
+    margin-top: 2rem;
+  }
+}

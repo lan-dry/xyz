@@ -1,0 +1,46 @@
+.btnGhost,
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.btnGhost {
+  background: none;
+  border: 1px solid var(--border-bright);
+  color: var(--text);
+}
+
+.btnGhost:hover {
+  background: var(--teal-glow);
+  border-color: var(--teal);
+  color: var(--teal-bright);
+}
+
+.btnPrimary {
+  background: var(--teal);
+  border: 1px solid var(--teal);
+  color: #fff;
+}
+
+.btnPrimary:hover {
+  background: var(--teal-bright);
+  border-color: var(--teal-bright);
+  color: #fff;
+}
+
+@media (max-width: 899px) {
+  .btnGhostNav {
+    display: none;
+  }
+}

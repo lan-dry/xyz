@@ -1,0 +1,127 @@
+/* Matches salanor_website.html .terminal-card — scaled ~12.5% via --aegis-scale */
+.window {
+  --aegis-scale: 1.125;
+  --aegis-ink: #0b1f1c;
+  --aegis-teal-light: #2a9e94;
+  --aegis-fn: #e0b978;
+  --aegis-str: #9fe1cb;
+  --aegis-ok: #28c840;
+  --aegis-dot-r: #ff5f57;
+  --aegis-dot-y: #febc2e;
+  --aegis-dot-g: #28c840;
+
+  width: calc(420px * var(--aegis-scale));
+  max-width: 100%;
+  background: var(--aegis-ink);
+  border-radius: calc(8px * var(--aegis-scale));
+  overflow: hidden;
+  box-shadow: 0 calc(32px * var(--aegis-scale)) calc(64px * var(--aegis-scale)) rgba(11, 31, 28, 0.2);
+  font-family: var(--font-mono);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: calc(6px * var(--aegis-scale));
+  padding: calc(12px * var(--aegis-scale)) calc(16px * var(--aegis-scale));
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dot {
+  width: calc(10px * var(--aegis-scale));
+  height: calc(10px * var(--aegis-scale));
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotRed {
+  background: var(--aegis-dot-r);
+}
+
+.dotYellow {
+  background: var(--aegis-dot-y);
+}
+
+.dotGreen {
+  background: var(--aegis-dot-g);
+}
+
+.title {
+  margin-left: auto;
+  margin-right: auto;
+  font-size: calc(11px * var(--aegis-scale));
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.body {
+  padding: calc(20px * var(--aegis-scale)) calc(20px * var(--aegis-scale)) calc(24px * var(--aegis-scale));
+  font-size: calc(12.5px * var(--aegis-scale));
+  line-height: 1.9;
+}
+
+.line {
+  margin: 0;
+}
+
+.gap {
+  height: calc(12.5px * var(--aegis-scale) * 1.9);
+}
+
+.comment {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.kw {
+  color: var(--aegis-teal-light);
+}
+
+.fn {
+  color: var(--aegis-fn);
+}
+
+.str {
+  color: var(--aegis-str);
+}
+
+.dim {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.white {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.ok {
+  color: var(--aegis-ok);
+}
+
+.cursor {
+  display: inline-block;
+  width: calc(8px * var(--aegis-scale));
+  height: calc(14px * var(--aegis-scale));
+  margin-left: 0.15em;
+  background: rgba(255, 255, 255, 0.6);
+  vertical-align: middle;
+  animation: aegis-cursor-blink 1.2s steps(1) infinite;
+}
+
+@keyframes aegis-cursor-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor {
+    animation: none;
+    opacity: 1;
+  }
+}

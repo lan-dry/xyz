@@ -1,0 +1,10 @@
+{
+  "name": "@salanor/verifier-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Third-party transparency log verifier (no @salanor SDK imports)",
+  "scripts": {
+    "verify": "node verify.mts"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "aps_version": "0.1",
+  "event_id": "550e8400-e29b-41d4-a716-446655440001",
+  "recorded_at": "2026-05-16T12:00:01.000Z",
+  "action": "decision.record",
+  "subject": { "type": "workflow_step", "id": "credit-approval" },
+  "context": {
+    "inputs": {},
+    "outcome": { "decision": "deny" }
+  },
+  "signature": {
+    "alg": "local-placeholder",
+    "value": "placeholder:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "chain": {
+    "prev_event_hash": null,
+    "event_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

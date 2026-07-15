@@ -1,0 +1,25 @@
+{
+  "name": "@salanor/web-console",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/web-console",
+  "tags": ["type:app", "scope:console"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-script",
+      "options": { "script": "dev" }
+    },
+    "build": {
+      "executor": "nx:run-script",
+      "options": { "script": "build" }
+    },
+    "lint": {
+      "executor": "nx:run-script",
+      "options": { "script": "lint" }
+    },
+    "typecheck": {
+      "executor": "nx:run-script",
+      "options": { "script": "typecheck" }
+    }
+  }
+}

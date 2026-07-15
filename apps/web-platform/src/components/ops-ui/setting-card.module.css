@@ -1,0 +1,21 @@
+.settingCard {
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius-lg);
+  background: var(--console-surface);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--console-shadow);
+}
+
+.settingCard h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.settingCard p {
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  color: var(--console-fg-muted);
+  line-height: 1.5;
+}

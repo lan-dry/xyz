@@ -1,0 +1,62 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "bundler",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "strict": true,
+    "paths": {
+      "@prisma/client": [
+        "node_modules/.prisma/client"
+      ],
+      "@prisma/client/*": [
+        "node_modules/.prisma/client/*"
+      ],
+      "@salanor/aegis-bus": [
+        "packages/aegis-bus/src/index.ts"
+      ],
+      "@salanor/aegis-ledger-sdk": [
+        "packages/aegis-ledger-sdk/src/index.ts"
+      ],
+      "@salanor/aegis-ledger-sdk/ingest-handler": [
+        "packages/aegis-ledger-sdk/src/ingest-handler.ts"
+      ],
+      "@salanor/aegis-ledger-sdk/merkle": [
+        "packages/aegis-ledger-sdk/src/merkle.ts"
+      ],
+      "@salanor/aegis-storage": [
+        "packages/aegis-storage/src/index.ts"
+      ],
+      "@salanor/auth": [
+        "packages/auth/src/index.ts"
+      ],
+      "@salanor/auth/auth-config": [
+        "packages/auth/src/auth-config.ts"
+      ],
+      "@salanor/auth/server": [
+        "packages/auth/src/server.ts"
+      ],
+      "@salanor/db": [
+        "packages/db/src/index.ts"
+      ]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    "tmp",
+    "dist"
+  ]
+}

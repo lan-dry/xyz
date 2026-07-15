@@ -1,0 +1,41 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# nx
+.nx/cache
+.nx/workspace-data
+
+# next
+.next/
+out/
+
+# build
+dist/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# test / coverage
+coverage/
+
+# local compliance export artifacts
+.data/
+
+# go (future services)
+bin/
