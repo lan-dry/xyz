@@ -13,6 +13,7 @@ import {
   StatusBadge,
   ui,
 } from "@/components/console/console-ui";
+import { ProvenanceClaimPanel } from "@/components/console/provenance-claim-panel";
 import { consoleApi } from "@/lib/api";
 import { buildEventProvenance } from "@/lib/event-provenance";
 import type { EventDetail } from "@/lib/types";

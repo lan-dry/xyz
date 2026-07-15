@@ -259,7 +259,7 @@ function InviteLayout({
     <div className={styles.shell} data-console-shell>
       <aside className={styles.brand}>
         <a href={MARKETING_URL} className={styles.logo}>
-          <SalanorLogo size={32} showWordmark surface="on-light" />
+          <SalanorLogo size={32} showWordmark />
         </a>
         <h1>
           {inv ? `Join ${inv.organization_name}` : "Organization invite"}

@@ -2,10 +2,11 @@
 
 import { Building2 } from "lucide-react";
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { EmptyStatePanel } from "@/components/console/empty-state-panel";
 import { ErrorAlert, ui } from "@/components/console/console-ui";
+import { platformApi } from "@/lib/platform-api";
 
 const PLATFORM_OPS = process.env.NEXT_PUBLIC_PLATFORM_OPS === "1";
 
@@ -21,7 +22,17 @@ export default function ProvisionOrgPage() {
   const [slug, setSlug] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
+  const [plan, setPlan] = useState("free");
   const [result, setResult] = useState<ProvisionResult | null>(null);
+
+  const plansQuery = useQuery({
+    queryKey: ["platform", "plans"],
+    queryFn: () =>
+      platformApi<{ plans: Array<{ plan_slug: string; display_name: string }> }>(
+        "plan-catalog",
+      ),
+    enabled: PLATFORM_OPS,
+  });
 
   const provision = useMutation({
     mutationFn: async () => {

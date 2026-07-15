@@ -64,7 +64,7 @@ export function ConsoleShell({
   product,
   navItems = AEGIS_NAV,
   user,
-  platformStaff = false,
+  platformStaff: _platformStaff = false,
   impersonation = null,
   onEndImpersonation,
   organization,

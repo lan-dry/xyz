@@ -45,8 +45,7 @@ function VerifyForm() {
     if (qOrg && qEvent) {
       void runVerify(qOrg, qEvent);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial URL only
-  }, []);
+  }, [searchParams]);
 
   async function runVerify(slug: string, evt: string) {
     setLoading(true);

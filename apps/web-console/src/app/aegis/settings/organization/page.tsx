@@ -31,7 +31,7 @@ export default function OrganizationSettingsPage() {
   const [newOrgName, setNewOrgName] = useState("");
   const [editName, setEditName] = useState("");
   const [editSlug, setEditSlug] = useState("");
-  const [editSlugTouched, setEditSlugTouched] = useState(false);
+  const [, setEditSlugTouched] = useState(false);
   const [editMessage, setEditMessage] = useState<string | null>(null);
 
   const meQuery = useQuery({

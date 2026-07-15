@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { ConsolePage, PageHeader, ui } from "@/components/console/console-ui";
+import { ConsolePage, PageHeader } from "@/components/console/console-ui";
 
 import styles from "./settings.module.css";
 
