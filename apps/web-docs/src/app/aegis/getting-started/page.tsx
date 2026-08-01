@@ -13,7 +13,7 @@ export default function GettingStartedPage() {
     <>
       <h1>Getting started</h1>
       <p className="lead">
-        Integrate Aegis into <strong>your application</strong> — your repo, your deploy, your
+        Integrate Aegis into <strong>your application</strong>: your repo, your deploy, your
         servers. You do not clone the Salanor monorepo or run our internal <code>pnpm dev</code>.
       </p>
 
@@ -29,19 +29,19 @@ export default function GettingStartedPage() {
       </p>
       <ol>
         <li>
-          <strong>Sign up / sign in</strong> — create your organization or accept an invite.
+          <strong>Sign up / sign in</strong>: create your organization or accept an invite.
         </li>
         <li>
-          <strong>API keys</strong> — create an <em>ingest API key</em>. Copy the secret once; store
+          <strong>API keys</strong>: create an <em>ingest API key</em>. Copy the secret once; store
           it in your vault (e.g. <code>AEGIS_INGEST_API_KEY</code>).
         </li>
         <li>
-          <strong>Agents</strong> — create or select an agent. Export the <strong>Ed25519 signing
+          <strong>Agents</strong>: create or select an agent. Export the <strong>Ed25519 signing
           key</strong> (private key base64, <code>key_id</code>, <code>agent_id</code>,
           <code>organization_id</code>).
         </li>
         <li>
-          Optional: <strong>Policies</strong> — define which tools are allowed, denied, or require
+          Optional: <strong>Policies</strong>: define which tools are allowed, denied, or require
           human approval.
         </li>
       </ol>
@@ -52,7 +52,7 @@ export default function GettingStartedPage() {
         recommended for full policy proxy support; Python and Go support sign + ingest today.
       </p>
       <p>
-        TypeScript / Node example — in <em>your</em> repository:
+        TypeScript / Node example: in <em>your</em> repository:
       </p>
       <CodeBlock
         lang="bash"
@@ -65,7 +65,7 @@ pnpm add ${DOCS.npmPackage}`}
       <h2>3. Configure environment variables</h2>
       <p>
         Set these in your app&apos;s deployment (Kubernetes secret, Vercel env, <code>.env</code> on
-        your laptop — whatever you already use):
+        your laptop: whatever you already use):
       </p>
       <CodeBlock
         lang="bash"
@@ -79,7 +79,7 @@ SIGNING_PRIVATE_KEY_B64=base64-from-console-export`}
       />
       <p>
         Set <code>AEGIS_API_URL</code> to your Salanor API base (production:{" "}
-        <code>{DOCS.apiBaseUrl}</code>). Ingest routes live under <code>/v1/aegis</code> — full
+        <code>{DOCS.apiBaseUrl}</code>). Ingest routes live under <code>/v1/aegis</code>: full
         ingest URL: <code>{ingestUrl}</code>.
       </p>
 
@@ -140,11 +140,11 @@ export async function recordLlmStep(traceId: string, prompt: string, response: s
       <h2>What you do not need</h2>
       <ul>
         <li>
-          <code>cd salanor</code>, <code>docker compose</code>, or <code>pnpm dev</code> — those are
+          <code>cd salanor</code>, <code>docker compose</code>, or <code>pnpm dev</code>: those are
           for Salanor engineers running the platform locally.
         </li>
         <li>
-          Access to the Salanor GitHub monorepo — only the npm package (or HTTP API) in your app.
+          Access to the Salanor GitHub monorepo: only the npm package (or HTTP API) in your app.
         </li>
       </ul>
       <p>
@@ -155,14 +155,14 @@ export async function recordLlmStep(traceId: string, prompt: string, response: s
       <h2>Next steps</h2>
       <ul>
         <li>
-          <Link href="/aegis/events/envelope">APS event envelope</Link> — required fields
+          <Link href="/aegis/events/envelope">APS event envelope</Link>: required fields
         </li>
         <li>
-          <Link href="/aegis/api/events">POST /events</Link> — if you skip the SDK and use HTTP
+          <Link href="/aegis/api/events">POST /events</Link>: if you skip the SDK and use HTTP
           directly
         </li>
         <li>
-          <Link href="/aegis/events/payload">Payload conventions</Link> — audit-friendly metadata
+          <Link href="/aegis/events/payload">Payload conventions</Link>: audit-friendly metadata
         </li>
       </ul>
     </>

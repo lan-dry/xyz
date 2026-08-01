@@ -83,17 +83,17 @@ export default function PrivacyPage() {
           <p>Where GDPR applies, we rely on:</p>
           <ul>
             <li>
-              <strong>Contract</strong> — providing services you request or evaluate under a pilot
+              <strong>Contract:</strong> providing services you request or evaluate under a pilot
             </li>
             <li>
-              <strong>Legitimate interests</strong> — securing our platform, preventing abuse, and
+              <strong>Legitimate interests:</strong> securing our platform, preventing abuse, and
               communicating about your account
             </li>
             <li>
-              <strong>Consent</strong> — where required (e.g. optional marketing updates you opt into)
+              <strong>Consent:</strong> where required (e.g. optional marketing updates you opt into)
             </li>
             <li>
-              <strong>Legal obligation</strong> — when law requires retention or disclosure
+              <strong>Legal obligation:</strong> when law requires retention or disclosure
             </li>
           </ul>
         </LegalSection>

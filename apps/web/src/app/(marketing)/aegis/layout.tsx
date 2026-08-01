@@ -7,7 +7,7 @@ export default function AegisProductLayout({ children }: { children: ReactNode }
       {process.env.NODE_ENV === "development" ? (
         <output
           hidden
-          data-salanor-dev="aegis-served-in-place — middleware rewrite, not a redirect to salanor.com"
+          data-salanor-dev="aegis-served-in-place: middleware rewrite, not a redirect to salanor.com"
         />
       ) : null}
       {children}

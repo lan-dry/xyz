@@ -34,7 +34,7 @@ export function BillingPanel({
   return (
     <div className="space-y-6">
       <div className="console-alert-warning rounded-xl p-4 text-sm">
-        Billing is in test mode — no real charges unless you use live keys.
+        Billing is in test mode: no real charges unless you use live keys.
       </div>
 
       <div className="rounded-xl border border-[var(--console-border)] bg-[var(--console-surface)] p-5">

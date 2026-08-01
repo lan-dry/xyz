@@ -137,7 +137,7 @@ function PlatformLoginForm() {
     <div className={styles.shell}>
       <PlatformAuthAside
         title="Console for Aegis operators"
-        description="Review signed events, manage policies, approve obligations, and export compliance bundles — one identity across Salanor products."
+        description="Review signed events, manage policies, approve obligations, and export compliance bundles. One identity across Salanor products."
       />
 
       <div className={styles.formPanel}>
@@ -230,7 +230,7 @@ function PlatformLoginForm() {
               </>
             ) : (
               <>
-                No public registration yet — console accounts are provisioned after design partner
+                No public registration yet. Console accounts are provisioned after design partner
                 onboarding.{" "}
                 <a href={`${MARKETING_URL}/contact`}>Request access</a>
               </>

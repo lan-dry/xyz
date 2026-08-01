@@ -75,7 +75,7 @@ export function ConsoleShell({
   product: "aegis" | "insurance";
   navItems?: ConsoleNavItem[];
   user: ConsoleUser;
-  /** Salanor employee — link to Platform Ops app in header (not in customer sidebar). */
+  /** Salanor employee: link to Platform Ops app in header (not in customer sidebar). */
   platformStaff?: boolean;
   impersonation?: ConsoleImpersonation | null;
   onEndImpersonation?: () => void;
@@ -232,7 +232,7 @@ export function ConsoleShell({
         {impersonation ? (
           <div className={shell.impersonationBanner} role="status">
             <div>
-              <strong>Support impersonation</strong> — viewing{" "}
+              <strong>Support impersonation</strong>. Viewing{" "}
               <strong>{impersonation.organization_name}</strong> ({impersonation.organization_slug})
               {" · "}
               acting as <strong>{impersonation.actor_email}</strong>

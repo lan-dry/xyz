@@ -25,7 +25,7 @@ export function SalanorLogo({
   );
 }
 
-/** Company mark — gradient S (public/salanor-logo.png). */
+/** Company mark: gradient S (public/salanor-logo.png). */
 export function SalanorMark({
   className,
   size = 32,

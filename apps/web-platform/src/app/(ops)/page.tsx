@@ -47,18 +47,18 @@ export default function PlatformOverviewPage() {
       <div className={ui.statGrid}>
         <div className={`${ui.card} ${ui.cardPad}`}>
           <p className={ui.cardTitle}>Active organizations</p>
-          <p className={ui.cardValue}>{s?.organizations_active ?? "—"}</p>
-          <p className={ui.cardHint}>{s?.organizations_total ?? "—"} total</p>
+          <p className={ui.cardValue}>{s?.organizations_active ?? "-"}</p>
+          <p className={ui.cardHint}>{s?.organizations_total ?? "-"} total</p>
         </div>
         <div className={`${ui.card} ${ui.cardPad}`}>
           <p className={ui.cardTitle}>Active accounts</p>
-          <p className={ui.cardValue}>{s?.accounts_active ?? "—"}</p>
-          <p className={ui.cardHint}>{s?.accounts_total ?? "—"} total</p>
+          <p className={ui.cardValue}>{s?.accounts_active ?? "-"}</p>
+          <p className={ui.cardHint}>{s?.accounts_total ?? "-"} total</p>
         </div>
         <div className={`${ui.card} ${ui.cardPad}`}>
           <p className={ui.cardTitle}>Events this month</p>
           <p className={ui.cardValue}>
-            {s ? s.events_this_month.toLocaleString() : "—"}
+            {s ? s.events_this_month.toLocaleString() : "-"}
           </p>
           <p className={ui.cardHint}>All tenants</p>
         </div>

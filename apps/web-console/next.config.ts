@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-/** Server-side proxy targets (browser uses same-origin `/api/*` — see src/lib/*.ts). */
+/** Server-side proxy targets (browser uses same-origin `/api/*`: see src/lib/*.ts). */
 const aegisApiUrl =
   process.env.AEGIS_API_URL ??
   process.env.NEXT_PUBLIC_AEGIS_API_URL ??

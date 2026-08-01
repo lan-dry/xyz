@@ -484,7 +484,7 @@ export default function IngestKeysPage() {
       <Modal
         open={Boolean(editKey)}
         title="Edit API key"
-        description="You can rename a key. The secret cannot be changed — create a new key to rotate."
+        description="You can rename a key. The secret cannot be changed: create a new key to rotate."
         closeOnOverlayClick={false}
         onClose={() => {
           if (!renameKey.isPending) setEditKey(null);

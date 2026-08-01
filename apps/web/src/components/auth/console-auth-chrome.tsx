@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-/** Minimal chrome for console host sign-in — no marketing SiteHeader/Footer. */
+/** Minimal chrome for console host sign-in: no marketing SiteHeader/Footer. */
 export function ConsoleAuthChrome({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-[#f8f9fb]" data-console-auth-shell>

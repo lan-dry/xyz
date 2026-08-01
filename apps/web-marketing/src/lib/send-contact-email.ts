@@ -23,7 +23,7 @@ export async function sendContactNotification(
   row: ContactEmailPayload,
 ): Promise<{ sent: boolean; skipped?: string }> {
   const to = resolveNotifyTo(row.reason);
-  const subject = `[Salanor contact] ${row.reason.replace(/_/g, " ")} — ${row.name}`;
+  const subject = `[Salanor contact] ${row.reason.replace(/_/g, " ")} · ${row.name}`;
   const text = [
     `New contact form submission (${row.id})`,
     "",
@@ -45,7 +45,7 @@ export async function sendContactNotification(
   try {
     const result = await sendEmailViaResend({ to, subject, text, html });
     if (!result.sent && process.env.NODE_ENV === "development") {
-      console.info(`[contact] email skipped (${result.reason}) — ${row.id}`);
+      console.info(`[contact] email skipped (${result.reason}) · ${row.id}`);
     }
     return result;
   } catch (err) {

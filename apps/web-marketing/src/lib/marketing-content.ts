@@ -1,10 +1,10 @@
-/** Locked public brand lines — use consistently on site, deck, SDK README, outreach. */
+/** Locked public brand lines. Use consistently on site, deck, SDK README, outreach. */
 export const BRAND = {
   company: "Salanor",
   product: "Aegis",
   taglineShort: "Aegis by Salanor",
-  taglineFull: "Aegis, by Salanor — the provenance and liability layer for AI agents.",
-  platformLine: "Trust infrastructure for agentic systems",
+  taglineFull: "Aegis by Salanor: provenance and liability coverage for AI agents.",
+  platformLine: "Infrastructure for agent systems you can audit",
 } as const;
 
 export const INTEGRATION_LOGOS = [
@@ -71,7 +71,7 @@ export const HOW_IT_WORKS = [
   {
     step: "01",
     title: "Instrument once",
-    desc: "Connect agents to the Salanor control plane (Aegis SDK today). Every tool call and LLM turn is captured — LangGraph, CrewAI, OpenAI Agents, MCP.",
+    desc: "Connect agents with the Aegis SDK. Tool calls and LLM turns are captured across LangGraph, CrewAI, OpenAI Agents, and MCP.",
   },
   {
     step: "02",
@@ -92,7 +92,7 @@ export const HOW_IT_WORKS = [
 
 export const INVESTOR_QUOTES = [
   {
-    text: "The gap isn't model safety — it's decision defensibility when an agent acts on a Tuesday in March.",
+    text: "The gap isn't model safety. It's decision defensibility when an agent acts on a Tuesday in March.",
     attr: "Model risk · top-15 US bank (design partner)",
   },
   {
@@ -107,17 +107,16 @@ export const PRODUCTS = {
     name: "Aegis",
     tag: "Provenance & Audit",
     status: "GA Q4 2026",
-    icon: "🔐",
     brandLine: BRAND.taglineFull,
-    headline: "Litigation-ready provenance for every agent action",
+    headline: "Signed provenance for every agent action",
     subhead:
-      "Cryptographically signed, append-only infrastructure. One SDK, zero changes to agent logic. The trust substrate enterprises deploy before scaling autonomy.",
+      "Cryptographically signed, append-only records. One SDK, no changes to agent logic. Built for teams that need evidence before they scale autonomy.",
     legalNote:
-      "Admissibility depends on jurisdiction and counsel. Aegis is built to support evidentiary workflows—not a guarantee of court outcomes.",
+      "Admissibility depends on jurisdiction and counsel. Aegis supports evidentiary workflows; it does not guarantee court outcomes.",
     description:
-      "Aegis is the managed control plane for APS-1 events: ingest, policy, human approvals, witness batches, transparency proofs, and compliance exports — all scoped per organization.",
+      "Aegis is the managed control plane for APS-1 events: ingest, policy, human approvals, witness batches, transparency proofs, and compliance exports, scoped per organization.",
     features: [
-      "APS-1 open standard — Ed25519 signed events",
+      "APS-1 open standard with Ed25519 signed events",
       "Hash-chained append-only ledger, WORM cold storage",
       "Public Merkle transparency log (RFC 6962)",
       "OPA/WASM policy engine with human approvals",
@@ -175,16 +174,15 @@ const proof = await aegis.verify(eventId);`,
     name: "Aether",
     tag: "Intelligence & Orchestration",
     status: "Coming 2027",
-    icon: "⚡",
-    headline: "Risk intelligence built on your provenance ledger",
+    headline: "Risk intelligence on your provenance ledger",
     subhead:
-      "Anomaly detection, agent risk scoring, and insurer-ready telemetry — powered by Aegis data you already own. Raw events never leave your boundary.",
+      "Anomaly detection, agent risk scoring, and insurer-ready telemetry from Aegis data you already own. Raw events never leave your boundary.",
     description:
       "Aether sits above Aegis: it consumes signed event patterns (not payloads) to score workflows, recommend policies, and open the first generation of AI liability coverage.",
     features: [
       "Anomaly detection on agent action patterns",
       "Risk class scoring per tool and workflow",
-      "Insurance Bridge — differentially-private telemetry",
+      "Insurance Bridge with differentially-private telemetry",
       "Self-service policy marketplace",
       "Underwriter integrations (Munich Re, Chubb, Vouch)",
       "Actuarial-grade incident reports",
@@ -230,13 +228,13 @@ export const COMPLIANCE_STRIP = [
 export const FOUNDING_PULL_QUOTE =
   "We did not start Salanor because AI is exciting. We started it because the wrong people will pay if no one builds the receipts." as const;
 
-/** Neutral platform map — clarity without pivot narrative */
+/** Neutral platform map */
 export const SALANOR_STACK = [
   {
     name: "Salanor",
     role: "Platform",
     description:
-      "Trust infrastructure for agentic AI — provenance, identity, and liability coverage.",
+      "Provenance, identity, and liability coverage for production agent systems.",
   },
   {
     name: "Aegis",
@@ -258,11 +256,11 @@ export const SALANOR_STACK = [
   {
     name: "APS-1",
     role: "Open standard",
-    description: "Event format and verifier CLI — auditable without Salanor online.",
+    description: "Event format and verifier CLI. Auditable without Salanor online.",
   },
 ] as const;
 
-/** Sidebar on /about/founding — how we committed at incorporation */
+/** Sidebar on /about/founding */
 export const FOUNDING_PRINCIPLES = [
   {
     title: "Receipts before features",
@@ -286,7 +284,7 @@ export const FOUNDING_PRINCIPLES = [
   },
 ] as const;
 
-/** Grid on /about — operating principles today */
+/** Grid on /about */
 export const COMPANY_PRINCIPLES = [
   {
     title: "Provable over plausible",
@@ -309,7 +307,7 @@ export const COMPANY_PRINCIPLES = [
     body: "We work with the institutions whose problem we are solving.",
   },
   {
-    title: "Built for hard environments",
+    title: "Hard environments first",
     body: "Designed for places where the network drops and the dust gets in.",
   },
 ] as const;

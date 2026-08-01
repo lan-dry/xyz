@@ -265,7 +265,7 @@ function InviteLayout({
           {inv ? `Join ${inv.organization_name}` : "Organization invite"}
         </h1>
         <p>
-          Aegis console access with litigation-ready provenance — scoped to your
+          Aegis console access with signed provenance, scoped to your
           organization&apos;s ledger.
         </p>
         {inv ? (

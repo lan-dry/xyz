@@ -19,7 +19,7 @@ export type ConsoleAccount = {
   account_id: string;
   email: string;
   display_name: string | null;
-  /** Salanor employee — may open Platform Ops app (ops.salanor.com). */
+  /** Salanor employee: may open Platform Ops app (ops.salanor.com). */
   platform_role?: PlatformRole | null;
   /** @deprecated use platform_role != null */
   platform_staff?: boolean;

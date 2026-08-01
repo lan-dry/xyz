@@ -112,8 +112,8 @@ export default function SecuritySettingsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="mono">{e.ip_address ?? "—"}</td>
-                    <td>{e.device ?? "—"}</td>
+                    <td className="mono">{e.ip_address ?? "-"}</td>
+                    <td>{e.device ?? "-"}</td>
                   </tr>
                 ))}
               </tbody>

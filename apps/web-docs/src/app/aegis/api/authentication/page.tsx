@@ -20,10 +20,10 @@ export default function ApiAuthPage() {
 
       <h2>Key properties</h2>
       <ul>
-        <li>Prefix <code>aegis_</code> — treat as a secret; store in a vault or env var.</li>
-        <li>Bound to the organization that created it — events must use the same <code>organization_id</code>.</li>
+        <li>Prefix <code>aegis_</code>: treat as a secret; store in a vault or env var.</li>
+        <li>Bound to the organization that created it: events must use the same <code>organization_id</code>.</li>
         <li>Revocable from Console → API keys without rotating signing keys.</li>
-        <li>Plan limits apply (max keys, events/month) — see Errors & limits.</li>
+        <li>Plan limits apply (max keys, events/month): see Errors & limits.</li>
       </ul>
 
       <h2>Signing keys (separate from API key)</h2>
@@ -36,13 +36,13 @@ export default function ApiAuthPage() {
       <h2>Failure responses</h2>
       <ul>
         <li>
-          <code>401</code> — missing/invalid bearer token
+          <code>401</code>: missing/invalid bearer token
         </li>
         <li>
-          <code>403</code> — organization mismatch between API key and request body
+          <code>403</code>: organization mismatch between API key and request body
         </li>
         <li>
-          <code>422</code> — unknown signing key or invalid signature
+          <code>422</code>: unknown signing key or invalid signature
         </li>
       </ul>
     </>

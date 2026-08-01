@@ -138,7 +138,7 @@ export function buildGovernanceInsights(
       id: "audit-trail",
       severity: "info",
       title: "Complete model audit trail",
-      detail: `${stats.llm_steps} LLM step(s) signed and chained — exportable for SOC 2, EU AI Act, and internal risk review even when nothing was blocked.`,
+      detail: `${stats.llm_steps} LLM step(s) signed and chained: exportable for SOC 2, EU AI Act, and internal risk review even when nothing was blocked.`,
       metric: String(stats.llm_steps),
     });
   }
@@ -148,7 +148,7 @@ export function buildGovernanceInsights(
       id: "prevented-actions",
       severity: "critical",
       title: "High-risk actions stopped before execution",
-      detail: `${stats.tools_denied} tool call(s) denied by policy before any outbound API ran. Loss prevention is one benefit — not the only one.`,
+      detail: `${stats.tools_denied} tool call(s) denied by policy before any outbound API ran. Loss prevention is one benefit: not the only one.`,
       metric: String(stats.tools_denied),
     });
   }
@@ -168,7 +168,7 @@ export function buildGovernanceInsights(
       id: "human-loop",
       severity: "attention",
       title: "Human-in-the-loop required",
-      detail: `${stats.obligation_required} action(s) need explicit approval before running — separates “AI suggested” from “human authorized”.`,
+      detail: `${stats.obligation_required} action(s) need explicit approval before running: separates “AI suggested” from “human authorized”.`,
       metric: String(stats.obligation_required),
     });
   }
@@ -187,7 +187,7 @@ export function buildGovernanceInsights(
   } else if (stats.pii_fields.length > 0) {
     headline = `Visible AI activity: ${stats.llm_steps} model call(s) touching ${stats.pii_fields.length} data type(s)`;
   } else {
-    headline = `${events.length} signed event(s) — provable record of what your agent did`;
+    headline = `${events.length} signed event(s): provable record of what your agent did`;
   }
 
   return { headline, insights: insights.slice(0, 8), stats };

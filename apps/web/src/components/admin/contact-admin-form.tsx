@@ -89,7 +89,7 @@ export function ContactAdminForm({
           {message ? <span className="text-sm text-[var(--admin-fg-subtle)]">{message}</span> : null}
         </div>
       ) : (
-        <p className="text-sm text-[var(--admin-fg-subtle)]">Read-only — your role cannot update contact triage.</p>
+        <p className="text-sm text-[var(--admin-fg-subtle)]">Read-only: your role cannot update contact triage.</p>
       )}
     </form>
   );

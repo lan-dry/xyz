@@ -163,13 +163,13 @@ export default function IntegrationsSettingsPage() {
                     className="mono"
                     style={{ fontSize: "0.75rem", maxWidth: "14rem", wordBreak: "break-all" }}
                   >
-                    {d.otel_endpoint ?? "—"}
+                    {d.otel_endpoint ?? "-"}
                   </td>
                   <td>{d.status}</td>
                   <td style={{ fontSize: "0.8125rem", whiteSpace: "nowrap" }}>
                     {d.last_flushed_at
                       ? new Date(d.last_flushed_at).toLocaleString()
-                      : "—"}
+                      : "-"}
                   </td>
                   <td>
                     <button

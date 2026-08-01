@@ -20,7 +20,7 @@
   --console-radius-lg: 12px;
   --console-sidebar-w: 15rem;
   --console-sidebar-collapsed: 4rem;
-  /* Sidebar nav — match Resend row height (~36px) and looser vertical rhythm */
+  /* Sidebar nav: match Resend row height (~36px) and looser vertical rhythm */
   --console-nav-font-size: 0.875rem;
   --console-nav-line-height: 1.25rem;
   --console-nav-gap: 4px;
@@ -49,7 +49,7 @@
   font-size: 0.8125rem;
 }
 
-/* Dark theme — aligned with marketing (#0a0c0b / teal) */
+/* Dark theme: aligned with marketing (#0a0c0b / teal) */
 html.dark [data-console-shell] {
   --console-bg: #0a0c0b;
   --console-surface: #141917;

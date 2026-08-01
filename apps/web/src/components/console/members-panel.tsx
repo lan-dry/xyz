@@ -193,7 +193,7 @@ export function MembersPanel({
                         Remove
                       </button>
                     ) : (
-                      <span className="text-ink/50">{isSelf ? "Self" : "—"}</span>
+                      <span className="text-ink/50">{isSelf ? "Self" : "-"}</span>
                     )}
                   </td>
                 </tr>

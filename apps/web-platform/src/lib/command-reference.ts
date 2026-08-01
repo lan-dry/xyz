@@ -16,7 +16,7 @@ export type CommandSection = {
 
 export const ROLE_GUIDE = {
   platformRoles: {
-    title: "Platform roles (Salanor internal — one per account)",
+    title: "Platform roles (Salanor internal: one per account)",
     body:
       "Each Salanor employee account has at most one platform role: superadmin, admin, or staff (NULL = customer only). Platform roles unlock Platform Ops (:3003 / ops.salanor.com). This is separate from org roles (admin, engineer, auditor, viewer) on each membership.",
     roles: [
@@ -33,7 +33,7 @@ export const ROLE_GUIDE = {
       {
         name: "Platform staff",
         slug: "staff",
-        summary: "Read-only across tenants — visibility without mutations.",
+        summary: "Read-only across tenants: visibility without mutations.",
       },
     ],
     grant:
@@ -53,7 +53,7 @@ export const ROLE_GUIDE = {
   bootstrap: {
     title: "Bootstrap secret (automation)",
     body:
-      "`PLATFORM_BOOTSTRAP_SECRET` calls `POST /v1/id/platform/*` without a browser — used by `pnpm pilot:e2e`, provision scripts, and CI. Same platform powers as staff API routes; not a human login.",
+      "`PLATFORM_BOOTSTRAP_SECRET` calls `POST /v1/id/platform/*` without a browser: used by `pnpm pilot:e2e`, provision scripts, and CI. Same platform powers as staff API routes; not a human login.",
   },
 } as const;
 
@@ -101,7 +101,7 @@ export const COMMAND_SECTIONS: CommandSection[] = [
   },
   {
     id: "dev-servers",
-    title: "Development — individual apps",
+    title: "Development: individual apps",
     description: "Run one surface when you do not need the full stack.",
     commands: [
       {
@@ -157,7 +157,7 @@ export const COMMAND_SECTIONS: CommandSection[] = [
   {
     id: "database",
     title: "Database",
-    description: "Schema and dev data. Production uses migrate only — never seed.",
+    description: "Schema and dev data. Production uses migrate only: never seed.",
     commands: [
       {
         command: "pnpm db:migrate",
@@ -281,7 +281,7 @@ export const COMMAND_SECTIONS: CommandSection[] = [
       {
         command: "pnpm verifier:public -- --org <slug> --event <id>",
         summary: "Third-party public verify (HTTP only)",
-        details: "No SDK — simulates external auditor calling public API.",
+        details: "No SDK: simulates external auditor calling public API.",
         when: "Prove verify endpoint to partners",
       },
     ],
@@ -295,7 +295,7 @@ export const COMMAND_SECTIONS: CommandSection[] = [
         command: "pnpm pilot:e2e",
         summary: "Partner onboarding E2E",
         details:
-          "Provision org via platform API, login, ingest — full script (`tools/scripts/e2e-onboarding.mjs`).",
+          "Provision org via platform API, login, ingest: full script (`tools/scripts/e2e-onboarding.mjs`).",
         when: "Pre-release / CI",
         prerequisites: "aegis-api + id running, `PLATFORM_BOOTSTRAP_SECRET`",
       },
@@ -348,7 +348,7 @@ export const COMMAND_SECTIONS: CommandSection[] = [
         command: "pnpm compliance:worker",
         summary: "Process pending exports + due schedules",
         details:
-          "Builds ZIPs (events, policies, SOC mapping). Console toggle alone does not run this — schedule via cron in production.",
+          "Builds ZIPs (events, policies, SOC mapping). Console toggle alone does not run this: schedule via cron in production.",
         when: "Daily ops cron or after admin requests export",
       },
       {
@@ -375,7 +375,7 @@ export const COMMAND_SECTIONS: CommandSection[] = [
   {
     id: "dev-utils",
     title: "Developer utilities",
-    description: "Local-only helpers — not for production.",
+    description: "Local-only helpers: not for production.",
     commands: [
       {
         command: "pnpm dev:delete-accounts -- email@example.com",
@@ -407,7 +407,7 @@ export const COMMAND_SECTIONS: CommandSection[] = [
         command: "curl http://127.0.0.1:8091/health",
         summary: "Salanor ID health",
         details: "Auth service for console and Platform Ops login.",
-        when: "Login failures — check ID first",
+        when: "Login failures: check ID first",
       },
       {
         command: "curl http://127.0.0.1:8092/health",
@@ -438,7 +438,7 @@ export const SCENARIO_CHEATSHEET = [
   },
   {
     scenario: "Provision new pilot customer",
-    steps: "Platform Ops → Provision org — or POST /v1/id/platform/provision with bootstrap secret",
+    steps: "Platform Ops → Provision org: or POST /v1/id/platform/provision with bootstrap secret",
   },
   {
     scenario: "Monthly auditor ZIP",

@@ -16,7 +16,7 @@ export default async function AdminInternalUsersPage() {
     <section className="space-y-6">
       <AdminPageHeader
         title="Internal users"
-        subtitle="Salanor staff with admin access. Add rows via seed script or SQL — UI CRUD is not shipped yet."
+        subtitle="Salanor staff with admin access. Add rows via seed script or SQL: UI CRUD is not shipped yet."
       />
 
       {internalUsers.length === 0 ? (

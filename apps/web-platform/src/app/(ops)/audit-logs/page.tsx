@@ -75,7 +75,7 @@ export default function AuditLogsPage() {
                       {row.org_slug}
                     </div>
                   </td>
-                  <td style={{ color: "var(--console-fg-muted)" }}>{row.actor_email ?? "—"}</td>
+                  <td style={{ color: "var(--console-fg-muted)" }}>{row.actor_email ?? "-"}</td>
                   <td className="mono" style={{ fontFamily: "var(--console-font-mono)" }}>
                     {row.action}
                   </td>

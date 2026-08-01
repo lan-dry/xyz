@@ -130,7 +130,7 @@ export function AuditLogPanel({
                 <ConsoleTd className="text-gray-500">{formatDateTime(row.createdAt)}</ConsoleTd>
                 <ConsoleTd className="font-mono text-xs text-gray-700">{row.action}</ConsoleTd>
                 <ConsoleTd className="font-mono text-xs text-gray-700">
-                  {row.targetType ?? "—"}
+                  {row.targetType ?? "-"}
                   {row.targetId ? ` / ${row.targetId}` : ""}
                 </ConsoleTd>
               </ConsoleTableRow>
@@ -141,7 +141,7 @@ export function AuditLogPanel({
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
         <p>
-          Page {page} — {rangeStart}–{rangeEnd} of {total} items
+          Page {page}: {rangeStart}–{rangeEnd} of {total} items
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2">

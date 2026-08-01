@@ -26,7 +26,7 @@ export type SiteContact = {
 
 const DEFAULT_CONTACT: SiteContact = {
   intro:
-    "We read every message. Pick the path that fits, or use the form — we respond within two business days.",
+    "We read every message. Pick the path that fits, or use the form. We respond within two business days.",
   channels: [
     {
       id: "partnerships",

@@ -56,18 +56,18 @@ export default function SecurityPage() {
         <LegalSection title="What we protect">
           <ul>
             <li>
-              <strong>Integrity of APS-1 events</strong> — Ed25519 signatures, per-agent hash chains,
+              <strong>Integrity of APS-1 events:</strong> Ed25519 signatures, per-agent hash chains,
               and optional Merkle transparency proofs
             </li>
             <li>
-              <strong>Tenant isolation</strong> — organization-scoped data paths in API and console
+              <strong>Tenant isolation:</strong> organization-scoped data paths in API and console
             </li>
             <li>
-              <strong>Authentication</strong> — password hashing, session cookies, OAuth and
+              <strong>Authentication:</strong> password hashing, session cookies, OAuth and
               enterprise SSO where enabled
             </li>
             <li>
-              <strong>Operational access</strong> — Platform Ops actions audited; production access
+              <strong>Operational access:</strong> Platform Ops actions audited; production access
               on a least-privilege basis
             </li>
           </ul>

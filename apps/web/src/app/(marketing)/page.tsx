@@ -8,7 +8,7 @@ import { marketingInkCtaClass } from "@/components/marketing-cta";
 export const metadata: Metadata = {
   title: "Salanor",
   description:
-    "The trust layer for systems that act — verifiable, auditable, contestable decisions for autonomous and AI-driven systems.",
+    "The trust layer for systems that act: verifiable, auditable, contestable decisions for autonomous and AI-driven systems.",
 };
 
 const STATS = [
@@ -53,7 +53,7 @@ export default function Page() {
       >
         <div className="lg:pr-4">
           <p className="text-xs font-medium tracking-[0.2em] text-ink/60 uppercase">
-            — Infrastructure · Trust layer · 2026
+           : Infrastructure · Trust layer · 2026
           </p>
           <h1
             id="home-hero-heading"
@@ -63,7 +63,7 @@ export default function Page() {
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink/85">
             Salanor builds the infrastructure that makes autonomous and AI-driven decisions verifiable, auditable, and
-            contestable — wherever software acts on behalf of people and institutions.
+            contestable: wherever software acts on behalf of people and institutions.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/aegis" className={`${ctaBase} ${marketingInkCtaClass}`}>
@@ -100,7 +100,7 @@ export default function Page() {
           Two product lines. One philosophy.
         </h2>
         <p className="mt-4 max-w-2xl font-sans text-ink/70">
-          Evidence, human accountability, and honest status labels — built for domains where being wrong has
+          Evidence, human accountability, and honest status labels: built for domains where being wrong has
           consequences.
         </p>
 
@@ -117,7 +117,7 @@ export default function Page() {
             </span>
           </div>
           <p className="mt-3 max-w-3xl font-sans text-sm leading-relaxed text-muted sm:text-[0.9375rem]">
-            The public wire format for verifiable agent decisions — who acted, on what, with what context, plus
+            The public wire format for verifiable agent decisions: who acted, on what, with what context, plus
             signatures and a hash chain. Aegis records, validates, and replays events that conform to APS-1 draft{" "}
             <code className="text-ink/80">0.1</code>.
           </p>

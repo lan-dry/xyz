@@ -1,4 +1,4 @@
-/** Shared with Aegis Console — one theme preference across Salanor apps. */
+/** Shared with Aegis Console: one theme preference across Salanor apps. */
 export const OPS_THEME_KEY = "salanor.console.theme";
 
 export type OpsTheme = "light" | "dark";

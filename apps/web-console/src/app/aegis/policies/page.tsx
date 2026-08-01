@@ -117,7 +117,7 @@ export default function PoliciesPage() {
               Match <strong>tool names</strong> (patterns with <code className="mono">*</code>
               ). Rule types: deny/allow tool, max per transaction, or max daily total
               (catches repeated $2k wires). Events need <code className="mono">amount_usd</code>{" "}
-              in payload — see <code className="mono">docs/APS_PAYLOAD.md</code>.
+              in payload: see <code className="mono">docs/APS_PAYLOAD.md</code>.
             </>
           }
           action={
@@ -167,7 +167,7 @@ export default function PoliciesPage() {
                   <td>
                     {p.activated_at
                       ? new Date(p.activated_at).toLocaleString()
-                      : "—"}
+                      : "-"}
                   </td>
                   <td style={{ textAlign: "right" }}>
                     {p.status !== "active" ? (

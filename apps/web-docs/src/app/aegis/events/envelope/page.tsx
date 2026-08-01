@@ -28,7 +28,7 @@ export default function EventEnvelopePage() {
           { name: "actor_principal", type: "string", required: true, description: "Service account or user label" },
           { name: "action_kind", type: "enum", required: true, description: "llm_invocation | policy_decision | tool_call | human_approval | result" },
           { name: "policy_decision", type: "enum", required: true, description: "allow | deny | allow_with_obligation | allow_retro_audit" },
-          { name: "payload", type: "object", required: true, description: "Action-specific JSON — see Payload conventions" },
+          { name: "payload", type: "object", required: true, description: "Action-specific JSON: see Payload conventions" },
           { name: "tool_name", type: "string", required: false, description: "Stable tool id for policy matching" },
           { name: "parent_event_id", type: "string", required: false, description: "Links child steps in a trace" },
           { name: "policy_id", type: "string", required: false, description: "Set when policy engine attributed a rule" },
@@ -39,10 +39,10 @@ export default function EventEnvelopePage() {
 
       <h2>action_kind usage</h2>
       <ul>
-        <li><code>llm_invocation</code> — model read/generate; put <code>data_touched</code> in payload</li>
-        <li><code>policy_decision</code> — emitted by wrapFetch before tool execution</li>
-        <li><code>result</code> — HTTP outcome after allowed tool call</li>
-        <li><code>human_approval</code> — console approval action</li>
+        <li><code>llm_invocation</code>: model read/generate; put <code>data_touched</code> in payload</li>
+        <li><code>policy_decision</code>: emitted by wrapFetch before tool execution</li>
+        <li><code>result</code>: HTTP outcome after allowed tool call</li>
+        <li><code>human_approval</code>: console approval action</li>
       </ul>
 
       <h2>Minimal example (pre-signature)</h2>

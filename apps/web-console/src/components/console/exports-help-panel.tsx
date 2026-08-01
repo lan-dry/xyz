@@ -9,7 +9,7 @@ import styles from "./exports-help-panel.module.css";
 const ZIP_FILES = [
   {
     name: "events.ndjson",
-    desc: "Signed APS-1 agent events — tool calls, LLM steps, policy decisions, provenance claims.",
+    desc: "Signed APS-1 agent events: tool calls, LLM steps, policy decisions, provenance claims.",
   },
   {
     name: "policies.json",
@@ -21,7 +21,7 @@ const ZIP_FILES = [
   },
   {
     name: "audit-log.ndjson",
-    desc: "Console audit trail — invites, API keys, impersonation.",
+    desc: "Console audit trail: invites, API keys, impersonation.",
   },
   {
     name: "witness-roots.json",
@@ -102,13 +102,13 @@ export function ExportsHelpPanel({
         <h3 className={styles.sectionTitle}>Bundle types</h3>
         <ul className={styles.bundleList}>
           <li>
-            <strong>SOC 2</strong> — control mapping for trust services criteria.
+            <strong>SOC 2</strong>: control mapping for trust services criteria.
           </li>
           <li>
-            <strong>EU AI Act</strong> — AI governance artifact set.
+            <strong>EU AI Act</strong>: AI governance artifact set.
           </li>
           <li>
-            <strong>Combined</strong> — both (recommended for design partners).
+            <strong>Combined</strong>: both (recommended for design partners).
           </li>
         </ul>
       </section>
@@ -117,7 +117,7 @@ export function ExportsHelpPanel({
         <h3 className={styles.sectionTitle}>How exports work</h3>
         <p className={styles.lead}>
           <strong>One-time exports</strong> cover the last 30 days. With <em>Generate immediately</em>{" "}
-          checked, the API builds the ZIP in-process. Uncheck to queue only — useful when the worker
+          checked, the API builds the ZIP in-process. Uncheck to queue only: useful when the worker
           runs on a schedule.
         </p>
         <p className={styles.lead}>
@@ -127,14 +127,14 @@ export function ExportsHelpPanel({
         </p>
         <ul className={styles.bundleList}>
           <li>
-            <strong>Pending</strong> — queued; run <code>pnpm compliance:worker</code> on the API
+            <strong>Pending</strong>: queued; run <code>pnpm compliance:worker</code> on the API
             host.
           </li>
           <li>
-            <strong>Ready</strong> — download the ZIP; verify with the SHA-256 hash in the table.
+            <strong>Ready</strong>: download the ZIP; verify with the SHA-256 hash in the table.
           </li>
           <li>
-            <strong>Failed</strong> — check API logs; retry after fixing storage (
+            <strong>Failed</strong>: check API logs; retry after fixing storage (
             <code>COMPLIANCE_EXPORT_DIR</code>).
           </li>
         </ul>

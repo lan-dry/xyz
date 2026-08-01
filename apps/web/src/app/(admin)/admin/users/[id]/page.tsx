@@ -100,7 +100,7 @@ export default async function AdminUserDetailPage({
         <div>
           <dt className="text-[var(--admin-fg-subtle)]">Created</dt>
           <dd className="mt-1 text-[var(--admin-fg)]">
-            {createdAt ? formatDateTime(createdAt) : "—"}
+            {createdAt ? formatDateTime(createdAt) : "-"}
           </dd>
         </div>
         <div>
@@ -197,7 +197,7 @@ export default async function AdminUserDetailPage({
                   </AdminTd>
                   <AdminTd className="font-mono text-xs text-[var(--admin-fg-muted)]">{entry.action}</AdminTd>
                   <AdminTd className="text-[var(--admin-fg-muted)]">
-                    {adminAuditActorEmail(entry.metadata) ?? "—"}
+                    {adminAuditActorEmail(entry.metadata) ?? "-"}
                   </AdminTd>
                 </AdminTableRow>
               ))}

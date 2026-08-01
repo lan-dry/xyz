@@ -93,7 +93,7 @@ function VerifyForm() {
         <h1>Public event verification</h1>
         <p className={styles.lead}>
           Independently confirm that an APS event is included in the witness Merkle tree
-          and the organization transparency log — no console login required.
+          and the organization transparency log. No console login required.
         </p>
       </header>
 

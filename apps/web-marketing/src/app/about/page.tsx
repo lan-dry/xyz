@@ -10,7 +10,7 @@ import { contactUrl } from "@/lib/site-urls";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "Salanor builds trust infrastructure for agentic AI — provenance, identity, and liability coverage.",
+  description: "Salanor builds provenance, identity, and liability coverage for production agent systems.",
 };
 
 export default function AboutPage() {
@@ -19,7 +19,7 @@ export default function AboutPage() {
       <MarketingPage
         label="About"
         title="Salanor Systems"
-        lead="We build the platform enterprises need before autonomous agents run in regulated environments — not another agent framework."
+        lead="We build what enterprises need before autonomous agents run in regulated environments. Not another agent framework."
         layout="wide"
         backHref="/"
         prefix={<AboutSubnav current="about" />}
@@ -31,12 +31,12 @@ export default function AboutPage() {
           </p>
           <CompanyStack />
           <p style={{ marginTop: "1.5rem" }}>
-            We monetize the managed control plane and open standards — not lock-in on the event format.
+            We monetize the managed control plane and open standards, not lock-in on the event format.
             Any auditor can verify APS-1 events with tooling that does not require Salanor to stay online.
           </p>
           <div className={aboutStyles.foundingCard}>
             <p>
-              <strong style={{ color: "var(--text)", fontWeight: 500 }}>The founding note</strong> — why we
+              <strong style={{ color: "var(--text)", fontWeight: 500 }}>The founding note:</strong> why we
               started, and what we owe the people downstream of every agent decision.
             </p>
             <Link href="/about/founding">Read the founding note →</Link>

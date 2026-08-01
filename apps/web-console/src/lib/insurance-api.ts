@@ -16,7 +16,7 @@ export async function insuranceApi<T>(
   if (!response.ok) {
     const hint =
       response.status === 500 || response.status === 502 || response.status === 503
-        ? " — is insurance-api running? (pnpm dev includes it, or pnpm dev:insurance)"
+        ? ": is insurance-api running? (pnpm dev includes it, or pnpm dev:insurance)"
         : "";
     throw new Error((body.error ?? `Request failed (${response.status})`) + hint);
   }

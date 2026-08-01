@@ -28,18 +28,17 @@ export function HeroSection() {
             <span>Salanor · design partners 2026</span>
           </div>
           <h1>
-            Trust infrastructure for
+            Provenance you can
             <br />
-            <span className={s.heroAccent}>agentic systems</span>
+            <span className={s.heroAccent}>take to audit</span>
           </h1>
           <p className={s.heroTagline}>{BRAND.taglineFull}</p>
           <p className={s.heroSub}>
-            Salanor is the platform for provenance, identity, and liability coverage as enterprises
-            deploy autonomous agents.{" "}
+            When enterprises put agents into regulated workflows, someone has to keep the receipts.{" "}
             <Link href="/products/aegis" style={{ color: "var(--teal-bright)", textDecoration: "none" }}>
               Aegis
             </Link>{" "}
-            ships the signed ledger, policy engine, and compliance exports behind APS-1.{" "}
+            signs every action to an APS-1 ledger with policy and compliance exports.{" "}
             <Link href="/products/aether" style={{ color: "var(--text-muted)", textDecoration: "none" }}>
               Aether
             </Link>{" "}
@@ -74,10 +73,10 @@ export function PlatformSection() {
       <div className="section-inner">
         <ScrollReveal className={s.header}>
           <p className="section-label">Platform</p>
-          <h2>Infrastructure your diligence team can verify</h2>
+          <h2>Built so diligence teams can check the work</h2>
           <p>
-            Platform primitives shared across Salanor products — provenance, standards, and
-            regulatory outputs your diligence team can verify.{" "}
+            Shared primitives across Salanor products: provenance, open standards, and regulatory
+            exports.{" "}
             <Link href={publicVerifyUrl()} className={s.inlineLink}>
               Verify a published event
             </Link>{" "}
@@ -99,10 +98,10 @@ export function ProductsTeaserSection() {
       <div className="section-inner">
         <ScrollReveal className={s.header}>
           <p className="section-label">Products</p>
-          <h2>Two products. One trust platform.</h2>
+          <h2>Aegis now. Aether next.</h2>
           <p>
-            {BRAND.taglineShort} ships first (2026). Aether is intelligence and risk (2027). Same company,
-            same ledger.
+            {BRAND.taglineShort} ships in 2026. Aether follows in 2027 for intelligence and risk.
+            Same company, same ledger.
           </p>
         </ScrollReveal>
         <ScrollReveal delay={100}>
@@ -129,8 +128,8 @@ export function HowItWorksSection() {
       <div className="section-inner">
         <ScrollReveal className={s.header}>
           <p className="section-label">How it works</p>
-          <h2>From agent call to litigation-ready record</h2>
-          <p>Four steps. Fully automated. No changes to your agent code.</p>
+          <h2>From agent call to signed record</h2>
+          <p>Four steps, no rewrite of your agent code.</p>
         </ScrollReveal>
         <ScrollReveal delay={120}>
           <div className={s.steps}>
@@ -154,8 +153,8 @@ export function InvestorSection() {
       <div className="section-inner">
         <ScrollReveal className={s.header}>
           <p className="section-label">Why now</p>
-          <h2>The liability gap is the bottleneck to ARR</h2>
-          <p>What design partners tell us before they instrument production agents.</p>
+          <h2>Liability is what blocks production</h2>
+          <p>What design partners say before they put agents in real workflows.</p>
         </ScrollReveal>
         <ScrollReveal delay={80}>
           <div className={s.quotes}>
@@ -214,14 +213,14 @@ export function HomeCtaSection() {
       <div className="section-inner">
         <ScrollReveal>
           <div className={s.ctaBox}>
-            <h2>Raising the standard for agentic trust</h2>
+            <h2>Talk to the founders</h2>
             <p>
-              We are onboarding a small cohort of design partners and aligned investors for our
-              seed extension. Technical diligence calls available weekly.
+              We are onboarding a small set of design partners. Technical diligence calls are
+              available weekly.
             </p>
             <div className={s.ctaActions}>
               <Link href="/contact" className={s.btnHero}>
-                Talk to the founders →
+                Request access →
               </Link>
               <a href="mailto:partners@salanor.com" className={`${btn.btnGhost}`} style={{ padding: "0.875rem 1.75rem", fontSize: "0.9375rem" }}>
                 partners@salanor.com

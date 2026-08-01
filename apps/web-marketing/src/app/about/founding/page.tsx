@@ -12,7 +12,7 @@ import { FOUNDING_PULL_QUOTE } from "@/lib/marketing-content";
 export const metadata: Metadata = {
   title: "The founding note",
   description:
-    "Why Salanor exists — receipts, accountability, and infrastructure for high-stakes AI decisions.",
+    "Why Salanor exists: receipts, accountability, and infrastructure for high-stakes AI decisions.",
 };
 
 export default function FoundingPage() {
@@ -28,14 +28,14 @@ export default function FoundingPage() {
               <div className={aboutStyles.foundingBody}>
                 <p>
                   In 2024, a friend was denied a loan by a model no one could explain. Not because
-                  the model was wrong — because no one could show their work. The bank had a
+                  the model was wrong, but because no one could show their work. The bank had a
                   score; the applicant had a life. There was no bridge between them, and no
                   infrastructure for being careful.
                 </p>
                 <p>
                   That gap is what we are building. When AI ships into loans, triage, surveillance,
                   and every other high-stakes corner of the economy, someone has to ensure the
-                  decisions can be reconstructed, challenged, and reasoned about — not just
+                  decisions can be reconstructed, challenged, and reasoned about, not just
                   predicted.
                 </p>
                 <p>
@@ -47,11 +47,11 @@ export default function FoundingPage() {
                   <Link href="/products/aether" style={{ color: "var(--teal-bright)", textDecoration: "none" }}>
                     Aether
                   </Link>{" "}
-                  is the intelligence layer — in research for 2027, on the same APS-1 ledger. We are
+                  is risk intelligence in research for 2027, on the same APS-1 ledger. We are
                   funded to outlast the hype cycle, not to ride it.
                 </p>
               </div>
-              <p className={aboutStyles.foundingSign}>— The founding team</p>
+              <p className={aboutStyles.foundingSign}>The founding team</p>
               <div className={aboutStyles.foundingCard}>
                 <p>
                   Operating principles and how we work with design partners live on the company

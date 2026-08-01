@@ -12,7 +12,7 @@ export default function ApiEventsPage() {
       <h1>Ingest events</h1>
       <p className="lead">
         Submit a signed APS-1 event to the organization ledger. Prefer{" "}
-        <code>signAndIngest</code> from the SDK — it handles canonical JSON and Ed25519 signing.
+        <code>signAndIngest</code> from the SDK: it handles canonical JSON and Ed25519 signing.
       </p>
 
       <ApiEndpoint
@@ -84,7 +84,7 @@ export default function ApiEventsPage() {
           },
           {
             status: "200 OK",
-            body: "{ event_id, status: \"replayed\" } — idempotent duplicate",
+            body: "{ event_id, status: \"replayed\" }: idempotent duplicate",
           },
           {
             status: "401",
@@ -100,7 +100,7 @@ export default function ApiEventsPage() {
           },
           {
             status: "429",
-            body: "{ error, code: \"plan_limit\" } — monthly event cap",
+            body: "{ error, code: \"plan_limit\" }: monthly event cap",
           },
         ]}
       />

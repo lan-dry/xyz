@@ -13,7 +13,7 @@ export function CopyButton({
 }: {
   text: string;
   label?: string;
-  /** Icon only — for tight layouts beside secrets */
+  /** Icon only: for tight layouts beside secrets */
   iconOnly?: boolean;
   className?: string;
 }) {

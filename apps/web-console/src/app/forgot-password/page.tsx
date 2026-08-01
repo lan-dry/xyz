@@ -43,7 +43,7 @@ export default function ForgotPasswordPage() {
           <h2>Reset password</h2>
           <p className={styles.cardSub}>
             Enter the work email on your Salanor account. We never confirm whether an address
-            exists — you will only receive a link if it does.
+            exists. You will only receive a link if it does.
           </p>
 
           {sent ? (

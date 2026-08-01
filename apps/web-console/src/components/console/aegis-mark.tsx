@@ -1,4 +1,4 @@
-/** Branded empty-state mark — Aegis shield + ledger hex (Salanor teal). */
+/** Branded empty-state mark: Aegis shield + ledger hex (Salanor teal). */
 export function AegisMark({ className }: { className?: string }) {
   return (
     <svg

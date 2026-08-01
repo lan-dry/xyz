@@ -83,7 +83,7 @@ export function buildEventProvenance(input: {
   if (trigger) {
     lines.push({
       label: "Triggered by",
-      value: triggerDetail ? `${trigger} — ${triggerDetail}` : trigger,
+      value: triggerDetail ? `${trigger}: ${triggerDetail}` : trigger,
     });
   }
   if (resource) {

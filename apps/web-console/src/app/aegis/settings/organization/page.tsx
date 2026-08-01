@@ -189,7 +189,7 @@ export default function OrganizationSettingsPage() {
             <h3 style={{ fontSize: "0.9375rem", margin: "0 0 0.75rem" }}>Rename organization</h3>
             <p className={ui.muted} style={{ fontSize: "0.8125rem", marginBottom: "0.75rem" }}>
               Display name can change anytime. Changing the URL slug updates API paths and rebinds
-              agent DIDs (<span className="mono">did:salanor:…</span>) — coordinate with your team
+              agent DIDs (<span className="mono">did:salanor:…</span>): coordinate with your team
               before saving.
             </p>
             <label>
@@ -252,7 +252,7 @@ export default function OrganizationSettingsPage() {
               <strong>{usage.display_name}</strong>{" "}
               <span className="mono">({usage.plan})</span>
               {!usage.active ? (
-                <span style={{ color: "var(--console-danger, #b91c1c)" }}> — suspended</span>
+                <span style={{ color: "var(--console-danger, #b91c1c)" }}>: suspended</span>
               ) : null}
             </p>
             <p className={ui.muted} style={{ fontSize: "0.8125rem", margin: "0 0 0.5rem" }}>

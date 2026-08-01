@@ -208,7 +208,7 @@ export default function MembersPage() {
           <EmptyStatePanel
             icon={Users}
             title="You're the first member"
-            description="Invite colleagues by email. They'll create an account when they accept — no prior Salanor login required."
+            description="Invite colleagues by email. They'll create an account when they accept: no prior Salanor login required."
             action={
               <button
                 type="button"
@@ -236,7 +236,7 @@ export default function MembersPage() {
                 {members.map((m) => (
                   <tr key={m.membership_id}>
                     <td>{m.email}</td>
-                    <td>{m.display_name ?? "—"}</td>
+                    <td>{m.display_name ?? "-"}</td>
                     <td>
                       <select
                         className={ui.input}

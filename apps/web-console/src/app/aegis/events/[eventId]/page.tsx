@@ -190,7 +190,7 @@ export default function EventDetailPage() {
               </dd>
               <dt style={{ color: "var(--console-fg-subtle)" }}>Previous hash</dt>
               <dd className="mono" style={{ wordBreak: "break-all" }}>
-                {e.prev_event_hash ?? "—"}
+                {e.prev_event_hash ?? "-"}
               </dd>
               <dt style={{ color: "var(--console-fg-subtle)" }}>Emitted</dt>
               <dd>{new Date(e.emitted_at).toLocaleString()}</dd>

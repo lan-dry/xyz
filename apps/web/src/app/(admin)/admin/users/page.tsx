@@ -76,13 +76,13 @@ export default async function AdminUsersPage() {
                   )}
                 </AdminTd>
                 <AdminTd className="text-[var(--admin-fg-subtle)]">
-                  {user.identityLink?.createdAt ? user.identityLink.createdAt.toISOString().slice(0, 10) : "—"}
+                  {user.identityLink?.createdAt ? user.identityLink.createdAt.toISOString().slice(0, 10) : "-"}
                 </AdminTd>
-                <AdminTd className="font-mono text-xs text-[var(--admin-fg-muted)]">{user.identityLink?.id ?? "—"}</AdminTd>
+                <AdminTd className="font-mono text-xs text-[var(--admin-fg-muted)]">{user.identityLink?.id ?? "-"}</AdminTd>
                 <AdminTd className="text-xs text-[var(--admin-fg-muted)]">
                   {(user.identityLink?.memberships ?? [])
                     .map((m) => `${m.organization.slug} (${m.role})`)
-                    .join(", ") || "—"}
+                    .join(", ") || "-"}
                 </AdminTd>
                 {canSuspend ? (
                   <AdminTd className="text-right">

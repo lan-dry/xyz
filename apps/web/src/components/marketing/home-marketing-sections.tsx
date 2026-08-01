@@ -21,22 +21,22 @@ const QUOTES = [
 
 const PRIMITIVES = [
   {
-    num: "01 — CAPTURE",
+    num: "01: CAPTURE",
     name: "Capture",
-    desc: "A typed SDK call wraps any decision your application makes. Inputs, model identity, policy reference, evidence, outcome — recorded as a structured APS-1 event. Sub-millisecond on the hot path.",
+    desc: "A typed SDK call wraps any decision your application makes. Inputs, model identity, policy reference, evidence, outcome: recorded as a structured APS-1 event. Sub-millisecond on the hot path.",
   },
   {
-    num: "02 — ANCHOR",
+    num: "02: ANCHOR",
     name: "Anchor",
     desc: "Each event is hashed into a Merkle tree. Roots are committed to a tamper-evident ledger and anchored to Bitcoin via OpenTimestamps. Tampering becomes observably detectable by any third party.",
   },
   {
-    num: "03 — REPLAY",
+    num: "03: REPLAY",
     name: "Replay",
     desc: "Given an event ID, reconstruct the decision exactly. Same inputs, same model version, same policy state. Three determinism tiers recorded per event so auditors know exactly what guarantee applies.",
   },
   {
-    num: "04 — EXPORT",
+    num: "04: EXPORT",
     name: "Export",
     desc: "Generate signed evidence packs for regulators, auditors, plaintiffs, or board reporting. PDF and JSON with cryptographic proofs verifiable offline by anyone with the public key bundle.",
   },
@@ -45,7 +45,7 @@ const PRIMITIVES = [
 const ARCH_FEATURES = [
   {
     title: "Tamper-evident by design",
-    desc: "SHA-256 hash chaining makes any modification to historical events detectable by any verifier — no Salanor involvement required.",
+    desc: "SHA-256 hash chaining makes any modification to historical events detectable by any verifier: no Salanor involvement required.",
     icon: (
       <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
     ),
@@ -136,7 +136,7 @@ const PLANS = [
 ] as const;
 
 const APS_POINTS = [
-  "Prevents vendor lock-in. The format outlives any single company — including us.",
+  "Prevents vendor lock-in. The format outlives any single company: including us.",
   "Creates a network effect. More emitters means more value for every verifier in the ecosystem.",
   "We monetize the managed control plane. Not the specification.",
   "Working group: Salanor + design-partner CISOs + academic cryptographer + insurer.",
@@ -156,7 +156,7 @@ const AETHER_TRACKS = [
   {
     label: "Track 03",
     title: "Standards",
-    desc: "APS-1 — the Agent Provenance Standard, drafted with regulators and operators in the open.",
+    desc: "APS-1: the Agent Provenance Standard, drafted with regulators and operators in the open.",
   },
   {
     label: "Track 04",
@@ -218,7 +218,7 @@ export function HomeMarketingSections() {
         <MarketingContainer>
           <div className="grid gap-10 lg:grid-cols-2 lg:items-end lg:gap-16">
             <div>
-              <SectionLabel>Aegis — flagship product</SectionLabel>
+              <SectionLabel>Aegis: flagship product</SectionLabel>
               <h2 className="mt-4 font-serif text-3xl leading-[1.1] tracking-tight sm:text-4xl lg:text-[3.25rem]">
                 Four primitives.
                 <br />
@@ -362,7 +362,7 @@ export function HomeMarketingSections() {
             Priced on the unit of value.
           </h2>
           <p className="mt-3 max-w-2xl text-base text-muted">
-            Per recorded event — a consequential decision you chose to put on the record. Not per seat. Not per data
+            Per recorded event: a consequential decision you chose to put on the record. Not per seat. Not per data
             volume.
           </p>
           <ul className="mt-12 grid gap-6 lg:grid-cols-3">
@@ -407,14 +407,14 @@ export function HomeMarketingSections() {
         <MarketingContainer>
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
             <div>
-              <SectionLabel>APS-1 — Agent Provenance Standard</SectionLabel>
+              <SectionLabel>APS-1: Agent Provenance Standard</SectionLabel>
               <h2 className="mt-4 font-serif text-3xl leading-[1.1] tracking-tight sm:text-4xl lg:text-[3.25rem]">
                 An open specification.
                 <br />
                 <em className="text-teal-soft not-italic">Not our lock-in.</em>
               </h2>
               <p className="mt-6 text-base leading-relaxed text-bone/50">
-                APS-1 is Salanor&apos;s published event schema, identity method, and verification procedure — draft{" "}
+                APS-1 is Salanor&apos;s published event schema, identity method, and verification procedure: draft{" "}
                 <code className="text-bone/70">0.1</code> today, with a path to community review. Any vendor can emit
                 APS-1 events. Any auditor can verify them with open-source tooling.
               </p>
@@ -422,7 +422,7 @@ export function HomeMarketingSections() {
                 {APS_POINTS.map((point) => (
                   <li key={point} className="flex gap-3 text-sm leading-relaxed text-bone/60">
                     <span className="shrink-0 font-mono text-teal-soft" aria-hidden>
-                      —
+                     :
                     </span>
                     {point}
                   </li>
@@ -497,7 +497,7 @@ export function HomeMarketingSections() {
         <MarketingContainer>
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <SectionLabel>Aether — research program</SectionLabel>
+              <SectionLabel>Aether: research program</SectionLabel>
               <h2 className="mt-4 font-serif text-3xl leading-[1.1] tracking-tight sm:text-4xl lg:text-[3.25rem]">
                 Notes from
                 <br />

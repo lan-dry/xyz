@@ -11,7 +11,7 @@ export default function SdkPythonPage() {
     <>
       <h1>Python SDK</h1>
       <p className="lead">
-        Package <code>salanor-aegis</code> — APS-1 sign, ingest, trace/span record helpers, and
+        Package <code>salanor-aegis</code>: APS-1 sign, ingest, trace/span record helpers, and
         policy enforcement for Python agents. Matches{" "}
         <Link href="/aegis/sdk/typescript">TypeScript</Link> canonical signing (conformance vectors).
       </p>

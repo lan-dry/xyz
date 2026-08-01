@@ -69,7 +69,7 @@ export function ContactForm() {
 
         if (res.status === 201 && data.id) {
           setStatus("success");
-          setFeedback("Thank you — we received your message and will respond within two business days.");
+          setFeedback("Thank you. We received your message and will respond within two business days.");
           setName("");
           setEmail("");
           setOrganization("");

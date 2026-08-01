@@ -15,7 +15,7 @@
   font-family: var(--font-sans);
 }
 
-/* Underline only on hover or current page — never by default */
+/* Underline only on hover or current page; never by default */
 .link::after {
   content: "";
   position: absolute;

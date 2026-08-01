@@ -61,7 +61,7 @@ export function ContactForm() {
         if (res.status === 201 && data.id) {
           setStatus("success");
           setSubmittedId(data.id);
-          setFeedback("Thanks — we received your message.");
+          setFeedback("Thanks: we received your message.");
           setMessage("");
           return;
         }

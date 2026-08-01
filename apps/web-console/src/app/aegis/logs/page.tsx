@@ -143,7 +143,7 @@ export default function AuditLogsPage() {
                           </div>
                         ) : null}
                       </td>
-                      <td>{row.actor_email ?? "—"}</td>
+                      <td>{row.actor_email ?? "-"}</td>
                     </tr>
                   ))}
                 </tbody>

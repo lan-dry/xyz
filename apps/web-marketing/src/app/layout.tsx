@@ -21,11 +21,11 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Salanor — Trust infrastructure for agentic AI",
+    default: "Salanor · Provenance for agent systems",
     template: "%s · Salanor",
   },
   description:
-    "Aegis, by Salanor — the provenance and liability layer for AI agents. Signed APS-1 events, policy enforcement, and compliance exports.",
+    "Aegis by Salanor: provenance and liability coverage for AI agents. Signed APS-1 events, policy enforcement, and compliance exports.",
 };
 
 export default function RootLayout({

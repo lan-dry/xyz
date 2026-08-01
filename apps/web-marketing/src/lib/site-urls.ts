@@ -35,12 +35,12 @@ export const DOCS_URL = docsUrl("aegis");
 
 export const CONTACT_PATH = "/contact";
 
-/** Same-origin contact CTA — always relative so production never falls back to localhost. */
+/** Same-origin contact CTA; always relative so production never falls back to localhost. */
 export function contactUrl(): string {
   return CONTACT_PATH;
 }
 
-/** Default console entry — sends signed-in users to the app; others to login via layout. */
+/** Default console entry: signed-in users to the app; others to login via layout. */
 export function consoleAppUrl(path = "/aegis/traces"): string {
   return `${CONSOLE_URL.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
 }

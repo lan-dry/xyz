@@ -20,13 +20,13 @@ export function PlatformAuthAside({ title, description }: Props) {
       <p>{description}</p>
       <ul className={styles.points}>
         <li>
-          <strong>APS-1 ledger</strong> — per-organization scope
+          <strong>APS-1 ledger</strong>: per-organization scope
         </li>
         <li>
-          <strong>Human approvals</strong> — obligation workflows
+          <strong>Human approvals</strong>: obligation workflows
         </li>
         <li>
-          <strong>Exports</strong> — SOC 2, EU AI Act, OTel SIEM
+          <strong>Exports</strong>: SOC 2, EU AI Act, OTel SIEM
         </li>
       </ul>
     </aside>

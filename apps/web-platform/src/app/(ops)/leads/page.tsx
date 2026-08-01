@@ -11,7 +11,7 @@ export default function LeadsPage() {
   return (
     <OpsShell
       title="Marketing leads"
-      subtitle="Contact form submissions — search, qualify, and follow up."
+      subtitle="Contact form submissions: search, qualify, and follow up."
       staffEmail={email}
       onLogout={logout}
     >

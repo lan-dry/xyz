@@ -84,7 +84,7 @@ export default function OrganizationsPage() {
   return (
     <OpsShell
       title="Organizations"
-      subtitle="All customer tenants — change plan or suspend."
+      subtitle="All customer tenants: change plan or suspend."
       staffEmail={email}
       onLogout={logout}
     >
@@ -200,7 +200,7 @@ export default function OrganizationsPage() {
                           {o.active ? "Suspend" : "Activate"}
                         </button>
                       ) : null}
-                      {!canImpersonate && !canWriteOrgs ? "—" : null}
+                      {!canImpersonate && !canWriteOrgs ? "-" : null}
                     </div>
                   </td>
                 </tr>

@@ -156,7 +156,7 @@ export default function TraceDetailPage() {
                         <td>
                           <StatusBadge status={e.policy_decision} />
                         </td>
-                        <td className="mono">{e.tool_name ?? "—"}</td>
+                        <td className="mono">{e.tool_name ?? "-"}</td>
                         <td>
                           {e.chain_valid ? (
                             <StatusBadge status="ok" />

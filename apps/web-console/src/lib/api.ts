@@ -1,5 +1,5 @@
 /**
- * Aegis console API — browser uses same-origin `/api/console` (Next.js rewrite).
+ * Aegis console API: browser uses same-origin `/api/console` (Next.js rewrite).
  * Session cookies are set on the console origin; do not call 127.0.0.1:8080 directly.
  */
 

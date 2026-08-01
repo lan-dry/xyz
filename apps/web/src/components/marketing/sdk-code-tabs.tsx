@@ -53,7 +53,7 @@ export function SdkCodeTabs() {
             {"  "}outcome={`{{"decision": "decline", "reason": reason}}`},{"\n"}
             {")"}
             {"\n\n"}
-            <span className="text-white/25"># Returns immediately — network is async</span>
+            <span className="text-white/25"># Returns immediately: network is async</span>
             {"\n"}
             <span className="text-white/40">print</span>(decision.event_id){" "}
             <span className="text-white/25"># evt_01J7XZ4K...</span>
@@ -88,7 +88,7 @@ export function SdkCodeTabs() {
           <pre className="overflow-x-auto whitespace-pre text-white/85">
             <span className="text-white/25"># Install the open-source verification CLI</span>
             {"\n"}$ pip install aegis-verify{"\n\n"}
-            <span className="text-white/25"># Verify any evidence pack — no Salanor account required</span>
+            <span className="text-white/25"># Verify any evidence pack: no Salanor account required</span>
             {"\n"}$ aegis-verify verify ./pack_01J7XZ.zip{"\n\n"}
             <span className="text-emerald-400">✓</span> APS-1 schema valid{"\n"}
             <span className="text-emerald-400">✓</span> Ed25519 signature verified (key: cust-key-1){"\n"}

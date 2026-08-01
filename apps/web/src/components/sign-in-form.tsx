@@ -53,7 +53,7 @@ export function SignInForm({
         }
       }
     } catch {
-      // If the check endpoint fails, continue — Auth.js signIn callback is the source of truth.
+      // If the check endpoint fails, continue: Auth.js signIn callback is the source of truth.
     }
 
     const result = await signIn("nodemailer", {

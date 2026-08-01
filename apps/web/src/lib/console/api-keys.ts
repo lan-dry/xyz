@@ -24,7 +24,7 @@ export async function verifyApiKeySecret(secret: string, secretHash: string): Pr
   return bcrypt.compare(secret, secretHash);
 }
 
-/** Fingerprint for logs — never log raw secret. */
+/** Fingerprint for logs: never log raw secret. */
 export function apiKeyFingerprint(secret: string): string {
   return createHash("sha256").update(secret).digest("hex").slice(0, 12);
 }

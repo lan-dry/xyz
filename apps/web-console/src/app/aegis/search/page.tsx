@@ -133,7 +133,7 @@ export default function SearchPage() {
                   <td>
                     <StatusBadge status={h.policy_decision} />
                   </td>
-                  <td className="mono">{h.tool_name ?? "—"}</td>
+                  <td className="mono">{h.tool_name ?? "-"}</td>
                   <td>{new Date(h.emitted_at).toLocaleString()}</td>
                 </tr>
               ))}

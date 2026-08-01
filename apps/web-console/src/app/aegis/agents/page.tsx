@@ -80,7 +80,7 @@ export default function AgentsPage() {
 
       {createdCreds ? (
         <div className={`${ui.alert} ${ui.alertSuccess}`} style={{ marginBottom: "1.5rem" }}>
-          <strong>Agent created — copy SDK credentials now</strong>
+          <strong>Agent created: copy SDK credentials now</strong>
           <p style={{ margin: "0.5rem 0", fontSize: "0.8125rem" }}>
             This private key cannot be retrieved again. Store it in a secrets manager.
           </p>
@@ -130,7 +130,7 @@ export default function AgentsPage() {
                   <td className="mono">{agent.agent_id}</td>
                   <td>
                     {agent.signing_keys.length === 0 ? (
-                      <span className={ui.tableMuted}>—</span>
+                      <span className={ui.tableMuted}>-</span>
                     ) : (
                       <ul style={{ margin: 0, paddingLeft: "1.1rem" }}>
                         {agent.signing_keys.map((k) => (

@@ -1,4 +1,4 @@
-/** Salanor ID — platform auth (same-origin proxy to services/id). */
+/** Salanor ID: platform auth (same-origin proxy to services/id). */
 
 export class IdApiError extends Error {
   constructor(

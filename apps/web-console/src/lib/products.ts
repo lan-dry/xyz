@@ -1,4 +1,4 @@
-/** Salanor platform products (Stage 11 — single monorepo, multiple routes). */
+/** Salanor platform products (Stage 11: single monorepo, multiple routes). */
 export const PLATFORM_PRODUCTS = [
   {
     slug: "aegis",
