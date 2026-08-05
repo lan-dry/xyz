@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AegisMark } from "@/components/console/aegis-mark";
+import { PasswordField } from "@/components/auth/password-field";
 import { SalanorLogo } from "@/components/salanor-logo";
 import { IdApiError, idApi } from "@/lib/id-api";
 import type { InvitePreview, MeResponse } from "@/lib/types";
@@ -139,18 +140,15 @@ function InviteAcceptForm() {
                 placeholder="Alex Chen"
               />
             </label>
-            <label className={styles.field}>
-              Password
-              <input
-                className={styles.input}
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </label>
+            <PasswordField
+              label="Password"
+              fieldClassName={styles.field}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
             {error ? <p className={styles.error}>{error}</p> : null}
             <button
               type="submit"

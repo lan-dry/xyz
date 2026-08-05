@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { PasswordField } from "@/components/auth/password-field";
 import { PlatformAuthAside } from "@/components/auth/platform-auth-aside";
 import { IdApiError, idApi } from "../../lib/id-api";
 import type { MeResponse } from "../../lib/types";
@@ -181,17 +182,14 @@ function PlatformLoginForm() {
                 autoComplete="email"
               />
             </label>
-            <label className={styles.field}>
-              <span>Password</span>
-              <input
-                className={styles.input}
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </label>
+            <PasswordField
+              label="Password"
+              fieldClassName={styles.field}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
             {error ? <p className={styles.error}>{error}</p> : null}
             <p className={styles.forgotRow}>
               <Link href="/forgot-password">Forgot password?</Link>

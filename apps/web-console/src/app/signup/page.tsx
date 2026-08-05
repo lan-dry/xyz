@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { PasswordField } from "@/components/auth/password-field";
 import { PlatformAuthAside } from "@/components/auth/platform-auth-aside";
 import { idApi } from "../../lib/id-api";
 import type { MeResponse } from "../../lib/types";
@@ -123,18 +124,15 @@ function SignupForm() {
                 autoComplete="email"
               />
             </label>
-            <label className={styles.field}>
-              <span>Password</span>
-              <input
-                className={styles.input}
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={10}
-                autoComplete="new-password"
-              />
-            </label>
+            <PasswordField
+              label="Password"
+              fieldClassName={styles.field}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={10}
+              autoComplete="new-password"
+            />
             {error ? <p className={styles.error}>{error}</p> : null}
             <button type="submit" className={styles.submit} disabled={loading}>
               {loading ? "Creating…" : "Create organization"}

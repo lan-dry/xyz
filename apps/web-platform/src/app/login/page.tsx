@@ -4,6 +4,7 @@ import { Moon, Sun } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PasswordField } from "@/components/auth/password-field";
 import card from "@/components/ops-ui/setting-card.module.css";
 import { ErrorAlert, ui } from "@/components/ops-ui/ops-ui";
 import { idApi } from "@/lib/id-api";
@@ -104,16 +105,14 @@ export default function PlatformLoginPage() {
               required
             />
           </label>
-          <label className={ui.field}>
-            Password
-            <input
-              className={ui.input}
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </label>
+          <PasswordField
+            label="Password"
+            fieldClassName={ui.field}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
           {error ? <ErrorAlert message={error} /> : null}
           <button
             type="submit"
