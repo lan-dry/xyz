@@ -62,7 +62,7 @@ function PlanEditorCard({
 
   return (
     <section className={card.settingCard}>
-      <h2>
+      <h2 className={styles.heading}>
         {plan.display_name}{" "}
         <span
           style={{

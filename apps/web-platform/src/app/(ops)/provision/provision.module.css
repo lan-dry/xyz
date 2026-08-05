@@ -1,6 +1,8 @@
 .formWrap {
   width: 100%;
   max-width: 24rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .formWrap form {
