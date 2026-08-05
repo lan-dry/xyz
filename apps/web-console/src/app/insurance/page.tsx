@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ConsolePage,
   EmptyState,
-  ErrorAlert,
   LoadingBlock,
   PageHeader,
   ui,
@@ -35,13 +34,32 @@ export default function InsuranceOverviewPage() {
 
       {overview.isPending ? <LoadingBlock /> : null}
       {overview.isError ? (
-        <ErrorAlert
-          message={
-            overview.error instanceof Error
-              ? overview.error.message
-              : "Failed to load insurance overview"
-          }
-        />
+        <>
+          <div className={`${ui.alert} ${ui.alertInfo}`}>
+            Insurance API is not connected in this environment yet. Preview UI only —
+            risk metrics will appear here once the insurance service is deployed.
+          </div>
+          <div className={ui.statGrid}>
+            <div className={`${ui.card} ${ui.cardPad}`}>
+              <p className={ui.cardTitle}>Metrics</p>
+              <p className={ui.cardValue}>—</p>
+              <p className={ui.cardHint}>Awaiting service</p>
+            </div>
+            <div className={`${ui.card} ${ui.cardPad}`}>
+              <p className={ui.cardTitle}>Product</p>
+              <p className={ui.cardValue} style={{ fontSize: "1.25rem" }}>
+                insurance
+              </p>
+              <p className={ui.cardHint}>Stage 11 scaffold</p>
+            </div>
+          </div>
+          <div className={ui.tableWrap}>
+            <EmptyState
+              title="Preview — no live metrics"
+              description="Aegis ledger identity is shared. Connect INSURANCE_API_URL to a running insurance service to load organization-scoped risk data."
+            />
+          </div>
+        </>
       ) : null}
 
       {overview.data ? (

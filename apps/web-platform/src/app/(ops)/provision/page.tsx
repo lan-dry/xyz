@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
+import { PasswordField } from "@/components/auth/password-field";
 import { OpsShell } from "@/components/ops-shell";
 import card from "@/components/ops-ui/setting-card.module.css";
 
@@ -138,16 +139,14 @@ export default function ProvisionPage() {
               disabled={!canProvision}
             />
           </label>
-          <label className={ui.field}>
-            Admin password (optional)
-            <input
-              className={ui.input}
-              type="password"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              disabled={!canProvision}
-            />
-          </label>
+          <PasswordField
+            label="Admin password (optional)"
+            fieldClassName={ui.field}
+            value={adminPassword}
+            onChange={(e) => setAdminPassword(e.target.value)}
+            disabled={!canProvision}
+            autoComplete="new-password"
+          />
           <button
             type="submit"
             className={`${ui.btn} ${ui.btnPrimary}`}

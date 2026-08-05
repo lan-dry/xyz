@@ -74,7 +74,7 @@ function PlanEditorCard({
       </h2>
       <div
         className={ui.twoCol}
-        style={{ maxWidth: "42rem", gap: "1rem", marginBottom: "1rem" }}
+        style={{ maxWidth: "42rem", width: "100%", gap: "1rem", marginBottom: "1rem" }}
       >
         <label className={ui.field}>
           Events / month
@@ -120,17 +120,17 @@ function PlanEditorCard({
             <option value="yes">Yes</option>
           </select>
         </label>
+        <label className={ui.field} style={{ gridColumn: "1 / -1" }}>
+          Stripe price ID
+          <input
+            className={ui.input}
+            value={draft.stripe_price_id}
+            placeholder="price_…"
+            onChange={(e) => setDraft((d) => ({ ...d, stripe_price_id: e.target.value }))}
+            disabled={readOnly}
+          />
+        </label>
       </div>
-      <label className={ui.field} style={{ maxWidth: "24rem", display: "block" }}>
-        Stripe price ID
-        <input
-          className={ui.input}
-          value={draft.stripe_price_id}
-          placeholder="price_…"
-          onChange={(e) => setDraft((d) => ({ ...d, stripe_price_id: e.target.value }))}
-          disabled={readOnly}
-        />
-      </label>
       {!readOnly ? (
         <div className={ui.formRow} style={{ marginTop: "1rem" }}>
           <button
