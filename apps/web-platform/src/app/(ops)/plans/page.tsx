@@ -10,6 +10,8 @@ import { EmptyStatePanel, ErrorAlert, ui } from "@/components/ops-ui/ops-ui";
 import { usePlatformSession } from "@/hooks/use-platform-session";
 import { platformApi } from "@/lib/platform-api";
 
+import styles from "./plans.module.css";
+
 type PlanRow = {
   plan_slug: string;
   display_name: string;
@@ -59,7 +61,7 @@ function PlanEditorCard({
   });
 
   return (
-    <section className={card.settingCard}>
+    <section className={`${card.settingCard} ${styles.planCard}`}>
       <h2>
         {plan.display_name}{" "}
         <span
@@ -72,10 +74,7 @@ function PlanEditorCard({
           ({plan.plan_slug})
         </span>
       </h2>
-      <div
-        className={ui.twoCol}
-        style={{ maxWidth: "42rem", width: "100%", gap: "1rem", marginBottom: "1rem" }}
-      >
+      <div className={styles.fields}>
         <label className={ui.field}>
           Events / month
           <input
@@ -120,7 +119,7 @@ function PlanEditorCard({
             <option value="yes">Yes</option>
           </select>
         </label>
-        <label className={ui.field} style={{ gridColumn: "1 / -1" }}>
+        <label className={`${ui.field} ${styles.spanFull}`}>
           Stripe price ID
           <input
             className={ui.input}
@@ -132,7 +131,7 @@ function PlanEditorCard({
         </label>
       </div>
       {!readOnly ? (
-        <div className={ui.formRow} style={{ marginTop: "1rem" }}>
+        <div className={`${ui.formRow} ${styles.actions}`}>
           <button
             type="button"
             className={`${ui.btn} ${ui.btnPrimary}`}

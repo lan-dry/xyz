@@ -1,9 +1,17 @@
-.formWrap {
+.card {
+  max-width: 26rem;
   width: 100%;
-  max-width: 28rem;
 }
 
-.formWrap form,
+.formWrap {
+  width: 100%;
+}
+
+.formWrap form {
+  width: 100%;
+  max-width: none;
+}
+
 .formWrap :global(label),
 .formWrap :global(input),
 .formWrap :global(select),

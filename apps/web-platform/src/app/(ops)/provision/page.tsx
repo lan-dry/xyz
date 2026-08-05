@@ -66,7 +66,7 @@ export default function ProvisionPage() {
       staffEmail={email}
       onLogout={logout}
     >
-      <section className={card.settingCard}>
+      <section className={`${card.settingCard} ${styles.card}`}>
         <h2>New organization</h2>
         {!canProvision ? (
           <p style={{ margin: "0 0 1rem", fontSize: "0.875rem", color: "var(--console-fg-muted)" }}>
