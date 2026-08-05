@@ -216,9 +216,18 @@ platformRoutes.get("/accounts", async (c) => {
   const access = await requirePlatformPermission(c, "platform:read");
   if (!access.ok) return c.json({ error: access.error }, 403);
   const q = c.req.query("q");
+  const staffOnly =
+    c.req.query("staff") === "1" ||
+    c.req.query("staff") === "true" ||
+    c.req.query("platform_staff") === "1";
   const limit = Number(c.req.query("limit") || "25");
   const offset = Number(c.req.query("offset") || "0");
-  const result = await platformListAccountsPaginated(getPool(), { query: q, limit, offset });
+  const result = await platformListAccountsPaginated(getPool(), {
+    query: q,
+    limit,
+    offset,
+    staffOnly,
+  });
   return c.json({
     accounts: result.accounts.map((a) => ({
       ...a,

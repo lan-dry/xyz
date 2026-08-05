@@ -503,16 +503,24 @@ async function loadMembershipsForAccounts(
 
 export async function platformListAccountsPaginated(
   client: pg.Pool | pg.PoolClient,
-  opts: { query?: string; limit?: number; offset?: number },
+  opts: {
+    query?: string;
+    limit?: number;
+    offset?: number;
+    /** When true, only accounts with a non-null platform_role. */
+    staffOnly?: boolean;
+  },
 ): Promise<{ accounts: PlatformAccountRow[]; total: number; limit: number; offset: number }> {
   const limit = Math.min(Math.max(opts.limit ?? 25, 1), 100);
   const offset = Math.max(opts.offset ?? 0, 0);
   const q = opts.query?.trim().toLowerCase() || null;
+  const staffOnly = opts.staffOnly === true;
 
   const countResult = await client.query<{ count: string }>(
     `SELECT COUNT(*)::text AS count FROM account
-     WHERE ($1::text IS NULL OR lower(email) LIKE '%' || $1 || '%')`,
-    [q],
+     WHERE ($1::text IS NULL OR lower(email) LIKE '%' || $1 || '%')
+       AND ($2::boolean = false OR platform_role IS NOT NULL)`,
+    [q, staffOnly],
   );
   const total = Number(countResult.rows[0]?.count ?? 0);
 
@@ -528,9 +536,17 @@ export async function platformListAccountsPaginated(
     `SELECT account_id, email, display_name, active, platform_role, created_at, updated_at
      FROM account
      WHERE ($1::text IS NULL OR lower(email) LIKE '%' || $1 || '%')
-     ORDER BY created_at DESC
+       AND ($4::boolean = false OR platform_role IS NOT NULL)
+     ORDER BY
+       CASE platform_role
+         WHEN 'superadmin' THEN 0
+         WHEN 'admin' THEN 1
+         WHEN 'staff' THEN 2
+         ELSE 3
+       END,
+       created_at DESC
      LIMIT $2 OFFSET $3`,
-    [q, limit, offset],
+    [q, limit, offset, staffOnly],
   );
 
   const memMap = await loadMembershipsForAccounts(

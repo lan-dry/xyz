@@ -2,25 +2,52 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ExternalLink, Moon, Sun } from "lucide-react";
+import {
+  Building2,
+  ClipboardList,
+  CreditCard,
+  ExternalLink,
+  Inbox,
+  LayoutDashboard,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Shield,
+  Sun,
+  Terminal,
+  UserCircle,
+  UserPlus,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { OpsPage, PageHeader, ui } from "@/components/ops-ui/ops-ui";
-import { applyOpsTheme, persistOpsTheme, resolveOpsTheme, toggleOpsTheme, type OpsTheme } from "@/lib/ops-theme";
+import {
+  applyOpsTheme,
+  persistOpsTheme,
+  resolveOpsTheme,
+  toggleOpsTheme,
+  type OpsTheme,
+} from "@/lib/ops-theme";
 import { CONSOLE_URL } from "@/lib/urls";
 
 import shell from "./ops-shell.module.css";
 
-const NAV = [
-  { href: "/", label: "Overview" },
-  { href: "/provision", label: "Provision org" },
-  { href: "/organizations", label: "Organizations" },
-  { href: "/accounts", label: "Accounts" },
-  { href: "/plans", label: "Plans" },
-  { href: "/leads", label: "Leads" },
-  { href: "/audit-logs", label: "Audit log" },
-  { href: "/commands", label: "Commands" },
-] as const;
+const SIDEBAR_KEY = "salanor.ops.sidebar.collapsed";
+
+const NAV: Array<{ href: string; label: string; icon: LucideIcon }> = [
+  { href: "/", label: "Overview", icon: LayoutDashboard },
+  { href: "/provision", label: "Provision org", icon: UserPlus },
+  { href: "/organizations", label: "Organizations", icon: Building2 },
+  { href: "/accounts", label: "Accounts", icon: Users },
+  { href: "/team", label: "Platform team", icon: Shield },
+  { href: "/plans", label: "Plans", icon: CreditCard },
+  { href: "/leads", label: "Leads", icon: Inbox },
+  { href: "/audit-logs", label: "Audit log", icon: ClipboardList },
+  { href: "/commands", label: "Commands", icon: Terminal },
+  { href: "/settings", label: "Profile", icon: UserCircle },
+];
 
 export function OpsShell({
   title,
@@ -39,11 +66,13 @@ export function OpsShell({
 }) {
   const pathname = usePathname();
   const [theme, setTheme] = useState<OpsTheme>("light");
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     const resolved = resolveOpsTheme();
     applyOpsTheme(resolved);
     setTheme(resolved);
+    setCollapsed(window.localStorage.getItem(SIDEBAR_KEY) === "1");
   }, []);
 
   useEffect(() => {
@@ -58,6 +87,12 @@ export function OpsShell({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  function toggleSidebar() {
+    const next = !collapsed;
+    setCollapsed(next);
+    window.localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0");
+  }
+
   function onThemeToggle() {
     const next: OpsTheme = theme === "dark" ? "light" : "dark";
     applyOpsTheme(next);
@@ -67,10 +102,24 @@ export function OpsShell({
 
   return (
     <div className={shell.shell} data-console-shell data-console-app>
-      <aside className={shell.sidebar} aria-label="Platform navigation">
+      <aside
+        className={`${shell.sidebar} ${collapsed ? shell.sidebarCollapsed : ""}`}
+        aria-label="Platform navigation"
+      >
         <div className={shell.brand}>
-          <p className={shell.brandEyebrow}>Salanor internal</p>
-          <p className={shell.brandName}>Platform Ops</p>
+          <div className={shell.brandText}>
+            <p className={shell.brandEyebrow}>Salanor internal</p>
+            <p className={shell.brandName}>Platform Ops</p>
+          </div>
+          <button
+            type="button"
+            className={shell.collapseBtn}
+            onClick={toggleSidebar}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
         </div>
         <div className={shell.sidebarScroll}>
           <nav className={shell.nav}>
@@ -79,13 +128,16 @@ export function OpsShell({
                 item.href === "/"
                   ? pathname === "/"
                   : pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={`${shell.navLink} ${active ? shell.navLinkActive : ""}`}
+                  title={item.label}
                 >
-                  {item.label}
+                  <Icon className={shell.navIcon} aria-hidden />
+                  <span className={shell.navLabel}>{item.label}</span>
                 </Link>
               );
             })}
@@ -116,6 +168,10 @@ export function OpsShell({
               {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
               {theme === "dark" ? "Light" : "Dark"}
             </button>
+            <Link href="/settings" className={`${ui.btn} ${ui.btnGhost}`} title="Your profile">
+              <UserCircle size={14} aria-hidden />
+              Profile
+            </Link>
             <span className={shell.userEmail} title={staffEmail}>
               {staffEmail}
             </span>
