@@ -1,10 +1,6 @@
-.card {
-  max-width: 26rem;
-  width: 100%;
-}
-
 .formWrap {
   width: 100%;
+  max-width: 24rem;
 }
 
 .formWrap form {
@@ -12,7 +8,6 @@
   max-width: none;
 }
 
-.formWrap :global(label),
 .formWrap :global(input),
 .formWrap :global(select),
 .formWrap :global(button) {

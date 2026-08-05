@@ -61,7 +61,7 @@ function PlanEditorCard({
   });
 
   return (
-    <section className={`${card.settingCard} ${styles.planCard}`}>
+    <section className={card.settingCard}>
       <h2>
         {plan.display_name}{" "}
         <span
