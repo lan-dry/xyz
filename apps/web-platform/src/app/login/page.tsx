@@ -23,6 +23,7 @@ export default function PlatformLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [theme, setTheme] = useState<OpsTheme>("light");
 
   useEffect(() => {
@@ -32,6 +33,20 @@ export default function PlatformLoginPage() {
     setTheme(resolved);
     return () => document.documentElement.removeAttribute("data-console-app");
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void platformApi("session")
+      .then(() => {
+        if (!cancelled) router.replace("/");
+      })
+      .catch(() => {
+        if (!cancelled) setCheckingSession(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   function onThemeToggle() {
     const next: OpsTheme = theme === "dark" ? "light" : "dark";
@@ -61,6 +76,24 @@ export default function PlatformLoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div
+        data-console-shell
+        style={{
+          minHeight: "100dvh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--console-bg)",
+          color: "var(--console-fg-muted)",
+        }}
+      >
+        Checking session…
+      </div>
+    );
   }
 
   return (
