@@ -18,7 +18,7 @@ import { CONSOLE_URL } from "@/lib/urls";
 
 export default function PlatformLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("dev@salanor.local");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

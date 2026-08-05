@@ -40,7 +40,7 @@ function PlatformLoginForm() {
   const emailParam = searchParams.get("email");
   const oauthError = searchParams.get("oauth_error");
 
-  const [email, setEmail] = useState(emailParam ?? "dev@salanor.local");
+  const [email, setEmail] = useState(emailParam ?? "");
   const [password, setPassword] = useState("");
   const [ssoOrg, setSsoOrg] = useState("");
   const [error, setError] = useState<string | null>(null);
