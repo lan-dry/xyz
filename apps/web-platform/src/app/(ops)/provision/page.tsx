@@ -76,15 +76,14 @@ export default function ProvisionPage() {
         ) : (
           <p>Creates the org, admin membership, and default ingest agent. Copy the signing key once shown.</p>
         )}
-        <div className={styles.formWrap}>
         <form
-          className={ui.formGrid}
+          className={styles.fields}
           onSubmit={(e) => {
             e.preventDefault();
             if (canProvision) provision.mutate();
           }}
         >
-          <label className={ui.field}>
+          <label className={`${ui.field} ${styles.name}`}>
             Organization name
             <input
               className={ui.input}
@@ -98,7 +97,7 @@ export default function ProvisionPage() {
               disabled={!canProvision}
             />
           </label>
-          <label className={ui.field}>
+          <label className={`${ui.field} ${styles.slug}`}>
             Slug
             <input
               className={ui.input}
@@ -111,7 +110,7 @@ export default function ProvisionPage() {
               disabled={!canProvision}
             />
           </label>
-          <label className={ui.field}>
+          <label className={`${ui.field} ${styles.plan}`}>
             Plan
             <select
               className={ui.select}
@@ -128,7 +127,7 @@ export default function ProvisionPage() {
               )}
             </select>
           </label>
-          <label className={ui.field}>
+          <label className={`${ui.field} ${styles.email}`}>
             Admin email
             <input
               className={ui.input}
@@ -141,24 +140,25 @@ export default function ProvisionPage() {
           </label>
           <PasswordField
             label="Admin password (optional)"
-            fieldClassName={ui.field}
+            fieldClassName={`${ui.field} ${styles.password}`}
             value={adminPassword}
             onChange={(e) => setAdminPassword(e.target.value)}
             disabled={!canProvision}
             autoComplete="new-password"
           />
-          <button
-            type="submit"
-            className={`${ui.btn} ${ui.btnPrimary}`}
-            disabled={!canProvision || provision.isPending}
-          >
-            {provision.isPending ? "Creating…" : "Create organization"}
-          </button>
+          <div className={styles.actions}>
+            <button
+              type="submit"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              disabled={!canProvision || provision.isPending}
+            >
+              {provision.isPending ? "Creating…" : "Create organization"}
+            </button>
+          </div>
         </form>
         {provision.isError ? (
           <ErrorAlert message={(provision.error as Error).message} />
         ) : null}
-        </div>
       </section>
 
       {result ? (
