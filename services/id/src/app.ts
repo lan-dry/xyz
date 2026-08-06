@@ -24,6 +24,7 @@ import {
 import { pingDatabase, getPool } from "./db/pool.js";
 import { buildMePayload, identityRoutes } from "./routes/identity.js";
 import { platformRoutes } from "./routes/platform.js";
+import { publicContactRoutes } from "./routes/public-contact.js";
 import { sendEmailVerificationEmail } from "./email/send-email-verification.js";
 import { registerOAuthRoutes } from "./auth/oauth-handlers.js";
 import { registerSsoRoutes } from "./auth/sso-workos.js";
@@ -83,6 +84,7 @@ app.get("/health", async (c) => {
 
 app.route("/v1/id", identityRoutes);
 app.route("/v1/id/platform", platformRoutes);
+app.route("/v1/id/public", publicContactRoutes);
 
 app.post("/v1/id/auth/login", async (c) => {
   let body: { email?: string; password?: string; organization_id?: string };

@@ -234,3 +234,37 @@ export async function updateContactLead(
   const row = result.rows[0];
   return row ? mapRow(row) : null;
 }
+
+export type CreateContactLeadInput = {
+  id: string;
+  name: string;
+  email: string;
+  organization: string | null;
+  role: string | null;
+  reason: string;
+  message: string;
+  sourcePath: string;
+  ipHash: string;
+};
+
+export async function createContactLead(
+  pool: pg.Pool,
+  input: CreateContactLeadInput,
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO contact_messages (
+       id, name, email, organization, role, reason, message, source_path, ip_hash, status
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'new')`,
+    [
+      input.id,
+      input.name,
+      input.email,
+      input.organization,
+      input.role,
+      input.reason,
+      input.message,
+      input.sourcePath,
+      input.ipHash,
+    ],
+  );
+}
