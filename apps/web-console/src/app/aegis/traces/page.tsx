@@ -143,7 +143,7 @@ export default function TracesPage() {
           description={
             hasFilters
               ? "Try clearing filters or run the pilot agent to ingest signed events."
-              : "Traces appear when your agents ingest signed APS-1 events. Create an API key, then run a demo ingest or connect the Aegis SDK."
+              : "Traces appear when your agents ingest signed APS-1 events. Create an API key, then connect your agent runtime or automation workflow."
           }
           action={
             hasFilters ? undefined : (
@@ -155,9 +155,11 @@ export default function TracesPage() {
           secondary={
             hasFilters ? undefined : (
               <>
-                Quick start: <code className="mono">pnpm demo:ingest</code> after setting{" "}
-                <code className="mono">AEGIS_INGEST_DEV_KEY</code> in your{" "}
-                <code className="mono">.env</code>.
+                Next step: open{" "}
+                <Link href="/aegis/keys" className={ui.tableLink}>
+                  API keys
+                </Link>{" "}
+                to issue a scoped ingest key, then send signed APS-1 events from your runtime.
               </>
             )
           }

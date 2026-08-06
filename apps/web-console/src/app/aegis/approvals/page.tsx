@@ -112,8 +112,7 @@ export default function ApprovalsPage() {
           }
           secondary={
             <>
-              Trigger a demo obligation:{" "}
-              <code className="mono">pnpm demo:approval</code> with ingest configured.
+              Obligations appear here automatically when active policies require human approval.
             </>
           }
         />

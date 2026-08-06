@@ -9,7 +9,7 @@ const STEPS = [
   {
     id: "ingest",
     label: "Ingest a signed event",
-    hint: "pnpm demo:ingest (after API key in .env)",
+    hint: "Issue an ingest API key and send signed APS-1 events from your runtime",
     href: "/aegis/keys",
   },
   {
@@ -27,7 +27,7 @@ const STEPS = [
   {
     id: "approval",
     label: "Human approval (if obligation)",
-    hint: "pnpm demo:approval when configured",
+    hint: "Policy obligations route tool decisions to the Approvals queue",
     href: "/aegis/approvals",
   },
   {
@@ -59,11 +59,7 @@ export function DemoGuidePanel({ tracesCount }: { tracesCount: number }) {
         <code className="mono" style={{ fontSize: "0.75rem" }}>
           docs/E2E_PARTNER_ONBOARDING.md
         </code>{" "}
-        and{" "}
-        <code className="mono" style={{ fontSize: "0.75rem" }}>
-          tools/demo/README.md
-        </code>
-        .
+        for implementation and rollout guidance.
       </p>
       <ol style={{ margin: 0, padding: 0, listStyle: "none" }}>
         {STEPS.map((step) => {

@@ -154,7 +154,7 @@ export default function AegisDashboardPage() {
                 <div className={ui.tableWrap}>
                   <EmptyState
                     title="No traces yet"
-                    description="Run pnpm demo:ingest after creating an ingest key."
+                    description="Create an ingest API key, then send signed APS-1 events from your runtime or automation workflow."
                   />
                 </div>
               ) : (
