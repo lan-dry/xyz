@@ -45,12 +45,29 @@ export async function postWorkflowRunStart(c: Context): Promise<Response> {
     external_execution_id?: string;
     trigger_detail?: string;
     actor_principal?: string;
+    /** One-shot: start + pack + complete in this same request (preferred for n8n). */
+    one_shot?: boolean;
+    status?: "completed" | "failed";
+    summary?: string;
+    steps?: WorkflowStepInput[];
+    execution?: {
+      workflow_name?: string;
+      execution_id?: string;
+      nodes?: ExecutionNodeCapture[];
+    };
   };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ error: "Invalid JSON" }, 422);
   }
+
+  const oneShot =
+    body.one_shot === true ||
+    body.execution != null ||
+    body.status === "completed" ||
+    body.status === "failed" ||
+    (Array.isArray(body.steps) && body.steps.length > 0);
 
   const client = await getPool().connect();
   try {
@@ -76,10 +93,33 @@ export async function postWorkflowRunStart(c: Context): Promise<Response> {
       actorPrincipal: body.actor_principal,
     });
 
+    if (!oneShot) {
+      return c.json(
+        {
+          ...started,
+          trace_url: traceUrl(started.trace_id),
+        },
+        201,
+      );
+    }
+
+    const result = await completeWorkflowRun(client, {
+      organizationId,
+      traceId: started.trace_id,
+      status: body.status ?? "completed",
+      summary: body.summary ?? body.business_context,
+      steps: body.steps,
+      execution: body.execution,
+      actorPrincipal: body.actor_principal,
+    });
+
     return c.json(
       {
-        ...started,
-        trace_url: traceUrl(started.trace_id),
+        ...result,
+        agent_id: started.agent_id,
+        key_id: started.key_id,
+        root_event_id: started.root_event_id,
+        trace_url: traceUrl(result.trace_id),
       },
       201,
     );

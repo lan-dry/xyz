@@ -22,6 +22,21 @@ agentRoutes.get("/agents", requireConsoleSession, async (c) => {
   const client = await getPool().connect();
   try {
     const agents = await listAgentsForOrganization(client, orgId);
+
+    // Direct DB check — stale platform-auth builds omitted bridge_enabled in SELECT,
+    // so the Console never flipped from "Enable" to "on" after a successful enable.
+    const bridgeRows = await client.query<{ agent_id: string; key_id: string }>(
+      `SELECT agent_id, key_id
+       FROM signing_key
+       WHERE organization_id = $1
+         AND bridge_enabled = true
+         AND revoked = false
+         AND private_key_ciphertext IS NOT NULL`,
+      [orgId],
+    );
+    const bridgeKeyIds = new Set(bridgeRows.rows.map((r) => r.key_id));
+    const bridgeAgentIds = new Set(bridgeRows.rows.map((r) => r.agent_id));
+
     return c.json({
       agents: agents.map((a: AgentWithKeys) => {
         const signing_keys = a.signing_keys.map((k: SigningKeySummary) => ({
@@ -29,7 +44,7 @@ agentRoutes.get("/agents", requireConsoleSession, async (c) => {
           public_key_b64: k.public_key_b64,
           kms_provider: k.kms_provider,
           revoked: k.revoked,
-          bridge_enabled: Boolean(k.bridge_enabled),
+          bridge_enabled: Boolean(k.bridge_enabled) || bridgeKeyIds.has(k.key_id),
           valid_from: k.valid_from.toISOString(),
           created_at: k.created_at.toISOString(),
         }));
@@ -40,9 +55,7 @@ agentRoutes.get("/agents", requireConsoleSession, async (c) => {
           did: a.did,
           active: a.active,
           created_at: a.created_at.toISOString(),
-          workflow_bridge_enabled: signing_keys.some(
-            (k) => k.bridge_enabled && !k.revoked,
-          ),
+          workflow_bridge_enabled: bridgeAgentIds.has(a.agent_id),
           signing_keys,
         };
       }),
@@ -143,8 +156,8 @@ agentRoutes.post("/agents/:agentId/workflow-bridge", requireConsoleSession, asyn
       {
         ...enabled,
         message: enabled.already_enabled
-          ? "Workflow Bridge is already on. In n8n add one HTTP node: POST /v1/aegis/workflows/runs/capture (ingest API key only)."
-          : "Workflow Bridge enabled. In n8n add one HTTP node: POST /v1/aegis/workflows/runs/capture. The private key stays on Salanor servers.",
+          ? "Workflow Bridge is already on. In n8n: one HTTP node → POST /v1/aegis/workflows/runs with one_shot + execution (ingest API key only)."
+          : "Workflow Bridge enabled. In n8n: one HTTP node → POST /v1/aegis/workflows/runs with one_shot + execution. Private key stays on Salanor.",
       },
       enabled.already_enabled ? 200 : 201,
     );

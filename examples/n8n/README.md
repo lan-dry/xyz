@@ -1,14 +1,14 @@
-# Aegis n8n starter workflow
+# Aegis n8n starter
 
-Import `aegis-workflow-bridge.json` into n8n:
+Import `aegis-workflow-bridge.json`:
 
-1. Set env `AEGIS_API_URL` (e.g. `https://api.salanor.com`)
-2. Create Header Auth credential: `Authorization: Bearer <ingest_api_key>`
-3. In Console → Agents → **Enable Workflow Bridge**
-4. Put your real work in **Your workflow work** (or replace that node)
-5. Keep a single **Record in Aegis** HTTP node at the end (`POST …/workflows/runs/capture`)
-6. Open `trace_url` from the HTTP response
+1. Env `AEGIS_API_URL=https://api.salanor.com`
+2. Header Auth: `Authorization: Bearer <ingest_api_key>`
+3. Console → Agents → **Enable Workflow Bridge** (button becomes **Workflow Bridge on**)
+4. Put your work in **Your workflow work**
+5. Keep **one** HTTP node: `POST /v1/aegis/workflows/runs` with `one_shot: true` + `execution.nodes`
+6. Open `trace_url` from the response
 
-You do **not** need Start + Pack + Complete. One capture call records the signed run.
+You do **not** call Aegis on every node. One record call at the end is the product standard.
 
-Full guide: `docs/AEGIS_N8N_INTEGRATION.md`
+Zero HTTP nodes (fully automatic) needs a future n8n community node — not available yet.

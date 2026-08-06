@@ -63,6 +63,8 @@ export function createApp(): Hono {
   // One-shot capture must be registered before /workflows/runs/:traceId/*
   // so "capture" is never treated as a trace id.
   aegis.post("/workflows/runs/capture", postWorkflowRunCapture);
+  // Alias for orchestrators / docs
+  aegis.post("/workflow-bridge/record", postWorkflowRunCapture);
   aegis.post("/workflows/runs", postWorkflowRunStart);
   aegis.post("/workflows/runs/:traceId/steps", postWorkflowRunSteps);
   aegis.post("/workflows/runs/:traceId/complete", postWorkflowRunComplete);

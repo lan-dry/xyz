@@ -22,7 +22,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/workflows/runs/capture",
+        "url": "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/workflows/runs",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -33,7 +33,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ business_context: 'Aegis one-node capture', external_system: 'n8n', external_workflow_id: String($workflow.id), external_execution_id: String($execution.id), status: 'completed', summary: 'Signed capture from n8n', execution: { workflow_name: $workflow.name, execution_id: String($execution.id), nodes: [ { name: 'Demo LLM', kind: 'llm', purpose: 'Example LLM capture', input_preview: 'demo prompt', output_preview: JSON.stringify($json.sample_llm || {}).slice(0, 400) }, { name: 'Demo tool', kind: 'tool', tool_name: ($json.sample_tool && $json.sample_tool.action) || 'demo.tool', status: ($json.sample_tool && $json.sample_tool.status) || 'success', output_preview: JSON.stringify($json.sample_tool || {}).slice(0, 400) } ] } }) }}",
+        "jsonBody": "={{ JSON.stringify({ one_shot: true, business_context: 'Aegis one-node capture', external_system: 'n8n', external_workflow_id: String($workflow.id), external_execution_id: String($execution.id), status: 'completed', summary: 'Signed capture from n8n', execution: { workflow_name: $workflow.name, execution_id: String($execution.id), nodes: [ { name: 'Demo LLM', kind: 'llm', purpose: 'Example LLM capture', input_preview: 'demo prompt', output_preview: JSON.stringify($json.sample_llm || {}).slice(0, 400) }, { name: 'Demo tool', kind: 'tool', tool_name: ($json.sample_tool && $json.sample_tool.action) || 'demo.tool', status: ($json.sample_tool && $json.sample_tool.status) || 'success', output_preview: JSON.stringify($json.sample_tool || {}).slice(0, 400) } ] } }) }}",
         "options": {}
       },
       "id": "aegis-n8n-0040",
@@ -60,6 +60,6 @@
   "settings": { "executionOrder": "v1" },
   "meta": {
     "templateCredsSetupCompleted": false,
-    "description": "One Aegis HTTP call at the end (POST /workflows/runs/capture). Salanor starts, signs steps, and completes the trace server-side."
+    "description": "One HTTP call at the end: POST /v1/aegis/workflows/runs with one_shot + execution. Salanor starts, signs, and completes the trace."
   }
 }

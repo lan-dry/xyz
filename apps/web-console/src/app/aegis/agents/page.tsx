@@ -53,6 +53,8 @@ export default function AgentsPage() {
   });
 
   const [bridgeMessage, setBridgeMessage] = useState<string | null>(null);
+  /** Optimistic: show "on" immediately after Enable succeeds (even if list API is stale). */
+  const [bridgeForcedOn, setBridgeForcedOn] = useState<Record<string, true>>({});
 
   const enableBridge = useMutation({
     mutationFn: (agentId: string) =>
@@ -66,6 +68,7 @@ export default function AgentsPage() {
       }),
     onSuccess: (data) => {
       setBridgeMessage(data.message);
+      setBridgeForcedOn((prev) => ({ ...prev, [data.agent_id]: true }));
       void queryClient.invalidateQueries({ queryKey: ["console", "agents"] });
       void queryClient.refetchQueries({ queryKey: ["console", "agents"] });
     },
@@ -152,6 +155,7 @@ export default function AgentsPage() {
             <tbody>
               {agents.map((agent) => {
                 const bridgeOn =
+                  bridgeForcedOn[agent.agent_id] === true ||
                   agent.workflow_bridge_enabled === true ||
                   agent.signing_keys.some((k) => k.bridge_enabled && !k.revoked);
                 return (
