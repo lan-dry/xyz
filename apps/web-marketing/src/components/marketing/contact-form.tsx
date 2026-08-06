@@ -59,7 +59,9 @@ export function ContactForm() {
         if (organization.trim()) payload.organization = organization.trim();
         if (senderRole.trim()) payload.role = senderRole.trim();
 
-        const res = await fetch("/api/contact", {
+        // Prefer the ID rewrite path (same as /api/id/auth/*). /api/contact is
+        // also rewritten in next.config, but this path is proven live on www.
+        const res = await fetch("/api/id/public/contact", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(payload),

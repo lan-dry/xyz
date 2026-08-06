@@ -8,6 +8,7 @@ import { getEventInclusionProof } from "./routes/inclusion-proof.js";
 import { postPolicyEvaluate } from "./routes/policy-evaluate.js";
 import {
   getWorkflowRunStatus,
+  postWorkflowRunCapture,
   postWorkflowRunComplete,
   postWorkflowRunStart,
   postWorkflowRunSteps,
@@ -59,6 +60,7 @@ export function createApp(): Hono {
   aegis.get("/approvals/:approvalId", getApprovalStatus);
   aegis.post("/approvals/:approvalId/complete", postApprovalComplete);
   aegis.get("/events/:eventId/inclusion-proof", getEventInclusionProof);
+  aegis.post("/workflows/runs/capture", postWorkflowRunCapture);
   aegis.post("/workflows/runs", postWorkflowRunStart);
   aegis.post("/workflows/runs/:traceId/steps", postWorkflowRunSteps);
   aegis.post("/workflows/runs/:traceId/complete", postWorkflowRunComplete);
