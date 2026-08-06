@@ -1,33 +1,37 @@
 {
   "name": "n8n-nodes-salanor-aegis",
   "version": "0.1.0",
-  "description": "Salanor Aegis community nodes for n8n — record signed traces and check policies before risky steps",
+  "private": false,
+  "description": "Salanor Aegis for n8n — Record signed traces and Check Policy before risky steps",
   "keywords": [
     "n8n-community-node-package",
+    "n8n",
     "salanor",
     "aegis",
     "governance",
-    "audit"
+    "audit",
+    "policy"
   ],
   "license": "MIT",
-  "homepage": "https://salanor.com",
+  "homepage": "https://www.salanor.com",
   "author": {
     "name": "Salanor",
     "email": "partners@salanor.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lan-dry/xyz.git",
+    "url": "git+https://github.com/lan-dry/xyz.git",
     "directory": "integrations/n8n-nodes-salanor-aegis"
   },
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-icons.js",
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build"
   },
   "files": [
-    "dist"
+    "dist",
+    "index.js"
   ],
   "n8n": {
     "n8nNodesApiVersion": 1,

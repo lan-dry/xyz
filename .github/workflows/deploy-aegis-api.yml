@@ -1,0 +1,38 @@
+name: Deploy aegis-api (Railway)
+
+# Manual or on push to main when paths under aegis-api change.
+# Requires repo secret: RAILWAY_TOKEN (Project → Account → Tokens)
+# Optional secret: RAILWAY_SERVICE_ID for aegis-api
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "services/aegis-api/**"
+      - "packages/platform-auth/**"
+      - "packages/aegis/**"
+      - "sdks/typescript/**"
+      - "pnpm-lock.yaml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.RAILWAY_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+
+      - name: Deploy aegis-api
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${{ secrets.RAILWAY_SERVICE_ID }}" ]; then
+            railway up --service "${{ secrets.RAILWAY_SERVICE_ID }}" --detach
+          else
+            # Falls back to linked service in railway.toml / RAILWAY_SERVICE_ID env on token
+            railway up --service aegis-api --detach || railway up --detach
+          fi

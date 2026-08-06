@@ -1,14 +1,30 @@
-# Aegis n8n starter
+# Aegis + n8n (long-term)
 
-Import `aegis-workflow-bridge.json`:
+## Product rule
 
-1. Env `AEGIS_API_URL=https://api.salanor.com`
-2. Header Auth: `Authorization: Bearer <ingest_api_key>`
-3. Console → Agents → **Enable Workflow Bridge** (button becomes **Workflow Bridge on**)
-4. Put your work in **Your workflow work**
-5. Keep **one** HTTP node: `POST /v1/aegis/workflows/runs` with `one_shot: true` + `execution.nodes`
-6. Open `trace_url` from the response
+1. **Check Policy** before any risky side effect (block with reason).
+2. **Record Run** once at the end (signed proof of the whole run).
+3. Do **not** call Aegis on every harmless node.
 
-You do **not** call Aegis on every node. One record call at the end is the product standard.
+## Packages
 
-Zero HTTP nodes (fully automatic) needs a future n8n community node — not available yet.
+| Path | Purpose |
+|------|---------|
+| `integrations/n8n-nodes-salanor-aegis` | Community node (Record + Check Policy) |
+| `examples/n8n/aegis-workflow-bridge.json` | One Record HTTP node (simple) |
+| `examples/n8n/aegis-policy-then-record.json` | Policy gate + Record (HTTP, works today) |
+| `examples/n8n/RAILWAY_GET_LATEST_DEPLOY.md` | How to ship latest API when Redeploy is wrong |
+
+## Railway
+
+**⋯ → Redeploy** rebuilds the *old* commit. Use **Settings → Source → disconnect/reconnect `main`** so a *new* deployment appears. See `RAILWAY_GET_LATEST_DEPLOY.md`.
+
+## Env (n8n)
+
+```
+AEGIS_API_URL=https://api.salanor.com
+AEGIS_ORGANIZATION_ID=…
+AEGIS_AGENT_ID=…
+```
+
+Header Auth: `Authorization: Bearer aegis_…`

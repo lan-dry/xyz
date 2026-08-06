@@ -1,28 +1,20 @@
-# n8n-nodes-salanor-aegis
+# Salanor Aegis — n8n community node
 
-Community node package for [Salanor Aegis](https://salanor.com) in n8n.
+**Long-term product path for orchestrators.**
 
-## What it does
+| Operation | Place in workflow | What it does |
+|-----------|-------------------|--------------|
+| **Record Run** | **Once at the end** | Signed APS-1 trace (start + packed steps + complete) |
+| **Check Policy** | **Before** payment / delete / send / apply | Live `allow` / `deny` / obligation — can **stop** the branch |
+| Start / Complete | Advanced | Multi-call bridge |
 
-| Operation | When to use | Policies |
-|-----------|-------------|----------|
-| **Record Run** | One node at the **end** of the workflow | Audit / provenance after the fact |
-| **Check Policy** | Immediately **before** a risky tool (payment, delete, send) | Can **deny** and stop the branch |
-| Start / Complete | Advanced multi-call | Same as HTTP bridge |
+## Requirements (honest)
 
-**Honest limit:** n8n cannot auto-wrap every native node. For live blocking, place **Check Policy** before the dangerous step. For signed proof of the whole run, place **Record Run** at the end (pack LLM/tool previews in Nodes JSON).
+- n8n **cannot** silently wrap every native node. Users place **Check Policy** before risky steps and **Record Run** at the end.
+- Server must support one-shot: `POST /v1/aegis/workflows/runs` with `one_shot` + `execution` (deploy latest `main` on Railway aegis-api).
+- Agent: **Workflow Bridge on** + ingest API key.
 
 ## Install (local n8n)
-
-```bash
-cd ~/.n8n
-# or your n8n custom dir
-npm install /path/to/salanor/integrations/n8n-nodes-salanor-aegis
-```
-
-Or in n8n Settings → Community nodes → install `n8n-nodes-salanor-aegis` once published to npm.
-
-Build first:
 
 ```bash
 cd integrations/n8n-nodes-salanor-aegis
@@ -30,12 +22,62 @@ npm install
 npm run build
 ```
 
+**n8n desktop / self-host**
+
+1. Settings → Community nodes → Install from npm **or**
+2. Symlink / copy this package into `~/.n8n/nodes/` (or `N8N_CUSTOM_EXTENSIONS`):
+
+```bash
+# example
+mkdir -p ~/.n8n/custom
+npm pack
+# install the tarball into n8n's custom extensions directory, then restart n8n
+```
+
+Or from n8n env:
+
+```bash
+export N8N_CUSTOM_EXTENSIONS=/absolute/path/to/integrations/n8n-nodes-salanor-aegis
+```
+
+Restart n8n. Search nodes for **Salanor Aegis**.
+
 ## Credentials
 
 - **API Base URL:** `https://api.salanor.com`
-- **Ingest API Key:** from Console → API keys  
-- Agent must have **Workflow Bridge on**
+- **Ingest API Key:** Console → API keys (`Bearer aegis_…`)
 
-## Prerequisites on Salanor
+## Recommended workflow shape
 
-`aegis-api` must run a build that supports **one-shot** on `POST /v1/aegis/workflows/runs` (`one_shot` / `execution` in body). If traces stay `RUNNING` with only `aegis.trace.start`, Railway is still on an old commit — deploy latest `main`.
+```
+Trigger
+  → your work (LLM, tools, …)
+  → [Salanor Aegis · Check Policy]   # only before dangerous tools
+  → dangerous tool (if allowed)
+  → … more work …
+  → [Salanor Aegis · Record Run]     # once at end — pack node previews in Nodes JSON
+```
+
+## Record Run — Nodes JSON example
+
+```json
+[
+  {
+    "name": "OpenAI",
+    "kind": "llm",
+    "purpose": "Draft",
+    "output_preview": "…"
+  },
+  {
+    "name": "Apply",
+    "kind": "tool",
+    "tool_name": "app.content.apply",
+    "status": "success",
+    "output_preview": "ok"
+  }
+]
+```
+
+## Check Policy
+
+Requires `organization_id`, `agent_id`, `tool_name`. On deny with default **Stop Workflow**, the run errors with the policy reason.
