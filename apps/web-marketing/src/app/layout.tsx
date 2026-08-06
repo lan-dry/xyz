@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 
+import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { MarketingChrome } from "@/components/marketing/marketing-chrome";
 
 import "./globals.css";
@@ -36,6 +37,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
       <body>
+        <GoogleAnalytics />
         <MarketingChrome>{children}</MarketingChrome>
       </body>
     </html>
