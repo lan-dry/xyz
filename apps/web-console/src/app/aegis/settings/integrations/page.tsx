@@ -84,48 +84,51 @@ export default function IntegrationsSettingsPage() {
 
       <form
         className={settings.settingsForm}
-        style={{ maxWidth: "28rem" }}
         onSubmit={(e) => {
           e.preventDefault();
           createDest.mutate();
         }}
       >
-        <label className={ui.field}>
-          Provider
-          <select
-            className={ui.select}
-            value={provider}
-            onChange={(e) =>
-              setProvider(e.target.value as (typeof PROVIDERS)[number]["value"])
-            }
-          >
-            {PROVIDERS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className={ui.field}>
-          OTLP endpoint
-          <input
-            className={ui.input}
-            placeholder="https://http-intake.logs.datadoghq.com"
-            value={endpoint}
-            onChange={(e) => setEndpoint(e.target.value)}
-            required
-          />
-        </label>
+        <div className={settings.formFields}>
+          <label className={ui.field}>
+            Provider
+            <select
+              className={ui.select}
+              value={provider}
+              onChange={(e) =>
+                setProvider(e.target.value as (typeof PROVIDERS)[number]["value"])
+              }
+            >
+              {PROVIDERS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={ui.field}>
+            OTLP endpoint
+            <input
+              className={ui.input}
+              placeholder="https://http-intake.logs.datadoghq.com"
+              value={endpoint}
+              onChange={(e) => setEndpoint(e.target.value)}
+              required
+            />
+          </label>
+        </div>
         {createDest.error ? (
           <ErrorAlert message={(createDest.error as Error).message} />
         ) : null}
-        <button
-          type="submit"
-          className={`${ui.btn} ${ui.btnPrimary}`}
-          disabled={createDest.isPending || !endpoint.trim()}
-        >
-          {createDest.isPending ? "Adding…" : "Add destination"}
-        </button>
+        <div className={settings.formActions}>
+          <button
+            type="submit"
+            className={`${ui.btn} ${ui.btnPrimary}`}
+            disabled={createDest.isPending || !endpoint.trim()}
+          >
+            {createDest.isPending ? "Adding…" : "Add destination"}
+          </button>
+        </div>
       </form>
 
       <h3 style={{ margin: "1.5rem 0 0.75rem", fontSize: "0.9375rem", fontWeight: 600 }}>

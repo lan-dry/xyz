@@ -36,9 +36,20 @@ export default function GettingStartedPage() {
           it in your vault (e.g. <code>AEGIS_INGEST_API_KEY</code>).
         </li>
         <li>
-          <strong>Agents</strong>: create or select an agent. Export the <strong>Ed25519 signing
-          key</strong> (private key base64, <code>key_id</code>, <code>agent_id</code>,
-          <code>organization_id</code>).
+          <strong>Agents</strong>: create or select an agent.
+          <ul>
+            <li>
+              <strong>For n8n / Zapier / Make:</strong> click{" "}
+              <em>Enable Workflow Bridge</em> — Salanor signs server-side. See{" "}
+              <Link href="/aegis/n8n">n8n &amp; orchestrators</Link> (recommended if you do not want
+              to install an SDK).
+            </li>
+            <li>
+              <strong>For app/agent code:</strong> export the <strong>Ed25519 signing key</strong>{" "}
+              (private key base64, <code>key_id</code>, <code>agent_id</code>,{" "}
+              <code>organization_id</code>) and continue below.
+            </li>
+          </ul>
         </li>
         <li>
           Optional: <strong>Policies</strong>: define which tools are allowed, denied, or require
@@ -47,6 +58,10 @@ export default function GettingStartedPage() {
       </ol>
 
       <h2>2. Install the SDK in your project</h2>
+      <p>
+        Skip this section if you only use n8n — go to{" "}
+        <Link href="/aegis/n8n">n8n &amp; orchestrators</Link>.
+      </p>
       <p>
         Pick your language on the <Link href="/aegis/sdk">SDK overview</Link>. TypeScript is
         recommended for full policy proxy support; Python and Go support sign + ingest today.

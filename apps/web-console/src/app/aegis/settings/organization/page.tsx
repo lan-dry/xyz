@@ -168,7 +168,7 @@ export default function OrganizationSettingsPage() {
         {isAdmin && onboardingDone ? (
           <form
             className={settings.settingsForm}
-            style={{ marginTop: "1.25rem", maxWidth: "28rem" }}
+            style={{ marginTop: "1.25rem" }}
             onSubmit={(e) => {
               e.preventDefault();
               setEditMessage(null);
@@ -192,36 +192,34 @@ export default function OrganizationSettingsPage() {
               agent DIDs (<span className="mono">did:salanor:…</span>): coordinate with your team
               before saving.
             </p>
-            <label>
-              <span className={ui.muted} style={{ fontSize: "0.75rem" }}>
+            <div className={settings.formFields}>
+              <label className={ui.field}>
                 Company name
-              </span>
-              <input
-                className="input"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                minLength={2}
-                maxLength={120}
-                required
-              />
-            </label>
-            <label>
-              <span className={ui.muted} style={{ fontSize: "0.75rem" }}>
+                <input
+                  className={ui.input}
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  minLength={2}
+                  maxLength={120}
+                  required
+                />
+              </label>
+              <label className={ui.field}>
                 Organization URL
-              </span>
-              <input
-                className="input mono"
-                value={editSlug}
-                onChange={(e) => {
-                  setEditSlugTouched(true);
-                  setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
-                }}
-                minLength={2}
-                maxLength={48}
-                pattern="[a-z0-9][a-z0-9-]*"
-                required
-              />
-            </label>
+                <input
+                  className={`${ui.input} mono`}
+                  value={editSlug}
+                  onChange={(e) => {
+                    setEditSlugTouched(true);
+                    setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+                  }}
+                  minLength={2}
+                  maxLength={48}
+                  pattern="[a-z0-9][a-z0-9-]*"
+                  required
+                />
+              </label>
+            </div>
             {editMessage ? (
               <p
                 style={{
@@ -232,13 +230,15 @@ export default function OrganizationSettingsPage() {
                 {editMessage}
               </p>
             ) : null}
-            <button
-              type="submit"
-              className={`${ui.btn} ${ui.btnPrimary}`}
-              disabled={updateOrg.isPending}
-            >
-              {updateOrg.isPending ? "Saving…" : "Save changes"}
-            </button>
+            <div className={settings.formActions}>
+              <button
+                type="submit"
+                className={`${ui.btn} ${ui.btnPrimary}`}
+                disabled={updateOrg.isPending}
+              >
+                {updateOrg.isPending ? "Saving…" : "Save changes"}
+              </button>
+            </div>
           </form>
         ) : null}
       </section>

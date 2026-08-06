@@ -6,6 +6,12 @@ import { consoleRoutes } from "./routes/console/index.js";
 import { postEvent } from "./routes/events.js";
 import { getEventInclusionProof } from "./routes/inclusion-proof.js";
 import { postPolicyEvaluate } from "./routes/policy-evaluate.js";
+import {
+  getWorkflowRunStatus,
+  postWorkflowRunComplete,
+  postWorkflowRunStart,
+  postWorkflowRunSteps,
+} from "./routes/workflows.js";
 import { publicRoutes } from "./routes/public/index.js";
 import { pingDatabase } from "./db/pool.js";
 
@@ -53,6 +59,10 @@ export function createApp(): Hono {
   aegis.get("/approvals/:approvalId", getApprovalStatus);
   aegis.post("/approvals/:approvalId/complete", postApprovalComplete);
   aegis.get("/events/:eventId/inclusion-proof", getEventInclusionProof);
+  aegis.post("/workflows/runs", postWorkflowRunStart);
+  aegis.post("/workflows/runs/:traceId/steps", postWorkflowRunSteps);
+  aegis.post("/workflows/runs/:traceId/complete", postWorkflowRunComplete);
+  aegis.get("/workflows/runs/:traceId", getWorkflowRunStatus);
   app.route("/v1/aegis", aegis);
 
   return app;

@@ -1,0 +1,123 @@
+{
+  "name": "Aegis Workflow Bridge (starter)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "aegis-n8n-0001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/workflows/runs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"business_context\": \"Aegis Workflow Bridge starter\",\n  \"external_system\": \"n8n\",\n  \"external_workflow_id\": \"{{ $workflow.id }}\",\n  \"external_execution_id\": \"{{ $execution.id }}\"\n}",
+        "options": {}
+      },
+      "id": "aegis-n8n-0010",
+      "name": "1. Aegis Start Trace",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [260, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_AEGIS_INGEST",
+          "name": "Aegis Ingest API — Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Replace this block with your real work (OpenAI, Drive, your app APIs…).\n// Keep Start and Complete nodes — do not call Aegis on every intermediate node.\nreturn [{\n  json: {\n    demo: true,\n    note: 'Replace me with your workflow logic',\n    sample_llm: { model: 'gpt-4o-mini', text: 'Demo LLM output' },\n    sample_tool: { status: 'success', action: 'demo.apply' },\n  },\n}];"
+      },
+      "id": "aegis-n8n-0020",
+      "name": "2. Your workflow work",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const start = $('1. Aegis Start Trace').first().json;\nconst work = $('2. Your workflow work').first().json;\n\nconst nodes = [\n  {\n    name: 'Demo LLM',\n    kind: 'llm',\n    purpose: 'Example LLM capture',\n    input_preview: 'demo prompt',\n    output_preview: JSON.stringify(work.sample_llm || {}).slice(0, 400),\n  },\n  {\n    name: 'Demo tool',\n    kind: 'tool',\n    tool_name: work.sample_tool?.action || 'demo.tool',\n    status: work.sample_tool?.status || 'success',\n    output_preview: JSON.stringify(work.sample_tool || {}).slice(0, 400),\n  },\n];\n\nreturn [{\n  json: {\n    trace_id: start.trace_id,\n    trace_url: start.trace_url,\n    completeBody: {\n      status: 'completed',\n      summary: `Starter run with ${nodes.length} packed step(s)`,\n      execution: {\n        workflow_name: $workflow.name,\n        execution_id: String($execution.id),\n        nodes,\n      },\n    },\n  },\n}];"
+      },
+      "id": "aegis-n8n-0030",
+      "name": "3. Pack Aegis steps",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [780, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/workflows/runs/{{ $json.trace_id }}/complete",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.completeBody) }}",
+        "options": {}
+      },
+      "id": "aegis-n8n-0040",
+      "name": "4. Aegis Complete Trace",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_AEGIS_INGEST",
+          "name": "Aegis Ingest API — Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const done = $input.first().json;\nreturn [{\n  json: {\n    status: done.status,\n    trace_id: done.trace_id,\n    trace_url: done.trace_url,\n    events: (done.events || []).length,\n    note: 'Open trace_url in Aegis Console to replay the signed timeline.',\n  },\n}];"
+      },
+      "id": "aegis-n8n-0050",
+      "name": "5. Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "1. Aegis Start Trace", "type": "main", "index": 0 }]]
+    },
+    "1. Aegis Start Trace": {
+      "main": [[{ "node": "2. Your workflow work", "type": "main", "index": 0 }]]
+    },
+    "2. Your workflow work": {
+      "main": [[{ "node": "3. Pack Aegis steps", "type": "main", "index": 0 }]]
+    },
+    "3. Pack Aegis steps": {
+      "main": [[{ "node": "4. Aegis Complete Trace", "type": "main", "index": 0 }]]
+    },
+    "4. Aegis Complete Trace": {
+      "main": [[{ "node": "5. Summary", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Least-effort Aegis governance: Start + Complete bookends. Pack steps once at the end. Salanor signs server-side."
+  }
+}

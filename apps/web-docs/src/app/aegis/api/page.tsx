@@ -26,6 +26,10 @@ export default function ApiOverviewPage() {
         <li>
           <a href="/aegis/api/approvals">Approvals</a>: obligation workflow
         </li>
+        <li>
+          <a href="/aegis/n8n">Workflow Bridge</a>:{" "}
+          <code>POST /workflows/runs</code> start / steps / complete (n8n, Zapier — server-signed)
+        </li>
       </ul>
 
       <h2>Public API (no auth)</h2>

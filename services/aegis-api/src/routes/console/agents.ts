@@ -13,6 +13,7 @@ import {
   requireConsoleSession,
   type ConsoleVariables,
 } from "../../middleware/console-session.js";
+import { enableWorkflowBridgeForAgent } from "../../workflows/bridge.js";
 
 export const agentRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
@@ -102,6 +103,51 @@ agentRoutes.post("/agents", requireConsoleSession, async (c) => {
     }
     console.error("[console] create agent", err);
     return c.json({ error: "Failed to create agent" }, 500);
+  } finally {
+    client.release();
+  }
+});
+
+agentRoutes.post("/agents/:agentId/workflow-bridge", requireConsoleSession, async (c) => {
+  const session = c.get("consoleSession");
+  if (session.role !== "admin") {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const agentId = c.req.param("agentId");
+  if (!agentId) {
+    return c.json({ error: "agentId required" }, 422);
+  }
+
+  const client = await getPool().connect();
+  try {
+    const orgSlug = await getOrganizationSlug(client, session.organizationId);
+    if (!orgSlug) {
+      return c.json({ error: "Organization not found" }, 404);
+    }
+
+    const enabled = await enableWorkflowBridgeForAgent(client, {
+      organizationId: session.organizationId,
+      organizationSlug: orgSlug,
+      agentId,
+    });
+
+    return c.json(
+      {
+        ...enabled,
+        message:
+          "Workflow Bridge enabled. Use your ingest API key with POST /v1/aegis/workflows/runs from n8n. The private key stays on Salanor servers.",
+      },
+      201,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to enable Workflow Bridge";
+    const status = message.includes("not configured")
+      ? 503
+      : message.includes("not found")
+        ? 404
+        : 500;
+    return c.json({ error: message }, status);
   } finally {
     client.release();
   }

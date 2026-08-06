@@ -93,19 +93,19 @@ export default function OpsSettingsPage() {
             </>
           ) : null}
         </p>
-        <label className={ui.field} style={{ maxWidth: "28rem" }}>
-          Email
-          <input className={ui.input} value={email} disabled />
-        </label>
         <form
-          className={ui.formRow}
-          style={{ marginTop: "1rem", maxWidth: "36rem", alignItems: "flex-end" }}
+          className={card.formFields}
+          style={{ marginTop: "0.25rem" }}
           onSubmit={(e) => {
             e.preventDefault();
             saveProfile.mutate();
           }}
         >
-          <label className={ui.field} style={{ flex: 1, minWidth: "14rem" }}>
+          <label className={ui.field}>
+            Email
+            <input className={ui.input} value={email} disabled />
+          </label>
+          <label className={ui.field}>
             Display name
             <input
               className={ui.input}
@@ -114,87 +114,91 @@ export default function OpsSettingsPage() {
               placeholder="Your name"
             />
           </label>
-          <button
-            type="submit"
-            className={`${ui.btn} ${ui.btnPrimary}`}
-            disabled={saveProfile.isPending}
-          >
-            {saveProfile.isPending ? "Saving…" : "Update profile"}
-          </button>
+          <div className={`${card.formActions} ${card.spanFull}`}>
+            <button
+              type="submit"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              disabled={saveProfile.isPending}
+            >
+              {saveProfile.isPending ? "Saving…" : "Update profile"}
+            </button>
+            {saveProfile.isError ? (
+              <ErrorAlert message={(saveProfile.error as Error).message} />
+            ) : null}
+            {saveProfile.isSuccess ? (
+              <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--console-fg-muted)" }}>
+                Profile updated.
+              </p>
+            ) : null}
+          </div>
         </form>
-        {saveProfile.isError ? (
-          <ErrorAlert message={(saveProfile.error as Error).message} />
-        ) : null}
-        {saveProfile.isSuccess ? (
-          <p style={{ marginTop: "0.5rem", fontSize: "0.8125rem", color: "var(--console-fg-muted)" }}>
-            Profile updated.
-          </p>
-        ) : null}
       </section>
 
       <section className={card.settingCard}>
         <h2>Password</h2>
         <p>Change the password for your Salanor account (Console and Ops share this login).</p>
         <form
-          className={ui.formGrid}
-          style={{ maxWidth: "24rem" }}
           onSubmit={(e) => {
             e.preventDefault();
             if (nextPassword !== confirmPassword) return;
             changePassword.mutate();
           }}
         >
-          <PasswordField
-            label="Current password"
-            fieldClassName={ui.field}
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-          <PasswordField
-            label="New password"
-            fieldClassName={ui.field}
-            value={nextPassword}
-            onChange={(e) => setNextPassword(e.target.value)}
-            required
-            minLength={10}
-            autoComplete="new-password"
-          />
-          <PasswordField
-            label="Confirm new password"
-            fieldClassName={ui.field}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            minLength={10}
-            autoComplete="new-password"
-          />
+          <div className={`${card.formFields} ${card.formFieldsThree}`}>
+            <PasswordField
+              label="Current password"
+              fieldClassName={ui.field}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+            <PasswordField
+              label="New password"
+              fieldClassName={ui.field}
+              value={nextPassword}
+              onChange={(e) => setNextPassword(e.target.value)}
+              required
+              minLength={10}
+              autoComplete="new-password"
+            />
+            <PasswordField
+              label="Confirm new password"
+              fieldClassName={ui.field}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={10}
+              autoComplete="new-password"
+            />
+          </div>
           {nextPassword && confirmPassword && nextPassword !== confirmPassword ? (
-            <p style={{ color: "var(--console-danger)", fontSize: "0.8125rem", margin: 0 }}>
+            <p style={{ color: "var(--console-danger)", fontSize: "0.8125rem", margin: "0.75rem 0 0" }}>
               Passwords do not match.
             </p>
           ) : null}
-          {changePassword.isError ? (
-            <ErrorAlert message={(changePassword.error as Error).message} />
-          ) : null}
-          {changePassword.isSuccess ? (
-            <p style={{ fontSize: "0.8125rem", color: "var(--console-fg-muted)", margin: 0 }}>
-              Password updated.
-            </p>
-          ) : null}
-          <button
-            type="submit"
-            className={`${ui.btn} ${ui.btnPrimary}`}
-            disabled={
-              changePassword.isPending ||
-              !currentPassword ||
-              nextPassword.length < 10 ||
-              nextPassword !== confirmPassword
-            }
-          >
-            {changePassword.isPending ? "Updating…" : "Update password"}
-          </button>
+          <div className={card.formActions} style={{ marginTop: "1rem" }}>
+            <button
+              type="submit"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              disabled={
+                changePassword.isPending ||
+                !currentPassword ||
+                nextPassword.length < 10 ||
+                nextPassword !== confirmPassword
+              }
+            >
+              {changePassword.isPending ? "Updating…" : "Update password"}
+            </button>
+            {changePassword.isError ? (
+              <ErrorAlert message={(changePassword.error as Error).message} />
+            ) : null}
+            {changePassword.isSuccess ? (
+              <p style={{ fontSize: "0.8125rem", color: "var(--console-fg-muted)", margin: 0 }}>
+                Password updated.
+              </p>
+            ) : null}
+          </div>
         </form>
       </section>
 

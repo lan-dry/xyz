@@ -52,6 +52,24 @@ export default function AgentsPage() {
     },
   });
 
+  const [bridgeMessage, setBridgeMessage] = useState<string | null>(null);
+
+  const enableBridge = useMutation({
+    mutationFn: (agentId: string) =>
+      consoleApi<{
+        agent_id: string;
+        key_id: string;
+        message: string;
+      }>(`/agents/${encodeURIComponent(agentId)}/workflow-bridge`, {
+        method: "POST",
+        body: "{}",
+      }),
+    onSuccess: (data) => {
+      setBridgeMessage(data.message);
+      void queryClient.invalidateQueries({ queryKey: ["console", "agents"] });
+    },
+  });
+
   const agents = agentsQuery.data?.agents ?? [];
 
   async function copyText(text: string) {
@@ -62,7 +80,7 @@ export default function AgentsPage() {
     <ConsolePage>
       <PageHeader
         title="Agents"
-        subtitle="Software identities that sign and emit APS-1 events for your organization. Each agent has a signing key; the private key is shown once at creation."
+        subtitle="Software identities that sign APS-1 events. Use a client signing key for SDKs, or Enable Workflow Bridge for n8n/Zapier (Salanor signs server-side)."
         actions={
           <button
             type="button"
@@ -96,6 +114,15 @@ export default function AgentsPage() {
         </div>
       ) : null}
 
+      {bridgeMessage ? (
+        <div className={`${ui.alert} ${ui.alertSuccess}`} style={{ marginBottom: "1.5rem" }}>
+          {bridgeMessage}
+        </div>
+      ) : null}
+      {enableBridge.isError ? (
+        <ErrorAlert message={(enableBridge.error as Error).message} />
+      ) : null}
+
       {agentsQuery.isPending ? <LoadingBlock /> : null}
       {agentsQuery.isError ? (
         <ErrorAlert message={(agentsQuery.error as Error).message} />
@@ -118,6 +145,7 @@ export default function AgentsPage() {
                 <th>Agent ID</th>
                 <th>Signing keys</th>
                 <th>Created</th>
+                <th>Orchestrators</th>
               </tr>
             </thead>
             <tbody>
@@ -143,6 +171,17 @@ export default function AgentsPage() {
                     )}
                   </td>
                   <td>{formatRelativeTime(agent.created_at)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className={`${ui.btn} ${ui.btnSecondary}`}
+                      disabled={enableBridge.isPending}
+                      onClick={() => enableBridge.mutate(agent.agent_id)}
+                      title="Server-signed traces for n8n / Zapier (no private key in orchestrator)"
+                    >
+                      Enable Workflow Bridge
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

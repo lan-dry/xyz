@@ -8,6 +8,7 @@ export type NavItem = {
 export const aegisNav: NavItem[] = [
   { title: "Overview", href: "/aegis" },
   { title: "Getting started", href: "/aegis/getting-started" },
+  { title: "n8n & orchestrators", href: "/aegis/n8n" },
   {
     title: "SDK",
     href: "/aegis/sdk",

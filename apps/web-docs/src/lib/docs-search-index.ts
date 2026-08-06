@@ -34,6 +34,12 @@ function flattenNav(items: NavItem[], section = "Aegis"): DocsSearchEntry[] {
 
 const EXTRA: DocsSearchEntry[] = [
   {
+    title: "Workflow Bridge n8n",
+    href: "/aegis/n8n",
+    section: "Orchestrators",
+    keywords: "n8n zapier make workflow bridge orchestrator server signed",
+  },
+  {
     title: "Python sign_and_ingest",
     href: "/aegis/sdk/python",
     section: "SDK",

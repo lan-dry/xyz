@@ -138,45 +138,49 @@ export default function SecuritySettingsPage() {
             changePassword.mutate();
           }}
         >
-          <PasswordField
-            label="Current password"
-            fieldClassName={ui.field}
-            value={current}
-            onChange={(e) => setCurrent(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-          <PasswordField
-            label="New password"
-            fieldClassName={ui.field}
-            value={next}
-            onChange={(e) => setNext(e.target.value)}
-            required
-            minLength={10}
-            autoComplete="new-password"
-          />
-          <PasswordField
-            label="Confirm new password"
-            fieldClassName={ui.field}
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            required
-            minLength={10}
-            autoComplete="new-password"
-          />
+          <div className={`${settings.formFields} ${settings.formFieldsThree}`}>
+            <PasswordField
+              label="Current password"
+              fieldClassName={ui.field}
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+            <PasswordField
+              label="New password"
+              fieldClassName={ui.field}
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+              required
+              minLength={10}
+              autoComplete="new-password"
+            />
+            <PasswordField
+              label="Confirm new password"
+              fieldClassName={ui.field}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
+              minLength={10}
+              autoComplete="new-password"
+            />
+          </div>
           {changePassword.isError ? (
             <ErrorAlert message={(changePassword.error as Error).message} />
           ) : null}
           {message && changePassword.isSuccess ? (
             <p className={ui.muted}>{message}</p>
           ) : null}
-          <button
-            type="submit"
-            className={`${ui.btn} ${ui.btnPrimary}`}
-            disabled={changePassword.isPending}
-          >
-            {changePassword.isPending ? "Updating…" : "Update password"}
-          </button>
+          <div className={settings.formActions}>
+            <button
+              type="submit"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              disabled={changePassword.isPending}
+            >
+              {changePassword.isPending ? "Updating…" : "Update password"}
+            </button>
+          </div>
         </form>
       </section>
     </>

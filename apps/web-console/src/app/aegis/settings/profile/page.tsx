@@ -57,53 +57,52 @@ export default function ProfileSettingsPage() {
   return (
     <>
       <section className={settings.settingCard}>
-        <h2>Your email</h2>
-        <p>Email is your global Salanor identity across all organizations.</p>
-        <label className={ui.field}>
-          Email address
-          <input className={ui.input} type="email" value={email} disabled />
-        </label>
-        <p className={ui.muted} style={{ marginTop: "0.5rem", fontSize: "0.75rem" }}>
-          Contact your organization admin to change your login email.
-        </p>
-      </section>
-
-      <section className={settings.settingCard}>
-        <h2>Display name</h2>
-        <p>Shown to teammates in the console and audit logs.</p>
+        <h2>Your profile</h2>
+        <p>Email is your global Salanor identity. Display name is shown to teammates and in audit logs.</p>
         <form
-          className={ui.formRow}
+          className={settings.settingsForm}
           onSubmit={(e) => {
             e.preventDefault();
             saveProfile.mutate();
           }}
         >
-          <label className={ui.field} style={{ flex: 1, minWidth: "14rem" }}>
-            Name
-            <input
-              className={ui.input}
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your name"
-            />
-          </label>
-          <button
-            type="submit"
-            className={`${ui.btn} ${ui.btnPrimary}`}
-            disabled={saveProfile.isPending}
-          >
-            {saveProfile.isPending ? "Saving…" : "Update profile"}
-          </button>
-        </form>
-        {saveProfile.isError ? (
-          <ErrorAlert message={(saveProfile.error as Error).message} />
-        ) : null}
-        {saveProfile.isSuccess ? (
-          <p className={ui.muted} style={{ marginTop: "0.5rem" }}>
-            Profile updated.
+          <div className={settings.formFields}>
+            <label className={ui.field}>
+              Email address
+              <input className={ui.input} type="email" value={email} disabled />
+            </label>
+            <label className={ui.field}>
+              Display name
+              <input
+                className={ui.input}
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Your name"
+              />
+            </label>
+          </div>
+          <p className={ui.muted} style={{ margin: 0, fontSize: "0.75rem" }}>
+            Contact your organization admin to change your login email.
           </p>
-        ) : null}
+          <div className={settings.formActions}>
+            <button
+              type="submit"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              disabled={saveProfile.isPending}
+            >
+              {saveProfile.isPending ? "Saving…" : "Update profile"}
+            </button>
+            {saveProfile.isError ? (
+              <ErrorAlert message={(saveProfile.error as Error).message} />
+            ) : null}
+            {saveProfile.isSuccess ? (
+              <p className={ui.muted} style={{ margin: 0 }}>
+                Profile updated.
+              </p>
+            ) : null}
+          </div>
+        </form>
       </section>
 
       <section className={settings.settingCard}>
