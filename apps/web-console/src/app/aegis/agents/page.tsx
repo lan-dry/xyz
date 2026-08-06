@@ -67,6 +67,7 @@ export default function AgentsPage() {
     onSuccess: (data) => {
       setBridgeMessage(data.message);
       void queryClient.invalidateQueries({ queryKey: ["console", "agents"] });
+      void queryClient.refetchQueries({ queryKey: ["console", "agents"] });
     },
   });
 

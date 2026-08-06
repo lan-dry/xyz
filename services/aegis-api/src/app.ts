@@ -60,6 +60,8 @@ export function createApp(): Hono {
   aegis.get("/approvals/:approvalId", getApprovalStatus);
   aegis.post("/approvals/:approvalId/complete", postApprovalComplete);
   aegis.get("/events/:eventId/inclusion-proof", getEventInclusionProof);
+  // One-shot capture must be registered before /workflows/runs/:traceId/*
+  // so "capture" is never treated as a trace id.
   aegis.post("/workflows/runs/capture", postWorkflowRunCapture);
   aegis.post("/workflows/runs", postWorkflowRunStart);
   aegis.post("/workflows/runs/:traceId/steps", postWorkflowRunSteps);
