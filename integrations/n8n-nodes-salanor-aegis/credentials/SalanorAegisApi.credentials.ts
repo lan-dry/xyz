@@ -17,7 +17,7 @@ export class SalanorAegisApi implements ICredentialType {
       name: "apiBaseUrl",
       type: "string",
       default: "https://api.salanor.com",
-      placeholder: "https://api.salanor.com",
+      required: true,
       description: "Aegis API origin (no trailing slash)",
     },
     {
@@ -27,7 +27,8 @@ export class SalanorAegisApi implements ICredentialType {
       typeOptions: { password: true },
       default: "",
       required: true,
-      description: "Bearer ingest key from Console → API keys (aegis_…)",
+      description:
+        "From Salanor Console → API keys. Value is used as Bearer token (aegis_…).",
     },
   ];
 

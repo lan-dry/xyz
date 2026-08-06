@@ -1,4 +1,5 @@
 import type {
+  IDataObject,
   IExecuteFunctions,
   INodeExecutionData,
   INodeType,
@@ -7,6 +8,16 @@ import type {
 import { NodeOperationError } from "n8n-workflow";
 
 type Creds = { apiBaseUrl: string; apiKey: string };
+
+type CaptureNode = {
+  name: string;
+  kind: "llm" | "tool" | "decision" | "data" | "result";
+  tool_name?: string;
+  status?: string;
+  purpose?: string;
+  input_preview?: string;
+  output_preview?: string;
+};
 
 function baseUrl(creds: Creds): string {
   return (creds.apiBaseUrl || "https://api.salanor.com").replace(/\/+$/, "");
@@ -22,9 +33,76 @@ function executionId(ctx: IExecuteFunctions): string {
   }
 }
 
+function preview(value: unknown, max = 400): string {
+  try {
+    const s = typeof value === "string" ? value : JSON.stringify(value ?? {});
+    return s.length <= max ? s : `${s.slice(0, max)}…`;
+  } catch {
+    return "";
+  }
+}
+
+/** Build signed step list from explicit JSON or from the incoming item. */
+function resolveCaptureNodes(
+  nodesJson: unknown,
+  item: INodeExecutionData,
+): CaptureNode[] {
+  let parsed: unknown = nodesJson;
+  if (typeof nodesJson === "string" && nodesJson.trim()) {
+    try {
+      parsed = JSON.parse(nodesJson);
+    } catch {
+      parsed = [];
+    }
+  }
+  if (Array.isArray(parsed) && parsed.length > 0) {
+    return parsed as CaptureNode[];
+  }
+
+  const j = (item.json ?? {}) as IDataObject;
+  const nodes: CaptureNode[] = [];
+
+  const llm = j.sample_llm ?? j.llm ?? j.openai;
+  if (llm != null) {
+    nodes.push({
+      name: "LLM",
+      kind: "llm",
+      purpose: "LLM step",
+      output_preview: preview(llm),
+    });
+  }
+
+  const tool = j.sample_tool ?? j.tool;
+  if (tool != null && typeof tool === "object") {
+    const t = tool as IDataObject;
+    nodes.push({
+      name: String(t.name ?? t.action ?? "Tool"),
+      kind: "tool",
+      tool_name: String(t.tool_name ?? t.action ?? "orchestrator.tool"),
+      status: String(t.status ?? "success"),
+      output_preview: preview(tool),
+    });
+  }
+
+  if (nodes.length === 0) {
+    nodes.push({
+      name: "Workflow result",
+      kind: "result",
+      purpose: "Captured final workflow item",
+      output_preview: preview(j),
+    });
+  }
+
+  return nodes;
+}
+
 /**
- * Salanor Aegis — community node for n8n.
- * Record Run (end) + Check Policy (before risky steps).
+ * Salanor Aegis — official community node for n8n.
+ *
+ * Customer install: Settings → Community Nodes → n8n-nodes-salanor-aegis
+ *
+ * - Record Run: one node at end of workflow → full signed APS-1 trace
+ * - Check Policy: before risky tools → deny can stop the branch
  */
 export class SalanorAegis implements INodeType {
   description: INodeTypeDescription = {
@@ -35,7 +113,7 @@ export class SalanorAegis implements INodeType {
     version: 1,
     subtitle: '={{$parameter["operation"]}}',
     description:
-      "Record signed Aegis traces and check policies before risky n8n steps",
+      "Governance for agent workflows: record signed traces and enforce policies",
     defaults: { name: "Salanor Aegis" },
     inputs: ["main"],
     outputs: ["main"],
@@ -50,26 +128,16 @@ export class SalanorAegis implements INodeType {
           {
             name: "Record Run",
             value: "recordRun",
-            action: "Record a signed workflow run",
+            action: "Record signed workflow run",
             description:
-              "One call: start + pack steps + complete (put at end of workflow)",
+              "Place once at the end. Signs the full run (one API call).",
           },
           {
             name: "Check Policy",
             value: "checkPolicy",
-            action: "Check policy before a risky step",
+            action: "Check policy before risky step",
             description:
-              "Call before a side-effect. Deny can stop the branch",
-          },
-          {
-            name: "Start Run",
-            value: "startRun",
-            action: "Start a workflow trace",
-          },
-          {
-            name: "Complete Run",
-            value: "completeRun",
-            action: "Complete a workflow trace",
+              "Place before payments/deletes/sends. Deny stops the workflow.",
           },
         ],
         default: "recordRun",
@@ -79,31 +147,23 @@ export class SalanorAegis implements INodeType {
         name: "businessContext",
         type: "string",
         default: "={{$workflow.name}}",
-        displayOptions: { show: { operation: ["recordRun", "startRun"] } },
+        displayOptions: { show: { operation: ["recordRun"] } },
       },
       {
         displayName: "Summary",
         name: "summary",
         type: "string",
-        default: "n8n workflow completed",
-        displayOptions: { show: { operation: ["recordRun", "completeRun"] } },
+        default: "Workflow completed",
+        displayOptions: { show: { operation: ["recordRun"] } },
       },
       {
-        displayName: "Nodes JSON",
+        displayName: "Steps (optional)",
         name: "nodesJson",
         type: "json",
         default: "[]",
         description:
-          "Array of { name, kind: llm|tool|decision|data|result, tool_name?, status?, input_preview?, output_preview? }",
-        displayOptions: { show: { operation: ["recordRun", "completeRun"] } },
-      },
-      {
-        displayName: "Trace ID",
-        name: "traceId",
-        type: "string",
-        default: "",
-        required: true,
-        displayOptions: { show: { operation: ["completeRun"] } },
+          "Optional explicit steps. Leave [] to auto-capture the incoming item as the signed result (and sample_llm / sample_tool if present).",
+        displayOptions: { show: { operation: ["recordRun"] } },
       },
       {
         displayName: "Organization ID",
@@ -135,8 +195,8 @@ export class SalanorAegis implements INodeType {
         name: "onDeny",
         type: "options",
         options: [
-          { name: "Stop Workflow (error)", value: "error" },
-          { name: "Continue With Decision In Output", value: "continue" },
+          { name: "Stop Workflow", value: "error" },
+          { name: "Continue (attach decision)", value: "continue" },
         ],
         default: "error",
         displayOptions: { show: { operation: ["checkPolicy"] } },
@@ -159,8 +219,7 @@ export class SalanorAegis implements INodeType {
         ) as string;
         const summary = this.getNodeParameter("summary", i) as string;
         const nodesJson = this.getNodeParameter("nodesJson", i);
-        const nodes =
-          typeof nodesJson === "string" ? JSON.parse(nodesJson) : nodesJson;
+        const nodes = resolveCaptureNodes(nodesJson, items[i]);
         const execId = executionId(this);
 
         const response = await this.helpers.httpRequest({
@@ -181,13 +240,13 @@ export class SalanorAegis implements INodeType {
             execution: {
               workflow_name: this.getWorkflow().name,
               execution_id: execId,
-              nodes: Array.isArray(nodes) ? nodes : [],
+              nodes,
             },
           },
           json: true,
         });
 
-        returnData.push({ json: response as INodeExecutionData["json"] });
+        returnData.push({ json: response as IDataObject });
         continue;
       }
 
@@ -211,7 +270,7 @@ export class SalanorAegis implements INodeType {
             organization_id: organizationId,
             agent_id: agentId,
             tool_name: toolName,
-            payload: items[i].json as Record<string, unknown>,
+            payload: items[i].json as IDataObject,
           },
           json: true,
         })) as { decision?: string; reason?: string };
@@ -225,63 +284,8 @@ export class SalanorAegis implements INodeType {
         }
 
         returnData.push({
-          json: { ...items[i].json, aegis_policy: response },
+          json: { ...(items[i].json as IDataObject), aegis_policy: response },
         });
-        continue;
-      }
-
-      if (operation === "startRun") {
-        const businessContext = this.getNodeParameter(
-          "businessContext",
-          i,
-        ) as string;
-        const execId = executionId(this);
-        const response = await this.helpers.httpRequest({
-          method: "POST",
-          url: `${api}/v1/aegis/workflows/runs`,
-          headers: {
-            Authorization: `Bearer ${creds.apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: {
-            business_context: businessContext,
-            external_system: "n8n",
-            external_workflow_id: String(this.getWorkflow().id ?? ""),
-            external_execution_id: execId,
-          },
-          json: true,
-        });
-        returnData.push({ json: response as INodeExecutionData["json"] });
-        continue;
-      }
-
-      if (operation === "completeRun") {
-        const traceId = this.getNodeParameter("traceId", i) as string;
-        const summary = this.getNodeParameter("summary", i) as string;
-        const nodesJson = this.getNodeParameter("nodesJson", i);
-        const nodes =
-          typeof nodesJson === "string" ? JSON.parse(nodesJson) : nodesJson;
-        const execId = executionId(this);
-
-        const response = await this.helpers.httpRequest({
-          method: "POST",
-          url: `${api}/v1/aegis/workflows/runs/${encodeURIComponent(traceId)}/complete`,
-          headers: {
-            Authorization: `Bearer ${creds.apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: {
-            status: "completed",
-            summary,
-            execution: {
-              workflow_name: this.getWorkflow().name,
-              execution_id: execId,
-              nodes: Array.isArray(nodes) ? nodes : [],
-            },
-          },
-          json: true,
-        });
-        returnData.push({ json: response as INodeExecutionData["json"] });
         continue;
       }
 

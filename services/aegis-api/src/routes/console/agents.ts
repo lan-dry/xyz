@@ -156,8 +156,8 @@ agentRoutes.post("/agents/:agentId/workflow-bridge", requireConsoleSession, asyn
       {
         ...enabled,
         message: enabled.already_enabled
-          ? "Workflow Bridge is already on. In n8n: one HTTP node → POST /v1/aegis/workflows/runs with one_shot + execution (ingest API key only)."
-          : "Workflow Bridge enabled. In n8n: one HTTP node → POST /v1/aegis/workflows/runs with one_shot + execution. Private key stays on Salanor.",
+          ? "Workflow Bridge is already on. Customers: n8n → Settings → Community nodes → install n8n-nodes-salanor-aegis → Salanor Aegis (Record Run / Check Policy)."
+          : "Workflow Bridge enabled. Customers: n8n → Settings → Community nodes → install n8n-nodes-salanor-aegis → Salanor Aegis (Record Run at end; Check Policy before risk).",
       },
       enabled.already_enabled ? 200 : 201,
     );

@@ -1,83 +1,76 @@
-# Salanor Aegis — n8n community node
+# Salanor Aegis for n8n
 
-**Long-term product path for orchestrators.**
+Official community node: **signed traces + policy checks** without Ed25519 keys in n8n.
 
-| Operation | Place in workflow | What it does |
-|-----------|-------------------|--------------|
-| **Record Run** | **Once at the end** | Signed APS-1 trace (start + packed steps + complete) |
-| **Check Policy** | **Before** payment / delete / send / apply | Live `allow` / `deny` / obligation — can **stop** the branch |
-| Start / Complete | Advanced | Multi-call bridge |
+## How customers install (this is the product)
 
-## Requirements (honest)
+### Self-hosted / desktop n8n
 
-- n8n **cannot** silently wrap every native node. Users place **Check Policy** before risky steps and **Record Run** at the end.
-- Server must support one-shot: `POST /v1/aegis/workflows/runs` with `one_shot` + `execution` (deploy latest `main` on Railway aegis-api).
-- Agent: **Workflow Bridge on** + ingest API key.
+1. Open n8n → **Settings** → **Community nodes** → **Install**
+2. Package name: `n8n-nodes-salanor-aegis`
+3. Accept the risk checkbox → **Install**
+4. Restart n8n if prompted
+5. Search the node palette for **Salanor Aegis** (Salanor icon)
 
-## Install (local n8n)
+### Docker / queue mode
 
 ```bash
-cd integrations/n8n-nodes-salanor-aegis
-npm install
-npm run build
+mkdir -p ~/.n8n/nodes
+cd ~/.n8n/nodes
+npm i n8n-nodes-salanor-aegis
+# restart n8n
 ```
 
-**n8n desktop / self-host**
+### n8n Cloud
 
-1. Settings → Community nodes → Install from npm **or**
-2. Symlink / copy this package into `~/.n8n/nodes/` (or `N8N_CUSTOM_EXTENSIONS`):
+Install the same package name under Community nodes when your Cloud plan allows community packages. If Cloud blocks unverified packages, use the HTTP one-shot API until the package is listed/verified.
 
-```bash
-# example
-mkdir -p ~/.n8n/custom
-npm pack
-# install the tarball into n8n's custom extensions directory, then restart n8n
-```
+### One-time Salanor setup
 
-Or from n8n env:
+1. Console → **API keys** → create ingest key  
+2. Console → **Agents** → **Enable Workflow Bridge** (shows **Workflow Bridge on**)  
+3. In n8n: create credential **Salanor Aegis API**  
+   - Base URL: `https://api.salanor.com`  
+   - Ingest API key: `aegis_…`
 
-```bash
-export N8N_CUSTOM_EXTENSIONS=/absolute/path/to/integrations/n8n-nodes-salanor-aegis
-```
-
-Restart n8n. Search nodes for **Salanor Aegis**.
-
-## Credentials
-
-- **API Base URL:** `https://api.salanor.com`
-- **Ingest API Key:** Console → API keys (`Bearer aegis_…`)
-
-## Recommended workflow shape
+## How to use in a workflow
 
 ```
 Trigger
-  → your work (LLM, tools, …)
-  → [Salanor Aegis · Check Policy]   # only before dangerous tools
-  → dangerous tool (if allowed)
-  → … more work …
-  → [Salanor Aegis · Record Run]     # once at end — pack node previews in Nodes JSON
+  → your existing nodes
+  → [Salanor Aegis · Check Policy]   # only before risky tools
+  → risky tool (if allowed)
+  → …
+  → [Salanor Aegis · Record Run]     # once at the end
 ```
 
-## Record Run — Nodes JSON example
+| Operation | When | Effect |
+|-----------|------|--------|
+| **Record Run** | End of workflow | One call → full signed APS-1 trace + `trace_url` |
+| **Check Policy** | Before side effects | Deny can **stop** the workflow with a reason |
 
-```json
-[
-  {
-    "name": "OpenAI",
-    "kind": "llm",
-    "purpose": "Draft",
-    "output_preview": "…"
-  },
-  {
-    "name": "Apply",
-    "kind": "tool",
-    "tool_name": "app.content.apply",
-    "status": "success",
-    "output_preview": "ok"
-  }
-]
+**Record Run** packs the incoming item automatically (and `sample_llm` / `sample_tool` if present). Optional **Steps** JSON for explicit LLM/tool rows.
+
+## Zapier / Make / other orchestrators
+
+There is no n8n-style community node. Use the same API:
+
+`POST https://api.salanor.com/v1/aegis/workflows/runs`  
+with ingest Bearer key and body `{ one_shot: true, execution: { nodes: […] }, status: "completed" }`.
+
+## Publish (Salanor ops)
+
+Package must be on the **public npm registry** for the install UI above to work:
+
+```bash
+cd integrations/n8n-nodes-salanor-aegis
+npm login          # or NPM_TOKEN
+npm run build
+npm publish --access public
 ```
 
-## Check Policy
+Or GitHub Action **Publish n8n-nodes-salanor-aegis** with secret `NPM_TOKEN`.
 
-Requires `organization_id`, `agent_id`, `tool_name`. On deny with default **Stop Workflow**, the run errors with the policy reason.
+## License
+
+MIT
