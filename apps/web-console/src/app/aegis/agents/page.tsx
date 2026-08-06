@@ -150,9 +150,9 @@ export default function AgentsPage() {
             </thead>
             <tbody>
               {agents.map((agent) => {
-                const bridgeOn = agent.signing_keys.some(
-                  (k) => k.bridge_enabled && !k.revoked,
-                );
+                const bridgeOn =
+                  agent.workflow_bridge_enabled === true ||
+                  agent.signing_keys.some((k) => k.bridge_enabled && !k.revoked);
                 return (
                 <tr key={agent.agent_id}>
                   <td>
@@ -178,7 +178,10 @@ export default function AgentsPage() {
                   <td>{formatRelativeTime(agent.created_at)}</td>
                   <td>
                     {bridgeOn ? (
-                      <span className={`${ui.badge} ${ui.badgeMuted}`} title="Any orchestrator can start/complete traces with ingest API key only">
+                      <span
+                        className={`${ui.badge} ${ui.badgeSuccess}`}
+                        title="One n8n HTTP node: POST /v1/aegis/workflows/runs/capture with your ingest API key"
+                      >
                         Workflow Bridge on
                       </span>
                     ) : (

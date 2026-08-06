@@ -91,6 +91,8 @@ export type AgentSummary = {
   did: string;
   active: boolean;
   created_at: string;
+  /** True when a non-revoked Workflow Bridge signing key exists for this agent. */
+  workflow_bridge_enabled?: boolean;
   signing_keys: AgentSigningKeySummary[];
 };
 

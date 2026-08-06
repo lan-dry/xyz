@@ -23,14 +23,8 @@ agentRoutes.get("/agents", requireConsoleSession, async (c) => {
   try {
     const agents = await listAgentsForOrganization(client, orgId);
     return c.json({
-      agents: agents.map((a: AgentWithKeys) => ({
-        agent_id: a.agent_id,
-        slug: a.slug,
-        display_name: a.display_name,
-        did: a.did,
-        active: a.active,
-        created_at: a.created_at.toISOString(),
-        signing_keys: a.signing_keys.map((k: SigningKeySummary) => ({
+      agents: agents.map((a: AgentWithKeys) => {
+        const signing_keys = a.signing_keys.map((k: SigningKeySummary) => ({
           key_id: k.key_id,
           public_key_b64: k.public_key_b64,
           kms_provider: k.kms_provider,
@@ -38,8 +32,20 @@ agentRoutes.get("/agents", requireConsoleSession, async (c) => {
           bridge_enabled: Boolean(k.bridge_enabled),
           valid_from: k.valid_from.toISOString(),
           created_at: k.created_at.toISOString(),
-        })),
-      })),
+        }));
+        return {
+          agent_id: a.agent_id,
+          slug: a.slug,
+          display_name: a.display_name,
+          did: a.did,
+          active: a.active,
+          created_at: a.created_at.toISOString(),
+          workflow_bridge_enabled: signing_keys.some(
+            (k) => k.bridge_enabled && !k.revoked,
+          ),
+          signing_keys,
+        };
+      }),
     });
   } finally {
     client.release();
@@ -137,8 +143,8 @@ agentRoutes.post("/agents/:agentId/workflow-bridge", requireConsoleSession, asyn
       {
         ...enabled,
         message: enabled.already_enabled
-          ? "Workflow Bridge is already on for this agent. Use your ingest API key with POST /v1/aegis/workflows/runs (n8n, Zapier, Make, or any HTTP client)."
-          : "Workflow Bridge enabled. Use your ingest API key with POST /v1/aegis/workflows/runs (n8n, Zapier, Make, or any HTTP client). The private key stays on Salanor servers.",
+          ? "Workflow Bridge is already on. In n8n add one HTTP node: POST /v1/aegis/workflows/runs/capture (ingest API key only)."
+          : "Workflow Bridge enabled. In n8n add one HTTP node: POST /v1/aegis/workflows/runs/capture. The private key stays on Salanor servers.",
       },
       enabled.already_enabled ? 200 : 201,
     );

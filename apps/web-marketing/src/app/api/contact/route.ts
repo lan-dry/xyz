@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 
 /**
- * Enterprise path: marketing never talks to Postgres.
- * Proxies to salanor-id `POST /v1/id/public/contact` (Railway).
- * Vercel marketing MUST set SALANOR_ID_URL=https://id.salanor.com
+ * Marketing contact → salanor-id (Railway).
+ * Uses runtime SALANOR_ID_URL (not build-time rewrite only).
  */
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 function resolveIdBase(): string | null {
   const raw = process.env.SALANOR_ID_URL?.trim();
   if (!raw) return null;
   return raw.replace(/\/$/, "");
 }
+
+const CONTACT_PATHS = [
+  "/v1/id/public/contact",
+  "/v1/id/leads/contact",
+] as const;
 
 export async function POST(req: NextRequest) {
   const idBase = resolveIdBase();
@@ -46,29 +53,42 @@ export async function POST(req: NextRequest) {
 
   const forwarded = req.headers.get("x-forwarded-for");
   const realIp = req.headers.get("x-real-ip");
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (forwarded) headers["x-forwarded-for"] = forwarded;
+  if (realIp) headers["x-real-ip"] = realIp;
 
-  let upstream: Response;
-  try {
-    upstream = await fetch(`${idBase}/v1/id/public/contact`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(forwarded ? { "x-forwarded-for": forwarded } : {}),
-        ...(realIp ? { "x-real-ip": realIp } : {}),
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    console.error("[contact] id upstream unreachable", idBase, err);
-    return NextResponse.json(
-      { error: "Could not save your message. Email partners@salanor.com." },
-      { status: 502 },
-    );
+  let lastStatus = 502;
+  let lastPayload: unknown = {
+    error: "Could not save your message. Email partners@salanor.com.",
+  };
+
+  for (const path of CONTACT_PATHS) {
+    try {
+      const upstream = await fetch(`${idBase}${path}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+      const payload = await upstream.json().catch(() => ({}));
+      if (upstream.status !== 404) {
+        if (!upstream.ok) {
+          console.error("[contact] id upstream", path, upstream.status, payload);
+        }
+        return NextResponse.json(payload, { status: upstream.status });
+      }
+      lastStatus = upstream.status;
+      lastPayload = payload;
+    } catch (err) {
+      console.error("[contact] id upstream unreachable", idBase, path, err);
+      lastStatus = 502;
+      lastPayload = {
+        error: "Could not save your message. Email partners@salanor.com.",
+      };
+    }
   }
 
-  const payload = await upstream.json().catch(() => ({}));
-  if (!upstream.ok) {
-    console.error("[contact] id upstream status", upstream.status, payload);
-  }
-  return NextResponse.json(payload, { status: upstream.status });
+  console.error("[contact] all id contact paths returned 404 — redeploy salanor-id");
+  return NextResponse.json(lastPayload, { status: lastStatus === 404 ? 502 : lastStatus });
 }

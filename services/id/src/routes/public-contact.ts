@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import type { Context } from "hono";
 import { Hono } from "hono";
 
 import { getClientIp } from "@salanor/platform-auth";
@@ -49,10 +50,8 @@ function isContactReason(v: unknown): v is ContactReason {
   return typeof v === "string" && (CONTACT_REASONS as readonly string[]).includes(v);
 }
 
-/** Public marketing contact → Postgres + Ops leads inbox. */
-export const publicContactRoutes = new Hono();
-
-publicContactRoutes.post("/contact", async (c) => {
+/** Shared handler — mounted on multiple paths so marketing proxies always hit it. */
+export async function handlePublicContact(c: Context): Promise<Response> {
   if (!process.env.DATABASE_URL) {
     return c.json({ error: "Contact service is not configured" }, 503);
   }
@@ -138,4 +137,18 @@ publicContactRoutes.post("/contact", async (c) => {
 
   console.info(`[id] contact ${id} ${reason} ${email}`);
   return c.json({ id, emailed: notify.sent }, 201);
-});
+}
+
+export async function handlePublicContactHealth(c: Context): Promise<Response> {
+  return c.json({
+    ok: true,
+    service: "salanor-id-contact",
+    paths: ["/v1/id/public/contact", "/v1/id/leads/contact"],
+  });
+}
+
+/** Public marketing contact → Postgres + Ops leads inbox. */
+export const publicContactRoutes = new Hono();
+
+publicContactRoutes.get("/contact", handlePublicContactHealth);
+publicContactRoutes.post("/contact", handlePublicContact);
