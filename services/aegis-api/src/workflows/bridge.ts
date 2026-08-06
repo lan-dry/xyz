@@ -105,6 +105,7 @@ export async function resolveBridgeKey(
 /**
  * Enable Workflow Bridge on an existing agent by generating a new server-held key.
  * Private key is encrypted at rest; never returned to the client.
+ * Idempotent: if already enabled, returns the existing bridge key (unless forceRotate).
  */
 export async function enableWorkflowBridgeForAgent(
   client: pg.PoolClient,
@@ -112,8 +113,14 @@ export async function enableWorkflowBridgeForAgent(
     organizationId: string;
     organizationSlug: string;
     agentId: string;
+    forceRotate?: boolean;
   },
-): Promise<{ agent_id: string; key_id: string; public_key_b64: string }> {
+): Promise<{
+  agent_id: string;
+  key_id: string;
+  public_key_b64: string;
+  already_enabled: boolean;
+}> {
   if (!isBridgeMasterKeyConfigured()) {
     throw new Error("AEGIS_BRIDGE_MASTER_KEY is not configured on aegis-api");
   }
@@ -125,6 +132,29 @@ export async function enableWorkflowBridgeForAgent(
   );
   if (!agent.rows[0]) {
     throw new Error("Agent not found");
+  }
+
+  if (!input.forceRotate) {
+    const existing = await client.query<{
+      key_id: string;
+      public_key_b64: string;
+    }>(
+      `SELECT key_id, public_key_b64 FROM signing_key
+       WHERE agent_id = $1 AND organization_id = $2
+         AND bridge_enabled = true AND revoked = false
+         AND private_key_ciphertext IS NOT NULL
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [input.agentId, input.organizationId],
+    );
+    if (existing.rows[0]) {
+      return {
+        agent_id: input.agentId,
+        key_id: existing.rows[0].key_id,
+        public_key_b64: existing.rows[0].public_key_b64,
+        already_enabled: true,
+      };
+    }
   }
 
   const keyId = `key_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
@@ -150,6 +180,7 @@ export async function enableWorkflowBridgeForAgent(
     agent_id: input.agentId,
     key_id: keyId,
     public_key_b64: publicKeyB64,
+    already_enabled: false,
   };
 }
 

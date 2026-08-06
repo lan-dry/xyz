@@ -80,7 +80,7 @@ export default function AgentsPage() {
     <ConsolePage>
       <PageHeader
         title="Agents"
-        subtitle="Software identities that sign APS-1 events. Use a client signing key for SDKs, or Enable Workflow Bridge for n8n/Zapier (Salanor signs server-side)."
+        subtitle="Software identities that sign APS-1 events. SDK path: you hold a signing key. Orchestrator path (n8n, Zapier, Make, HTTP): Enable Workflow Bridge once — Salanor signs server-side."
         actions={
           <button
             type="button"
@@ -178,7 +178,7 @@ export default function AgentsPage() {
                   <td>{formatRelativeTime(agent.created_at)}</td>
                   <td>
                     {bridgeOn ? (
-                      <span className={`${ui.badge} ${ui.badgeMuted}`} title="n8n/Zapier can start/complete traces with ingest API key only">
+                      <span className={`${ui.badge} ${ui.badgeMuted}`} title="Any orchestrator can start/complete traces with ingest API key only">
                         Workflow Bridge on
                       </span>
                     ) : (
@@ -187,7 +187,7 @@ export default function AgentsPage() {
                         className={`${ui.btn} ${ui.btnSecondary}`}
                         disabled={enableBridge.isPending}
                         onClick={() => enableBridge.mutate(agent.agent_id)}
-                        title="Server-signed traces for n8n / Zapier (no private key in orchestrator)"
+                        title="Server-signed traces for orchestrators (n8n, Zapier, Make, HTTP) — no private key in the tool"
                       >
                         Enable Workflow Bridge
                       </button>

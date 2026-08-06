@@ -136,10 +136,11 @@ agentRoutes.post("/agents/:agentId/workflow-bridge", requireConsoleSession, asyn
     return c.json(
       {
         ...enabled,
-        message:
-          "Workflow Bridge enabled. Use your ingest API key with POST /v1/aegis/workflows/runs from n8n. The private key stays on Salanor servers.",
+        message: enabled.already_enabled
+          ? "Workflow Bridge is already on for this agent. Use your ingest API key with POST /v1/aegis/workflows/runs (n8n, Zapier, Make, or any HTTP client)."
+          : "Workflow Bridge enabled. Use your ingest API key with POST /v1/aegis/workflows/runs (n8n, Zapier, Make, or any HTTP client). The private key stays on Salanor servers.",
       },
-      201,
+      enabled.already_enabled ? 200 : 201,
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to enable Workflow Bridge";
