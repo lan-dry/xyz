@@ -149,7 +149,11 @@ export default function AgentsPage() {
               </tr>
             </thead>
             <tbody>
-              {agents.map((agent) => (
+              {agents.map((agent) => {
+                const bridgeOn = agent.signing_keys.some(
+                  (k) => k.bridge_enabled && !k.revoked,
+                );
+                return (
                 <tr key={agent.agent_id}>
                   <td>
                     <strong>{agent.display_name ?? agent.slug}</strong>
@@ -164,6 +168,7 @@ export default function AgentsPage() {
                         {agent.signing_keys.map((k) => (
                           <li key={k.key_id} className="mono" style={{ fontSize: "0.75rem" }}>
                             {k.key_id}
+                            {k.bridge_enabled && !k.revoked ? " · bridge" : ""}
                             {k.revoked ? " (revoked)" : ""}
                           </li>
                         ))}
@@ -172,18 +177,25 @@ export default function AgentsPage() {
                   </td>
                   <td>{formatRelativeTime(agent.created_at)}</td>
                   <td>
-                    <button
-                      type="button"
-                      className={`${ui.btn} ${ui.btnSecondary}`}
-                      disabled={enableBridge.isPending}
-                      onClick={() => enableBridge.mutate(agent.agent_id)}
-                      title="Server-signed traces for n8n / Zapier (no private key in orchestrator)"
-                    >
-                      Enable Workflow Bridge
-                    </button>
+                    {bridgeOn ? (
+                      <span className={`${ui.badge} ${ui.badgeMuted}`} title="n8n/Zapier can start/complete traces with ingest API key only">
+                        Workflow Bridge on
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={`${ui.btn} ${ui.btnSecondary}`}
+                        disabled={enableBridge.isPending}
+                        onClick={() => enableBridge.mutate(agent.agent_id)}
+                        title="Server-signed traces for n8n / Zapier (no private key in orchestrator)"
+                      >
+                        Enable Workflow Bridge
+                      </button>
+                    )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

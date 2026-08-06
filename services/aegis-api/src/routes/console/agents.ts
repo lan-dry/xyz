@@ -35,6 +35,7 @@ agentRoutes.get("/agents", requireConsoleSession, async (c) => {
           public_key_b64: k.public_key_b64,
           kms_provider: k.kms_provider,
           revoked: k.revoked,
+          bridge_enabled: Boolean(k.bridge_enabled),
           valid_from: k.valid_from.toISOString(),
           created_at: k.created_at.toISOString(),
         })),

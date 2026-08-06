@@ -79,6 +79,7 @@ export type AgentSigningKeySummary = {
   public_key_b64: string;
   kms_provider: string | null;
   revoked: boolean;
+  bridge_enabled?: boolean;
   valid_from: string;
   created_at: string;
 };

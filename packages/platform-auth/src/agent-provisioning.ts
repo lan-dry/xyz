@@ -29,6 +29,7 @@ export type SigningKeySummary = {
   public_key_b64: string;
   kms_provider: string | null;
   revoked: boolean;
+  bridge_enabled: boolean;
   valid_from: Date;
   created_at: Date;
 };
@@ -166,7 +167,9 @@ export async function listAgentsForOrganization(
   );
 
   const keys = await client.query<SigningKeySummary>(
-    `SELECT key_id, agent_id, public_key_b64, kms_provider, revoked, valid_from, created_at
+    `SELECT key_id, agent_id, public_key_b64, kms_provider, revoked,
+            COALESCE(bridge_enabled, false) AS bridge_enabled,
+            valid_from, created_at
      FROM signing_key
      WHERE organization_id = $1
      ORDER BY created_at ASC`,
