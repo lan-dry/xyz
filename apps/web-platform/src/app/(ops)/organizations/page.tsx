@@ -27,9 +27,20 @@ type OrgRow = {
   current_period_end: string | null;
 };
 
+type BillingEvent = {
+  billing_event_id: string;
+  event_type: string;
+  plan_slug: string | null;
+  external_invoice_ref: string | null;
+  note: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  created_at: string;
+};
+
 type BillingMode = "pending" | "mark-paid" | "end" | null;
 
-function formatPeriodEnd(iso: string | null): string {
+function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleDateString(undefined, {
@@ -60,12 +71,10 @@ export default function OrganizationsPage() {
   const [searchInput, setSearchInput] = useState(q);
   const queryClient = useQueryClient();
 
-  const [billingOrg, setBillingOrg] = useState<OrgRow | null>(null);
+  const [detailOrgId, setDetailOrgId] = useState<string | null>(null);
   const [billingMode, setBillingMode] = useState<BillingMode>(null);
   const [planSlug, setPlanSlug] = useState("team");
   const [invoiceRef, setInvoiceRef] = useState("");
-  const [amountDollars, setAmountDollars] = useState("");
-  const [currency, setCurrency] = useState("USD");
   const [note, setNote] = useState("");
   const [periodStart, setPeriodStart] = useState(defaultPeriodDates().start);
   const [periodEnd, setPeriodEnd] = useState(defaultPeriodDates().end);
@@ -106,11 +115,23 @@ export default function OrganizationsPage() {
       ];
   const paidPlanOptions = planOptions.filter((p) => p.plan_slug !== "free");
 
+  const orgs = orgsQuery.data?.organizations ?? [];
+  const detailOrg = orgs.find((o) => o.organization_id === detailOrgId) ?? null;
+
+  const eventsQuery = useQuery({
+    queryKey: ["platform", "org-billing-events", detailOrgId],
+    enabled: Boolean(detailOrgId),
+    queryFn: () =>
+      platformApi<{ events: BillingEvent[] }>(
+        `organizations/${encodeURIComponent(detailOrgId!)}/billing/events?limit=20`,
+      ),
+  });
+
   const patchOrg = useMutation({
-    mutationFn: (input: { id: string; plan?: string; active?: boolean }) =>
+    mutationFn: (input: { id: string; active?: boolean }) =>
       platformApi(`/organizations/${encodeURIComponent(input.id)}`, {
         method: "PATCH",
-        body: JSON.stringify({ plan: input.plan, active: input.active }),
+        body: JSON.stringify({ active: input.active }),
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["platform", "orgs"] });
@@ -119,15 +140,8 @@ export default function OrganizationsPage() {
 
   const billingMutation = useMutation({
     mutationFn: async () => {
-      if (!billingOrg || !billingMode) throw new Error("No organization selected");
-      const id = encodeURIComponent(billingOrg.organization_id);
-      const amountCents =
-        amountDollars.trim() === ""
-          ? undefined
-          : Math.round(Number(amountDollars) * 100);
-      if (amountCents !== undefined && !Number.isFinite(amountCents)) {
-        throw new Error("Invalid amount");
-      }
+      if (!detailOrg || !billingMode) throw new Error("No organization selected");
+      const id = encodeURIComponent(detailOrg.organization_id);
 
       if (billingMode === "pending") {
         return platformApi(`/organizations/${id}/billing/pending`, {
@@ -135,8 +149,6 @@ export default function OrganizationsPage() {
           body: JSON.stringify({
             plan_slug: planSlug,
             external_invoice_ref: invoiceRef.trim() || undefined,
-            amount_cents: amountCents,
-            currency: currency.trim() || "USD",
             note: note.trim() || undefined,
           }),
         });
@@ -149,8 +161,6 @@ export default function OrganizationsPage() {
             period_start: new Date(`${periodStart}T00:00:00.000Z`).toISOString(),
             period_end: new Date(`${periodEnd}T23:59:59.999Z`).toISOString(),
             external_invoice_ref: invoiceRef.trim() || undefined,
-            amount_cents: amountCents,
-            currency: currency.trim() || "USD",
             note: note.trim() || undefined,
           }),
         });
@@ -165,7 +175,10 @@ export default function OrganizationsPage() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["platform", "orgs"] });
-      closeBilling();
+      void queryClient.invalidateQueries({
+        queryKey: ["platform", "org-billing-events", detailOrgId],
+      });
+      setBillingMode(null);
     },
   });
 
@@ -189,17 +202,26 @@ export default function OrganizationsPage() {
     },
   });
 
-  function openBilling(org: OrgRow, mode: Exclude<BillingMode, null>) {
-    setBillingOrg(org);
+  function openDetail(org: OrgRow) {
+    setDetailOrgId(org.organization_id);
+    setBillingMode(null);
+    billingMutation.reset();
+  }
+
+  function closeDetail() {
+    setDetailOrgId(null);
+    setBillingMode(null);
+  }
+
+  function startBilling(mode: Exclude<BillingMode, null>) {
+    if (!detailOrg) return;
     setBillingMode(mode);
     setPlanSlug(
-      org.plan !== "free"
-        ? org.plan
+      detailOrg.plan !== "free"
+        ? detailOrg.plan
         : paidPlanOptions[0]?.plan_slug ?? "team",
     );
     setInvoiceRef("");
-    setAmountDollars("");
-    setCurrency("USD");
     setNote("");
     const dates = defaultPeriodDates();
     setPeriodStart(dates.start);
@@ -207,13 +229,6 @@ export default function OrganizationsPage() {
     setEndStatus("canceled");
     billingMutation.reset();
   }
-
-  function closeBilling() {
-    setBillingOrg(null);
-    setBillingMode(null);
-  }
-
-  const orgs = orgsQuery.data?.organizations ?? [];
 
   return (
     <OpsShell
@@ -238,11 +253,6 @@ export default function OrganizationsPage() {
       {orgsQuery.isError ? (
         <p className={ui.loading} style={{ color: "var(--console-danger)" }}>
           Could not load organizations.
-        </p>
-      ) : null}
-      {impersonate.isError ? (
-        <p style={{ color: "var(--console-danger)", margin: "0 0 1rem", fontSize: "0.875rem" }}>
-          {(impersonate.error as Error).message}
         </p>
       ) : null}
 
@@ -272,9 +282,9 @@ export default function OrganizationsPage() {
                 <th>Plan</th>
                 <th>Billing</th>
                 <th>Members</th>
-                <th>Events (month)</th>
+                <th>Events</th>
                 <th>Status</th>
-                <th>Actions</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -286,85 +296,24 @@ export default function OrganizationsPage() {
                       {o.slug}
                     </div>
                   </td>
+                  <td style={{ textTransform: "capitalize" }}>{o.plan}</td>
                   <td>
-                    <div style={{ fontWeight: 500, textTransform: "capitalize" }}>
-                      {o.plan}
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ fontSize: "0.8125rem" }}>
-                      <span className={styles.billingBadge}>{o.billing_status}</span>
-                      {o.billing_source !== "none" ? (
-                        <span className={styles.billingSource}> · {o.billing_source}</span>
-                      ) : null}
-                    </div>
+                    <span className={styles.billingBadge}>{o.billing_status}</span>
                     <div style={{ fontSize: "0.75rem", color: "var(--console-fg-muted)", marginTop: 4 }}>
-                      Period ends {formatPeriodEnd(o.current_period_end)}
+                      Ends {formatDate(o.current_period_end)}
                     </div>
                   </td>
                   <td>{o.member_count}</td>
                   <td>{o.events_this_month}</td>
                   <td>{o.active ? "Active" : "Suspended"}</td>
                   <td>
-                    <div className={ui.formRow}>
-                      {canWriteOrgs ? (
-                        <>
-                          <button
-                            type="button"
-                            className={`${ui.btn} ${ui.btnSecondary}`}
-                            onClick={() => openBilling(o, "pending")}
-                          >
-                            Record pending
-                          </button>
-                          <button
-                            type="button"
-                            className={`${ui.btn} ${ui.btnPrimary}`}
-                            onClick={() => openBilling(o, "mark-paid")}
-                          >
-                            Mark paid
-                          </button>
-                          {o.plan !== "free" || o.billing_status === "pending" ? (
-                            <button
-                              type="button"
-                              className={`${ui.btn} ${ui.btnSecondary}`}
-                              onClick={() => openBilling(o, "end")}
-                            >
-                              End billing
-                            </button>
-                          ) : null}
-                        </>
-                      ) : null}
-                      {canImpersonate && o.active ? (
-                        <button
-                          type="button"
-                          className={`${ui.btn} ${ui.btnSecondary}`}
-                          disabled={impersonate.isPending}
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                `Open ${o.name} in the customer console as support (audited)?`,
-                              )
-                            ) {
-                              impersonate.mutate(o.organization_id);
-                            }
-                          }}
-                        >
-                          {impersonate.isPending ? "Opening…" : "View in console"}
-                        </button>
-                      ) : null}
-                      {canWriteOrgs ? (
-                        <button
-                          type="button"
-                          className={`${ui.btn} ${ui.btnSecondary}`}
-                          onClick={() =>
-                            patchOrg.mutate({ id: o.organization_id, active: !o.active })
-                          }
-                        >
-                          {o.active ? "Suspend" : "Activate"}
-                        </button>
-                      ) : null}
-                      {!canImpersonate && !canWriteOrgs ? "-" : null}
-                    </div>
+                    <button
+                      type="button"
+                      className={`${ui.btn} ${ui.btnPrimary}`}
+                      onClick={() => openDetail(o)}
+                    >
+                      Manage
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -373,182 +322,314 @@ export default function OrganizationsPage() {
         </div>
       )}
 
-      {billingOrg && billingMode ? (
+      {detailOrg ? (
         <div
           className={styles.overlay}
           role="dialog"
           aria-modal="true"
-          aria-labelledby="billing-dialog-title"
+          aria-labelledby="org-detail-title"
         >
-          <div className={styles.panel}>
+          <div className={`${styles.panel} ${styles.detailPanel}`}>
             <div className={styles.panelHeader}>
-              <h2 id="billing-dialog-title">
-                {billingMode === "pending"
-                  ? "Record pending invoice"
-                  : billingMode === "mark-paid"
-                    ? "Mark payment received"
-                    : "End billing entitlement"}
-              </h2>
-              <button type="button" className={styles.closeBtn} onClick={closeBilling} aria-label="Close">
+              <div>
+                <h2 id="org-detail-title">{detailOrg.name}</h2>
+                <p className={styles.panelHint}>
+                  <span className="mono">{detailOrg.slug}</span>
+                  {" · "}
+                  <span className="mono">{detailOrg.organization_id}</span>
+                </p>
+              </div>
+              <button type="button" className={styles.closeBtn} onClick={closeDetail} aria-label="Close">
                 <X size={18} />
               </button>
             </div>
-            <p className={styles.panelHint}>
-              {billingOrg.name} <span className="mono">({billingOrg.slug})</span>
-              {billingMode === "pending"
-                ? " — plan stays Free until you mark paid."
-                : billingMode === "mark-paid"
-                  ? " — unlocks plan limits for the period below."
-                  : " — sets plan to Free."}
-            </p>
 
-            {billingMode !== "end" ? (
-              <label className={ui.field}>
-                Target plan
-                <select
-                  className={ui.select}
-                  value={planSlug}
-                  onChange={(e) => setPlanSlug(e.target.value)}
-                >
-                  {paidPlanOptions.map((p) => (
-                    <option key={p.plan_slug} value={p.plan_slug}>
-                      {p.display_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
-              <label className={ui.field}>
-                End as
-                <select
-                  className={ui.select}
-                  value={endStatus}
-                  onChange={(e) =>
-                    setEndStatus(e.target.value as "canceled" | "past_due")
-                  }
-                >
-                  <option value="canceled">Canceled</option>
-                  <option value="past_due">Past due</option>
-                </select>
-              </label>
-            )}
-
-            {billingMode === "mark-paid" ? (
-              <div className={styles.dateRow}>
-                <label className={ui.field}>
-                  Period start
-                  <input
-                    className={ui.input}
-                    type="date"
-                    value={periodStart}
-                    onChange={(e) => setPeriodStart(e.target.value)}
-                  />
-                </label>
-                <label className={ui.field}>
-                  Period end
-                  <input
-                    className={ui.input}
-                    type="date"
-                    value={periodEnd}
-                    onChange={(e) => setPeriodEnd(e.target.value)}
-                  />
-                </label>
+            <dl className={styles.metaGrid}>
+              <div>
+                <dt>Plan</dt>
+                <dd style={{ textTransform: "capitalize" }}>{detailOrg.plan}</dd>
               </div>
-            ) : null}
+              <div>
+                <dt>Billing</dt>
+                <dd>
+                  {detailOrg.billing_status}
+                  {detailOrg.billing_source !== "none"
+                    ? ` · ${detailOrg.billing_source}`
+                    : ""}
+                </dd>
+              </div>
+              <div>
+                <dt>Period</dt>
+                <dd>
+                  {formatDate(detailOrg.current_period_start)} →{" "}
+                  {formatDate(detailOrg.current_period_end)}
+                </dd>
+              </div>
+              <div>
+                <dt>Members / events</dt>
+                <dd>
+                  {detailOrg.member_count} members · {detailOrg.events_this_month} events
+                  this month
+                </dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>{detailOrg.active ? "Active" : "Suspended"}</dd>
+              </div>
+            </dl>
 
-            {billingMode !== "end" ? (
+            {!billingMode ? (
               <>
-                <label className={ui.field}>
-                  External invoice # (optional)
-                  <input
-                    className={ui.input}
-                    value={invoiceRef}
-                    onChange={(e) => setInvoiceRef(e.target.value)}
-                    placeholder="INV-1042"
-                  />
-                </label>
-                <div className={styles.dateRow}>
-                  <label className={ui.field}>
-                    Amount (optional)
-                    <input
-                      className={ui.input}
-                      value={amountDollars}
-                      onChange={(e) => setAmountDollars(e.target.value)}
-                      placeholder="499"
-                      inputMode="decimal"
-                    />
-                  </label>
-                  <label className={ui.field}>
-                    Currency
-                    <input
-                      className={ui.input}
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      placeholder="USD"
-                    />
-                  </label>
+                <div className={styles.actionGroup}>
+                  <p className={styles.sectionLabel}>Billing</p>
+                  {canWriteOrgs ? (
+                    <div className={styles.actionRow}>
+                      <button
+                        type="button"
+                        className={`${ui.btn} ${ui.btnSecondary}`}
+                        onClick={() => startBilling("pending")}
+                      >
+                        Record pending
+                      </button>
+                      <button
+                        type="button"
+                        className={`${ui.btn} ${ui.btnPrimary}`}
+                        onClick={() => startBilling("mark-paid")}
+                      >
+                        Mark paid
+                      </button>
+                      {detailOrg.plan !== "free" ||
+                      detailOrg.billing_status === "pending" ? (
+                        <button
+                          type="button"
+                          className={`${ui.btn} ${ui.btnSecondary}`}
+                          onClick={() => startBilling("end")}
+                        >
+                          End billing
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className={styles.panelHint}>No billing write access.</p>
+                  )}
+                </div>
+
+                <div className={styles.actionGroup}>
+                  <p className={styles.sectionLabel}>Support</p>
+                  <div className={styles.actionRow}>
+                    {canImpersonate && detailOrg.active ? (
+                      <button
+                        type="button"
+                        className={`${ui.btn} ${ui.btnSecondary}`}
+                        disabled={impersonate.isPending}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Open ${detailOrg.name} in the customer console as support (audited)?`,
+                            )
+                          ) {
+                            impersonate.mutate(detailOrg.organization_id);
+                          }
+                        }}
+                      >
+                        {impersonate.isPending ? "Opening…" : "View in console"}
+                      </button>
+                    ) : null}
+                    {canWriteOrgs ? (
+                      <button
+                        type="button"
+                        className={`${ui.btn} ${ui.btnSecondary}`}
+                        onClick={() =>
+                          patchOrg.mutate({
+                            id: detailOrg.organization_id,
+                            active: !detailOrg.active,
+                          })
+                        }
+                      >
+                        {detailOrg.active ? "Suspend" : "Activate"}
+                      </button>
+                    ) : null}
+                  </div>
+                  {impersonate.isError ? (
+                    <p style={{ color: "var(--console-danger)", fontSize: "0.875rem" }}>
+                      {(impersonate.error as Error).message}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className={styles.actionGroup}>
+                  <p className={styles.sectionLabel}>Billing history</p>
+                  {eventsQuery.isLoading ? (
+                    <p className={styles.panelHint}>Loading…</p>
+                  ) : (eventsQuery.data?.events.length ?? 0) === 0 ? (
+                    <p className={styles.panelHint}>No billing events yet.</p>
+                  ) : (
+                    <ul className={styles.eventList}>
+                      {eventsQuery.data!.events.map((e) => (
+                        <li key={e.billing_event_id}>
+                          <strong>{e.event_type}</strong>
+                          {e.plan_slug ? ` · ${e.plan_slug}` : ""}
+                          {e.external_invoice_ref
+                            ? ` · ${e.external_invoice_ref}`
+                            : ""}
+                          <span className={styles.eventWhen}>
+                            {formatDate(e.created_at)}
+                          </span>
+                          {e.note ? (
+                            <div className={styles.eventNote}>{e.note}</div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </>
-            ) : null}
-
-            <label className={ui.field}>
-              Note (optional)
-              <input
-                className={ui.input}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Bank transfer cleared"
-              />
-            </label>
-
-            {billingMutation.isError ? (
-              <p style={{ color: "var(--console-danger)", fontSize: "0.875rem" }}>
-                {(billingMutation.error as Error).message}
-              </p>
-            ) : null}
-
-            <div className={styles.panelActions}>
-              <button type="button" className={`${ui.btn} ${ui.btnSecondary}`} onClick={closeBilling}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={`${ui.btn} ${ui.btnPrimary}`}
-                disabled={billingMutation.isPending}
-                onClick={() => {
-                  if (billingMode === "mark-paid") {
-                    const label =
-                      paidPlanOptions.find((p) => p.plan_slug === planSlug)?.display_name ??
-                      planSlug;
-                    if (
-                      !window.confirm(
-                        `Confirm payment received for ${billingOrg.name}?\n\nActivate ${label} from ${periodStart} to ${periodEnd}.`,
-                      )
-                    ) {
-                      return;
-                    }
-                  }
-                  if (billingMode === "end") {
-                    if (
-                      !window.confirm(
-                        `End billing for ${billingOrg.name} and set plan to Free?`,
-                      )
-                    ) {
-                      return;
-                    }
-                  }
-                  billingMutation.mutate();
-                }}
-              >
-                {billingMutation.isPending
-                  ? "Saving…"
-                  : billingMode === "pending"
-                    ? "Save pending"
+            ) : (
+              <>
+                <p className={styles.sectionLabel}>
+                  {billingMode === "pending"
+                    ? "Record pending"
                     : billingMode === "mark-paid"
-                      ? "Activate plan"
-                      : "Downgrade to Free"}
-              </button>
-            </div>
+                      ? "Mark paid"
+                      : "End billing"}
+                </p>
+                <p className={styles.panelHint}>
+                  {billingMode === "pending"
+                    ? "Invoice sent externally — plan stays Free until Mark paid."
+                    : billingMode === "mark-paid"
+                      ? "Payment cleared — unlock plan for the period below."
+                      : "Downgrade to Free."}
+                </p>
+
+                {billingMode !== "end" ? (
+                  <label className={ui.field}>
+                    Plan paid for
+                    <select
+                      className={ui.select}
+                      value={planSlug}
+                      onChange={(e) => setPlanSlug(e.target.value)}
+                    >
+                      {paidPlanOptions.map((p) => (
+                        <option key={p.plan_slug} value={p.plan_slug}>
+                          {p.display_name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <label className={ui.field}>
+                    End as
+                    <select
+                      className={ui.select}
+                      value={endStatus}
+                      onChange={(e) =>
+                        setEndStatus(e.target.value as "canceled" | "past_due")
+                      }
+                    >
+                      <option value="canceled">Canceled</option>
+                      <option value="past_due">Past due</option>
+                    </select>
+                  </label>
+                )}
+
+                {billingMode === "mark-paid" ? (
+                  <div className={styles.dateRow}>
+                    <label className={ui.field}>
+                      Period start
+                      <input
+                        className={ui.input}
+                        type="date"
+                        value={periodStart}
+                        onChange={(e) => setPeriodStart(e.target.value)}
+                      />
+                    </label>
+                    <label className={ui.field}>
+                      Period end
+                      <input
+                        className={ui.input}
+                        type="date"
+                        value={periodEnd}
+                        onChange={(e) => setPeriodEnd(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                ) : null}
+
+                {billingMode !== "end" ? (
+                  <label className={ui.field}>
+                    External invoice # (optional)
+                    <input
+                      className={ui.input}
+                      value={invoiceRef}
+                      onChange={(e) => setInvoiceRef(e.target.value)}
+                      placeholder="INV-1042"
+                    />
+                  </label>
+                ) : null}
+
+                <label className={ui.field}>
+                  Note (optional)
+                  <input
+                    className={ui.input}
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    placeholder="Bank transfer cleared"
+                  />
+                </label>
+
+                {billingMutation.isError ? (
+                  <p style={{ color: "var(--console-danger)", fontSize: "0.875rem" }}>
+                    {(billingMutation.error as Error).message}
+                  </p>
+                ) : null}
+
+                <div className={styles.panelActions}>
+                  <button
+                    type="button"
+                    className={`${ui.btn} ${ui.btnSecondary}`}
+                    onClick={() => setBillingMode(null)}
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    className={`${ui.btn} ${ui.btnPrimary}`}
+                    disabled={billingMutation.isPending}
+                    onClick={() => {
+                      if (billingMode === "mark-paid") {
+                        const label =
+                          paidPlanOptions.find((p) => p.plan_slug === planSlug)
+                            ?.display_name ?? planSlug;
+                        if (
+                          !window.confirm(
+                            `Confirm payment for ${detailOrg.name}?\n\nActivate ${label} from ${periodStart} to ${periodEnd}.`,
+                          )
+                        ) {
+                          return;
+                        }
+                      }
+                      if (
+                        billingMode === "end" &&
+                        !window.confirm(
+                          `End billing for ${detailOrg.name} and set plan to Free?`,
+                        )
+                      ) {
+                        return;
+                      }
+                      billingMutation.mutate();
+                    }}
+                  >
+                    {billingMutation.isPending
+                      ? "Saving…"
+                      : billingMode === "pending"
+                        ? "Save pending"
+                        : billingMode === "mark-paid"
+                          ? "Activate plan"
+                          : "Downgrade to Free"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       ) : null}
