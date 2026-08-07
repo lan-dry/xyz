@@ -162,7 +162,7 @@ export default function PlansPage() {
   return (
     <OpsShell
       title="Plan catalog"
-      subtitle="Limits enforced on ingest, API keys, and members."
+      subtitle="Limits for ingest, API keys, and members. Paste Stripe Price IDs (price_…) for Team self-serve checkout. Money, invoices, and cards live in Stripe Dashboard — ops assign plans here or customers upgrade in Console → Billing."
       staffEmail={email}
       onLogout={logout}
     >

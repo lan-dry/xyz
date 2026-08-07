@@ -295,6 +295,29 @@ function BillingSettingsInner() {
       </section>
 
       <section className={settings.settingCard}>
+        <h2>How payment works</h2>
+        <ul className={ui.muted} style={{ fontSize: "0.875rem", paddingLeft: "1.25rem", margin: 0 }}>
+          <li>
+            Checkout runs on <strong>Stripe</strong> (card). Salanor never stores full card
+            numbers.
+          </li>
+          <li>
+            After upgrade, use <strong>Manage billing</strong> for invoices, receipts, and
+            updating the card. Stripe can save the payment method for renewals.
+          </li>
+          <li>
+            Team is billed as a <strong>subscription</strong> (monthly by default, set on the
+            Stripe price). Failed payments are handled in Stripe; your plan may fall back to
+            Free if unpaid.
+          </li>
+          <li>
+            PayPal and other wallets appear only if you enable them in the Stripe Dashboard
+            (Payment methods).
+          </li>
+        </ul>
+      </section>
+
+      <section className={settings.settingCard}>
         <h2>Organization profile</h2>
         <p>
           Rename your organization or create another tenant from{" "}

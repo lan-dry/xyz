@@ -21,8 +21,11 @@ import type { EventDetail } from "@/lib/types";
 type VerifyResult = {
   verification: {
     ok: boolean;
+    status?: "valid" | "pending_inclusion" | "invalid";
     chain_ok: boolean;
     inclusion_ok: boolean;
+    inclusion_status?: "ok" | "pending" | "fail";
+    has_proof?: boolean;
     errors: string[];
     root_hash?: string;
   };
@@ -32,6 +35,46 @@ type VerifyResult = {
     leaf_index: number;
   } | null;
 };
+
+function verifyBanner(v: VerifyResult["verification"]): {
+  title: string;
+  className: string;
+  inclusionLabel: string;
+  note?: string;
+} {
+  const status =
+    v.status ??
+    (!v.chain_ok
+      ? "invalid"
+      : v.inclusion_ok
+        ? "valid"
+        : v.has_proof === false ||
+            v.errors.includes("no_inclusion_proof") ||
+            v.inclusion_status === "pending"
+          ? "pending_inclusion"
+          : "invalid");
+
+  if (status === "valid") {
+    return {
+      title: "Valid",
+      className: ui.alertSuccess,
+      inclusionLabel: "ok",
+    };
+  }
+  if (status === "pending_inclusion") {
+    return {
+      title: "Valid · inclusion pending",
+      className: ui.alertInfo,
+      inclusionLabel: "pending",
+      note: "Ed25519 chain is intact. Merkle inclusion proofs are added by the witness batch (usually within minutes). This is not a tamper signal.",
+    };
+  }
+  return {
+    title: "Invalid",
+    className: ui.alertError,
+    inclusionLabel: v.inclusion_ok ? "ok" : "fail",
+  };
+}
 
 export default function EventDetailPage() {
   const params = useParams<{ eventId: string }>();
@@ -96,28 +139,37 @@ export default function EventDetailPage() {
           />
 
           {verifyResult ? (
-            <div
-              className={`${ui.alert} ${
-                verifyResult.verification.ok ? ui.alertSuccess : ui.alertError
-              }`}
-            >
-              <strong>{verifyResult.verification.ok ? "Valid" : "Invalid"}</strong>
-              <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem" }}>
-                <li>Chain: {verifyResult.verification.chain_ok ? "ok" : "fail"}</li>
-                <li>
-                  Inclusion:{" "}
-                  {verifyResult.verification.inclusion_ok ? "ok" : "fail"}
-                </li>
-                {verifyResult.verification.root_hash ? (
-                  <li className="mono" style={{ wordBreak: "break-all" }}>
-                    Root: {verifyResult.verification.root_hash}
-                  </li>
-                ) : null}
-                {verifyResult.verification.errors.map((err) => (
-                  <li key={err}>{err}</li>
-                ))}
-              </ul>
-            </div>
+            (() => {
+              const banner = verifyBanner(verifyResult.verification);
+              const displayErrors = verifyResult.verification.errors.filter(
+                (err) => err !== "no_inclusion_proof",
+              );
+              return (
+                <div className={`${ui.alert} ${banner.className}`}>
+                  <strong>{banner.title}</strong>
+                  <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem" }}>
+                    <li>
+                      Chain:{" "}
+                      {verifyResult.verification.chain_ok ? "ok" : "fail"}
+                    </li>
+                    <li>Inclusion: {banner.inclusionLabel}</li>
+                    {verifyResult.verification.root_hash ? (
+                      <li className="mono" style={{ wordBreak: "break-all" }}>
+                        Root: {verifyResult.verification.root_hash}
+                      </li>
+                    ) : null}
+                    {displayErrors.map((err) => (
+                      <li key={err}>{err}</li>
+                    ))}
+                  </ul>
+                  {banner.note ? (
+                    <p style={{ margin: "0.75rem 0 0", fontSize: "0.8125rem" }}>
+                      {banner.note}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })()
           ) : null}
 
           {e.action_kind === "provenance_claim" && e.payload ? (
