@@ -71,11 +71,13 @@ export default function IntegrationsSettingsPage() {
     <section className={settings.settingCard}>
       <h2>
         <Radio size={18} style={{ verticalAlign: "-3px", marginRight: "0.35rem" }} />
-        SIEM forwarding (OTel)
+        SIEM forwarding
       </h2>
       <p>
-        Each ingested APS event is forwarded as OTLP logs to active destinations. Use your vendor’s
-        OTLP HTTP intake URL (we append <code>/v1/logs</code> when needed).
+        Send Aegis events into your security tools (Datadog, Splunk, Microsoft Sentinel) via
+        OpenTelemetry (OTel). Your SOC can alert on denies and audit agent actions alongside the
+        rest of your stack. Use your vendor’s OTLP HTTP intake URL (we append{" "}
+        <code>/v1/logs</code> when needed).
       </p>
 
       {listQuery.error ? (

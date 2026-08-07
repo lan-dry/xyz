@@ -169,7 +169,7 @@ export default function OrganizationSettingsPage() {
                 />
               </label>
               <label className={ui.field}>
-                Organization URL
+                Organization slug
                 <input
                   className={`${ui.input} mono`}
                   value={editSlug}
@@ -181,9 +181,15 @@ export default function OrganizationSettingsPage() {
                   maxLength={48}
                   pattern="[a-z0-9][a-z0-9-]*"
                   required
+                  placeholder="acme"
                 />
               </label>
             </div>
+            <p className={ui.muted} style={{ fontSize: "0.75rem", marginTop: "0.5rem" }}>
+              Short ID used in agent DIDs and internal paths (letters, numbers, hyphens).
+              Not a website URL — e.g. <span className="mono">acme</span>, not{" "}
+              <span className="mono">https://acme.com</span>.
+            </p>
             {editMessage ? (
               <p
                 style={{

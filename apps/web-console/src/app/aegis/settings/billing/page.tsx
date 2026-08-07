@@ -158,9 +158,12 @@ function BillingSettingsInner() {
 
   const usage = planQuery.data?.plan_usage;
   const isAdmin = meQuery.data?.user.role === "admin";
-  const checkoutEnabled =
-    usage?.billing_checkout_enabled ||
-    process.env.NEXT_PUBLIC_BILLING_CHECKOUT_ENABLED === "1";
+  const checkoutEnabled = usage?.billing_checkout_enabled !== false;
+  const readyUpgrades =
+    usage?.upgrade_options.filter((o) => o.checkout_ready) ?? [];
+  const pendingPriceSetup =
+    (usage?.upgrade_options.some((o) => !o.checkout_ready) ?? false) &&
+    readyUpgrades.length === 0;
 
   return (
     <>
@@ -214,7 +217,7 @@ function BillingSettingsInner() {
               Event retention: {usage.limits.retention_days} days
             </p>
 
-            {isAdmin && checkoutEnabled ? (
+            {isAdmin ? (
               <div
                 style={{
                   display: "flex",
@@ -223,19 +226,14 @@ function BillingSettingsInner() {
                   marginTop: "1.25rem",
                 }}
               >
-                {usage.upgrade_options.length > 0 ? (
+                {checkoutEnabled && readyUpgrades.length > 0 ? (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                    {usage.upgrade_options.map((opt) => (
+                    {readyUpgrades.map((opt) => (
                       <button
                         key={opt.plan_slug}
                         type="button"
                         className={`${ui.btn} ${ui.btnPrimary}`}
-                        disabled={checkout.isPending || !opt.checkout_ready}
-                        title={
-                          opt.checkout_ready
-                            ? undefined
-                            : "Add a Stripe price_… ID for this plan in Platform → Plans"
-                        }
+                        disabled={checkout.isPending}
                         onClick={() => checkout.mutate(opt.plan_slug)}
                       >
                         {checkout.isPending
@@ -244,17 +242,8 @@ function BillingSettingsInner() {
                       </button>
                     ))}
                   </div>
-                ) : (
-                  <p className={ui.muted} style={{ fontSize: "0.8125rem", margin: 0 }}>
-                    No self-serve upgrades available from this plan.
-                  </p>
-                )}
-                {usage.upgrade_options.some((o) => !o.checkout_ready) ? (
-                  <p className={ui.muted} style={{ fontSize: "0.75rem", margin: 0 }}>
-                    A plan is missing its Stripe Price ID — set it in Platform → Plans
-                    (Test mode <span className="mono">price_…</span> is fine).
-                  </p>
                 ) : null}
+
                 {usage.billing_portal_available ? (
                   <div>
                     <button
@@ -269,61 +258,44 @@ function BillingSettingsInner() {
                     </button>
                   </div>
                 ) : null}
+
                 {checkout.isError ? (
                   <ErrorAlert message={(checkout.error as Error).message} />
                 ) : null}
                 {portal.isError ? (
                   <ErrorAlert message={(portal.error as Error).message} />
                 ) : null}
+
+                {usage.contact_sales_plans.length > 0 || pendingPriceSetup ? (
+                  <p style={{ margin: 0, fontSize: "0.875rem" }}>
+                    {pendingPriceSetup && readyUpgrades.length === 0
+                      ? "Self-serve Team upgrade is not available yet. "
+                      : null}
+                    {usage.contact_sales_plans.length > 0 ? (
+                      <>
+                        Need{" "}
+                        {[
+                          ...usage.contact_sales_plans.map((p) => p.display_name),
+                          ...(pendingPriceSetup && readyUpgrades.length === 0
+                            ? ["Team"]
+                            : []),
+                        ]
+                          .filter((v, i, a) => a.indexOf(v) === i)
+                          .join(" / ")}
+                        ?{" "}
+                      </>
+                    ) : pendingPriceSetup ? (
+                      <>Need a higher plan? </>
+                    ) : null}
+                    <a href={`${MARKETING_URL}/contact`}>Contact sales</a>
+                  </p>
+                ) : null}
               </div>
-            ) : null}
-
-            {isAdmin && usage.contact_sales_plans.length > 0 ? (
-              <p style={{ marginTop: "1rem", fontSize: "0.875rem" }}>
-                Need{" "}
-                {usage.contact_sales_plans.map((p) => p.display_name).join(" / ")}?{" "}
-                <a href={`${MARKETING_URL}/contact`}>Contact sales</a>
-              </p>
-            ) : null}
-
-            {isAdmin && !checkoutEnabled ? (
-              <div
-                className={`${ui.alert} ${ui.alertInfo}`}
-                style={{ marginTop: "1rem", fontSize: "0.8125rem" }}
-              >
-                <strong>Upgrade button is hidden — checkout is off</strong>
-                <p style={{ margin: "0.5rem 0 0" }}>
-                  To test Stripe upgrade end-to-end, Salanor ops must:
-                </p>
-                <ol style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem" }}>
-                  <li>
-                    Create a <strong>Test mode</strong> Product + recurring Price in Stripe
-                    and copy <span className="mono">price_…</span>
-                  </li>
-                  <li>
-                    Paste it on <strong>Team</strong> in Platform → Plans (self-serve = Yes)
-                  </li>
-                  <li>
-                    Set on the billing service + console:{" "}
-                    <span className="mono">BILLING_CHECKOUT_ENABLED=1</span>,{" "}
-                    <span className="mono">NEXT_PUBLIC_BILLING_CHECKOUT_ENABLED=1</span>,{" "}
-                    <span className="mono">STRIPE_SECRET_KEY=sk_test_…</span>, and webhook
-                    secret
-                  </li>
-                  <li>Redeploy billing + web-console, then refresh this page</li>
-                </ol>
-                <p style={{ margin: "0.75rem 0 0" }}>
-                  Until then, change plans manually in Platform → Organizations (no card
-                  charge).
-                </p>
-              </div>
-            ) : null}
-
-            {!isAdmin ? (
+            ) : (
               <p className={ui.muted} style={{ marginTop: "0.75rem", fontSize: "0.8125rem" }}>
                 Ask an organization admin to upgrade or manage billing.
               </p>
-            ) : null}
+            )}
           </>
         ) : null}
       </section>

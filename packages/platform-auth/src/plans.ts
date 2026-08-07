@@ -376,9 +376,12 @@ export async function getOrgPlanUsageSummary(
   const contact_sales_plans = allPlans
     .filter((p) => !p.self_serve && p.plan_slug !== "free" && p.plan_slug !== ctx.plan)
     .map((p) => ({ plan_slug: p.plan_slug, display_name: p.display_name }));
-  const checkoutEnabled =
-    process.env.BILLING_CHECKOUT_ENABLED === "1" ||
-    process.env.BILLING_CHECKOUT_ENABLED === "true";
+  // On by default. Set BILLING_CHECKOUT_ENABLED=0 only as an emergency kill switch.
+  // Upgrade buttons still require a Stripe price_id on the target plan (checkout_ready).
+  const checkoutKillSwitch =
+    process.env.BILLING_CHECKOUT_ENABLED === "0" ||
+    process.env.BILLING_CHECKOUT_ENABLED === "false";
+  const checkoutEnabled = !checkoutKillSwitch;
   const stripeCustomerId = stripeRow.rows[0]?.stripe_customer_id?.trim() || null;
   return {
     plan: ctx.plan,
@@ -392,7 +395,7 @@ export async function getOrgPlanUsageSummary(
     limits: ctx.limits,
     self_serve: catalog.rows[0]?.self_serve ?? false,
     billing_checkout_enabled: checkoutEnabled,
-    billing_portal_available: checkoutEnabled && Boolean(stripeCustomerId),
+    billing_portal_available: Boolean(stripeCustomerId),
     upgrade_options,
     contact_sales_plans,
   };
