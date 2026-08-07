@@ -609,6 +609,64 @@ export async function listOrganizationBillingEvents(
   return result.rows;
 }
 
+export type CustomerBillingHistoryItem = {
+  id: string;
+  title: string;
+  plan_slug: string | null;
+  invoice_ref: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  recorded_at: string;
+};
+
+const CUSTOMER_VISIBLE_EVENTS = new Set<BillingEventType>([
+  "quote_recorded",
+  "invoice_noted",
+  "payment_recorded",
+  "plan_activated",
+  "period_extended",
+  "plan_downgraded",
+]);
+
+function customerBillingTitle(eventType: BillingEventType): string {
+  switch (eventType) {
+    case "quote_recorded":
+      return "Quote recorded";
+    case "invoice_noted":
+      return "Invoice issued";
+    case "payment_recorded":
+      return "Payment confirmed";
+    case "plan_activated":
+      return "Plan activated";
+    case "period_extended":
+      return "Subscription renewed";
+    case "plan_downgraded":
+      return "Plan ended";
+    default:
+      return "Billing update";
+  }
+}
+
+/** Customer-facing billing history (no staff notes). */
+export async function listCustomerBillingHistory(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  limit = 50,
+): Promise<CustomerBillingHistoryItem[]> {
+  const events = await listOrganizationBillingEvents(client, organizationId, limit);
+  return events
+    .filter((e) => CUSTOMER_VISIBLE_EVENTS.has(e.event_type))
+    .map((e) => ({
+      id: e.billing_event_id,
+      title: customerBillingTitle(e.event_type),
+      plan_slug: e.plan_slug,
+      invoice_ref: e.external_invoice_ref,
+      period_start: e.period_start?.toISOString() ?? null,
+      period_end: e.period_end?.toISOString() ?? null,
+      recorded_at: e.created_at.toISOString(),
+    }));
+}
+
 /** Record external invoice/deal; does not change plan (stays Free until mark-paid). */
 export async function recordOrganizationBillingPending(
   client: pg.Pool | pg.PoolClient,

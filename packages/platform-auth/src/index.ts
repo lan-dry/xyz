@@ -155,6 +155,7 @@ export {
   backfillOrganizationUsageMonthly,
   updatePlanCatalogRow,
   listOrganizationBillingEvents,
+  listCustomerBillingHistory,
   recordOrganizationBillingPending,
   markOrganizationBillingPaid,
   endOrganizationBilling,
@@ -166,6 +167,7 @@ export {
   type BillingStatus,
   type BillingEventType,
   type OrganizationBillingEvent,
+  type CustomerBillingHistoryItem,
 } from "./plans.js";
 export {
   createAgentWithSigningKey,

@@ -41,7 +41,7 @@ type BillingEvent = {
 type BillingMode = "pending" | "mark-paid" | "end" | null;
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "Not set";
   try {
     return new Date(iso).toLocaleDateString(undefined, {
       year: "numeric",
@@ -49,7 +49,7 @@ function formatDate(iso: string | null): string {
       day: "numeric",
     });
   } catch {
-    return "—";
+    return "Not set";
   }
 }
 
@@ -495,10 +495,10 @@ export default function OrganizationsPage() {
                 </p>
                 <p className={styles.panelHint}>
                   {billingMode === "pending"
-                    ? "Invoice sent externally — plan stays Free until Mark paid."
+                    ? "Use this after you send the invoice. The org stays on Free until you mark paid."
                     : billingMode === "mark-paid"
-                      ? "Payment cleared — unlock plan for the period below."
-                      : "Downgrade to Free."}
+                      ? "Use this after payment clears. Choose the plan and the paid period."
+                      : "Moves the org back to Free."}
                 </p>
 
                 {billingMode !== "end" ? (

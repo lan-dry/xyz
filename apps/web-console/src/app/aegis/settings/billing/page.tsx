@@ -48,6 +48,29 @@ type PlanUsage = {
   contact_sales_plans: Array<{ plan_slug: string; display_name: string }>;
 };
 
+type BillingHistoryItem = {
+  id: string;
+  title: string;
+  plan_slug: string | null;
+  invoice_ref: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  recorded_at: string;
+};
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "Not set";
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return "Not set";
+  }
+}
+
 function UsageMeter({
   label,
   used,
@@ -114,13 +137,20 @@ function BillingSettingsInner() {
     queryFn: () => consoleApi<{ plan_usage: PlanUsage }>("/organization/plan-usage"),
   });
 
+  const historyQuery = useQuery({
+    queryKey: ["console", "billing-history"],
+    queryFn: () =>
+      consoleApi<{ history: BillingHistoryItem[] }>("/organization/billing-history"),
+  });
+
   useEffect(() => {
     const checkout = searchParams.get("checkout");
     if (checkout === "success") {
-      setBanner("Payment received. Your plan updates within a minute after Stripe confirms.");
+      setBanner("Payment received. Your plan should update shortly.");
       void queryClient.invalidateQueries({ queryKey: ["console", "plan-usage"] });
+      void queryClient.invalidateQueries({ queryKey: ["console", "billing-history"] });
     } else if (checkout === "cancel") {
-      setBanner("Checkout canceled. Your plan was not changed.");
+      setBanner("Checkout was canceled. Nothing changed.");
     }
   }, [searchParams, queryClient]);
 
@@ -171,21 +201,14 @@ function BillingSettingsInner() {
   const isManualBilling =
     usage?.billing_source === "manual" &&
     (usage.billing_status === "active" || usage.billing_status === "pending");
-  const periodEndLabel = usage?.current_period_end
-    ? new Date(usage.current_period_end).toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
-    : null;
+  const history = historyQuery.data?.history ?? [];
 
   return (
     <>
       <section className={settings.settingCard}>
-        <h2>Plan & billing</h2>
+        <h2>Plan and billing</h2>
         <p>
-          Free includes enough capacity to evaluate Aegis. Upgrade when you need higher
-          ingest, more API keys, or more seats.
+          Free is enough to try Aegis. Move to a paid plan when you need higher limits.
         </p>
         {banner ? (
           <p
@@ -207,7 +230,7 @@ function BillingSettingsInner() {
               {!usage.active ? (
                 <span style={{ color: "var(--console-danger, #b91c1c)" }}>
                   {" "}
-                  — suspended
+                  (suspended)
                 </span>
               ) : null}
             </p>
@@ -219,19 +242,25 @@ function BillingSettingsInner() {
               >
                 {usage.billing_status === "pending" ? (
                   <>
-                    Invoice pending with Salanor. Your plan stays on Free until
-                    payment clears.
+                    We sent an invoice for this organization. You stay on Free until
+                    payment is confirmed.
                   </>
                 ) : (
                   <>
-                    Billed by Salanor
-                    {periodEndLabel ? (
+                    You are billed by Salanor invoice.
+                    {usage.current_period_start || usage.current_period_end ? (
                       <>
                         {" "}
-                        · period ends <strong>{periodEndLabel}</strong>
+                        Current period:{" "}
+                        <strong>
+                          {formatDate(usage.current_period_start)} to{" "}
+                          {formatDate(usage.current_period_end)}
+                        </strong>
+                        .
                       </>
-                    ) : null}
-                    . Contact sales for renewals or changes.
+                    ) : null}{" "}
+                    For renewals or changes,{" "}
+                    <a href={`${MARKETING_URL}/contact`}>contact sales</a>.
                   </>
                 )}
               </p>
@@ -293,7 +322,7 @@ function BillingSettingsInner() {
                     >
                       {portal.isPending
                         ? "Opening…"
-                        : "Manage billing (invoices & payment)"}
+                        : "Stripe invoices and payment methods"}
                     </button>
                   </div>
                 ) : null}
@@ -305,45 +334,85 @@ function BillingSettingsInner() {
                   <ErrorAlert message={(portal.error as Error).message} />
                 ) : null}
 
-                {isManualBilling && usage.billing_status === "active" ? (
-                  <p style={{ margin: 0, fontSize: "0.875rem" }}>
-                    Questions about your invoice or renewal?{" "}
-                    <a href={`${MARKETING_URL}/contact`}>Contact sales</a>
-                  </p>
-                ) : null}
-
                 {!isManualBilling &&
                 (usage.contact_sales_plans.length > 0 || pendingPriceSetup) ? (
                   <p style={{ margin: 0, fontSize: "0.875rem" }}>
-                    {pendingPriceSetup && readyUpgrades.length === 0
-                      ? "Self-serve checkout is not configured yet. "
-                      : null}
-                    {usage.contact_sales_plans.length > 0 ? (
-                      <>
-                        Need{" "}
-                        {[
-                          ...usage.contact_sales_plans.map((p) => p.display_name),
-                          ...(pendingPriceSetup && readyUpgrades.length === 0
-                            ? ["Team"]
-                            : []),
-                        ]
-                          .filter((v, i, a) => a.indexOf(v) === i)
-                          .join(" / ")}
-                        ?{" "}
-                      </>
-                    ) : pendingPriceSetup ? (
-                      <>Need a higher plan? </>
-                    ) : null}
+                    Need{" "}
+                    {[
+                      ...usage.contact_sales_plans.map((p) => p.display_name),
+                      ...(pendingPriceSetup && readyUpgrades.length === 0
+                        ? ["Team"]
+                        : []),
+                    ]
+                      .filter((v, i, a) => a.indexOf(v) === i)
+                      .join(" or ")}
+                    ?{" "}
                     <a href={`${MARKETING_URL}/contact`}>Contact sales</a>
                   </p>
                 ) : null}
               </div>
             ) : (
               <p className={ui.muted} style={{ marginTop: "0.75rem", fontSize: "0.8125rem" }}>
-                Ask an organization admin to upgrade or manage billing.
+                Ask an organization admin to change billing.
               </p>
             )}
           </>
+        ) : null}
+      </section>
+
+      <section className={settings.settingCard}>
+        <h2>Billing history</h2>
+        <p>
+          What changed on your plan, when it was recorded, and any invoice reference we
+          have on file.
+        </p>
+        {historyQuery.isLoading ? (
+          <p className={ui.muted}>Loading history…</p>
+        ) : null}
+        {historyQuery.isError ? (
+          <ErrorAlert message={(historyQuery.error as Error).message} />
+        ) : null}
+        {!historyQuery.isLoading && history.length === 0 ? (
+          <p className={ui.muted} style={{ fontSize: "0.875rem" }}>
+            No billing events yet. When you are invoiced or a payment is confirmed, it
+            will show up here.
+          </p>
+        ) : null}
+        {history.length > 0 ? (
+          <div className={ui.tableWrap} style={{ marginTop: "0.75rem" }}>
+            <table className={ui.table}>
+              <thead>
+                <tr>
+                  <th>Event</th>
+                  <th>Plan</th>
+                  <th>Invoice</th>
+                  <th>Period</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.title}</td>
+                    <td>{row.plan_slug ?? "Not set"}</td>
+                    <td className="mono">{row.invoice_ref ?? "Not set"}</td>
+                    <td>
+                      {row.period_start || row.period_end
+                        ? `${formatDate(row.period_start)} to ${formatDate(row.period_end)}`
+                        : "Not set"}
+                    </td>
+                    <td>{formatDate(row.recorded_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+        {usage?.billing_source === "stripe" && usage.billing_portal_available ? (
+          <p className={ui.muted} style={{ fontSize: "0.8125rem", marginTop: "0.75rem" }}>
+            Card receipts and Stripe invoices are also available under{" "}
+            <strong>Stripe invoices and payment methods</strong>.
+          </p>
         ) : null}
       </section>
 
@@ -352,29 +421,15 @@ function BillingSettingsInner() {
         <ul className={ui.muted} style={{ fontSize: "0.875rem", paddingLeft: "1.25rem", margin: 0 }}>
           {isManualBilling ? (
             <>
-              <li>
-                Your organization is on a <strong>Salanor-invoiced</strong> plan.
-                Cards and self-serve checkout do not apply to this entitlement.
-              </li>
-              <li>
-                Renewals and plan changes are handled with sales. Limits unlock when
-                payment is confirmed.
-              </li>
+              <li>Salanor invoices you outside the console (bank transfer or similar).</li>
+              <li>Your plan unlocks after we confirm payment, and the history above updates.</li>
+              <li>Renewals and plan changes go through sales.</li>
             </>
           ) : (
             <>
-              <li>
-                Self-serve checkout runs on <strong>Stripe</strong> (card) when available.
-                Salanor never stores full card numbers.
-              </li>
-              <li>
-                Enterprise and design-partner deals are invoiced outside the console;
-                sales activates your plan after payment clears.
-              </li>
-              <li>
-                After a Stripe upgrade, use <strong>Manage billing</strong> for invoices
-                and payment methods.
-              </li>
+              <li>Self-serve upgrades use Stripe when configured. We do not store full card numbers.</li>
+              <li>Larger deals are invoiced by Salanor; the plan activates after payment is confirmed.</li>
+              <li>If you pay with Stripe, use the portal for receipts and payment methods.</li>
             </>
           )}
         </ul>

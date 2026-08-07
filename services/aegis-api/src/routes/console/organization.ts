@@ -1,5 +1,8 @@
 import { Hono } from "hono";
-import { getOrgPlanUsageSummary } from "@salanor/platform-auth";
+import {
+  getOrgPlanUsageSummary,
+  listCustomerBillingHistory,
+} from "@salanor/platform-auth";
 import { getPool } from "../../db/pool.js";
 import {
   requireConsoleSession,
@@ -18,5 +21,15 @@ organizationRoutes.get(
       return c.json({ error: "Not found" }, 404);
     }
     return c.json({ plan_usage: summary });
+  },
+);
+
+organizationRoutes.get(
+  "/organization/billing-history",
+  requireConsoleSession,
+  async (c) => {
+    const orgId = c.get("consoleSession").organizationId;
+    const history = await listCustomerBillingHistory(getPool(), orgId, 50);
+    return c.json({ history });
   },
 );
