@@ -224,7 +224,7 @@ export default function OrganizationDetailPage() {
       staffEmail={email}
       onLogout={logout}
     >
-      <OpsBackLink href="/organizations">Back to organizations</OpsBackLink>
+      <OpsBackLink fallback="/organizations">Back to organizations</OpsBackLink>
 
       {orgQuery.isLoading ? <LoadingBlock label="Loading organization…" /> : null}
       {orgQuery.isError ? (
