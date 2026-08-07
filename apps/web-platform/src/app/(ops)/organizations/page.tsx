@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Building2, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -144,11 +145,14 @@ export default function OrganizationsPage() {
       const id = encodeURIComponent(detailOrg.organization_id);
 
       if (billingMode === "pending") {
+        if (!invoiceRef.trim()) {
+          throw new Error("Invoice number is required");
+        }
         return platformApi(`/organizations/${id}/billing/pending`, {
           method: "POST",
           body: JSON.stringify({
             plan_slug: planSlug,
-            external_invoice_ref: invoiceRef.trim() || undefined,
+            external_invoice_ref: invoiceRef.trim(),
             note: note.trim() || undefined,
           }),
         });
@@ -233,7 +237,7 @@ export default function OrganizationsPage() {
   return (
     <OpsShell
       title="Organizations"
-      subtitle="Tenants: activate paid plans only after payment clears. Invoices stay external."
+      subtitle="Activate paid plans only after payment clears. Invoices stay external."
       staffEmail={email}
       onLogout={logout}
     >
@@ -335,14 +339,20 @@ export default function OrganizationsPage() {
                 <h2 id="org-detail-title">{detailOrg.name}</h2>
                 <p className={styles.panelHint}>
                   <span className="mono">{detailOrg.slug}</span>
-                  {" · "}
-                  <span className="mono">{detailOrg.organization_id}</span>
                 </p>
               </div>
               <button type="button" className={styles.closeBtn} onClick={closeDetail} aria-label="Close">
                 <X size={18} />
               </button>
             </div>
+
+            <Link
+              href={`/organizations/${detailOrg.organization_id}`}
+              className={`${ui.btn} ${ui.btnSecondary}`}
+              style={{ alignSelf: "flex-start" }}
+            >
+              Open full profile
+            </Link>
 
             <dl className={styles.metaGrid}>
               <div>
@@ -361,7 +371,7 @@ export default function OrganizationsPage() {
               <div>
                 <dt>Period</dt>
                 <dd>
-                  {formatDate(detailOrg.current_period_start)} →{" "}
+                  {formatDate(detailOrg.current_period_start)} to{" "}
                   {formatDate(detailOrg.current_period_end)}
                 </dd>
               </div>
@@ -475,9 +485,6 @@ export default function OrganizationsPage() {
                           <span className={styles.eventWhen}>
                             {formatDate(e.created_at)}
                           </span>
-                          {e.note ? (
-                            <div className={styles.eventNote}>{e.note}</div>
-                          ) : null}
                         </li>
                       ))}
                     </ul>
@@ -495,15 +502,15 @@ export default function OrganizationsPage() {
                 </p>
                 <p className={styles.panelHint}>
                   {billingMode === "pending"
-                    ? "Use this after you send the invoice. The org stays on Free until you mark paid."
+                    ? "After you send the invoice. Org stays on Free until mark paid."
                     : billingMode === "mark-paid"
-                      ? "Use this after payment clears. Choose the plan and the paid period."
+                      ? "After payment clears. Choose the plan and paid period."
                       : "Moves the org back to Free."}
                 </p>
 
                 {billingMode !== "end" ? (
                   <label className={ui.field}>
-                    Plan paid for
+                    Plan
                     <select
                       className={ui.select}
                       value={planSlug}
@@ -557,12 +564,14 @@ export default function OrganizationsPage() {
 
                 {billingMode !== "end" ? (
                   <label className={ui.field}>
-                    External invoice # (optional)
+                    Invoice number
+                    {billingMode === "pending" ? " (required)" : " (recommended)"}
                     <input
                       className={ui.input}
                       value={invoiceRef}
                       onChange={(e) => setInvoiceRef(e.target.value)}
                       placeholder="INV-1042"
+                      required={billingMode === "pending"}
                     />
                   </label>
                 ) : null}
@@ -596,13 +605,22 @@ export default function OrganizationsPage() {
                     className={`${ui.btn} ${ui.btnPrimary}`}
                     disabled={billingMutation.isPending}
                     onClick={() => {
+                      if (billingMode === "pending" && !invoiceRef.trim()) {
+                        window.alert("Enter the invoice number you sent.");
+                        return;
+                      }
                       if (billingMode === "mark-paid") {
-                        const label =
-                          paidPlanOptions.find((p) => p.plan_slug === planSlug)
-                            ?.display_name ?? planSlug;
+                        if (
+                          !invoiceRef.trim() &&
+                          !window.confirm(
+                            "No invoice number entered. Activate the plan anyway?",
+                          )
+                        ) {
+                          return;
+                        }
                         if (
                           !window.confirm(
-                            `Confirm payment for ${detailOrg.name}?\n\nActivate ${label} from ${periodStart} to ${periodEnd}.`,
+                            `Confirm payment for ${detailOrg.name} and activate ${planSlug} from ${periodStart} to ${periodEnd}?`,
                           )
                         ) {
                           return;

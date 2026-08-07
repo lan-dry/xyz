@@ -31,12 +31,20 @@ export async function applyCheckoutSessionCompleted(
 
   if (!organizationId) return;
 
+  const invoiceId =
+    typeof session.invoice === "string"
+      ? session.invoice
+      : session.invoice && typeof session.invoice === "object" && "id" in session.invoice
+        ? String((session.invoice as { id: string }).id)
+        : null;
+
   await applyStripeEntitlement(client, {
     organizationId,
     planSlug,
     billingStatus: planSlug ? "active" : "none",
     stripeCustomerId: customerId ?? null,
     periodStart: planSlug ? new Date() : undefined,
+    invoiceRef: invoiceId,
   });
 }
 

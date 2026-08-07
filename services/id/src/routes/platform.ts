@@ -9,6 +9,7 @@ import {
   platformListAccountsPaginated,
   platformListAuditLogs,
   platformListOrganizations,
+  platformGetOrganization,
   platformOverviewStats,
   platformResetAccountPassword,
   platformSetAccountActive,
@@ -172,6 +173,23 @@ platformRoutes.get("/organizations", async (c) => {
   });
 });
 
+platformRoutes.get("/organizations/:organizationId", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:read");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const organizationId = c.req.param("organizationId");
+  const org = await platformGetOrganization(getPool(), organizationId);
+  if (!org) return c.json({ error: "Not found" }, 404);
+  return c.json({
+    organization: {
+      ...org,
+      created_at: org.created_at.toISOString(),
+      updated_at: org.updated_at.toISOString(),
+      current_period_start: org.current_period_start?.toISOString() ?? null,
+      current_period_end: org.current_period_end?.toISOString() ?? null,
+    },
+  });
+});
+
 platformRoutes.patch("/organizations/:organizationId", async (c) => {
   const access = await requirePlatformPermission(c, "platform:orgs.write");
   if (!access.ok) return c.json({ error: access.error }, 403);
@@ -241,10 +259,16 @@ platformRoutes.post("/organizations/:organizationId/billing/pending", async (c) 
   } catch {
     return c.json({ error: "Invalid JSON" }, 422);
   }
-  const ok = await recordOrganizationBillingPending(getPool(), {
+  if (!body.external_invoice_ref?.trim()) {
+    return c.json(
+      { error: "Invoice number is required when recording a pending invoice" },
+      422,
+    );
+  }
+  const result = await recordOrganizationBillingPending(getPool(), {
     organizationId,
     planSlug: body.plan_slug ?? null,
-    externalInvoiceRef: body.external_invoice_ref ?? null,
+    externalInvoiceRef: body.external_invoice_ref,
     amountCents:
       typeof body.amount_cents === "number" && Number.isFinite(body.amount_cents)
         ? Math.round(body.amount_cents)
@@ -253,7 +277,10 @@ platformRoutes.post("/organizations/:organizationId/billing/pending", async (c) 
     note: body.note ?? null,
     actorAccountId: access.staff?.accountId ?? null,
   });
-  if (!ok) return c.json({ error: "Not found" }, 404);
+  if (!result.ok) {
+    const status = result.error === "Not found" ? 404 : 422;
+    return c.json({ error: result.error }, status);
+  }
   if (access.staff) {
     await writePlatformAuditEvent(getPool(), {
       actorAccountId: access.staff.accountId,
