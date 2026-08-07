@@ -257,6 +257,10 @@ function stepToEvent(
     payload.purpose = step.purpose ?? step.name ?? "llm";
     payload.prompt_preview = preview(step.prompt ?? step.input_preview ?? "");
     payload.response_preview = preview(step.response ?? step.output_preview ?? "");
+  } else if (kind === "policy_decision") {
+    payload.decision = step.policy_decision ?? step.decision ?? "allow";
+    payload.rationale = step.rationale ?? step.purpose ?? "";
+    payload.tool_under_review = toolName;
   } else if (kind === "decision") {
     payload.decision = step.decision ?? step.status ?? "recorded";
     payload.rationale = step.rationale ?? step.output_preview ?? step.purpose ?? "";
@@ -635,4 +639,73 @@ export async function getWorkflowRun(
     created_at: row.created_at.toISOString(),
     completed_at: row.completed_at?.toISOString() ?? null,
   };
+}
+
+/**
+ * Record a policy gate as its own signed trace (enterprise audit):
+ * who checked what tool, allow/deny, rule, reason — then close the run.
+ */
+export async function recordPolicyGateAsTrace(
+  client: pg.PoolClient,
+  input: {
+    organizationId: string;
+    agentId: string;
+    toolName: string;
+    decision: PolicyDecision;
+    policyId: string;
+    ruleId: string | null;
+    reason: string;
+    engine?: string;
+    externalSystem?: string;
+    externalWorkflowId?: string;
+    externalExecutionId?: string;
+    actorPrincipal?: string;
+  },
+): Promise<{
+  trace_id: string;
+  status: "completed" | "failed";
+  events: Array<{ event_id: string; action_kind: string; tool_name?: string }>;
+}> {
+  const denied = input.decision === "deny";
+  const started = await startWorkflowRun(client, {
+    organizationId: input.organizationId,
+    agentId: input.agentId,
+    businessContext: denied
+      ? `Policy blocked ${input.toolName}`
+      : `Policy allowed ${input.toolName}`,
+    externalSystem: input.externalSystem ?? "n8n",
+    externalWorkflowId: input.externalWorkflowId,
+    externalExecutionId: input.externalExecutionId,
+    triggerDetail: `policy_gate:${input.toolName}`,
+    actorPrincipal: input.actorPrincipal ?? "workflow:n8n",
+  });
+
+  return completeWorkflowRun(client, {
+    organizationId: input.organizationId,
+    traceId: started.trace_id,
+    status: denied ? "failed" : "completed",
+    summary: denied
+      ? `Blocked ${input.toolName} by ${input.ruleId ?? "policy"}: ${input.reason}`
+      : `Allowed ${input.toolName}: ${input.reason}`,
+    steps: [
+      {
+        action_kind: "policy_decision",
+        tool_name: input.toolName,
+        policy_decision: input.decision,
+        purpose: `Policy ${input.decision}`,
+        decision: input.decision,
+        rationale: input.reason,
+        payload: {
+          policy_id: input.policyId,
+          rule_id: input.ruleId,
+          engine: input.engine ?? "rules",
+          blocked: denied,
+          investor_summary: denied
+            ? `Denied ${input.toolName} — ${input.reason}`
+            : `Allowed ${input.toolName}`,
+        },
+      },
+    ],
+    actorPrincipal: input.actorPrincipal ?? "workflow:n8n",
+  });
 }

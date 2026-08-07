@@ -84,6 +84,19 @@ function resolveCaptureNodes(
     });
   }
 
+  const err =
+    j.error ?? j.executionError ?? j.message ?? j.errorMessage ?? null;
+  if (nodes.length === 0 && err != null) {
+    nodes.push({
+      name: "Workflow error",
+      kind: "result",
+      purpose: "Captured failed execution",
+      status: "failed",
+      output_preview: preview(err),
+    });
+    return nodes;
+  }
+
   if (nodes.length === 0) {
     nodes.push({
       name: "Workflow result",
@@ -97,12 +110,10 @@ function resolveCaptureNodes(
 }
 
 /**
- * Salanor Aegis — official community node for n8n.
+ * Salanor Aegis for n8n.
  *
- * Customer install: Settings → Community Nodes → n8n-nodes-salanor-aegis
- *
- * - Record Run: one node at end of workflow → full signed APS-1 trace
- * - Check Policy: before risky tools → deny can stop the branch
+ * - Check Policy: before risky tools (deny stops + writes a signed gate trace)
+ * - Record Run: once at end (or on Error Trigger with status=failed)
  */
 export class SalanorAegis implements INodeType {
   description: INodeTypeDescription = {
@@ -113,7 +124,7 @@ export class SalanorAegis implements INodeType {
     version: 1,
     subtitle: '={{$parameter["operation"]}}',
     description:
-      "Governance for agent workflows: record signed traces and enforce policies",
+      "Check policy before risky steps and record signed workflow traces",
     defaults: { name: "Salanor Aegis" },
     inputs: ["main"],
     outputs: ["main"],
@@ -126,44 +137,21 @@ export class SalanorAegis implements INodeType {
         noDataExpression: true,
         options: [
           {
-            name: "Record Run",
-            value: "recordRun",
-            action: "Record signed workflow run",
-            description:
-              "Place once at the end. Signs the full run (one API call).",
-          },
-          {
             name: "Check Policy",
             value: "checkPolicy",
             action: "Check policy before risky step",
             description:
-              "Place before payments/deletes/sends. Deny stops the workflow.",
+              "Before payments/deletes/sends. Deny can stop the workflow and always writes an audit trace.",
+          },
+          {
+            name: "Record Run",
+            value: "recordRun",
+            action: "Record signed workflow run",
+            description:
+              "Once at the end of a successful path, or on Error Trigger with status Failed.",
           },
         ],
-        default: "recordRun",
-      },
-      {
-        displayName: "Business Context",
-        name: "businessContext",
-        type: "string",
-        default: "={{$workflow.name}}",
-        displayOptions: { show: { operation: ["recordRun"] } },
-      },
-      {
-        displayName: "Summary",
-        name: "summary",
-        type: "string",
-        default: "Workflow completed",
-        displayOptions: { show: { operation: ["recordRun"] } },
-      },
-      {
-        displayName: "Steps (optional)",
-        name: "nodesJson",
-        type: "json",
-        default: "[]",
-        description:
-          "Optional explicit steps. Leave [] to auto-capture the incoming item as the signed result (and sample_llm / sample_tool if present).",
-        displayOptions: { show: { operation: ["recordRun"] } },
+        default: "checkPolicy",
       },
       {
         displayName: "Organization ID",
@@ -188,6 +176,8 @@ export class SalanorAegis implements INodeType {
         default: "",
         required: true,
         placeholder: "app.payments.transfer",
+        description:
+          "Same string as the tool pattern in Console → Policies (e.g. app.payments.transfer).",
         displayOptions: { show: { operation: ["checkPolicy"] } },
       },
       {
@@ -200,6 +190,42 @@ export class SalanorAegis implements INodeType {
         ],
         default: "error",
         displayOptions: { show: { operation: ["checkPolicy"] } },
+      },
+      {
+        displayName: "Business Context",
+        name: "businessContext",
+        type: "string",
+        default: "={{$workflow.name}}",
+        displayOptions: { show: { operation: ["recordRun"] } },
+      },
+      {
+        displayName: "Summary",
+        name: "summary",
+        type: "string",
+        default: "Workflow completed",
+        displayOptions: { show: { operation: ["recordRun"] } },
+      },
+      {
+        displayName: "Run Status",
+        name: "runStatus",
+        type: "options",
+        options: [
+          { name: "Completed", value: "completed" },
+          { name: "Failed", value: "failed" },
+        ],
+        default: "completed",
+        description:
+          "Use Failed when this node sits on an Error Trigger path so crashes still leave a signed trace.",
+        displayOptions: { show: { operation: ["recordRun"] } },
+      },
+      {
+        displayName: "Steps (optional)",
+        name: "nodesJson",
+        type: "json",
+        default: "[]",
+        description:
+          "Optional explicit steps. Leave [] to auto-capture the incoming item (and sample_llm / sample_tool / error if present).",
+        displayOptions: { show: { operation: ["recordRun"] } },
       },
     ],
   };
@@ -218,6 +244,9 @@ export class SalanorAegis implements INodeType {
           i,
         ) as string;
         const summary = this.getNodeParameter("summary", i) as string;
+        const runStatus = this.getNodeParameter("runStatus", i) as
+          | "completed"
+          | "failed";
         const nodesJson = this.getNodeParameter("nodesJson", i);
         const nodes = resolveCaptureNodes(nodesJson, items[i]);
         const execId = executionId(this);
@@ -235,8 +264,11 @@ export class SalanorAegis implements INodeType {
             external_system: "n8n",
             external_workflow_id: String(this.getWorkflow().id ?? ""),
             external_execution_id: execId,
-            status: "completed",
-            summary,
+            status: runStatus,
+            summary:
+              runStatus === "failed" && summary === "Workflow completed"
+                ? "Workflow failed"
+                : summary,
             execution: {
               workflow_name: this.getWorkflow().name,
               execution_id: execId,
@@ -258,6 +290,7 @@ export class SalanorAegis implements INodeType {
         const agentId = this.getNodeParameter("agentId", i) as string;
         const toolName = this.getNodeParameter("toolName", i) as string;
         const onDeny = this.getNodeParameter("onDeny", i) as string;
+        const execId = executionId(this);
 
         const response = (await this.helpers.httpRequest({
           method: "POST",
@@ -271,14 +304,30 @@ export class SalanorAegis implements INodeType {
             agent_id: agentId,
             tool_name: toolName,
             payload: items[i].json as IDataObject,
+            record: true,
+            external_system: "n8n",
+            external_workflow_id: String(this.getWorkflow().id ?? ""),
+            external_execution_id: execId,
           },
           json: true,
-        })) as { decision?: string; reason?: string };
+        })) as {
+          decision?: string;
+          reason?: string;
+          rule_id?: string | null;
+          trace_id?: string;
+          trace_url?: string;
+          recorded?: boolean;
+        };
 
         if (response.decision === "deny" && onDeny === "error") {
+          const where = response.trace_url
+            ? ` Audit: ${response.trace_url}`
+            : response.trace_id
+              ? ` Trace: ${response.trace_id}`
+              : "";
           throw new NodeOperationError(
             this.getNode(),
-            `Aegis policy denied "${toolName}": ${response.reason ?? "denied"}`,
+            `Aegis policy denied "${toolName}": ${response.reason ?? "denied"}.${where}`,
             { itemIndex: i },
           );
         }

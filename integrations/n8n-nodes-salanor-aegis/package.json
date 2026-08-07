@@ -1,7 +1,7 @@
 {
   "name": "n8n-nodes-salanor-aegis",
-  "version": "1.0.0",
-  "description": "Official Salanor Aegis node for n8n — Record signed traces and Check Policy before risky steps",
+  "version": "1.0.1",
+  "description": "Salanor Aegis node for n8n: check policy before risky steps and record signed traces",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
@@ -13,9 +13,9 @@
     "compliance"
   ],
   "license": "MIT",
-  "homepage": "https://www.salanor.com",
+  "homepage": "https://docs.salanor.com/aegis/n8n",
   "bugs": {
-    "url": "https://github.com/lan-dry/xyz/issues"
+    "url": "https://github.com/salanor-ltd/n8n-nodes-salanor-aegis/issues"
   },
   "author": {
     "name": "Salanor",
@@ -23,8 +23,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lan-dry/xyz.git",
-    "directory": "integrations/n8n-nodes-salanor-aegis"
+    "url": "git+https://github.com/salanor-ltd/n8n-nodes-salanor-aegis.git"
   },
   "main": "index.js",
   "scripts": {
