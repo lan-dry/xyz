@@ -45,11 +45,6 @@
   ],
   "address": {
     "label": "Office",
-    "lines": [
-      "Salanor Systems, Inc.",
-      "Norrsken House Kigali",
-      "1 KN 78 St",
-      "Kigali, Rwanda"
-    ]
+    "lines": ["1 KN 78 St", "Kigali, Rwanda"]
   }
 }
