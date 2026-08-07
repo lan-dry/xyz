@@ -48,6 +48,21 @@ export default function OrganizationsPage() {
       ),
   });
 
+  const plansQuery = useQuery({
+    queryKey: ["platform", "plan-catalog"],
+    queryFn: () =>
+      platformApi<{ plans: Array<{ plan_slug: string; display_name: string }> }>(
+        "plan-catalog",
+      ),
+  });
+  const planOptions = plansQuery.data?.plans?.length
+    ? plansQuery.data.plans
+    : [
+        { plan_slug: "free", display_name: "Free" },
+        { plan_slug: "team", display_name: "Team" },
+        { plan_slug: "enterprise", display_name: "Enterprise" },
+      ];
+
   const patchOrg = useMutation({
     mutationFn: (input: { id: string; plan?: string; active?: boolean }) =>
       platformApi(`/organizations/${encodeURIComponent(input.id)}`, {
@@ -152,7 +167,7 @@ export default function OrganizationsPage() {
                     </div>
                   </td>
                   <td>
-                    <select
+                      <select
                       className={ui.select}
                       style={{ minWidth: "6.5rem" }}
                       defaultValue={o.plan}
@@ -161,9 +176,11 @@ export default function OrganizationsPage() {
                         patchOrg.mutate({ id: o.organization_id, plan: e.target.value })
                       }
                     >
-                      <option value="free">free</option>
-                      <option value="team">team</option>
-                      <option value="enterprise">enterprise</option>
+                      {planOptions.map((p) => (
+                        <option key={p.plan_slug} value={p.plan_slug}>
+                          {p.display_name}
+                        </option>
+                      ))}
                     </select>
                   </td>
                   <td>{o.member_count}</td>

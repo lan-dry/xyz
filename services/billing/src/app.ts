@@ -1,6 +1,12 @@
 import { Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import type Stripe from "stripe";
+import {
+  resolveSession,
+  SALANOR_SESSION_COOKIE,
+  type ConsoleSession,
+} from "@salanor/platform-auth";
 import { getPool } from "./db.js";
 import { constructStripeWebhookEvent, getStripe } from "./stripe.js";
 import {
@@ -22,9 +28,30 @@ app.use(
 
 app.get("/health", (c) => c.json({ status: "ok", service: "billing" }));
 
-function orgSettingsUrl(suffix = ""): string {
+function orgBillingUrl(suffix = ""): string {
   const base = consoleOrigin.replace(/\/$/, "");
-  return `${base}/aegis/settings/organization${suffix}`;
+  return `${base}/aegis/settings/billing${suffix}`;
+}
+
+async function requireOrgAdmin(
+  c: Parameters<typeof getCookie>[0],
+  organizationId: string,
+): Promise<ConsoleSession | Response> {
+  const token = getCookie(c, SALANOR_SESSION_COOKIE);
+  if (!token) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const session = await resolveSession(getPool(), token);
+  if (!session) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  if (session.organizationId !== organizationId) {
+    return c.json({ error: "Forbidden: switch to that organization first" }, 403);
+  }
+  if (session.role !== "admin") {
+    return c.json({ error: "Forbidden: organization admin required" }, 403);
+  }
+  return session;
 }
 
 /** Stripe Checkout session — requires STRIPE_SECRET_KEY and plan stripe_price_id. */
@@ -59,6 +86,11 @@ app.post("/v1/billing/checkout/session", async (c) => {
     return c.json({ error: "organization_id and plan_slug required" }, 422);
   }
 
+  const auth = await requireOrgAdmin(c, body.organization_id);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
   const pool = getPool();
   const plan = await pool.query<{
     stripe_price_id: string | null;
@@ -82,16 +114,22 @@ app.post("/v1/billing/checkout/session", async (c) => {
     );
   }
 
-  const org = await pool.query<{ stripe_customer_id: string | null }>(
-    `SELECT stripe_customer_id FROM organization WHERE organization_id = $1`,
+  const org = await pool.query<{
+    stripe_customer_id: string | null;
+    plan: string;
+  }>(
+    `SELECT stripe_customer_id, plan FROM organization WHERE organization_id = $1`,
     [body.organization_id],
   );
   if (!org.rows[0]) {
     return c.json({ error: "Organization not found" }, 404);
   }
+  if (org.rows[0].plan === body.plan_slug) {
+    return c.json({ error: "Organization is already on this plan" }, 422);
+  }
 
-  const successUrl = body.success_url ?? orgSettingsUrl("?checkout=success");
-  const cancelUrl = body.cancel_url ?? orgSettingsUrl("?checkout=cancel");
+  const successUrl = body.success_url ?? orgBillingUrl("?checkout=success");
+  const cancelUrl = body.cancel_url ?? orgBillingUrl("?checkout=cancel");
 
   const params = new URLSearchParams();
   params.set("mode", "subscription");
@@ -154,6 +192,11 @@ app.post("/v1/billing/portal/session", async (c) => {
     return c.json({ error: "organization_id required" }, 422);
   }
 
+  const auth = await requireOrgAdmin(c, body.organization_id);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
   const pool = getPool();
   const org = await pool.query<{ stripe_customer_id: string | null }>(
     `SELECT stripe_customer_id FROM organization WHERE organization_id = $1`,
@@ -172,7 +215,7 @@ app.post("/v1/billing/portal/session", async (c) => {
 
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
-    return_url: body.return_url ?? orgSettingsUrl(),
+    return_url: body.return_url ?? orgBillingUrl(),
   });
 
   return c.json({ portal_url: session.url });

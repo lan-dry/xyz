@@ -311,6 +311,15 @@ export async function assertCanAddMember(
   }
 }
 
+export type PlanUpgradeOption = {
+  plan_slug: string;
+  display_name: string;
+  events_per_month: number | null;
+  max_ingest_keys: number;
+  max_members: number;
+  checkout_ready: boolean;
+};
+
 export async function getOrgPlanUsageSummary(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
@@ -318,11 +327,19 @@ export async function getOrgPlanUsageSummary(
   plan: string;
   display_name: string;
   active: boolean;
-  usage: { events_this_month: number };
+  usage: {
+    events_this_month: number;
+    ingest_keys: number;
+    members: number;
+  };
   limits: OrgPlanContext["limits"];
   self_serve: boolean;
   billing_checkout_enabled: boolean;
   billing_portal_available: boolean;
+  /** Self-serve plans the org can upgrade to (not the current plan). */
+  upgrade_options: PlanUpgradeOption[];
+  /** Non-self-serve paid plans (e.g. Enterprise) — contact sales. */
+  contact_sales_plans: Array<{ plan_slug: string; display_name: string }>;
 } | null> {
   const ctx = await getOrgPlanContext(client, organizationId);
   if (!ctx) return null;
@@ -335,6 +352,30 @@ export async function getOrgPlanUsageSummary(
     [organizationId],
   );
   const events = await getMonthlyEventCount(client, organizationId);
+  const keysCount = await client.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM ingest_api_key
+     WHERE organization_id = $1 AND active = true`,
+    [organizationId],
+  );
+  const membersCount = await client.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM membership
+     WHERE organization_id = $1 AND status = 'active'`,
+    [organizationId],
+  );
+  const allPlans = await getPlanCatalog(client, true);
+  const upgrade_options: PlanUpgradeOption[] = allPlans
+    .filter((p) => p.self_serve && p.plan_slug !== ctx.plan)
+    .map((p) => ({
+      plan_slug: p.plan_slug,
+      display_name: p.display_name,
+      events_per_month: p.events_per_month,
+      max_ingest_keys: p.max_ingest_keys,
+      max_members: p.max_members,
+      checkout_ready: Boolean(p.stripe_price_id?.trim()),
+    }));
+  const contact_sales_plans = allPlans
+    .filter((p) => !p.self_serve && p.plan_slug !== "free" && p.plan_slug !== ctx.plan)
+    .map((p) => ({ plan_slug: p.plan_slug, display_name: p.display_name }));
   const checkoutEnabled =
     process.env.BILLING_CHECKOUT_ENABLED === "1" ||
     process.env.BILLING_CHECKOUT_ENABLED === "true";
@@ -343,11 +384,17 @@ export async function getOrgPlanUsageSummary(
     plan: ctx.plan,
     display_name: catalog.rows[0]?.display_name ?? ctx.plan,
     active: ctx.active,
-    usage: { events_this_month: events },
+    usage: {
+      events_this_month: events,
+      ingest_keys: Number(keysCount.rows[0]?.count ?? 0),
+      members: Number(membersCount.rows[0]?.count ?? 0),
+    },
     limits: ctx.limits,
     self_serve: catalog.rows[0]?.self_serve ?? false,
     billing_checkout_enabled: checkoutEnabled,
     billing_portal_available: checkoutEnabled && Boolean(stripeCustomerId),
+    upgrade_options,
+    contact_sales_plans,
   };
 }
 

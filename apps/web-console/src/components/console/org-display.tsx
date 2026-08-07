@@ -1,10 +1,12 @@
 "use client";
 
 import { Building2, Check, ChevronDown } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { consoleApi } from "@/lib/api";
 import { idApi } from "@/lib/id-api";
 import type { ConsoleOrganization, MeResponse } from "@/lib/types";
 
@@ -23,6 +25,15 @@ export function OrgDisplay({
   const rootRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const router = useRouter();
+
+  const planQuery = useQuery({
+    queryKey: ["console", "plan-usage"],
+    queryFn: () =>
+      consoleApi<{ plan_usage: { plan: string; display_name: string } }>(
+        "/organization/plan-usage",
+      ),
+  });
+  const planLabel = planQuery.data?.plan_usage.display_name;
 
   useEffect(() => {
     if (!canSwitch) return;
@@ -97,6 +108,15 @@ export function OrgDisplay({
           </div>
         ) : null}
       </div>
+      {planLabel ? (
+        <Link
+          href="/aegis/settings/billing"
+          className={styles.planBadge}
+          title="Plan & billing"
+        >
+          {planLabel}
+        </Link>
+      ) : null}
       <span className={styles.orgSlug}>{organization.slug}</span>
       <span className={styles.hint}>· APS-1 ledger</span>
     </div>

@@ -23,6 +23,13 @@ import type { MeResponse, OrgInvitation, OrgMember } from "@/lib/types";
 const ROLES = ["admin", "engineer", "auditor", "viewer"] as const;
 const MEMBER_PAGE_SIZES = [25, 50, 100] as const;
 
+type InviteLinkResult = {
+  invite_url: string;
+  email_delivered?: boolean;
+  warning?: string;
+  email?: string;
+};
+
 export default function MembersPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -41,7 +48,7 @@ export default function MembersPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<(typeof ROLES)[number]>("engineer");
-  const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
+  const [lastInvite, setLastInvite] = useState<InviteLinkResult | null>(null);
 
   const meQuery = useQuery({
     queryKey: ["id", "me"],
@@ -70,12 +77,12 @@ export default function MembersPage() {
 
   const inviteMember = useMutation({
     mutationFn: () =>
-      idApi<{ invite_url: string }>(`/orgs/${orgId}/invitations`, {
+      idApi<InviteLinkResult>(`/orgs/${orgId}/invitations`, {
         method: "POST",
         body: JSON.stringify({ email: email.trim(), role }),
       }),
     onSuccess: (data) => {
-      setLastInviteUrl(data.invite_url);
+      setLastInvite(data);
       setEmail("");
       setInviteOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["id", "invitations", orgId] });
@@ -100,6 +107,18 @@ export default function MembersPage() {
     mutationFn: (invitationId: string) =>
       idApi<{ ok: boolean }>(`/invitations/${invitationId}`, { method: "DELETE" }),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["id", "invitations", orgId] });
+    },
+  });
+
+  const resendInvite = useMutation({
+    mutationFn: (invitationId: string) =>
+      idApi<InviteLinkResult>(
+        `/orgs/${orgId}/invitations/${invitationId}/resend`,
+        { method: "POST" },
+      ),
+    onSuccess: (data) => {
+      setLastInvite(data);
       void queryClient.invalidateQueries({ queryKey: ["id", "invitations", orgId] });
     },
   });
@@ -150,11 +169,16 @@ export default function MembersPage() {
     router.replace(`${pathname}?${next.toString()}`);
   }
 
+  const inviteBannerOk = lastInvite?.email_delivered !== false;
+
   return (
     <ConsolePage>
       {pageHeader}
       {updateRole.isError ? (
         <ErrorAlert message={(updateRole.error as Error).message} />
+      ) : null}
+      {resendInvite.isError ? (
+        <ErrorAlert message={(resendInvite.error as Error).message} />
       ) : null}
       <div className={ui.toolbar} style={{ justifyContent: "flex-end", marginTop: 0 }}>
         <button
@@ -167,11 +191,19 @@ export default function MembersPage() {
         </button>
       </div>
 
-      {lastInviteUrl ? (
-        <div className={`${ui.alert} ${ui.alertSuccess}`} style={{ marginBottom: "1.5rem" }}>
-          <strong>Invitation sent</strong>
+      {lastInvite ? (
+        <div
+          className={`${ui.alert} ${inviteBannerOk ? ui.alertSuccess : ui.alertInfo}`}
+          style={{ marginBottom: "1.5rem" }}
+        >
+          <strong>
+            {inviteBannerOk
+              ? "Invitation ready"
+              : "Invitation created — email not delivered"}
+          </strong>
           <p style={{ margin: "0.5rem 0 0", fontSize: "0.8125rem" }}>
-            Share this link with your teammate:
+            {lastInvite.warning ??
+              "Email sent. If they don’t see it, check spam or copy this link and share it directly:"}
           </p>
           <div
             style={{
@@ -183,15 +215,15 @@ export default function MembersPage() {
             }}
           >
             <pre className={ui.pre} style={{ flex: 1, margin: 0 }}>
-              {lastInviteUrl}
+              {lastInvite.invite_url}
             </pre>
-            <CopyButton text={lastInviteUrl} label="Copy link" />
+            <CopyButton text={lastInvite.invite_url} label="Copy link" />
           </div>
           <button
             type="button"
             className={`${ui.btn} ${ui.btnSecondary}`}
             style={{ marginTop: "0.75rem" }}
-            onClick={() => setLastInviteUrl(null)}
+            onClick={() => setLastInvite(null)}
           >
             Done
           </button>
@@ -290,6 +322,10 @@ export default function MembersPage() {
 
       <section className={ui.panel}>
         <h2 className={ui.panelTitle}>Pending invitations</h2>
+        <p className={ui.muted} style={{ marginTop: 0, marginBottom: "1rem" }}>
+          If someone didn’t get the email, use Resend (new email + fresh link) or
+          copy the link and share it in Slack / chat.
+        </p>
         {invitesQuery.isPending ? (
           <LoadingBlock />
         ) : invitesQuery.isError ? (
@@ -332,14 +368,38 @@ export default function MembersPage() {
                       {new Date(inv.expires_at).toLocaleString()}
                     </td>
                     <td style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        className={`${ui.btn} ${ui.btnSecondary}`}
-                        onClick={() => revokeInvite.mutate(inv.invitation_id)}
-                        disabled={revokeInvite.isPending}
+                      <div
+                        style={{
+                          display: "inline-flex",
+                          flexWrap: "wrap",
+                          gap: "0.5rem",
+                          justifyContent: "flex-end",
+                        }}
                       >
-                        Revoke
-                      </button>
+                        <button
+                          type="button"
+                          className={`${ui.btn} ${ui.btnSecondary}`}
+                          onClick={() => resendInvite.mutate(inv.invitation_id)}
+                          disabled={
+                            resendInvite.isPending || revokeInvite.isPending
+                          }
+                        >
+                          {resendInvite.isPending &&
+                          resendInvite.variables === inv.invitation_id
+                            ? "Sending…"
+                            : "Resend"}
+                        </button>
+                        <button
+                          type="button"
+                          className={`${ui.btn} ${ui.btnSecondary}`}
+                          onClick={() => revokeInvite.mutate(inv.invitation_id)}
+                          disabled={
+                            revokeInvite.isPending || resendInvite.isPending
+                          }
+                        >
+                          Revoke
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -352,7 +412,7 @@ export default function MembersPage() {
       <Modal
         open={inviteOpen}
         title="Invite member"
-        description="They'll receive a link to join your organization. New users can create an account from the invite page."
+        description="They'll receive a link to join your organization. New users can create an account from the invite page. You can always resend or copy the link from Pending invitations."
         closeOnOverlayClick={false}
         onClose={() => {
           if (!inviteMember.isPending) setInviteOpen(false);

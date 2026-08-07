@@ -302,6 +302,43 @@ export async function revokeInvitation(
   return (result.rowCount ?? 0) > 0;
 }
 
+/**
+ * Rotate the invite token and refresh expiry for a pending invitation.
+ * Old links stop working. Caller must email the new plaintext token.
+ */
+export async function rotatePendingInvitation(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    invitationId: string;
+    token: string;
+  },
+): Promise<{
+  invitation_id: string;
+  email: string;
+  role: OrgRole;
+  expires_at: Date;
+} | null> {
+  const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+  const tokenHash = hashInviteToken(input.token);
+  const result = await client.query<{
+    invitation_id: string;
+    email: string;
+    role: OrgRole;
+    expires_at: Date;
+  }>(
+    `UPDATE organization_invitation
+     SET token_hash = $1, expires_at = $2
+     WHERE invitation_id = $3
+       AND organization_id = $4
+       AND status = 'pending'
+       AND expires_at > now()
+     RETURNING invitation_id, email, role, expires_at`,
+    [tokenHash, expiresAt, input.invitationId, input.organizationId],
+  );
+  return result.rows[0] ?? null;
+}
+
 export type InvitePreview = {
   organization_id: string;
   organization_name: string;

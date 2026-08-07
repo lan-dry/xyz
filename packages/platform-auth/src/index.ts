@@ -88,6 +88,7 @@ export {
   listPendingInvitations,
   previewInvitation,
   revokeInvitation,
+  rotatePendingInvitation,
   updateMemberRole,
   MemberRoleError,
   provisionOrganization,

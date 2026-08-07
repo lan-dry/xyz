@@ -10,6 +10,7 @@ import {
   generateInviteToken,
   hashPassword,
   InviteError,
+  PlanLimitError,
   listMembersInOrg,
   listOrganizationsForAccount,
   listPendingInvitations,
@@ -20,6 +21,7 @@ import {
   resolveSession,
   auditConsoleEvent,
   revokeInvitation,
+  rotatePendingInvitation,
   updateMemberRole,
   MemberRoleError,
   SALANOR_SESSION_COOKIE,
@@ -597,13 +599,41 @@ identityRoutes.post("/orgs/:orgId/invitations", async (c) => {
     await client.query("COMMIT");
 
     const inviteUrl = `${consoleOrigin}/invite?token=${encodeURIComponent(token)}`;
-    await sendInviteEmail({
-      to: email,
-      inviteUrl,
-      organizationName: org.name,
-      role,
-      invitedByEmail: session.email,
-    });
+    let emailDelivered = true;
+    try {
+      await sendInviteEmail({
+        to: email,
+        inviteUrl,
+        organizationName: org.name,
+        role,
+        invitedByEmail: session.email,
+      });
+      await writeAuditEvent(getPool(), {
+        organizationId: orgId,
+        membershipId: session.userId,
+        action: "invitation.email_sent",
+        resourceType: "invitation",
+        resourceId: created.invitation_id,
+        metadata: { email },
+      });
+    } catch (emailErr) {
+      emailDelivered = false;
+      console.error("[id] invitation email failed after create", emailErr);
+      await writeAuditEvent(getPool(), {
+        organizationId: orgId,
+        membershipId: session.userId,
+        action: "invitation.email_failed",
+        resourceType: "invitation",
+        resourceId: created.invitation_id,
+        metadata: {
+          email,
+          code:
+            emailErr instanceof EmailDeliveryError
+              ? emailErr.code
+              : "email_send_failed",
+        },
+      });
+    }
 
     return c.json({
       invitation_id: created.invitation_id,
@@ -611,14 +641,136 @@ identityRoutes.post("/orgs/:orgId/invitations", async (c) => {
       role,
       expires_at: created.expires_at.toISOString(),
       invite_url: inviteUrl,
+      email_delivered: emailDelivered,
+      ...(emailDelivered
+        ? {}
+        : {
+            warning:
+              "Invitation created, but email could not be sent. Copy the link and share it manually, or use Resend.",
+          }),
     });
   } catch (err) {
     await client.query("ROLLBACK");
     if (err instanceof InviteError) {
-      return c.json({ error: err.message, code: err.code }, 409);
+      const message =
+        err.code === "pending_exists"
+          ? "A pending invite already exists for this email. Use Resend on that row, or revoke and invite again."
+          : err.message;
+      return c.json({ error: message, code: err.code }, 409);
+    }
+    if (err instanceof PlanLimitError) {
+      return c.json({ error: err.message, code: err.code }, err.httpStatus as 402);
     }
     console.error("[id] create invitation", err);
     return c.json({ error: "Failed to create invitation" }, 500);
+  } finally {
+    client.release();
+  }
+});
+
+identityRoutes.post("/orgs/:orgId/invitations/:invitationId/resend", async (c) => {
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const orgId = c.req.param("orgId");
+  const invitationId = c.req.param("invitationId");
+  if (!requireAdmin(session, orgId)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const orgRow = await getPool().query<{ name: string }>(
+    `SELECT name FROM organization WHERE organization_id = $1`,
+    [orgId],
+  );
+  const org = orgRow.rows[0];
+  if (!org) {
+    return c.json({ error: "Organization not found" }, 404);
+  }
+
+  const token = generateInviteToken();
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    const rotated = await rotatePendingInvitation(client, {
+      organizationId: orgId,
+      invitationId,
+      token,
+    });
+    if (!rotated) {
+      await client.query("ROLLBACK");
+      return c.json(
+        { error: "Pending invitation not found or expired", code: "not_found" },
+        404,
+      );
+    }
+
+    await writeAuditEvent(client, {
+      organizationId: orgId,
+      membershipId: session.userId,
+      action: "invitation.resent",
+      resourceType: "invitation",
+      resourceId: invitationId,
+      metadata: { email: rotated.email, role: rotated.role },
+    });
+    await client.query("COMMIT");
+
+    const inviteUrl = `${consoleOrigin}/invite?token=${encodeURIComponent(token)}`;
+    let emailDelivered = true;
+    try {
+      await sendInviteEmail({
+        to: rotated.email,
+        inviteUrl,
+        organizationName: org.name,
+        role: rotated.role,
+        invitedByEmail: session.email,
+      });
+      await writeAuditEvent(getPool(), {
+        organizationId: orgId,
+        membershipId: session.userId,
+        action: "invitation.email_sent",
+        resourceType: "invitation",
+        resourceId: invitationId,
+        metadata: { email: rotated.email, resent: true },
+      });
+    } catch (emailErr) {
+      emailDelivered = false;
+      console.error("[id] invitation resend email failed", emailErr);
+      await writeAuditEvent(getPool(), {
+        organizationId: orgId,
+        membershipId: session.userId,
+        action: "invitation.email_failed",
+        resourceType: "invitation",
+        resourceId: invitationId,
+        metadata: {
+          email: rotated.email,
+          resent: true,
+          code:
+            emailErr instanceof EmailDeliveryError
+              ? emailErr.code
+              : "email_send_failed",
+        },
+      });
+    }
+
+    return c.json({
+      invitation_id: rotated.invitation_id,
+      email: rotated.email,
+      role: rotated.role,
+      expires_at: rotated.expires_at.toISOString(),
+      invite_url: inviteUrl,
+      email_delivered: emailDelivered,
+      ...(emailDelivered
+        ? {}
+        : {
+            warning:
+              "Link refreshed, but email could not be sent. Copy the link and share it manually.",
+          }),
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("[id] resend invitation", err);
+    return c.json({ error: "Failed to resend invitation" }, 500);
   } finally {
     client.release();
   }
@@ -628,6 +780,9 @@ identityRoutes.delete("/invitations/:invitationId", async (c) => {
   const session = await requireSession(c);
   if (!session) {
     return c.json({ error: "Unauthorized" }, 401);
+  }
+  if (session.role !== "admin") {
+    return c.json({ error: "Forbidden" }, 403);
   }
   const invitationId = c.req.param("invitationId");
   const revoked = await revokeInvitation(
@@ -712,6 +867,9 @@ identityRoutes.post("/invitations/signup-accept", async (c) => {
         err.code === "account_exists" ? 409 : err.code === "email_mismatch" ? 403 : 409;
       return c.json({ error: err.message, code: err.code }, status);
     }
+    if (err instanceof PlanLimitError) {
+      return c.json({ error: err.message, code: err.code }, err.httpStatus as 402);
+    }
     console.error("[id] signup-accept", err);
     return c.json({ error: "Failed to create account" }, 500);
   } finally {
@@ -759,6 +917,9 @@ identityRoutes.post("/invitations/accept", async (c) => {
     if (err instanceof InviteError) {
       const status = err.code === "email_mismatch" ? 403 : 409;
       return c.json({ error: err.message, code: err.code }, status);
+    }
+    if (err instanceof PlanLimitError) {
+      return c.json({ error: err.message, code: err.code }, err.httpStatus as 402);
     }
     console.error("[id] accept invitation", err);
     return c.json({ error: "Failed to accept invitation" }, 500);
