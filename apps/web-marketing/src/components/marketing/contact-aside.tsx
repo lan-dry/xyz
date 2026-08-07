@@ -2,8 +2,14 @@ import { getSiteContact } from "@/lib/site-contact";
 
 import styles from "./contact-aside.module.css";
 
+function telHref(number: string): string {
+  const compact = number.replace(/[^\d+]/g, "");
+  return `tel:${compact}`;
+}
+
 export function ContactAside() {
-  const { intro, channels, social, address } = getSiteContact();
+  const { intro, channels, phones, social, address } = getSiteContact();
+  const addressLines = address.lines.map((l) => l.trim()).filter(Boolean);
 
   return (
     <div className={styles.aside}>
@@ -21,6 +27,21 @@ export function ContactAside() {
         ))}
       </ul>
 
+      {phones.length > 0 ? (
+        <div className={styles.block}>
+          <p className={styles.blockLabel}>Phone</p>
+          <ul className={styles.social}>
+            {phones.map((phone) => (
+              <li key={phone.id}>
+                <a href={telHref(phone.number)}>
+                  {phone.label}: {phone.number}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {social.length > 0 ? (
         <div className={styles.block}>
           <p className={styles.blockLabel}>Social</p>
@@ -36,11 +57,11 @@ export function ContactAside() {
         </div>
       ) : null}
 
-      {address.lines.length > 0 ? (
+      {addressLines.length > 0 ? (
         <div className={styles.block}>
           <p className={styles.blockLabel}>{address.label}</p>
           <address className={styles.address}>
-            {address.lines.map((line) => (
+            {addressLines.map((line) => (
               <span key={line}>{line}</span>
             ))}
           </address>

@@ -20,6 +20,7 @@
       "email": "hello@salanor.com"
     }
   ],
+  "phones": [],
   "social": [
     {
       "id": "linkedin",
@@ -43,7 +44,7 @@
     }
   ],
   "address": {
-    "label": "Office",
-    "lines": ["Salanor Systems, Inc.", "Address line (update in data/site-contact.json)"]
+    "label": "Company",
+    "lines": ["Salanor Systems, Inc."]
   }
 }
