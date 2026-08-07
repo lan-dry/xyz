@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://salanor.com/sitemap.xml
+Sitemap: https://www.salanor.com/sitemap.xml

@@ -57,7 +57,7 @@ const DEFAULT_CONTACT: SiteContact = {
   ],
   phones: [],
   social: [],
-  address: { label: "Company", lines: ["Salanor Systems, Inc."] },
+  address: { label: "Office", lines: ["1 KN 78 St", "Kigali, Rwanda"] },
 };
 
 let cached: SiteContact | null = null;

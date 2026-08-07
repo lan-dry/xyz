@@ -3,6 +3,8 @@ import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 
 import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { MarketingChrome } from "@/components/marketing/marketing-chrome";
+import { MarketingJsonLd } from "@/components/seo/marketing-json-ld";
+import { SITE_ORIGIN } from "@/lib/site-origin";
 
 import "./globals.css";
 
@@ -20,13 +22,57 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
+const titleDefault = "Salanor · Provenance for agent systems";
+const description =
+  "Aegis by Salanor: provenance and liability coverage for AI agents. Signed APS-1 events, policy enforcement, and compliance exports.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_ORIGIN),
   title: {
-    default: "Salanor · Provenance for agent systems",
+    default: titleDefault,
     template: "%s · Salanor",
   },
-  description:
-    "Aegis by Salanor: provenance and liability coverage for AI agents. Signed APS-1 events, policy enforcement, and compliance exports.",
+  description,
+  applicationName: "Salanor",
+  keywords: [
+    "Salanor",
+    "Salanor Aegis",
+    "Aegis",
+    "APS-1",
+    "AI agent provenance",
+    "agent governance",
+    "AI audit trail",
+  ],
+  authors: [{ name: "Salanor Ltd", url: SITE_ORIGIN }],
+  creator: "Salanor Ltd",
+  publisher: "Salanor Ltd",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: SITE_ORIGIN,
+    siteName: "Salanor",
+    title: titleDefault,
+    description,
+    images: [
+      {
+        url: "/salanor-logo.png",
+        alt: "Salanor",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: titleDefault,
+    description,
+    images: ["/salanor-logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -37,6 +83,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
       <body>
+        <MarketingJsonLd />
         <GoogleAnalytics />
         <MarketingChrome>{children}</MarketingChrome>
       </body>

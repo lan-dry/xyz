@@ -10,7 +10,9 @@ import { contactUrl } from "@/lib/site-urls";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "Salanor builds provenance, identity, and liability coverage for production agent systems.",
+  description:
+    "Salanor Ltd builds provenance, identity, and liability coverage for production agent systems. Home of Salanor Aegis.",
+  alternates: { canonical: "/about" },
 };
 
 export default function AboutPage() {
@@ -18,7 +20,7 @@ export default function AboutPage() {
     <>
       <MarketingPage
         label="About"
-        title="Salanor Systems"
+        title="Salanor"
         lead="We build what enterprises need before autonomous agents run in regulated environments. Not another agent framework."
         layout="wide"
         backHref="/"

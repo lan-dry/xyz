@@ -21,14 +21,14 @@ export default function PrivacyPage() {
     >
       <LegalProse>
         <LegalMeta>
-          <strong>Effective date:</strong> 1 June 2026 · <strong>Controller:</strong> Salanor Systems,
-          Inc. · Questions:{" "}
+          <strong>Effective date:</strong> 1 June 2026 · <strong>Controller:</strong> Salanor Ltd ·
+          Questions:{" "}
           <a href="mailto:hello@salanor.com">hello@salanor.com</a>
         </LegalMeta>
 
         <LegalSection title="1. Scope">
           <p>
-            This policy describes how Salanor Systems, Inc. (&quot;Salanor,&quot; &quot;we,&quot;
+            This policy describes how Salanor Ltd (&quot;Salanor,&quot; &quot;we,&quot;
             &quot;us&quot;) processes personal data when you:
           </p>
           <ul>

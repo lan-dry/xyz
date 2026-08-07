@@ -83,7 +83,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className={styles.bottom}>
-        <p>© {year} Salanor Systems, Inc. All rights reserved.</p>
+        <p>© {year} Salanor Ltd. All rights reserved.</p>
         <nav className={styles.legal} aria-label="Legal">
           <Link href="/legal/privacy">Privacy</Link>
           <Link href="/legal/terms">Terms</Link>
