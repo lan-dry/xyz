@@ -18,6 +18,17 @@
   background: rgba(15, 23, 42, 0.4);
 }
 
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
 .panel {
   width: min(28rem, 100%);
   max-height: min(90vh, 40rem);

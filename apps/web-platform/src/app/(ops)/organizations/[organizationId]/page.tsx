@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { X } from "lucide-react";
 
 import { OpsShell } from "@/components/ops-shell";
 import card from "@/components/ops-ui/setting-card.module.css";
@@ -11,6 +12,8 @@ import { ErrorAlert, LoadingBlock, OpsBackLink, ui } from "@/components/ops-ui/o
 import { usePlatformSession } from "@/hooks/use-platform-session";
 import { platformApi } from "@/lib/platform-api";
 import { CONSOLE_URL } from "@/lib/urls";
+
+import styles from "../organizations.module.css";
 
 type OrgDetail = {
   organization_id: string;
@@ -389,39 +392,106 @@ export default function OrganizationDetailPage() {
               mark paid when funds clear.
             </p>
 
-            {!billingMode ? (
-              canWriteOrgs ? (
-                <div className={card.formActions}>
+            {canWriteOrgs ? (
+              <div className={card.formActions}>
+                <button
+                  type="button"
+                  className={`${ui.btn} ${ui.btnSecondary}`}
+                  onClick={() => startBilling("pending")}
+                >
+                  Record pending
+                </button>
+                <button
+                  type="button"
+                  className={`${ui.btn} ${ui.btnPrimary}`}
+                  onClick={() => startBilling("mark-paid")}
+                >
+                  Mark paid
+                </button>
+                {org.plan !== "free" || org.billing_status === "pending" ? (
                   <button
                     type="button"
                     className={`${ui.btn} ${ui.btnSecondary}`}
-                    onClick={() => startBilling("pending")}
+                    onClick={() => startBilling("end")}
                   >
-                    Record pending
+                    End billing
                   </button>
+                ) : null}
+              </div>
+            ) : (
+              <p className={ui.muted}>No billing write access.</p>
+            )}
+          </section>
+
+          <section className={card.settingCard}>
+            <h2>Billing history</h2>
+            <p>Same events customers see under Settings → Billing.</p>
+            {eventsQuery.isLoading ? <p className={ui.muted}>Loading…</p> : null}
+            {(eventsQuery.data?.events.length ?? 0) === 0 ? (
+              <p className={ui.muted}>No billing events yet.</p>
+            ) : (
+              <div className={ui.tableWrap}>
+                <table className={ui.table}>
+                  <thead>
+                    <tr>
+                      <th>Event</th>
+                      <th>Plan</th>
+                      <th>Invoice</th>
+                      <th>Period</th>
+                      <th>Date</th>
+                      <th>Note</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {eventsQuery.data!.events.map((e) => (
+                      <tr key={e.billing_event_id}>
+                        <td>{e.event_type}</td>
+                        <td>{e.plan_slug ?? "Not set"}</td>
+                        <td className="mono">{e.external_invoice_ref ?? "Not set"}</td>
+                        <td>
+                          {e.period_start || e.period_end
+                            ? `${formatDate(e.period_start)} to ${formatDate(e.period_end)}`
+                            : "Not set"}
+                        </td>
+                        <td>{formatDate(e.created_at)}</td>
+                        <td>{e.note ?? ""}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {billingMode ? (
+            <div
+              className={styles.modalOverlay}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="billing-modal-title"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setBillingMode(null);
+              }}
+            >
+              <div className={styles.panel}>
+                <div className={styles.panelHeader}>
+                  <h2 id="billing-modal-title">
+                    {billingMode === "pending"
+                      ? "Record pending"
+                      : billingMode === "mark-paid"
+                        ? "Mark paid"
+                        : "End billing"}
+                  </h2>
                   <button
                     type="button"
-                    className={`${ui.btn} ${ui.btnPrimary}`}
-                    onClick={() => startBilling("mark-paid")}
+                    className={styles.closeBtn}
+                    onClick={() => setBillingMode(null)}
+                    aria-label="Close"
                   >
-                    Mark paid
+                    <X size={18} />
                   </button>
-                  {org.plan !== "free" || org.billing_status === "pending" ? (
-                    <button
-                      type="button"
-                      className={`${ui.btn} ${ui.btnSecondary}`}
-                      onClick={() => startBilling("end")}
-                    >
-                      End billing
-                    </button>
-                  ) : null}
                 </div>
-              ) : (
-                <p className={ui.muted}>No billing write access.</p>
-              )
-            ) : (
-              <div className={card.formFields}>
-                <p className={ui.muted} style={{ margin: 0 }}>
+                <p className={styles.panelHint}>
                   {billingMode === "pending"
                     ? "After you send the invoice. Org stays on Free until mark paid."
                     : billingMode === "mark-paid"
@@ -467,13 +537,7 @@ export default function OrganizationDetailPage() {
                 )}
 
                 {billingMode === "mark-paid" ? (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "0.75rem",
-                    }}
-                  >
+                  <div className={styles.dateRow}>
                     <label className={ui.field}>
                       Period start
                       <input
@@ -497,7 +561,8 @@ export default function OrganizationDetailPage() {
 
                 {billingMode !== "end" ? (
                   <label className={ui.field}>
-                    Invoice number{billingMode === "pending" ? " (required)" : " (recommended)"}
+                    Invoice number
+                    {billingMode === "pending" ? " (required)" : " (recommended)"}
                     <input
                       className={ui.input}
                       value={invoiceRef}
@@ -522,7 +587,7 @@ export default function OrganizationDetailPage() {
                   <ErrorAlert message={(billingMutation.error as Error).message} />
                 ) : null}
 
-                <div className={card.formActions}>
+                <div className={styles.panelActions}>
                   <button
                     type="button"
                     className={`${ui.btn} ${ui.btnSecondary}`}
@@ -540,14 +605,13 @@ export default function OrganizationDetailPage() {
                         return;
                       }
                       if (billingMode === "mark-paid") {
-                        if (!invoiceRef.trim()) {
-                          if (
-                            !window.confirm(
-                              "No invoice number entered. Activate the plan anyway?",
-                            )
-                          ) {
-                            return;
-                          }
+                        if (
+                          !invoiceRef.trim() &&
+                          !window.confirm(
+                            "No invoice number entered. Activate the plan anyway?",
+                          )
+                        ) {
+                          return;
                         }
                         if (
                           !window.confirm(
@@ -559,7 +623,9 @@ export default function OrganizationDetailPage() {
                       }
                       if (
                         billingMode === "end" &&
-                        !window.confirm(`End billing for ${org.name} and set plan to Free?`)
+                        !window.confirm(
+                          `End billing for ${org.name} and set plan to Free?`,
+                        )
                       ) {
                         return;
                       }
@@ -576,48 +642,8 @@ export default function OrganizationDetailPage() {
                   </button>
                 </div>
               </div>
-            )}
-          </section>
-
-          <section className={card.settingCard}>
-            <h2>Billing history</h2>
-            <p>Same events customers see under Settings → Billing.</p>
-            {eventsQuery.isLoading ? <p className={ui.muted}>Loading…</p> : null}
-            {(eventsQuery.data?.events.length ?? 0) === 0 ? (
-              <p className={ui.muted}>No billing events yet.</p>
-            ) : (
-              <div className={ui.tableWrap}>
-                <table className={ui.table}>
-                  <thead>
-                    <tr>
-                      <th>Event</th>
-                      <th>Plan</th>
-                      <th>Invoice</th>
-                      <th>Period</th>
-                      <th>Date</th>
-                      <th>Note</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {eventsQuery.data!.events.map((e) => (
-                      <tr key={e.billing_event_id}>
-                        <td>{e.event_type}</td>
-                        <td>{e.plan_slug ?? "Not set"}</td>
-                        <td className="mono">{e.external_invoice_ref ?? "Not set"}</td>
-                        <td>
-                          {e.period_start || e.period_end
-                            ? `${formatDate(e.period_start)} to ${formatDate(e.period_end)}`
-                            : "Not set"}
-                        </td>
-                        <td>{formatDate(e.created_at)}</td>
-                        <td>{e.note ?? ""}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
+            </div>
+          ) : null}
         </>
       ) : null}
 
