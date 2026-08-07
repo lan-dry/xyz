@@ -1,5 +1,6 @@
 import type Stripe from "stripe";
 import type pg from "pg";
+import { applyStripeEntitlement } from "@salanor/platform-auth";
 
 async function resolvePlanSlugFromPriceId(
   client: pg.Pool | pg.PoolClient,
@@ -30,20 +31,13 @@ export async function applyCheckoutSessionCompleted(
 
   if (!organizationId) return;
 
-  if (customerId) {
-    await client.query(
-      `UPDATE organization SET stripe_customer_id = $2, updated_at = now()
-       WHERE organization_id = $1`,
-      [organizationId, customerId],
-    );
-  }
-
-  if (planSlug) {
-    await client.query(
-      `UPDATE organization SET plan = $2, updated_at = now() WHERE organization_id = $1`,
-      [organizationId, planSlug],
-    );
-  }
+  await applyStripeEntitlement(client, {
+    organizationId,
+    planSlug,
+    billingStatus: planSlug ? "active" : "none",
+    stripeCustomerId: customerId ?? null,
+    periodStart: planSlug ? new Date() : undefined,
+  });
 }
 
 export async function applySubscriptionChange(
@@ -58,26 +52,39 @@ export async function applySubscriptionChange(
 
   if (!organizationId) return;
 
-  if (customerId) {
-    await client.query(
-      `UPDATE organization SET stripe_customer_id = $2, updated_at = now()
-       WHERE organization_id = $1`,
-      [organizationId, customerId],
-    );
-  }
-
   const priceId = subscription.items.data[0]?.price?.id;
   const planSlug =
     subscription.metadata?.plan_slug ??
     (await resolvePlanSlugFromPriceId(client, priceId));
 
+  const periodStart = subscription.current_period_start
+    ? new Date(subscription.current_period_start * 1000)
+    : null;
+  const periodEnd = subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000)
+    : null;
+
   if (subscription.status === "active" || subscription.status === "trialing") {
-    if (planSlug) {
-      await client.query(
-        `UPDATE organization SET plan = $2, updated_at = now() WHERE organization_id = $1`,
-        [organizationId, planSlug],
-      );
-    }
+    await applyStripeEntitlement(client, {
+      organizationId,
+      planSlug,
+      billingStatus: "active",
+      periodStart,
+      periodEnd,
+      stripeCustomerId: customerId ?? null,
+    });
+    return;
+  }
+
+  if (subscription.status === "past_due") {
+    await applyStripeEntitlement(client, {
+      organizationId,
+      planSlug: null,
+      billingStatus: "past_due",
+      periodStart,
+      periodEnd,
+      stripeCustomerId: customerId ?? null,
+    });
     return;
   }
 
@@ -86,9 +93,13 @@ export async function applySubscriptionChange(
     subscription.status === "unpaid" ||
     subscription.status === "incomplete_expired"
   ) {
-    await client.query(
-      `UPDATE organization SET plan = 'free', updated_at = now() WHERE organization_id = $1`,
-      [organizationId],
-    );
+    await applyStripeEntitlement(client, {
+      organizationId,
+      planSlug: "free",
+      billingStatus: "canceled",
+      periodStart,
+      periodEnd,
+      stripeCustomerId: customerId ?? null,
+    });
   }
 }

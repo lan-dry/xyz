@@ -1,0 +1,92 @@
+.billingBadge {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--console-fg);
+}
+
+.billingSource {
+  color: var(--console-fg-muted);
+  text-transform: lowercase;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.panel {
+  width: min(28rem, 100%);
+  max-height: min(90vh, 40rem);
+  overflow: auto;
+  background: var(--console-surface);
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius-lg);
+  box-shadow: var(--console-shadow);
+  padding: 1.25rem 1.35rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.panelHeader h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--console-fg);
+}
+
+.panelHint {
+  margin: -0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--console-fg-muted);
+  line-height: 1.45;
+}
+
+.closeBtn {
+  border: none;
+  background: transparent;
+  color: var(--console-fg-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.375rem;
+}
+
+.closeBtn:hover {
+  color: var(--console-fg);
+  background: var(--console-surface-muted, rgba(0, 0, 0, 0.04));
+}
+
+.dateRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.panelActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+@media (max-width: 480px) {
+  .dateRow {
+    grid-template-columns: 1fr;
+  }
+}

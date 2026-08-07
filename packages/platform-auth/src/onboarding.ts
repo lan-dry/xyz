@@ -41,7 +41,7 @@ export async function rebindOrganizationSlug(
 ): Promise<void> {
   const agents = await client.query<{
     agent_id: string;
-    did: string;4
+    did: string;
   }>(
     `SELECT agent_id, did FROM agent WHERE organization_id = $1`,
     [organizationId],

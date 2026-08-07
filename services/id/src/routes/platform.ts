@@ -14,6 +14,11 @@ import {
   platformSetAccountActive,
   platformSetMembershipStatus,
   platformUpdateOrganization,
+  listOrganizationBillingEvents,
+  recordOrganizationBillingPending,
+  markOrganizationBillingPaid,
+  endOrganizationBilling,
+  writePlatformAuditEvent,
   PlatformRoleError,
   provisionOrganization,
   resolvePlatformStaffSession,
@@ -157,7 +162,14 @@ platformRoutes.get("/organizations", async (c) => {
   if (!access.ok) return c.json({ error: access.error }, 403);
   const q = c.req.query("q");
   const orgs = await platformListOrganizations(getPool(), q);
-  return c.json({ organizations: orgs });
+  return c.json({
+    organizations: orgs.map((o) => ({
+      ...o,
+      created_at: o.created_at.toISOString(),
+      current_period_start: o.current_period_start?.toISOString() ?? null,
+      current_period_end: o.current_period_end?.toISOString() ?? null,
+    })),
+  });
 });
 
 platformRoutes.patch("/organizations/:organizationId", async (c) => {
@@ -185,7 +197,173 @@ platformRoutes.patch("/organizations/:organizationId", async (c) => {
     plan_overrides: body.plan_overrides,
   });
   if (!ok) return c.json({ error: "Not found" }, 404);
+  if (access.staff && (body.plan !== undefined || body.active !== undefined)) {
+    await writePlatformAuditEvent(getPool(), {
+      actorAccountId: access.staff.accountId,
+      action: "organization.patch",
+      resourceType: "organization",
+      resourceId: organizationId,
+      metadata: { plan: body.plan, active: body.active },
+    });
+  }
   return c.json({ ok: true });
+});
+
+platformRoutes.get("/organizations/:organizationId/billing/events", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:read");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const organizationId = c.req.param("organizationId");
+  const limit = Number(c.req.query("limit") || "50");
+  const events = await listOrganizationBillingEvents(getPool(), organizationId, limit);
+  return c.json({
+    events: events.map((e) => ({
+      ...e,
+      period_start: e.period_start?.toISOString() ?? null,
+      period_end: e.period_end?.toISOString() ?? null,
+      created_at: e.created_at.toISOString(),
+    })),
+  });
+});
+
+platformRoutes.post("/organizations/:organizationId/billing/pending", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:orgs.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const organizationId = c.req.param("organizationId");
+  let body: {
+    plan_slug?: string;
+    external_invoice_ref?: string;
+    amount_cents?: number;
+    currency?: string;
+    note?: string;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+  const ok = await recordOrganizationBillingPending(getPool(), {
+    organizationId,
+    planSlug: body.plan_slug ?? null,
+    externalInvoiceRef: body.external_invoice_ref ?? null,
+    amountCents:
+      typeof body.amount_cents === "number" && Number.isFinite(body.amount_cents)
+        ? Math.round(body.amount_cents)
+        : null,
+    currency: body.currency ?? null,
+    note: body.note ?? null,
+    actorAccountId: access.staff?.accountId ?? null,
+  });
+  if (!ok) return c.json({ error: "Not found" }, 404);
+  if (access.staff) {
+    await writePlatformAuditEvent(getPool(), {
+      actorAccountId: access.staff.accountId,
+      action: "organization.billing.pending",
+      resourceType: "organization",
+      resourceId: organizationId,
+      metadata: {
+        plan_slug: body.plan_slug,
+        external_invoice_ref: body.external_invoice_ref,
+      },
+    });
+  }
+  return c.json({ ok: true, billing_status: "pending" });
+});
+
+platformRoutes.post("/organizations/:organizationId/billing/mark-paid", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:orgs.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const organizationId = c.req.param("organizationId");
+  let body: {
+    plan_slug?: string;
+    period_start?: string;
+    period_end?: string;
+    external_invoice_ref?: string;
+    amount_cents?: number;
+    currency?: string;
+    note?: string;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+  if (!body.plan_slug?.trim() || !body.period_start || !body.period_end) {
+    return c.json(
+      { error: "plan_slug, period_start, and period_end are required" },
+      422,
+    );
+  }
+  const periodStart = new Date(body.period_start);
+  const periodEnd = new Date(body.period_end);
+  if (Number.isNaN(periodStart.getTime()) || Number.isNaN(periodEnd.getTime())) {
+    return c.json({ error: "Invalid period dates" }, 422);
+  }
+  const result = await markOrganizationBillingPaid(getPool(), {
+    organizationId,
+    planSlug: body.plan_slug,
+    periodStart,
+    periodEnd,
+    externalInvoiceRef: body.external_invoice_ref ?? null,
+    amountCents:
+      typeof body.amount_cents === "number" && Number.isFinite(body.amount_cents)
+        ? Math.round(body.amount_cents)
+        : null,
+    currency: body.currency ?? "USD",
+    note: body.note ?? null,
+    actorAccountId: access.staff?.accountId ?? null,
+  });
+  if (!result.ok) {
+    const status = result.error === "Not found" ? 404 : 422;
+    return c.json({ error: result.error }, status);
+  }
+  if (access.staff) {
+    await writePlatformAuditEvent(getPool(), {
+      actorAccountId: access.staff.accountId,
+      action: "organization.billing.mark_paid",
+      resourceType: "organization",
+      resourceId: organizationId,
+      metadata: {
+        plan_slug: body.plan_slug,
+        period_start: body.period_start,
+        period_end: body.period_end,
+        external_invoice_ref: body.external_invoice_ref,
+      },
+    });
+  }
+  return c.json({ ok: true, billing_status: "active", plan: body.plan_slug.trim().toLowerCase() });
+});
+
+platformRoutes.post("/organizations/:organizationId/billing/end", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:orgs.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const organizationId = c.req.param("organizationId");
+  let body: { status?: "canceled" | "past_due"; note?: string } = {};
+  try {
+    body = await c.req.json();
+  } catch {
+    /* empty body ok */
+  }
+  const ok = await endOrganizationBilling(getPool(), {
+    organizationId,
+    status: body.status === "past_due" ? "past_due" : "canceled",
+    note: body.note ?? null,
+    actorAccountId: access.staff?.accountId ?? null,
+  });
+  if (!ok) return c.json({ error: "Not found" }, 404);
+  if (access.staff) {
+    await writePlatformAuditEvent(getPool(), {
+      actorAccountId: access.staff.accountId,
+      action: "organization.billing.end",
+      resourceType: "organization",
+      resourceId: organizationId,
+      metadata: { status: body.status ?? "canceled" },
+    });
+  }
+  return c.json({
+    ok: true,
+    plan: "free",
+    billing_status: body.status === "past_due" ? "past_due" : "canceled",
+  });
 });
 
 platformRoutes.get("/overview/stats", async (c) => {

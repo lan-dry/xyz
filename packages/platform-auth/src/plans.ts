@@ -26,6 +26,31 @@ export type OrgPlanContext = {
   };
 };
 
+export type BillingSource = "none" | "manual" | "stripe";
+export type BillingStatus = "none" | "pending" | "active" | "past_due" | "canceled";
+export type BillingEventType =
+  | "quote_recorded"
+  | "invoice_noted"
+  | "payment_recorded"
+  | "plan_activated"
+  | "plan_downgraded"
+  | "period_extended";
+
+export type OrganizationBillingEvent = {
+  billing_event_id: string;
+  organization_id: string;
+  event_type: BillingEventType;
+  plan_slug: string | null;
+  external_invoice_ref: string | null;
+  amount_cents: number | null;
+  currency: string | null;
+  period_start: Date | null;
+  period_end: Date | null;
+  note: string | null;
+  actor_account_id: string | null;
+  created_at: Date;
+};
+
 export class PlanLimitError extends Error {
   readonly code: string;
   readonly httpStatus: number;
@@ -336,6 +361,10 @@ export async function getOrgPlanUsageSummary(
   self_serve: boolean;
   billing_checkout_enabled: boolean;
   billing_portal_available: boolean;
+  billing_source: BillingSource;
+  billing_status: BillingStatus;
+  current_period_start: string | null;
+  current_period_end: string | null;
   /** Self-serve plans the org can upgrade to (not the current plan). */
   upgrade_options: PlanUpgradeOption[];
   /** Non-self-serve paid plans (e.g. Enterprise) — contact sales. */
@@ -347,8 +376,16 @@ export async function getOrgPlanUsageSummary(
     `SELECT display_name, self_serve FROM plan_catalog WHERE plan_slug = $1`,
     [ctx.plan],
   );
-  const stripeRow = await client.query<{ stripe_customer_id: string | null }>(
-    `SELECT stripe_customer_id FROM organization WHERE organization_id = $1`,
+  const stripeRow = await client.query<{
+    stripe_customer_id: string | null;
+    billing_source: BillingSource;
+    billing_status: BillingStatus;
+    current_period_start: Date | null;
+    current_period_end: Date | null;
+  }>(
+    `SELECT stripe_customer_id, billing_source, billing_status,
+            current_period_start, current_period_end
+     FROM organization WHERE organization_id = $1`,
     [organizationId],
   );
   const events = await getMonthlyEventCount(client, organizationId);
@@ -382,7 +419,8 @@ export async function getOrgPlanUsageSummary(
     process.env.BILLING_CHECKOUT_ENABLED === "0" ||
     process.env.BILLING_CHECKOUT_ENABLED === "false";
   const checkoutEnabled = !checkoutKillSwitch;
-  const stripeCustomerId = stripeRow.rows[0]?.stripe_customer_id?.trim() || null;
+  const orgBilling = stripeRow.rows[0];
+  const stripeCustomerId = orgBilling?.stripe_customer_id?.trim() || null;
   return {
     plan: ctx.plan,
     display_name: catalog.rows[0]?.display_name ?? ctx.plan,
@@ -396,6 +434,10 @@ export async function getOrgPlanUsageSummary(
     self_serve: catalog.rows[0]?.self_serve ?? false,
     billing_checkout_enabled: checkoutEnabled,
     billing_portal_available: Boolean(stripeCustomerId),
+    billing_source: orgBilling?.billing_source ?? "none",
+    billing_status: orgBilling?.billing_status ?? "none",
+    current_period_start: orgBilling?.current_period_start?.toISOString() ?? null,
+    current_period_end: orgBilling?.current_period_end?.toISOString() ?? null,
     upgrade_options,
     contact_sales_plans,
   };
@@ -428,6 +470,10 @@ export async function platformListOrganizations(
     created_at: Date;
     member_count: number;
     events_this_month: number;
+    billing_source: BillingSource;
+    billing_status: BillingStatus;
+    current_period_start: Date | null;
+    current_period_end: Date | null;
   }>
 > {
   const period = monthStart();
@@ -441,8 +487,13 @@ export async function platformListOrganizations(
     created_at: Date;
     member_count: string;
     events_this_month: string;
+    billing_source: BillingSource;
+    billing_status: BillingStatus;
+    current_period_start: Date | null;
+    current_period_end: Date | null;
   }>(
     `SELECT o.organization_id, o.name, o.slug, o.plan, o.active, o.created_at,
+            o.billing_source, o.billing_status, o.current_period_start, o.current_period_end,
             (SELECT COUNT(*)::text FROM membership m
              WHERE m.organization_id = o.organization_id AND m.status = 'active') AS member_count,
             COALESCE(u.event_count::text, '0') AS events_this_month
@@ -464,6 +515,10 @@ export async function platformListOrganizations(
     created_at: r.created_at,
     member_count: Number(r.member_count),
     events_this_month: Number(r.events_this_month),
+    billing_source: r.billing_source ?? "none",
+    billing_status: r.billing_status ?? "none",
+    current_period_start: r.current_period_start,
+    current_period_end: r.current_period_end,
   }));
 }
 
@@ -499,6 +554,263 @@ export async function platformUpdateOrganization(
     values,
   );
   return (result.rowCount ?? 0) > 0;
+}
+
+async function insertBillingEvent(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    eventType: BillingEventType;
+    planSlug?: string | null;
+    externalInvoiceRef?: string | null;
+    amountCents?: number | null;
+    currency?: string | null;
+    periodStart?: Date | null;
+    periodEnd?: Date | null;
+    note?: string | null;
+    actorAccountId?: string | null;
+  },
+): Promise<void> {
+  await client.query(
+    `INSERT INTO organization_billing_event (
+       organization_id, event_type, plan_slug, external_invoice_ref,
+       amount_cents, currency, period_start, period_end, note, actor_account_id
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [
+      input.organizationId,
+      input.eventType,
+      input.planSlug ?? null,
+      input.externalInvoiceRef ?? null,
+      input.amountCents ?? null,
+      input.currency ?? null,
+      input.periodStart ?? null,
+      input.periodEnd ?? null,
+      input.note ?? null,
+      input.actorAccountId ?? null,
+    ],
+  );
+}
+
+export async function listOrganizationBillingEvents(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  limit = 50,
+): Promise<OrganizationBillingEvent[]> {
+  const result = await client.query<OrganizationBillingEvent>(
+    `SELECT billing_event_id, organization_id, event_type, plan_slug,
+            external_invoice_ref, amount_cents, currency, period_start, period_end,
+            note, actor_account_id, created_at
+     FROM organization_billing_event
+     WHERE organization_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [organizationId, Math.min(Math.max(limit, 1), 200)],
+  );
+  return result.rows;
+}
+
+/** Record external invoice/deal; does not change plan (stays Free until mark-paid). */
+export async function recordOrganizationBillingPending(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    planSlug?: string | null;
+    externalInvoiceRef?: string | null;
+    amountCents?: number | null;
+    currency?: string | null;
+    note?: string | null;
+    actorAccountId?: string | null;
+  },
+): Promise<boolean> {
+  const result = await client.query(
+    `UPDATE organization
+     SET billing_source = 'manual',
+         billing_status = 'pending',
+         updated_at = now()
+     WHERE organization_id = $1`,
+    [input.organizationId],
+  );
+  if ((result.rowCount ?? 0) === 0) return false;
+
+  const eventType: BillingEventType = input.externalInvoiceRef?.trim()
+    ? "invoice_noted"
+    : "quote_recorded";
+  await insertBillingEvent(client, {
+    organizationId: input.organizationId,
+    eventType,
+    planSlug: input.planSlug ?? null,
+    externalInvoiceRef: input.externalInvoiceRef?.trim() || null,
+    amountCents: input.amountCents ?? null,
+    currency: input.currency?.trim().toUpperCase() || null,
+    note: input.note?.trim() || null,
+    actorAccountId: input.actorAccountId ?? null,
+  });
+  return true;
+}
+
+/** Activate paid plan only after payment clears. */
+export async function markOrganizationBillingPaid(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    planSlug: string;
+    periodStart: Date;
+    periodEnd: Date;
+    externalInvoiceRef?: string | null;
+    amountCents?: number | null;
+    currency?: string | null;
+    note?: string | null;
+    actorAccountId?: string | null;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const planSlug = input.planSlug.trim().toLowerCase();
+  if (!planSlug || planSlug === "free") {
+    return { ok: false, error: "plan_slug must be a paid plan" };
+  }
+  if (!(input.periodEnd.getTime() > input.periodStart.getTime())) {
+    return { ok: false, error: "period_end must be after period_start" };
+  }
+  const planOk = await client.query(
+    `SELECT 1 FROM plan_catalog WHERE plan_slug = $1 AND active`,
+    [planSlug],
+  );
+  if (!planOk.rows[0]) {
+    return { ok: false, error: "Invalid plan" };
+  }
+
+  const prev = await client.query<{ plan: string; billing_status: BillingStatus }>(
+    `SELECT plan, billing_status FROM organization WHERE organization_id = $1`,
+    [input.organizationId],
+  );
+  if (!prev.rows[0]) {
+    return { ok: false, error: "Not found" };
+  }
+
+  const result = await client.query(
+    `UPDATE organization
+     SET plan = $2,
+         billing_source = 'manual',
+         billing_status = 'active',
+         current_period_start = $3,
+         current_period_end = $4,
+         updated_at = now()
+     WHERE organization_id = $1`,
+    [input.organizationId, planSlug, input.periodStart, input.periodEnd],
+  );
+  if ((result.rowCount ?? 0) === 0) {
+    return { ok: false, error: "Not found" };
+  }
+
+  const isRenewal =
+    prev.rows[0].billing_status === "active" && prev.rows[0].plan === planSlug;
+
+  await insertBillingEvent(client, {
+    organizationId: input.organizationId,
+    eventType: "payment_recorded",
+    planSlug,
+    externalInvoiceRef: input.externalInvoiceRef?.trim() || null,
+    amountCents: input.amountCents ?? null,
+    currency: input.currency?.trim().toUpperCase() || null,
+    periodStart: input.periodStart,
+    periodEnd: input.periodEnd,
+    note: input.note?.trim() || null,
+    actorAccountId: input.actorAccountId ?? null,
+  });
+  await insertBillingEvent(client, {
+    organizationId: input.organizationId,
+    eventType: isRenewal ? "period_extended" : "plan_activated",
+    planSlug,
+    externalInvoiceRef: input.externalInvoiceRef?.trim() || null,
+    amountCents: input.amountCents ?? null,
+    currency: input.currency?.trim().toUpperCase() || null,
+    periodStart: input.periodStart,
+    periodEnd: input.periodEnd,
+    note: input.note?.trim() || null,
+    actorAccountId: input.actorAccountId ?? null,
+  });
+  return { ok: true };
+}
+
+/** End manual entitlement: Free + canceled or past_due. */
+export async function endOrganizationBilling(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    status?: "canceled" | "past_due";
+    note?: string | null;
+    actorAccountId?: string | null;
+  },
+): Promise<boolean> {
+  const status = input.status === "past_due" ? "past_due" : "canceled";
+  const prev = await client.query<{ plan: string }>(
+    `SELECT plan FROM organization WHERE organization_id = $1`,
+    [input.organizationId],
+  );
+  if (!prev.rows[0]) return false;
+
+  const result = await client.query(
+    `UPDATE organization
+     SET plan = 'free',
+         billing_status = $2,
+         current_period_start = NULL,
+         current_period_end = NULL,
+         updated_at = now()
+     WHERE organization_id = $1`,
+    [input.organizationId, status],
+  );
+  if ((result.rowCount ?? 0) === 0) return false;
+
+  await insertBillingEvent(client, {
+    organizationId: input.organizationId,
+    eventType: "plan_downgraded",
+    planSlug: "free",
+    note:
+      input.note?.trim() ||
+      `Ended ${prev.rows[0].plan} entitlement (${status})`,
+    actorAccountId: input.actorAccountId ?? null,
+  });
+  return true;
+}
+
+/** Shared entitlement writes for Stripe webhooks. */
+export async function applyStripeEntitlement(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    planSlug: string | null;
+    billingStatus: BillingStatus;
+    periodStart?: Date | null;
+    periodEnd?: Date | null;
+    stripeCustomerId?: string | null;
+  },
+): Promise<void> {
+  const fields: string[] = [
+    `billing_source = 'stripe'`,
+    `billing_status = $2`,
+    `updated_at = now()`,
+  ];
+  const values: unknown[] = [input.organizationId, input.billingStatus];
+  let i = 3;
+  if (input.planSlug) {
+    fields.push(`plan = $${i++}`);
+    values.push(input.planSlug);
+  }
+  if (input.periodStart !== undefined) {
+    fields.push(`current_period_start = $${i++}`);
+    values.push(input.periodStart);
+  }
+  if (input.periodEnd !== undefined) {
+    fields.push(`current_period_end = $${i++}`);
+    values.push(input.periodEnd);
+  }
+  if (input.stripeCustomerId) {
+    fields.push(`stripe_customer_id = $${i++}`);
+    values.push(input.stripeCustomerId);
+  }
+  await client.query(
+    `UPDATE organization SET ${fields.join(", ")} WHERE organization_id = $1`,
+    values,
+  );
 }
 
 export type PlatformAccountMembership = {

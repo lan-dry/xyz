@@ -40,6 +40,10 @@ type PlanUsage = {
   self_serve: boolean;
   billing_checkout_enabled: boolean;
   billing_portal_available: boolean;
+  billing_source?: "none" | "manual" | "stripe";
+  billing_status?: "none" | "pending" | "active" | "past_due" | "canceled";
+  current_period_start?: string | null;
+  current_period_end?: string | null;
   upgrade_options: PlanUpgradeOption[];
   contact_sales_plans: Array<{ plan_slug: string; display_name: string }>;
 };
@@ -164,6 +168,16 @@ function BillingSettingsInner() {
   const pendingPriceSetup =
     (usage?.upgrade_options.some((o) => !o.checkout_ready) ?? false) &&
     readyUpgrades.length === 0;
+  const isManualBilling =
+    usage?.billing_source === "manual" &&
+    (usage.billing_status === "active" || usage.billing_status === "pending");
+  const periodEndLabel = usage?.current_period_end
+    ? new Date(usage.current_period_end).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : null;
 
   return (
     <>
@@ -198,6 +212,31 @@ function BillingSettingsInner() {
               ) : null}
             </p>
 
+            {isManualBilling ? (
+              <p
+                className={`${ui.alert} ${ui.alertInfo}`}
+                style={{ marginBottom: "1rem", fontSize: "0.875rem" }}
+              >
+                {usage.billing_status === "pending" ? (
+                  <>
+                    Invoice pending with Salanor. Your plan stays on Free until
+                    payment clears.
+                  </>
+                ) : (
+                  <>
+                    Billed by Salanor
+                    {periodEndLabel ? (
+                      <>
+                        {" "}
+                        · period ends <strong>{periodEndLabel}</strong>
+                      </>
+                    ) : null}
+                    . Contact sales for renewals or changes.
+                  </>
+                )}
+              </p>
+            ) : null}
+
             <UsageMeter
               label="Events this month"
               used={usage.usage.events_this_month}
@@ -226,7 +265,7 @@ function BillingSettingsInner() {
                   marginTop: "1.25rem",
                 }}
               >
-                {checkoutEnabled && readyUpgrades.length > 0 ? (
+                {checkoutEnabled && readyUpgrades.length > 0 && !isManualBilling ? (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                     {readyUpgrades.map((opt) => (
                       <button
@@ -244,7 +283,7 @@ function BillingSettingsInner() {
                   </div>
                 ) : null}
 
-                {usage.billing_portal_available ? (
+                {usage.billing_portal_available && usage.billing_source !== "manual" ? (
                   <div>
                     <button
                       type="button"
@@ -266,10 +305,18 @@ function BillingSettingsInner() {
                   <ErrorAlert message={(portal.error as Error).message} />
                 ) : null}
 
-                {usage.contact_sales_plans.length > 0 || pendingPriceSetup ? (
+                {isManualBilling && usage.billing_status === "active" ? (
+                  <p style={{ margin: 0, fontSize: "0.875rem" }}>
+                    Questions about your invoice or renewal?{" "}
+                    <a href={`${MARKETING_URL}/contact`}>Contact sales</a>
+                  </p>
+                ) : null}
+
+                {!isManualBilling &&
+                (usage.contact_sales_plans.length > 0 || pendingPriceSetup) ? (
                   <p style={{ margin: 0, fontSize: "0.875rem" }}>
                     {pendingPriceSetup && readyUpgrades.length === 0
-                      ? "Self-serve Team upgrade is not available yet. "
+                      ? "Self-serve checkout is not configured yet. "
                       : null}
                     {usage.contact_sales_plans.length > 0 ? (
                       <>
@@ -303,23 +350,33 @@ function BillingSettingsInner() {
       <section className={settings.settingCard}>
         <h2>How payment works</h2>
         <ul className={ui.muted} style={{ fontSize: "0.875rem", paddingLeft: "1.25rem", margin: 0 }}>
-          <li>
-            Checkout runs on <strong>Stripe</strong> (card). Salanor never stores full card
-            numbers.
-          </li>
-          <li>
-            After upgrade, use <strong>Manage billing</strong> for invoices, receipts, and
-            updating the card. Stripe can save the payment method for renewals.
-          </li>
-          <li>
-            Team is billed as a <strong>subscription</strong> (monthly by default, set on the
-            Stripe price). Failed payments are handled in Stripe; your plan may fall back to
-            Free if unpaid.
-          </li>
-          <li>
-            PayPal and other wallets appear only if you enable them in the Stripe Dashboard
-            (Payment methods).
-          </li>
+          {isManualBilling ? (
+            <>
+              <li>
+                Your organization is on a <strong>Salanor-invoiced</strong> plan.
+                Cards and self-serve checkout do not apply to this entitlement.
+              </li>
+              <li>
+                Renewals and plan changes are handled with sales. Limits unlock when
+                payment is confirmed.
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                Self-serve checkout runs on <strong>Stripe</strong> (card) when available.
+                Salanor never stores full card numbers.
+              </li>
+              <li>
+                Enterprise and design-partner deals are invoiced outside the console;
+                sales activates your plan after payment clears.
+              </li>
+              <li>
+                After a Stripe upgrade, use <strong>Manage billing</strong> for invoices
+                and payment methods.
+              </li>
+            </>
+          )}
         </ul>
       </section>
 

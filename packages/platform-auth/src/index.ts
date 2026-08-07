@@ -154,9 +154,18 @@ export {
   recordNewIngestedEvent,
   backfillOrganizationUsageMonthly,
   updatePlanCatalogRow,
+  listOrganizationBillingEvents,
+  recordOrganizationBillingPending,
+  markOrganizationBillingPaid,
+  endOrganizationBilling,
+  applyStripeEntitlement,
   type OrgPlanContext,
   type PlanCatalogRow,
   type PlatformAccountRow,
+  type BillingSource,
+  type BillingStatus,
+  type BillingEventType,
+  type OrganizationBillingEvent,
 } from "./plans.js";
 export {
   createAgentWithSigningKey,
