@@ -230,13 +230,11 @@ function BillingSettingsInner() {
                         key={opt.plan_slug}
                         type="button"
                         className={`${ui.btn} ${ui.btnPrimary}`}
-                        disabled={
-                          checkout.isPending || !opt.checkout_ready
-                        }
+                        disabled={checkout.isPending || !opt.checkout_ready}
                         title={
                           opt.checkout_ready
                             ? undefined
-                            : "Stripe price not configured yet — ask Salanor ops"
+                            : "Add a Stripe price_… ID for this plan in Platform → Plans"
                         }
                         onClick={() => checkout.mutate(opt.plan_slug)}
                       >
@@ -246,6 +244,16 @@ function BillingSettingsInner() {
                       </button>
                     ))}
                   </div>
+                ) : (
+                  <p className={ui.muted} style={{ fontSize: "0.8125rem", margin: 0 }}>
+                    No self-serve upgrades available from this plan.
+                  </p>
+                )}
+                {usage.upgrade_options.some((o) => !o.checkout_ready) ? (
+                  <p className={ui.muted} style={{ fontSize: "0.75rem", margin: 0 }}>
+                    A plan is missing its Stripe Price ID — set it in Platform → Plans
+                    (Test mode <span className="mono">price_…</span> is fine).
+                  </p>
                 ) : null}
                 {usage.billing_portal_available ? (
                   <div>
@@ -278,11 +286,37 @@ function BillingSettingsInner() {
               </p>
             ) : null}
 
-            {!checkoutEnabled ? (
-              <p className={ui.muted} style={{ marginTop: "0.75rem", fontSize: "0.75rem" }}>
-                Self-serve checkout is currently off. Salanor ops can change your plan in
-                Platform → Organizations.
-              </p>
+            {isAdmin && !checkoutEnabled ? (
+              <div
+                className={`${ui.alert} ${ui.alertInfo}`}
+                style={{ marginTop: "1rem", fontSize: "0.8125rem" }}
+              >
+                <strong>Upgrade button is hidden — checkout is off</strong>
+                <p style={{ margin: "0.5rem 0 0" }}>
+                  To test Stripe upgrade end-to-end, Salanor ops must:
+                </p>
+                <ol style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem" }}>
+                  <li>
+                    Create a <strong>Test mode</strong> Product + recurring Price in Stripe
+                    and copy <span className="mono">price_…</span>
+                  </li>
+                  <li>
+                    Paste it on <strong>Team</strong> in Platform → Plans (self-serve = Yes)
+                  </li>
+                  <li>
+                    Set on the billing service + console:{" "}
+                    <span className="mono">BILLING_CHECKOUT_ENABLED=1</span>,{" "}
+                    <span className="mono">NEXT_PUBLIC_BILLING_CHECKOUT_ENABLED=1</span>,{" "}
+                    <span className="mono">STRIPE_SECRET_KEY=sk_test_…</span>, and webhook
+                    secret
+                  </li>
+                  <li>Redeploy billing + web-console, then refresh this page</li>
+                </ol>
+                <p style={{ margin: "0.75rem 0 0" }}>
+                  Until then, change plans manually in Platform → Organizations (no card
+                  charge).
+                </p>
+              </div>
             ) : null}
 
             {!isAdmin ? (
