@@ -247,7 +247,7 @@ async function sendApprovalEmail(
   console.log("\n[aegis-api] Approval notification email");
   console.log(`  To:     ${to}`);
   console.log(`  Tool:   ${input.toolName}`);
-  console.log(`  Review: ${input.approveUrl}\n");
+  console.log(`  Review: ${input.approveUrl}\n`);
 
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
