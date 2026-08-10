@@ -58,8 +58,8 @@ function payloadDiffLines(
   const nested =
     payload?.request_payload && typeof payload.request_payload === "object"
       ? (payload.request_payload as Record<string, unknown>)
-      : payload;
-  if (!nested || typeof nested !== "object") return [];
+      : null;
+  if (!nested) return [];
   const lines: Array<{ key: string; preview?: string; raw?: string }> = [];
   for (const [key, value] of Object.entries(nested)) {
     if (value == null || typeof value === "object") continue;
@@ -182,14 +182,51 @@ function ApprovalCard({
               ))}
               {preview.amount_usd == null && preview.fields.length === 0 ? (
                 <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--console-fg-subtle)" }}>
-                  No structured payload yet — add a Set node before Check Policy in n8n
-                  with fields like <code className="mono">amount_usd</code>,{" "}
+                  No business context attached. In n8n, add a <strong>Set</strong> node
+                  before Check Policy with fields like{" "}
+                  <code className="mono">amount_usd</code>,{" "}
                   <code className="mono">recipient</code>, and{" "}
                   <code className="mono">summary</code>.
                 </p>
               ) : null}
             </div>
           )}
+
+          {showDecided && a.approver_email ? (
+            <div
+              className={ui.card}
+              style={{
+                marginTop: "0.75rem",
+                padding: "0.65rem 0.875rem",
+                background:
+                  a.status === "approved"
+                    ? "color-mix(in srgb, var(--console-success) 10%, transparent)"
+                    : a.status === "rejected"
+                      ? "color-mix(in srgb, var(--console-danger) 10%, transparent)"
+                      : "var(--console-bg-subtle)",
+              }}
+            >
+              <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 600 }}>
+                {a.status === "approved"
+                  ? "Approved by"
+                  : a.status === "rejected"
+                    ? "Rejected by"
+                    : "Decided by"}{" "}
+                <span className="mono">{a.approver_email}</span>
+              </p>
+              {a.decided_at ? (
+                <p
+                  style={{
+                    margin: "0.25rem 0 0",
+                    fontSize: "0.8125rem",
+                    color: "var(--console-fg-muted)",
+                  }}
+                >
+                  {new Date(a.decided_at).toLocaleString()}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <p
             style={{
@@ -224,12 +261,6 @@ function ApprovalCard({
             {" · "}
             Requested {new Date(a.created_at).toLocaleString()}
             {expiry && !showDecided ? ` · ${expiry}` : null}
-            {showDecided && a.decided_at
-              ? ` · Decided ${new Date(a.decided_at).toLocaleString()}`
-              : null}
-            {showDecided && a.approver_email
-              ? ` · By ${a.approver_email}`
-              : null}
           </p>
         </div>
         {onApprove && onReject ? (
@@ -351,9 +382,9 @@ export default function ApprovalsPage() {
         subtitle={
           <>
             Human-in-the-loop for <code className="mono">require approval</code> policies.
-            Aegis notifies org admins via email, Slack, PagerDuty, or SMS (Settings →
-            Governance). Pending requests expire after <strong>{ttlHours} hours</strong>; n8n
-            stops waiting when expired or rejected.
+            Aegis notifies org admins by email, Slack, PagerDuty, or SMS (Settings,
+            Governance). Pending requests expire after <strong>{ttlHours} hours</strong>.
+            n8n stops waiting when expired or rejected.
           </>
         }
       />
@@ -394,7 +425,7 @@ export default function ApprovalsPage() {
             <EmptyStatePanel
               mark={<AegisMark />}
               title="No pending approvals"
-              description="When a policy requires approval, the trace blocks here until an operator approves or rejects. You'll receive an email if Resend is configured."
+              description="When a policy requires approval, the trace blocks here until an operator approves or rejects. Admins receive email alerts when notifications are enabled."
               action={
                 <Link href="/aegis/traces" className={`${ui.btn} ${ui.btnSecondary}`}>
                   View traces
@@ -443,6 +474,7 @@ export default function ApprovalsPage() {
         title={detailApproval?.tool_name ?? "Approval details"}
         description="Review the signed policy gate event before deciding."
         wide
+        closeOnOverlayClick={false}
         onClose={() => setDetailId(null)}
         footer={
           detailApproval?.status === "pending" ? (
@@ -491,6 +523,41 @@ export default function ApprovalsPage() {
         {detailApproval ? (
           <>
             <div style={{ display: "grid", gap: "1rem" }}>
+              {detailApproval.status !== "pending" && detailApproval.approver_email ? (
+                <div
+                  className={ui.card}
+                  style={{
+                    padding: "0.75rem 1rem",
+                    background:
+                      detailApproval.status === "approved"
+                        ? "color-mix(in srgb, var(--console-success) 10%, transparent)"
+                        : detailApproval.status === "rejected"
+                          ? "color-mix(in srgb, var(--console-danger) 10%, transparent)"
+                          : "var(--console-bg-subtle)",
+                  }}
+                >
+                  <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 600 }}>
+                    {detailApproval.status === "approved"
+                      ? "Approved by"
+                      : detailApproval.status === "rejected"
+                        ? "Rejected by"
+                        : "Decided by"}{" "}
+                    <span className="mono">{detailApproval.approver_email}</span>
+                  </p>
+                  {detailApproval.decided_at ? (
+                    <p
+                      style={{
+                        margin: "0.25rem 0 0",
+                        fontSize: "0.8125rem",
+                        color: "var(--console-fg-muted)",
+                      }}
+                    >
+                      {new Date(detailApproval.decided_at).toLocaleString()}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
               {detailApproval.policy_reason ? (
                 <div className={ui.card} style={{ padding: "0.75rem 1rem" }}>
                   <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "var(--console-fg-subtle)" }}>
@@ -517,7 +584,7 @@ export default function ApprovalsPage() {
                       {detailDiff.map((row) => (
                         <tr key={row.key}>
                           <td className="mono">{row.key}</td>
-                          <td>{row.preview ?? "—"}</td>
+                          <td>{row.preview ?? "n/a"}</td>
                           <td
                             style={
                               row.preview !== row.raw

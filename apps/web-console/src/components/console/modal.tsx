@@ -15,6 +15,7 @@ export function Modal({
   onClose,
   wide,
   closeOnOverlayClick = true,
+  closeOnEscape,
 }: {
   open: boolean;
   title: string;
@@ -23,13 +24,17 @@ export function Modal({
   footer?: ReactNode;
   onClose: () => void;
   wide?: boolean;
-  /** When false, only Cancel / X close the dialog (Resend-style). */
+  /** When false, clicking the backdrop does not close (default for action modals). */
   closeOnOverlayClick?: boolean;
+  /** When false, Escape does not close. Defaults to match closeOnOverlayClick. */
+  closeOnEscape?: boolean;
 }) {
+  const allowEscape = closeOnEscape ?? closeOnOverlayClick;
+
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && allowEscape) onClose();
     }
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -37,7 +42,7 @@ export function Modal({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [open, onClose, allowEscape]);
 
   if (!open) return null;
 

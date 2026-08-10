@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import { getPool } from "../../db/pool.js";
 import { ingestHumanApprovalEvent } from "../../console/human-approval-event.js";
+import { buildRequestPreview } from "../../approvals/request-preview.js";
 import {
   decideApproval,
   expireStaleApprovals,
@@ -15,43 +16,8 @@ import {
   type ConsoleVariables,
 } from "../../middleware/console-session.js";
 
-function requestPreview(payload: Record<string, unknown> | null): {
-  amount_usd?: number;
-  summary?: string;
-  fields: Array<{ key: string; value: string }>;
-} {
-  if (!payload) {
-    return { fields: [] };
-  }
-  const nested =
-    payload.request_payload && typeof payload.request_payload === "object"
-      ? (payload.request_payload as Record<string, unknown>)
-      : payload;
-  const amountRaw = nested.amount_usd ?? nested.amount;
-  const amount =
-    typeof amountRaw === "number"
-      ? amountRaw
-      : typeof amountRaw === "string"
-        ? Number.parseFloat(amountRaw)
-        : undefined;
-  const fields: Array<{ key: string; value: string }> = [];
-  for (const [key, value] of Object.entries(nested)) {
-    if (key === "amount_usd" || key === "amount") continue;
-    if (value == null || typeof value === "object") continue;
-    fields.push({ key, value: String(value) });
-    if (fields.length >= 6) break;
-  }
-  const summary =
-    typeof payload.investor_summary === "string"
-      ? payload.investor_summary
-      : typeof payload.rationale === "string"
-        ? payload.rationale
-        : undefined;
-  return {
-    amount_usd: Number.isFinite(amount) ? amount : undefined,
-    summary,
-    fields,
-  };
+function requestPreview(payload: Record<string, unknown> | null) {
+  return buildRequestPreview(payload);
 }
 
 function serializeApproval(row: ApprovalRichDetail) {

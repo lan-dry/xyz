@@ -124,6 +124,11 @@ const MIGRATIONS = [
     up: "024_org_billing_entitlement.up.sql",
     down: "024_org_billing_entitlement.down.sql",
   },
+  {
+    version: "025_org_governance_settings",
+    up: "025_org_governance_settings.up.sql",
+    down: "025_org_governance_settings.down.sql",
+  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {
