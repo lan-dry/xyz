@@ -8,6 +8,7 @@ import {
   isBridgeMasterKeyConfigured,
 } from "../crypto/bridge-key-vault.js";
 import { persistSignedEvent } from "../ingest/persist.js";
+import { createApprovalRequest } from "../repo/approvals.js";
 import { completeTrace } from "../repo/trace-status.js";
 import { generateEd25519KeyPair } from "@salanor/platform-auth";
 
@@ -52,6 +53,36 @@ export type WorkflowStepInput = {
   input_preview?: string;
   output_preview?: string;
 };
+
+export type PolicyGateCapture = {
+  tool_name: string;
+  decision: PolicyDecision;
+  policy_id: string;
+  rule_id: string | null;
+  reason: string;
+  engine?: string;
+};
+
+function policyGateStep(gate: PolicyGateCapture): WorkflowStepInput {
+  const denied = gate.decision === "deny";
+  return {
+    action_kind: "policy_decision",
+    tool_name: gate.tool_name,
+    policy_decision: gate.decision,
+    purpose: `Policy ${gate.decision}`,
+    decision: gate.decision,
+    rationale: gate.reason,
+    payload: {
+      policy_id: gate.policy_id,
+      rule_id: gate.rule_id,
+      engine: gate.engine ?? "rules",
+      blocked: denied,
+      investor_summary: denied
+        ? `Denied ${gate.tool_name} — ${gate.reason}`
+        : `Allowed ${gate.tool_name}`,
+    },
+  };
+}
 
 export type ExecutionNodeCapture = {
   name: string;
@@ -475,6 +506,8 @@ export async function completeWorkflowRun(
       execution_id?: string;
       nodes?: ExecutionNodeCapture[];
     };
+    /** Policy check from n8n Check Policy — folded into this trace (one trace per run). */
+    policy_gate?: PolicyGateCapture;
     actorPrincipal?: string;
   },
 ): Promise<{
@@ -497,7 +530,7 @@ export async function completeWorkflowRun(
   if (!row) {
     throw new Error("Workflow run not found");
   }
-  if (row.status !== "running") {
+  if (row.status !== "running" && row.status !== "blocked") {
     throw new Error(`Workflow run is already ${row.status}`);
   }
 
@@ -512,6 +545,7 @@ export async function completeWorkflowRun(
   }
 
   const steps: WorkflowStepInput[] = [
+    ...(input.policy_gate ? [policyGateStep(input.policy_gate)] : []),
     ...(input.steps ?? []),
     ...((input.execution?.nodes ?? []).map(mapNodeToStep)),
   ];
@@ -687,25 +721,90 @@ export async function recordPolicyGateAsTrace(
     summary: denied
       ? `Blocked ${input.toolName} by ${input.ruleId ?? "policy"}: ${input.reason}`
       : `Allowed ${input.toolName}: ${input.reason}`,
+    steps: [policyGateStep({
+      tool_name: input.toolName,
+      decision: input.decision,
+      policy_id: input.policyId,
+      rule_id: input.ruleId,
+      reason: input.reason,
+      engine: input.engine,
+    })],
+    actorPrincipal: input.actorPrincipal ?? "workflow:n8n",
+  });
+}
+
+/**
+ * Human approval required: open a blocked trace + Console approval (one trace).
+ */
+export async function recordPolicyObligationGate(
+  client: pg.PoolClient,
+  input: {
+    organizationId: string;
+    agentId: string;
+    toolName: string;
+    policyId: string;
+    ruleId: string | null;
+    reason: string;
+    engine?: string;
+    externalSystem?: string;
+    externalWorkflowId?: string;
+    externalExecutionId?: string;
+    actorPrincipal?: string;
+    approvalFocusUrl?: string;
+  },
+): Promise<{
+  trace_id: string;
+  status: "blocked";
+  approval_id: string;
+  events: Array<{ event_id: string; action_kind: string; tool_name?: string }>;
+}> {
+  const started = await startWorkflowRun(client, {
+    organizationId: input.organizationId,
+    agentId: input.agentId,
+    businessContext: `Approval required: ${input.toolName}`,
+    externalSystem: input.externalSystem ?? "n8n",
+    externalWorkflowId: input.externalWorkflowId,
+    externalExecutionId: input.externalExecutionId,
+    triggerDetail: `policy_obligation:${input.toolName}`,
+    actorPrincipal: input.actorPrincipal ?? "workflow:n8n",
+  });
+
+  const appended = await appendWorkflowSteps(client, {
+    organizationId: input.organizationId,
+    traceId: started.trace_id,
     steps: [
-      {
-        action_kind: "policy_decision",
+      policyGateStep({
         tool_name: input.toolName,
-        policy_decision: input.decision,
-        purpose: `Policy ${input.decision}`,
-        decision: input.decision,
-        rationale: input.reason,
-        payload: {
-          policy_id: input.policyId,
-          rule_id: input.ruleId,
-          engine: input.engine ?? "rules",
-          blocked: denied,
-          investor_summary: denied
-            ? `Denied ${input.toolName} — ${input.reason}`
-            : `Allowed ${input.toolName}`,
-        },
-      },
+        decision: "allow_with_obligation",
+        policy_id: input.policyId,
+        rule_id: input.ruleId,
+        reason: input.reason,
+        engine: input.engine,
+      }),
     ],
     actorPrincipal: input.actorPrincipal ?? "workflow:n8n",
   });
+
+  const eventId = appended.events[0]?.event_id;
+  if (!eventId) {
+    throw new Error("Failed to record obligation policy step");
+  }
+
+  const { approval_id } = await createApprovalRequest(client, {
+    organizationId: input.organizationId,
+    eventId,
+    traceId: started.trace_id,
+    toolName: input.toolName,
+    deferred: {
+      url: input.approvalFocusUrl ?? "aegis://approvals/pending",
+      method: "GET",
+    },
+  });
+
+  return {
+    trace_id: started.trace_id,
+    status: "blocked",
+    approval_id,
+    events: appended.events,
+  };
 }

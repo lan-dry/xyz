@@ -37,7 +37,13 @@ const TRACE_SELECT = `
             WHERE e.trace_id = t.trace_id AND e.organization_id = t.organization_id),
            0
          ) AS total_events,
-         t.denied_events
+         COALESCE(
+           (SELECT COUNT(*)::int FROM event e
+            WHERE e.trace_id = t.trace_id
+              AND e.organization_id = t.organization_id
+              AND e.policy_decision = 'deny'),
+           0
+         ) AS denied_events
   FROM trace t
   LEFT JOIN event re
     ON re.event_id = t.root_event_id

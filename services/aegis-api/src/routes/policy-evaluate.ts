@@ -2,7 +2,10 @@ import type { Context } from "hono";
 import { resolveIngestKey } from "../auth/ingest-key.js";
 import { getPool } from "../db/pool.js";
 import { evaluateToolPolicy } from "../policy/evaluate.js";
-import { recordPolicyGateAsTrace } from "../workflows/bridge.js";
+import {
+  recordPolicyGateAsTrace,
+  recordPolicyObligationGate,
+} from "../workflows/bridge.js";
 
 function bearerToken(authorization: string | undefined): string | null {
   if (!authorization?.startsWith("Bearer ")) {
@@ -22,9 +25,25 @@ function traceUrl(traceId: string): string | undefined {
   return `${base}/aegis/traces/${encodeURIComponent(traceId)}`;
 }
 
+function approvalUrl(approvalId: string): string | undefined {
+  const base = consoleBaseUrl()?.replace(/\/$/, "");
+  if (!base) return undefined;
+  return `${base}/aegis/approvals?focus=${encodeURIComponent(approvalId)}`;
+}
+
+/** Gate traces only for deny / human approval. Allow folds into Record Run. */
+function shouldRecordGate(
+  decision: string,
+  record: boolean | undefined,
+): boolean {
+  if (record === false) return false;
+  if (record === true) return decision === "deny" || decision === "allow_with_obligation";
+  return decision === "deny" || decision === "allow_with_obligation";
+}
+
 /**
- * Evaluate tool policy. By default also writes a signed trace so deny/allow
- * is auditable (who / tool / rule / reason) — not a silent JSON reply.
+ * Evaluate tool policy. Records a signed gate trace only on deny or
+ * allow_with_obligation. Plain allow is returned for Record Run (one trace).
  */
 export async function postPolicyEvaluate(c: Context): Promise<Response> {
   const token = bearerToken(c.req.header("Authorization"));
@@ -37,7 +56,7 @@ export async function postPolicyEvaluate(c: Context): Promise<Response> {
     agent_id?: string;
     tool_name?: string;
     payload?: Record<string, unknown>;
-    /** Default true: write a signed gate trace. Set false to evaluate only. */
+    /** false = never record; true = record deny/obligation only; default = auto */
     record?: boolean;
     external_system?: string;
     external_workflow_id?: string;
@@ -56,8 +75,6 @@ export async function postPolicyEvaluate(c: Context): Promise<Response> {
     );
   }
 
-  const shouldRecord = body.record !== false;
-
   const client = await getPool().connect();
   try {
     const auth = await resolveIngestKey(client, token);
@@ -75,12 +92,40 @@ export async function postPolicyEvaluate(c: Context): Promise<Response> {
       payload: body.payload,
     });
 
-    if (!shouldRecord) {
-      return c.json(result);
+    if (!shouldRecordGate(result.decision, body.record)) {
+      return c.json({ ...result, recorded: false });
     }
 
     try {
       await client.query("BEGIN");
+
+      if (result.decision === "allow_with_obligation") {
+        const recorded = await recordPolicyObligationGate(client, {
+          organizationId: body.organization_id,
+          agentId: body.agent_id,
+          toolName: body.tool_name,
+          policyId: result.policy_id,
+          ruleId: result.rule_id,
+          reason: result.reason,
+          engine: result.engine,
+          externalSystem: body.external_system ?? "n8n",
+          externalWorkflowId: body.external_workflow_id,
+          externalExecutionId: body.external_execution_id,
+        });
+        await client.query("COMMIT");
+
+        return c.json({
+          ...result,
+          recorded: true,
+          trace_id: recorded.trace_id,
+          trace_status: recorded.status,
+          trace_url: traceUrl(recorded.trace_id),
+          approval_id: recorded.approval_id,
+          approval_url: approvalUrl(recorded.approval_id),
+          events: recorded.events,
+        });
+      }
+
       const recorded = await recordPolicyGateAsTrace(client, {
         organizationId: body.organization_id,
         agentId: body.agent_id,
@@ -107,7 +152,6 @@ export async function postPolicyEvaluate(c: Context): Promise<Response> {
     } catch (recordErr) {
       await client.query("ROLLBACK");
       console.error("[aegis] policy evaluate record failed", recordErr);
-      // Still return the live decision; recording failure must not unblock deny.
       return c.json({
         ...result,
         recorded: false,

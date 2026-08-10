@@ -8,6 +8,7 @@ import {
   getWorkflowRun,
   startWorkflowRun,
   type ExecutionNodeCapture,
+  type PolicyGateCapture,
   type WorkflowStepInput,
 } from "../workflows/bridge.js";
 
@@ -55,6 +56,7 @@ export async function postWorkflowRunStart(c: Context): Promise<Response> {
       execution_id?: string;
       nodes?: ExecutionNodeCapture[];
     };
+    policy_gate?: PolicyGateCapture;
   };
   try {
     body = await c.req.json();
@@ -65,6 +67,7 @@ export async function postWorkflowRunStart(c: Context): Promise<Response> {
   const oneShot =
     body.one_shot === true ||
     body.execution != null ||
+    body.policy_gate != null ||
     body.status === "completed" ||
     body.status === "failed" ||
     (Array.isArray(body.steps) && body.steps.length > 0);
@@ -110,6 +113,7 @@ export async function postWorkflowRunStart(c: Context): Promise<Response> {
       summary: body.summary ?? body.business_context,
       steps: body.steps,
       execution: body.execution,
+      policy_gate: body.policy_gate,
       actorPrincipal: body.actor_principal,
     });
 
@@ -208,6 +212,7 @@ export async function postWorkflowRunComplete(c: Context): Promise<Response> {
       execution_id?: string;
       nodes?: ExecutionNodeCapture[];
     };
+    policy_gate?: PolicyGateCapture;
     actor_principal?: string;
   };
   try {
@@ -234,6 +239,7 @@ export async function postWorkflowRunComplete(c: Context): Promise<Response> {
       summary: body.summary,
       steps: body.steps,
       execution: body.execution,
+      policy_gate: body.policy_gate,
       actorPrincipal: body.actor_principal,
     });
 
@@ -278,6 +284,7 @@ export async function postWorkflowRunCapture(c: Context): Promise<Response> {
       execution_id?: string;
       nodes?: ExecutionNodeCapture[];
     };
+    policy_gate?: PolicyGateCapture;
   };
   try {
     body = await c.req.json();
@@ -316,6 +323,7 @@ export async function postWorkflowRunCapture(c: Context): Promise<Response> {
       summary: body.summary ?? body.business_context,
       steps: body.steps,
       execution: body.execution,
+      policy_gate: body.policy_gate,
       actorPrincipal: body.actor_principal,
     });
 

@@ -61,6 +61,26 @@ export default function N8nOrchestratorsPage() {
         <strong>Check Policy</strong> is what can block an action <em>before</em> it runs.
       </p>
 
+      <h3>One trace per run</h3>
+      <ul>
+        <li>
+          <strong>Allow</strong> — Check Policy returns the decision only; Record Run writes one{" "}
+          <strong>COMPLETED</strong> trace (policy gate embedded in that trace).
+        </li>
+        <li>
+          <strong>Deny</strong> — Check Policy writes one <strong>FAILED</strong> trace and stops
+          the workflow.
+        </li>
+        <li>
+          <strong>Require approval</strong> — Check Policy opens a blocked trace and approval in
+          Console; after approval, Record Run completes that same trace.
+        </li>
+      </ul>
+      <p>
+        Wire an <strong>Error Trigger</strong> → Record Run (Failed) so crashes still leave a signed
+        trace. See the community node README example workflow.
+      </p>
+
       <h2>3. Zapier / Make / plain HTTP</h2>
       <p>
         Same server API. One POST at the end (and optional policy evaluate before risk):
