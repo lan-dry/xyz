@@ -6,6 +6,11 @@ import {
   type WorkerRunStatus,
 } from "../repo/worker-runs.js";
 
+function isMissingWorkerRunTable(err: unknown): boolean {
+  const code = (err as { code?: string }).code;
+  return code === "42P01";
+}
+
 export async function recordWorkerRun(
   pool: pg.Pool,
   workerName: WorkerName,
@@ -14,23 +19,39 @@ export async function recordWorkerRun(
   const startedAt = new Date();
   try {
     const summary = await fn();
-    await insertWorkerRun(pool, {
-      workerName,
-      status: "ok",
-      startedAt,
-      finishedAt: new Date(),
-      summary,
-    });
+    try {
+      await insertWorkerRun(pool, {
+        workerName,
+        status: "ok",
+        startedAt,
+        finishedAt: new Date(),
+        summary,
+      });
+    } catch (err) {
+      if (isMissingWorkerRunTable(err)) {
+        console.warn(
+          "[worker-run] worker_run table missing; run pnpm --filter aegis-api db:migrate",
+        );
+        return;
+      }
+      throw err;
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await insertWorkerRun(pool, {
-      workerName,
-      status: "error",
-      startedAt,
-      finishedAt: new Date(),
-      summary: {},
-      errorMessage: message,
-    });
+    try {
+      await insertWorkerRun(pool, {
+        workerName,
+        status: "error",
+        startedAt,
+        finishedAt: new Date(),
+        summary: {},
+        errorMessage: message,
+      });
+    } catch (logErr) {
+      if (!isMissingWorkerRunTable(logErr)) {
+        console.error("[worker-run] failed to record error run:", logErr);
+      }
+    }
     throw err;
   }
 }
@@ -45,12 +66,22 @@ export async function recordWorkerRunResult(
     errorMessage?: string;
   },
 ): Promise<void> {
-  await insertWorkerRun(pool, {
-    workerName: input.workerName,
-    status: input.status,
-    startedAt: input.startedAt,
-    finishedAt: new Date(),
-    summary: input.summary,
-    errorMessage: input.errorMessage,
-  });
+  try {
+    await insertWorkerRun(pool, {
+      workerName: input.workerName,
+      status: input.status,
+      startedAt: input.startedAt,
+      finishedAt: new Date(),
+      summary: input.summary,
+      errorMessage: input.errorMessage,
+    });
+  } catch (err) {
+    if (isMissingWorkerRunTable(err)) {
+      console.warn(
+        "[worker-run] worker_run table missing; run pnpm --filter aegis-api db:migrate",
+      );
+      return;
+    }
+    throw err;
+  }
 }

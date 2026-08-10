@@ -66,13 +66,17 @@ async function tick(): Promise<void> {
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await recordWorkerRunResult(pool, {
-      workerName: "witness",
-      status: "error",
-      startedAt,
-      summary: { interval_ms: intervalMs },
-      errorMessage: message,
-    });
+    try {
+      await recordWorkerRunResult(pool, {
+        workerName: "witness",
+        status: "error",
+        startedAt,
+        summary: { interval_ms: intervalMs },
+        errorMessage: message,
+      });
+    } catch {
+      // recordWorkerRunResult already warns if worker_run table is missing
+    }
     throw err;
   }
 }
