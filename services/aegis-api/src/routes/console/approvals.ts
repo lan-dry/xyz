@@ -2,26 +2,26 @@ import { Hono } from "hono";
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import { getPool } from "../../db/pool.js";
 import { ingestHumanApprovalEvent } from "../../console/human-approval-event.js";
+import { buildRequestPreview } from "../../approvals/request-preview.js";
 import {
   decideApproval,
-  getApproval,
+  expireStaleApprovals,
+  getApprovalRich,
   listPendingApprovals,
+  listRecentApprovals,
+  type ApprovalRichDetail,
 } from "../../repo/approvals.js";
 import {
   requireConsoleSession,
   type ConsoleVariables,
 } from "../../middleware/console-session.js";
 
-function serializeApproval(row: {
-  approval_id: string;
-  event_id: string;
-  status: string;
-  trace_id: string;
-  tool_name: string | null;
-  agent_id: string;
-  created_at: Date;
-  decided_at: Date | null;
-}) {
+function requestPreview(payload: Record<string, unknown> | null) {
+  return buildRequestPreview(payload);
+}
+
+function serializeApproval(row: ApprovalRichDetail) {
+  const preview = requestPreview(row.event_payload);
   return {
     approval_id: row.approval_id,
     event_id: row.event_id,
@@ -30,7 +30,18 @@ function serializeApproval(row: {
     tool_name: row.tool_name,
     agent_id: row.agent_id,
     created_at: row.created_at.toISOString(),
+    expires_at: row.expires_at?.toISOString() ?? null,
     decided_at: row.decided_at?.toISOString() ?? null,
+    approver_email: row.approver_email,
+    policy_reason: row.policy_reason,
+    request_preview: preview,
+  };
+}
+
+function serializeApprovalDetail(row: ApprovalRichDetail) {
+  return {
+    ...serializeApproval(row),
+    event_payload: row.event_payload,
   };
 }
 
@@ -39,11 +50,20 @@ export const approvalRoutes = new Hono<{ Variables: ConsoleVariables }>();
 approvalRoutes.get("/approvals", requireConsoleSession, async (c) => {
   const orgId = c.get("consoleSession").organizationId;
   const status = c.req.query("status") ?? "pending";
-  if (status !== "pending") {
-    return c.json({ error: "Only status=pending supported in Stage 7" }, 422);
+
+  if (status === "history") {
+    const rows = await listRecentApprovals(getPool(), orgId);
+    return c.json({ approvals: rows.map(serializeApproval) });
   }
+
+  if (status !== "pending") {
+    return c.json({ error: "Use status=pending or status=history" }, 422);
+  }
+
+  await expireStaleApprovals(getPool(), orgId);
   const rows = await listPendingApprovals(getPool(), orgId);
-  return c.json({ approvals: rows.map(serializeApproval) });
+  const blocked = rows.length;
+  return c.json({ approvals: rows.map(serializeApproval), blocked_traces: blocked });
 });
 
 approvalRoutes.get("/approvals/:approvalId", requireConsoleSession, async (c) => {
@@ -52,11 +72,11 @@ approvalRoutes.get("/approvals/:approvalId", requireConsoleSession, async (c) =>
   if (!approvalId) {
     return c.json({ error: "approvalId required" }, 422);
   }
-  const row = await getApproval(getPool(), orgId, approvalId);
+  const row = await getApprovalRich(getPool(), orgId, approvalId);
   if (!row) {
     return c.json({ error: "Not found" }, 404);
   }
-  return c.json({ approval: serializeApproval(row) });
+  return c.json({ approval: serializeApprovalDetail(row) });
 });
 
 approvalRoutes.post(
@@ -71,6 +91,7 @@ approvalRoutes.post(
 
     const client = await getPool().connect();
     try {
+      await expireStaleApprovals(client, session.organizationId);
       const decided = await decideApproval(
         client,
         session.organizationId,
@@ -79,7 +100,7 @@ approvalRoutes.post(
         "approved",
       );
       if (!decided) {
-        return c.json({ error: "Not found or not pending" }, 404);
+        return c.json({ error: "Not found, expired, or not pending" }, 404);
       }
 
       await ingestHumanApprovalEvent(client, {
@@ -91,6 +112,7 @@ approvalRoutes.post(
         approverEmail: session.email,
         approvalId,
         decision: "approved",
+        toolName: decided.tool_name ?? undefined,
       });
 
       await auditFromConsoleSession(client, session, {
@@ -100,7 +122,8 @@ approvalRoutes.post(
         metadata: { trace_id: decided.trace_id, event_id: decided.event_id },
       });
 
-      return c.json({ approval: serializeApproval(decided) });
+      const rich = await getApprovalRich(client, session.organizationId, approvalId);
+      return c.json({ approval: rich ? serializeApproval(rich) : null });
     } finally {
       client.release();
     }
@@ -119,6 +142,7 @@ approvalRoutes.post(
 
     const client = await getPool().connect();
     try {
+      await expireStaleApprovals(client, session.organizationId);
       const decided = await decideApproval(
         client,
         session.organizationId,
@@ -127,7 +151,7 @@ approvalRoutes.post(
         "rejected",
       );
       if (!decided) {
-        return c.json({ error: "Not found or not pending" }, 404);
+        return c.json({ error: "Not found, expired, or not pending" }, 404);
       }
 
       await ingestHumanApprovalEvent(client, {
@@ -139,6 +163,7 @@ approvalRoutes.post(
         approverEmail: session.email,
         approvalId,
         decision: "rejected",
+        toolName: decided.tool_name ?? undefined,
       });
 
       await auditFromConsoleSession(client, session, {
@@ -148,7 +173,8 @@ approvalRoutes.post(
         metadata: { trace_id: decided.trace_id, event_id: decided.event_id },
       });
 
-      return c.json({ approval: serializeApproval(decided) });
+      const rich = await getApprovalRich(client, session.organizationId, approvalId);
+      return c.json({ approval: rich ? serializeApproval(rich) : null });
     } finally {
       client.release();
     }

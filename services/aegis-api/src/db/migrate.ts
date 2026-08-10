@@ -114,6 +114,21 @@ const MIGRATIONS = [
     up: "021_account_login_events.up.sql",
     down: "021_account_login_events.down.sql",
   },
+  {
+    version: "023_workflow_bridge",
+    up: "023_workflow_bridge.up.sql",
+    down: "023_workflow_bridge.down.sql",
+  },
+  {
+    version: "024_org_billing_entitlement",
+    up: "024_org_billing_entitlement.up.sql",
+    down: "024_org_billing_entitlement.down.sql",
+  },
+  {
+    version: "025_org_governance_settings",
+    up: "025_org_governance_settings.up.sql",
+    down: "025_org_governance_settings.down.sql",
+  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {
