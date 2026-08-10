@@ -41,6 +41,7 @@ const TRACE_SELECT = `
            (SELECT COUNT(*)::int FROM event e
             WHERE e.trace_id = t.trace_id
               AND e.organization_id = t.organization_id
+              AND e.action_kind = 'policy_decision'
               AND e.policy_decision = 'deny'),
            0
          ) AS denied_events
