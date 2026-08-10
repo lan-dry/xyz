@@ -67,6 +67,7 @@ import { approvalRoutes } from "./approvals.js";
 import { verifyRoutes } from "./verify.js";
 import { exportRoutes } from "./exports.js";
 import { siemRoutes } from "./siem.js";
+import { governanceRoutes } from "./governance.js";
 
 const LEGACY_SESSION_COOKIE = "aegis_session";
 
@@ -203,6 +204,7 @@ consoleRoutes.route("/", approvalRoutes);
 consoleRoutes.route("/", verifyRoutes);
 consoleRoutes.route("/", exportRoutes);
 consoleRoutes.route("/", siemRoutes);
+consoleRoutes.route("/", governanceRoutes);
 
 consoleRoutes.post("/auth/login", async (c) => {
   const ip = getClientIp(c.req.raw.headers);

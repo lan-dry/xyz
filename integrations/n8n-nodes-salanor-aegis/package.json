@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-salanor-aegis",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Salanor Aegis node for n8n: check policy before risky steps and record signed traces",
   "keywords": [
     "n8n-community-node-package",
@@ -19,7 +19,7 @@
   },
   "author": {
     "name": "Salanor",
-    "email": "engineering@salanor.com"
+    "email": "hello@salanor.com"
   },
   "repository": {
     "type": "git",

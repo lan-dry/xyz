@@ -10,6 +10,7 @@ import {
   listPoliciesByOrganization,
   updateDraftPolicy,
 } from "../../repo/policies.js";
+import { listDraftPolicyConflicts } from "../../repo/policy-conflicts.js";
 import {
   requireConsoleSession,
   type ConsoleVariables,
@@ -40,7 +41,11 @@ export const policyRoutes = new Hono<{ Variables: ConsoleVariables }>();
 policyRoutes.get("/policies", requireConsoleSession, async (c) => {
   const orgId = c.get("consoleSession").organizationId;
   const policies = await listPoliciesByOrganization(getPool(), orgId);
-  return c.json({ policies: policies.map(serializePolicy) });
+  const conflicts = await listDraftPolicyConflicts(getPool(), orgId);
+  return c.json({
+    policies: policies.map(serializePolicy),
+    draft_conflicts: conflicts,
+  });
 });
 
 policyRoutes.get("/policies/:policyId", requireConsoleSession, async (c) => {

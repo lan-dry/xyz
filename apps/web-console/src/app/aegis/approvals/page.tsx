@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AegisMark } from "@/components/console/aegis-mark";
 import { EmptyStatePanel } from "@/components/console/empty-state-panel";
+import { Modal } from "@/components/console/modal";
 import {
   ConsolePage,
   ErrorAlert,
@@ -37,6 +38,7 @@ type ApprovalSummary = {
   approver_email: string | null;
   policy_reason: string | null;
   request_preview: RequestPreview;
+  event_payload?: Record<string, unknown> | null;
 };
 
 function expiresLabel(expiresAt: string | null): string | null {
@@ -49,12 +51,37 @@ function expiresLabel(expiresAt: string | null): string | null {
   return `Expires in ${mins}m`;
 }
 
+function payloadDiffLines(
+  preview: RequestPreview,
+  payload: Record<string, unknown> | null | undefined,
+): Array<{ key: string; preview?: string; raw?: string }> {
+  const nested =
+    payload?.request_payload && typeof payload.request_payload === "object"
+      ? (payload.request_payload as Record<string, unknown>)
+      : payload;
+  if (!nested || typeof nested !== "object") return [];
+  const lines: Array<{ key: string; preview?: string; raw?: string }> = [];
+  for (const [key, value] of Object.entries(nested)) {
+    if (value == null || typeof value === "object") continue;
+    const raw = String(value);
+    const previewVal =
+      key === "amount_usd" || key === "amount"
+        ? preview.amount_usd != null
+          ? String(preview.amount_usd)
+          : raw
+        : preview.fields.find((f) => f.key === key)?.value;
+    lines.push({ key, preview: previewVal, raw });
+  }
+  return lines;
+}
+
 function ApprovalCard({
   approval: a,
   focusRef,
   focused,
   onApprove,
   onReject,
+  onViewDetails,
   busy,
   showDecided,
 }: {
@@ -63,6 +90,7 @@ function ApprovalCard({
   focused?: boolean;
   onApprove?: () => void;
   onReject?: () => void;
+  onViewDetails?: () => void;
   busy?: boolean;
   showDecided?: boolean;
 }) {
@@ -115,7 +143,9 @@ function ApprovalCard({
             </p>
           ) : null}
 
-          {(preview.amount_usd != null || preview.fields.length > 0) && (
+          {(preview.amount_usd != null ||
+            preview.fields.length > 0 ||
+            (!showDecided && a.status === "pending")) && (
             <div
               className={ui.card}
               style={{
@@ -152,8 +182,10 @@ function ApprovalCard({
               ))}
               {preview.amount_usd == null && preview.fields.length === 0 ? (
                 <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--console-fg-subtle)" }}>
-                  No structured payload — pass fields (e.g.{" "}
-                  <code className="mono">amount_usd</code>) into Check Policy from n8n.
+                  No structured payload yet — add a Set node before Check Policy in n8n
+                  with fields like <code className="mono">amount_usd</code>,{" "}
+                  <code className="mono">recipient</code>, and{" "}
+                  <code className="mono">summary</code>.
                 </p>
               ) : null}
             </div>
@@ -202,6 +234,15 @@ function ApprovalCard({
         </div>
         {onApprove && onReject ? (
           <div className={ui.formRow} style={{ alignSelf: "flex-start" }}>
+            {onViewDetails ? (
+              <button
+                type="button"
+                className={`${ui.btn} ${ui.btnSecondary}`}
+                onClick={onViewDetails}
+              >
+                View details
+              </button>
+            ) : null}
             <button
               type="button"
               className={`${ui.btn} ${ui.btnPrimary}`}
@@ -231,6 +272,22 @@ export default function ApprovalsPage() {
   const focusId = searchParams.get("focus");
   const focusRef = useRef<HTMLDivElement | null>(null);
   const [tab, setTab] = useState<"pending" | "history">("pending");
+  const [detailId, setDetailId] = useState<string | null>(null);
+
+  const governanceQuery = useQuery({
+    queryKey: ["console", "governance-settings"],
+    queryFn: () =>
+      consoleApi<{ settings: { approval_ttl_hours: number } }>("/governance/settings"),
+  });
+
+  const detailQuery = useQuery({
+    queryKey: ["console", "approvals", "detail", detailId],
+    queryFn: () =>
+      consoleApi<{ approval: ApprovalSummary }>(
+        `/approvals/${encodeURIComponent(detailId!)}`,
+      ),
+    enabled: Boolean(detailId),
+  });
 
   const pendingQuery = useQuery({
     queryKey: ["console", "approvals", "pending"],
@@ -281,6 +338,11 @@ export default function ApprovalsPage() {
   const history = historyQuery.data?.approvals ?? [];
   const blockedTraces = pendingQuery.data?.blocked_traces ?? pending.length;
   const isEmptyPending = pending.length === 0 && !pendingQuery.isLoading;
+  const ttlHours = governanceQuery.data?.settings.approval_ttl_hours ?? 24;
+  const detailApproval = detailQuery.data?.approval;
+  const detailDiff = detailApproval
+    ? payloadDiffLines(detailApproval.request_preview, detailApproval.event_payload)
+    : [];
 
   return (
     <ConsolePage>
@@ -289,8 +351,9 @@ export default function ApprovalsPage() {
         subtitle={
           <>
             Human-in-the-loop for <code className="mono">require approval</code> policies.
-            Aegis notifies org admins by email (and optional Slack). Pending requests expire
-            after <strong>24 hours</strong>; n8n stops waiting when expired or rejected.
+            Aegis notifies org admins via email, Slack, PagerDuty, or SMS (Settings →
+            Governance). Pending requests expire after <strong>{ttlHours} hours</strong>; n8n
+            stops waiting when expired or rejected.
           </>
         }
       />
@@ -348,6 +411,7 @@ export default function ApprovalsPage() {
               busy={approve.isPending || reject.isPending}
               onApprove={() => approve.mutate(a.approval_id)}
               onReject={() => reject.mutate(a.approval_id)}
+              onViewDetails={() => setDetailId(a.approval_id)}
             />
           ))}
         </>
@@ -364,10 +428,134 @@ export default function ApprovalsPage() {
             />
           ) : null}
           {history.map((a) => (
-            <ApprovalCard key={a.approval_id} approval={a} showDecided />
+            <ApprovalCard
+              key={a.approval_id}
+              approval={a}
+              showDecided
+              onViewDetails={() => setDetailId(a.approval_id)}
+            />
           ))}
         </>
       )}
+
+      <Modal
+        open={Boolean(detailId)}
+        title={detailApproval?.tool_name ?? "Approval details"}
+        description="Review the signed policy gate event before deciding."
+        wide
+        onClose={() => setDetailId(null)}
+        footer={
+          detailApproval?.status === "pending" ? (
+            <>
+              <button
+                type="button"
+                className={`${ui.btn} ${ui.btnSecondary}`}
+                onClick={() => setDetailId(null)}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className={`${ui.btn} ${ui.btnDanger}`}
+                disabled={reject.isPending || approve.isPending}
+                onClick={() => {
+                  if (detailId) reject.mutate(detailId, { onSuccess: () => setDetailId(null) });
+                }}
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                className={`${ui.btn} ${ui.btnPrimary}`}
+                disabled={reject.isPending || approve.isPending}
+                onClick={() => {
+                  if (detailId) approve.mutate(detailId, { onSuccess: () => setDetailId(null) });
+                }}
+              >
+                Approve
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnSecondary}`}
+              onClick={() => setDetailId(null)}
+            >
+              Close
+            </button>
+          )
+        }
+      >
+        {detailQuery.isLoading ? <LoadingBlock /> : null}
+        {detailQuery.error ? <ErrorAlert message="Failed to load approval details." /> : null}
+        {detailApproval ? (
+          <>
+            <div style={{ display: "grid", gap: "1rem" }}>
+              {detailApproval.policy_reason ? (
+                <div className={ui.card} style={{ padding: "0.75rem 1rem" }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "var(--console-fg-subtle)" }}>
+                    Policy reason
+                  </p>
+                  <p style={{ margin: "0.35rem 0 0" }}>{detailApproval.policy_reason}</p>
+                </div>
+              ) : null}
+
+              {detailDiff.length > 0 ? (
+                <div className={ui.card} style={{ padding: "0.75rem 1rem" }}>
+                  <p style={{ margin: "0 0 0.5rem", fontSize: "0.75rem", fontWeight: 600 }}>
+                    Request fields (preview vs signed payload)
+                  </p>
+                  <table className={ui.table} style={{ fontSize: "0.8125rem" }}>
+                    <thead>
+                      <tr>
+                        <th>Field</th>
+                        <th>Preview</th>
+                        <th>Signed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailDiff.map((row) => (
+                        <tr key={row.key}>
+                          <td className="mono">{row.key}</td>
+                          <td>{row.preview ?? "—"}</td>
+                          <td
+                            style={
+                              row.preview !== row.raw
+                                ? { color: "var(--console-warning)" }
+                                : undefined
+                            }
+                          >
+                            {row.raw}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+
+              <div className={ui.card} style={{ padding: "0.75rem 1rem" }}>
+                <p style={{ margin: "0 0 0.5rem", fontSize: "0.75rem", fontWeight: 600 }}>
+                  Full signed event payload
+                </p>
+                <pre
+                  className="mono"
+                  style={{
+                    margin: 0,
+                    fontSize: "0.75rem",
+                    maxHeight: "16rem",
+                    overflow: "auto",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {JSON.stringify(detailApproval.event_payload ?? {}, null, 2)}
+                </pre>
+              </div>
+            </div>
+          </>
+        ) : null}
+      </Modal>
     </ConsolePage>
   );
 }

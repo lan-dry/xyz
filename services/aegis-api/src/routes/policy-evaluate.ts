@@ -116,12 +116,24 @@ export async function postPolicyEvaluate(c: Context): Promise<Response> {
         });
         await client.query("COMMIT");
 
+        const payload = body.payload ?? {};
+        const amountRaw = payload.amount_usd ?? payload.amount;
+        const amountUsd =
+          typeof amountRaw === "number"
+            ? amountRaw
+            : typeof amountRaw === "string"
+              ? Number.parseFloat(amountRaw)
+              : undefined;
+
         notifyApprovalPending(client, {
           organizationId: body.organization_id,
           approvalId: recorded.approval_id,
           toolName: body.tool_name,
           traceId: recorded.trace_id,
           eventId: recorded.events[0]?.event_id ?? "",
+          requestSummary:
+            typeof payload.summary === "string" ? payload.summary : undefined,
+          amountUsd: Number.isFinite(amountUsd) ? amountUsd : undefined,
         });
 
         return c.json({

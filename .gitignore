@@ -39,5 +39,3 @@ coverage/
 
 # go (future services)
 bin/
-docs/ 
-docs-internal/ 

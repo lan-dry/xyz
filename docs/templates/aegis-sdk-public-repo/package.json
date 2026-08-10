@@ -1,0 +1,42 @@
+{
+  "name": "aegis-sdk-public-repo",
+  "version": "0.1.0",
+  "description": "APS-1 TypeScript SDK — sign and ingest agent provenance events",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/salanor/aegis-sdk.git"
+  },
+  "homepage": "https://salanor.com/spec",
+  "bugs": {
+    "url": "https://github.com/salanor/aegis-sdk/issues"
+  },
+  "keywords": ["aps-1", "agent", "provenance", "ed25519", "aegis", "salanor"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "spec", "LICENSE", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^3.1.0",
+    "canonicalize": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

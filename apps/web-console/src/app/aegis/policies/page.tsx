@@ -24,6 +24,11 @@ type PolicySummary = {
   activated_at: string | null;
 };
 
+type PolicyConflict = {
+  tool_pattern: string;
+  drafts: Array<{ policy_id: string; name: string; decision: string }>;
+};
+
 type PolicyRule = {
   rule_id: string;
   tool_pattern: string;
@@ -57,7 +62,7 @@ function buildRulesPayload(form: PolicyFormState) {
           max_amount_usd: Number.parseFloat(form.maxAmountUsd),
           window_hours: 24,
         };
-  const ruleDecision = form.ruleType === "tool" ? form.decision : "deny";
+  const ruleDecision = form.decision;
   return [
     {
       tool_pattern: form.toolPattern.trim(),
@@ -70,15 +75,15 @@ function buildRulesPayload(form: PolicyFormState) {
 
 function ruleSummary(rule: PolicyRule): string {
   const cond = rule.conditions as { rule_type?: string; max_amount_usd?: number } | null;
+  const decisionLabel =
+    rule.decision === "allow_with_obligation" ? "require approval" : rule.decision;
   if (cond?.rule_type === "max_per_tx") {
-    return `Max $${cond.max_amount_usd ?? "?"} per transaction → ${rule.decision}`;
+    return `Max $${cond.max_amount_usd ?? "?"} per transaction → ${decisionLabel}`;
   }
   if (cond?.rule_type === "max_daily_total") {
-    return `Max $${cond.max_amount_usd ?? "?"} daily → ${rule.decision}`;
+    return `Max $${cond.max_amount_usd ?? "?"} daily → ${decisionLabel}`;
   }
-  const label =
-    rule.decision === "allow_with_obligation" ? "require approval" : rule.decision;
-  return `${rule.tool_pattern} → ${label}`;
+  return `${rule.tool_pattern} → ${decisionLabel}`;
 }
 
 export default function PoliciesPage() {
@@ -92,7 +97,10 @@ export default function PoliciesPage() {
 
   const policiesQuery = useQuery({
     queryKey: ["console", "policies"],
-    queryFn: () => consoleApi<{ policies: PolicySummary[] }>("/policies"),
+    queryFn: () =>
+      consoleApi<{ policies: PolicySummary[]; draft_conflicts?: PolicyConflict[] }>(
+        "/policies",
+      ),
   });
 
   const detailQuery = useQuery({
@@ -182,6 +190,7 @@ export default function PoliciesPage() {
   });
 
   const policies = policiesQuery.data?.policies ?? [];
+  const draftConflicts = policiesQuery.data?.draft_conflicts ?? [];
   const hasPolicies = policies.length > 0;
 
   const populateEditForm = useCallback(() => {
@@ -304,6 +313,24 @@ export default function PoliciesPage() {
                 onChange={(e) => setForm((f) => ({ ...f, maxAmountUsd: e.target.value }))}
               />
             </label>
+            <label className={ui.field} style={{ marginTop: "1rem" }}>
+              When limit exceeded
+              <select
+                className={ui.select}
+                value={form.decision === "allow_with_obligation" ? "allow_with_obligation" : "deny"}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    decision: e.target.value as PolicyFormState["decision"],
+                  }))
+                }
+              >
+                <option value="deny">Deny — block and record FAILED trace</option>
+                <option value="allow_with_obligation">
+                  Require approval — pause for human review
+                </option>
+              </select>
+            </label>
             <p
               style={{
                 margin: "0.5rem 0 0",
@@ -312,9 +339,8 @@ export default function PoliciesPage() {
                 lineHeight: 1.5,
               }}
             >
-              Automatically <strong>denies</strong> when Check Policy receives{" "}
-              <code className="mono">amount_usd</code> in the payload above this limit.
-              Pass amount from n8n (e.g. Set node before Check Policy).
+              Applies when Check Policy receives <code className="mono">amount_usd</code> above
+              this limit. Pass amount from n8n (Set node before Check Policy).
             </p>
           </>
         )}
@@ -339,6 +365,40 @@ export default function PoliciesPage() {
         title="Policies"
         subtitle="Draft → review → activate. Active policies are immutable; create a new draft or roll back to an archived version."
       />
+
+      {draftConflicts.length > 0 ? (
+        <div
+          className={ui.card}
+          style={{
+            marginBottom: "1rem",
+            padding: "0.875rem 1rem",
+            borderColor: "var(--console-warning)",
+            background: "color-mix(in srgb, var(--console-warning) 8%, transparent)",
+          }}
+        >
+          <p style={{ margin: 0, fontWeight: 600, fontSize: "0.875rem" }}>
+            Draft policy conflicts
+          </p>
+          <p
+            style={{
+              margin: "0.35rem 0 0.5rem",
+              fontSize: "0.8125rem",
+              color: "var(--console-fg-muted)",
+            }}
+          >
+            Multiple drafts target the same tool pattern. Only one can be active — resolve
+            before activating.
+          </p>
+          <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.8125rem" }}>
+            {draftConflicts.map((c) => (
+              <li key={c.tool_pattern} style={{ marginBottom: "0.25rem" }}>
+                <code className="mono">{c.tool_pattern}</code>:{" "}
+                {c.drafts.map((d) => d.name).join(", ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className={ui.toolbar} style={{ justifyContent: "flex-end", marginTop: 0 }}>
         <button

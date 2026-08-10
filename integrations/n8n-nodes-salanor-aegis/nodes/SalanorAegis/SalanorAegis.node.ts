@@ -19,6 +19,28 @@ type CaptureNode = {
   output_preview?: string;
 };
 
+type PolicyEvaluateResponse = {
+  decision?: string;
+  reason?: string;
+  rule_id?: string | null;
+  policy_id?: string;
+  engine?: string;
+  trace_id?: string;
+  trace_url?: string;
+  approval_id?: string;
+  approval_url?: string;
+  recorded?: boolean;
+};
+
+type PolicyGatePayload = {
+  tool_name: string;
+  decision: string;
+  policy_id: string;
+  rule_id: string | null;
+  reason: string;
+  engine?: string;
+};
+
 function baseUrl(creds: Creds): string {
   return (creds.apiBaseUrl || "https://api.salanor.com").replace(/\/+$/, "");
 }
@@ -40,6 +62,65 @@ function preview(value: unknown, max = 400): string {
   } catch {
     return "";
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function policyGateFromEval(
+  toolName: string,
+  response: PolicyEvaluateResponse,
+): PolicyGatePayload | undefined {
+  if (
+    response.decision === "allow" &&
+    response.policy_id &&
+    response.recorded !== true
+  ) {
+    return {
+      tool_name: toolName,
+      decision: "allow",
+      policy_id: response.policy_id,
+      rule_id: response.rule_id ?? null,
+      reason: response.reason ?? "allowed",
+      engine: response.engine,
+    };
+  }
+  return undefined;
+}
+
+async function pollApproval(
+  ctx: IExecuteFunctions,
+  creds: Creds,
+  approvalId: string,
+  maxWaitMs: number,
+  intervalMs: number,
+): Promise<{ status: string; trace_id?: string }> {
+  const api = baseUrl(creds);
+  const deadline = Date.now() + maxWaitMs;
+  while (Date.now() < deadline) {
+    const status = (await ctx.helpers.httpRequest({
+      method: "GET",
+      url: `${api}/v1/aegis/approvals/${encodeURIComponent(approvalId)}`,
+      headers: { Authorization: `Bearer ${creds.apiKey}` },
+      json: true,
+    })) as { status?: string; trace_id?: string };
+    if (
+      status.status === "approved" ||
+      status.status === "rejected" ||
+      status.status === "expired"
+    ) {
+      return {
+        status: status.status ?? "pending",
+        trace_id: status.trace_id,
+      };
+    }
+    await sleep(intervalMs);
+  }
+  throw new NodeOperationError(
+    ctx.getNode(),
+    `Aegis approval ${approvalId} timed out after ${Math.round(maxWaitMs / 1000)}s`,
+  );
 }
 
 /** Build signed step list from explicit JSON or from the incoming item. */
@@ -112,14 +193,14 @@ function resolveCaptureNodes(
 /**
  * Salanor Aegis for n8n.
  *
- * - Check Policy: before risky tools (deny stops + writes a signed gate trace)
+ * - Check Policy: before risky tools (deny/obligation write gate traces; allow folds into Record Run)
  * - Record Run: once at end (or on Error Trigger with status=failed)
  */
 export class SalanorAegis implements INodeType {
   description: INodeTypeDescription = {
     displayName: "Salanor Aegis",
     name: "salanorAegis",
-    icon: "file:salanor.svg",
+    icon: "file:salanor.png",
     group: ["transform"],
     version: 1,
     subtitle: '={{$parameter["operation"]}}',
@@ -141,7 +222,7 @@ export class SalanorAegis implements INodeType {
             value: "checkPolicy",
             action: "Check policy before risky step",
             description:
-              "Before payments/deletes/sends. Deny can stop the workflow and always writes an audit trace.",
+              "Before payments/deletes/sends. Deny stops the workflow. Allow is folded into Record Run (one trace per run).",
           },
           {
             name: "Record Run",
@@ -190,6 +271,33 @@ export class SalanorAegis implements INodeType {
         ],
         default: "error",
         displayOptions: { show: { operation: ["checkPolicy"] } },
+      },
+      {
+        displayName: "Wait For Approval",
+        name: "waitForApproval",
+        type: "boolean",
+        default: true,
+        description:
+          "When policy requires human approval, pause and poll until approved or rejected",
+        displayOptions: { show: { operation: ["checkPolicy"] } },
+      },
+      {
+        displayName: "Approval Poll Interval (Seconds)",
+        name: "approvalPollSeconds",
+        type: "number",
+        default: 5,
+        displayOptions: {
+          show: { operation: ["checkPolicy"], waitForApproval: [true] },
+        },
+      },
+      {
+        displayName: "Approval Timeout (Seconds)",
+        name: "approvalTimeoutSeconds",
+        type: "number",
+        default: 300,
+        displayOptions: {
+          show: { operation: ["checkPolicy"], waitForApproval: [true] },
+        },
       },
       {
         displayName: "Business Context",
@@ -251,32 +359,59 @@ export class SalanorAegis implements INodeType {
         const nodes = resolveCaptureNodes(nodesJson, items[i]);
         const execId = executionId(this);
 
-        const response = await this.helpers.httpRequest({
-          method: "POST",
-          url: `${api}/v1/aegis/workflows/runs`,
-          headers: {
-            Authorization: `Bearer ${creds.apiKey}`,
-            "Content-Type": "application/json",
+        const itemJson = (items[i].json ?? {}) as IDataObject;
+        const aegis = itemJson.aegis_policy as PolicyEvaluateResponse | undefined;
+        const toolName = String(itemJson.aegis_tool ?? "");
+        const resumeTraceId =
+          aegis?.trace_id &&
+          (aegis.decision === "allow_with_obligation" || aegis.recorded === true)
+            ? aegis.trace_id
+            : undefined;
+        const policyGate = resumeTraceId
+          ? undefined
+          : policyGateFromEval(toolName, aegis ?? {});
+
+        const runBody: IDataObject = {
+          business_context: businessContext,
+          external_system: "n8n",
+          external_workflow_id: String(this.getWorkflow().id ?? ""),
+          external_execution_id: execId,
+          status: runStatus,
+          summary:
+            runStatus === "failed" && summary === "Workflow completed"
+              ? "Workflow failed"
+              : summary,
+          execution: {
+            workflow_name: this.getWorkflow().name,
+            execution_id: execId,
+            nodes,
           },
-          body: {
-            one_shot: true,
-            business_context: businessContext,
-            external_system: "n8n",
-            external_workflow_id: String(this.getWorkflow().id ?? ""),
-            external_execution_id: execId,
-            status: runStatus,
-            summary:
-              runStatus === "failed" && summary === "Workflow completed"
-                ? "Workflow failed"
-                : summary,
-            execution: {
-              workflow_name: this.getWorkflow().name,
-              execution_id: execId,
-              nodes,
-            },
-          },
-          json: true,
-        });
+        };
+        if (policyGate) {
+          runBody.policy_gate = policyGate;
+        }
+
+        const response = resumeTraceId
+          ? await this.helpers.httpRequest({
+              method: "POST",
+              url: `${api}/v1/aegis/workflows/runs/${encodeURIComponent(resumeTraceId)}/complete`,
+              headers: {
+                Authorization: `Bearer ${creds.apiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: runBody,
+              json: true,
+            })
+          : await this.helpers.httpRequest({
+              method: "POST",
+              url: `${api}/v1/aegis/workflows/runs`,
+              headers: {
+                Authorization: `Bearer ${creds.apiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: { one_shot: true, ...runBody },
+              json: true,
+            });
 
         returnData.push({ json: response as IDataObject });
         continue;
@@ -290,6 +425,18 @@ export class SalanorAegis implements INodeType {
         const agentId = this.getNodeParameter("agentId", i) as string;
         const toolName = this.getNodeParameter("toolName", i) as string;
         const onDeny = this.getNodeParameter("onDeny", i) as string;
+        const waitForApproval = this.getNodeParameter(
+          "waitForApproval",
+          i,
+        ) as boolean;
+        const approvalPollSeconds = this.getNodeParameter(
+          "approvalPollSeconds",
+          i,
+        ) as number;
+        const approvalTimeoutSeconds = this.getNodeParameter(
+          "approvalTimeoutSeconds",
+          i,
+        ) as number;
         const execId = executionId(this);
 
         const response = (await this.helpers.httpRequest({
@@ -304,20 +451,12 @@ export class SalanorAegis implements INodeType {
             agent_id: agentId,
             tool_name: toolName,
             payload: items[i].json as IDataObject,
-            record: true,
             external_system: "n8n",
             external_workflow_id: String(this.getWorkflow().id ?? ""),
             external_execution_id: execId,
           },
           json: true,
-        })) as {
-          decision?: string;
-          reason?: string;
-          rule_id?: string | null;
-          trace_id?: string;
-          trace_url?: string;
-          recorded?: boolean;
-        };
+        })) as PolicyEvaluateResponse;
 
         if (response.decision === "deny" && onDeny === "error") {
           const where = response.trace_url
@@ -332,8 +471,83 @@ export class SalanorAegis implements INodeType {
           );
         }
 
+        if (
+          response.decision === "allow_with_obligation" &&
+          response.approval_id
+        ) {
+          if (!waitForApproval) {
+            returnData.push({
+              json: {
+                ...(items[i].json as IDataObject),
+                aegis_policy: response,
+                aegis_tool: toolName,
+              },
+            });
+            continue;
+          }
+
+          const decision = await pollApproval(
+            this,
+            creds,
+            response.approval_id,
+            Math.max(approvalTimeoutSeconds, 5) * 1000,
+            Math.max(approvalPollSeconds, 2) * 1000,
+          );
+
+          if (decision.status === "rejected" || decision.status === "expired") {
+            const traceId = decision.trace_id ?? response.trace_id;
+            if (traceId) {
+              await this.helpers.httpRequest({
+                method: "POST",
+                url: `${api}/v1/aegis/workflows/runs/${encodeURIComponent(traceId)}/complete`,
+                headers: {
+                  Authorization: `Bearer ${creds.apiKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: {
+                  status: "failed",
+                  summary:
+                    decision.status === "expired"
+                      ? `Approval expired for ${toolName}`
+                      : `Approval rejected for ${toolName}`,
+                },
+                json: true,
+              }).catch(() => undefined);
+            }
+            const where = response.approval_url
+              ? ` Approval: ${response.approval_url}`
+              : response.trace_url
+                ? ` Audit: ${response.trace_url}`
+                : "";
+            throw new NodeOperationError(
+              this.getNode(),
+              decision.status === "expired"
+                ? `Aegis approval expired for "${toolName}" (24h limit).${where}`
+                : `Aegis approval rejected for "${toolName}".${where}`,
+              { itemIndex: i },
+            );
+          }
+
+          returnData.push({
+            json: {
+              ...(items[i].json as IDataObject),
+              aegis_policy: {
+                ...response,
+                trace_id: decision.trace_id ?? response.trace_id,
+                approval_status: "approved",
+              },
+              aegis_tool: toolName,
+            },
+          });
+          continue;
+        }
+
         returnData.push({
-          json: { ...(items[i].json as IDataObject), aegis_policy: response },
+          json: {
+            ...(items[i].json as IDataObject),
+            aegis_policy: response,
+            aegis_tool: toolName,
+          },
         });
         continue;
       }

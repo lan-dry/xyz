@@ -72,6 +72,13 @@ function serializeApproval(row: ApprovalRichDetail) {
   };
 }
 
+function serializeApprovalDetail(row: ApprovalRichDetail) {
+  return {
+    ...serializeApproval(row),
+    event_payload: row.event_payload,
+  };
+}
+
 export const approvalRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
 approvalRoutes.get("/approvals", requireConsoleSession, async (c) => {
@@ -103,7 +110,7 @@ approvalRoutes.get("/approvals/:approvalId", requireConsoleSession, async (c) =>
   if (!row) {
     return c.json({ error: "Not found" }, 404);
   }
-  return c.json({ approval: serializeApproval(row) });
+  return c.json({ approval: serializeApprovalDetail(row) });
 });
 
 approvalRoutes.post(

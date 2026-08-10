@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type pg from "pg";
+import { getGovernanceSettings } from "./governance-settings.js";
 
 export type ApprovalRow = {
   approval_id: string;
@@ -56,6 +57,9 @@ export async function createApprovalRequest(
 ): Promise<{ approval_id: string }> {
   await ensureWebUiChannel(client, params.organizationId);
 
+  const governance = await getGovernanceSettings(client, params.organizationId);
+  const ttlHours = governance.approval_ttl_hours;
+
   const approvalId = `apr_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   const tokenHash = createHash("sha256")
     .update(approvalId, "utf8")
@@ -64,8 +68,8 @@ export async function createApprovalRequest(
   await client.query(
     `INSERT INTO approval (
        approval_id, event_id, organization_id, channel_type, token_hash, status, expires_at
-     ) VALUES ($1, $2, $3, 'web_ui', $4, 'pending', now() + interval '24 hours')`,
-    [approvalId, params.eventId, params.organizationId, tokenHash],
+     ) VALUES ($1, $2, $3, 'web_ui', $4, 'pending', now() + ($5::int * interval '1 hour'))`,
+    [approvalId, params.eventId, params.organizationId, tokenHash, String(ttlHours)],
   );
 
   await client.query(

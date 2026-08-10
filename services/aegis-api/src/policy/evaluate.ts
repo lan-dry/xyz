@@ -1,7 +1,9 @@
 import type pg from "pg";
 import { getActivePolicyWithRules } from "../repo/policies.js";
+import { parseConditions } from "./amount.js";
 import { evaluateRulesWithConditions } from "./evaluate-conditions.js";
 import { evaluateWithOpa } from "./evaluate-opa.js";
+import type { PolicyRuleInput } from "./evaluate-rules.js";
 
 export type EvaluateInput = {
   organizationId: string;
@@ -17,6 +19,13 @@ export type EvaluateOutput = {
   reason: string;
   engine: "opa" | "rules";
 };
+
+function rulesNeedConditionEngine(rules: PolicyRuleInput[]): boolean {
+  return rules.some((r) => {
+    const c = parseConditions(r.conditions);
+    return c?.rule_type === "max_per_tx" || c?.rule_type === "max_daily_total";
+  });
+}
 
 export async function evaluateToolPolicy(
   client: pg.Pool | pg.PoolClient,
@@ -41,6 +50,22 @@ export async function evaluateToolPolicy(
     conditions: r.conditions,
   }));
 
+  const evalContext = {
+    toolName: input.toolName,
+    payload: input.payload,
+    organizationId: input.organizationId,
+  };
+
+  if (rulesNeedConditionEngine(rules)) {
+    const rulesResult = await evaluateRulesWithConditions(
+      client,
+      active.policy.policy_id,
+      rules,
+      evalContext,
+    );
+    return { ...rulesResult, engine: "rules" };
+  }
+
   const opaResult = await evaluateWithOpa(
     active.policy.policy_id,
     rules,
@@ -55,11 +80,7 @@ export async function evaluateToolPolicy(
     client,
     active.policy.policy_id,
     rules,
-    {
-      toolName: input.toolName,
-      payload: input.payload,
-      organizationId: input.organizationId,
-    },
+    evalContext,
   );
   return { ...rulesResult, engine: "rules" };
 }

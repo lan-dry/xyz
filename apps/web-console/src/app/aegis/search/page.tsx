@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { EmptyStatePanel } from "@/components/console/empty-state-panel";
 import {
   ConsolePage,
   ConsolePagination,
@@ -62,11 +63,14 @@ export default function SearchPage() {
     enabled: q.trim().length > 0,
   });
 
+  const hasQuery = q.trim().length > 0;
+  const noResults = hasQuery && data && data.total === 0 && !isLoading;
+
   return (
     <ConsolePage>
       <PageHeader
         title="Search"
-        subtitle="Full-text search across signed events in your organization (trace id, agent, tool, payload)."
+        subtitle="Full-text search across your signed event ledger — trace IDs, agents, tools, policy decisions, and payload text."
       />
 
       <div className={`${ui.card} ${ui.cardPad}`} style={{ marginBottom: "1.25rem" }}>
@@ -79,25 +83,50 @@ export default function SearchPage() {
             <input
               type="search"
               className={ui.input}
-              placeholder="deny, stripe, customer_email, trc_…"
+              placeholder="deny, app.payments.transfer, trc_…, vendor@example.com"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               style={{ width: "100%" }}
             />
           </span>
         </label>
+        <p className={ui.cardHint} style={{ margin: "0.75rem 0 0" }}>
+          Matches event IDs, trace IDs, agent IDs, tool names, and JSON payload fields.
+          Multi-word queries match all terms. Partial IDs work (e.g.{" "}
+          <code className="mono">trc_72ad</code>).
+        </p>
       </div>
 
-      {!q.trim() ? (
+      {!hasQuery ? (
         <p style={{ color: "var(--console-fg-subtle)", fontSize: "0.9375rem" }}>
           Enter a search term to query your event ledger.
+        </p>
+      ) : null}
+
+      {hasQuery && data && data.total > 0 ? (
+        <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem", color: "var(--console-fg-muted)" }}>
+          <strong>{data.total.toLocaleString()}</strong> result{data.total === 1 ? "" : "s"} for{" "}
+          <code className="mono">{data.query}</code>
         </p>
       ) : null}
 
       {isLoading && !data ? <LoadingBlock /> : null}
       {error ? <ErrorAlert message="Search failed." /> : null}
 
-      {data && q.trim() ? (
+      {noResults ? (
+        <EmptyStatePanel
+          icon={Search}
+          title={`No results for "${q.trim()}"`}
+          description="Try a trace ID prefix, tool name, policy decision (deny, allow), or a value from the event payload."
+          action={
+            <Link href="/aegis/traces" className={`${ui.btn} ${ui.btnSecondary}`}>
+              Browse traces
+            </Link>
+          }
+        />
+      ) : null}
+
+      {data && data.hits.length > 0 ? (
         <div className={ui.tableWrap} style={{ opacity: isFetching ? 0.65 : 1 }}>
           <table className={ui.table}>
             <thead>

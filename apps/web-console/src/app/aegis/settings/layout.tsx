@@ -12,6 +12,7 @@ const TABS = [
   { href: "/aegis/settings/organization", label: "Organization" },
   { href: "/aegis/settings/billing", label: "Billing" },
   { href: "/aegis/settings/integrations", label: "Integrations" },
+  { href: "/aegis/settings/governance", label: "Governance" },
   { href: "/aegis/settings/security", label: "Security" },
 ] as const;
 

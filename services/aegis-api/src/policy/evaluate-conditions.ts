@@ -109,8 +109,12 @@ export async function evaluateRulesWithConditions(
   if (breaches.length > 0) {
     breaches.sort((a, b) => b.rule.priority - a.rule.priority);
     const top = breaches[0]!;
+    const decision =
+      top.rule.decision === "allow_with_obligation"
+        ? "allow_with_obligation"
+        : "deny";
     return {
-      decision: "deny",
+      decision,
       policy_id: policyId,
       rule_id: top.rule.rule_id,
       reason: top.reason,

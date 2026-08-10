@@ -35,8 +35,8 @@ You do **not** put Salanor on every step.
 
 | Where | Operation | Why |
 |-------|-----------|-----|
-| Before a **risky** step (pay, delete, send, refund) | **Check Policy** | Blocks the action when policy says deny, and **writes a signed audit trace** (who / tool / rule / reason) |
-| End of the happy path | **Record Run** (status Completed) | One signed trace of the finished run |
+| Before a **risky** step (pay, delete, send, refund) | **Check Policy** | Blocks on deny; pauses on require approval; allow folds into Record Run |
+| End of the happy path | **Record Run** (status Completed) | **One** signed trace for the whole run |
 | **Error Trigger** path | **Record Run** (status Failed) | Crashes still leave a signed trace |
 
 ```
@@ -51,7 +51,23 @@ Error Trigger
   → Record Run (Failed)
 ```
 
-**Tool name:** pick a stable string (e.g. `app.payments.transfer`) and use the **same** string in Console → **Policies**.
+### One trace per run
+
+- **Allow:** Check Policy does not write a trace. Record Run writes **one** COMPLETED trace (policy gate step is embedded).
+- **Deny:** Check Policy writes **one** FAILED trace and stops the workflow.
+- **Require approval:** Check Policy opens **one** blocked trace + approval link, waits for Console approval, then Record Run completes that same trace.
+
+**Tool name:** pick a stable string (e.g. `app.payments.transfer`) and use the **same** string in Console → **Policies** (decision: allow, deny, or **require approval**).
+
+## Example workflow
+
+Import `examples/smoke-test-with-error-trigger.json`, then:
+
+1. Replace `YOUR_ORG_ID` / `YOUR_AGENT_ID` on **Check Policy**
+2. Assign **Salanor Aegis API** credential on **both** Salanor nodes:
+   - **Record Run** (happy path)
+   - **Record Run (Failed)** (Error Trigger path) ← easy to miss
+3. Follow `examples/SMOKE_TEST.md` for allow, deny, and require-approval runs
 
 ## License
 

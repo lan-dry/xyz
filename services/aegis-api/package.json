@@ -15,6 +15,7 @@
     "db:seed": "tsx src/db/seed-cli.ts",
     "compliance:worker": "tsx src/compliance/worker-cli.ts",
     "compliance:schedule": "tsx src/compliance/schedule-cli.ts",
+    "maintenance:housekeeping": "tsx src/maintenance/housekeeping-cli.ts",
     "publish-transparency": "tsx src/transparency/publish-cli.ts"
   },
   "dependencies": {
