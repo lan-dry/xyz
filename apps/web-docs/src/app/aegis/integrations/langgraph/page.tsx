@@ -24,7 +24,33 @@ export default function LangGraphPage() {
       </ol>
 
       <CodeBlock
-        language="typescript"
+        lang="typescript"
+        code={`import { createGovernanceBridge, wrapLangGraphTool } from "@salanor/aegis";
+
+const bridge = createGovernanceBridge({
+  apiBaseUrl: "${api}",
+  ingestApiKey: process.env.AEGIS_INGEST_API_KEY!,
+  organizationId: process.env.AEGIS_ORGANIZATION_ID!,
+  agentId: process.env.AEGIS_AGENT_ID!,
+  keyId: process.env.AEGIS_KEY_ID!,
+  privateKeyB64: process.env.AEGIS_SIGNING_PRIVATE_KEY_B64!,
+  actorPrincipal: "langgraph-agent",
+});
+
+const transferFunds = wrapLangGraphTool(bridge, {
+  toolName: "app.payments.transfer",
+  description: "Transfer funds after policy check",
+  handler: async (input: { amount_usd: number }) => {
+    return { ok: true, amount_usd: input.amount_usd };
+  },
+});
+
+// Use transferFunds inside your LangGraph node — policy + signed events run automatically.`}
+      />
+
+      <CodeBlock
+        lang="typescript"
+        title="Manual policy check"
         code={`import { createGovernanceBridge, evaluatePolicyViaApi } from "@salanor/aegis";
 
 const bridge = createGovernanceBridge({

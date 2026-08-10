@@ -65,6 +65,10 @@ export {
   type TraceStartInput,
   type WithOptionalTraceResult,
 } from "./bridge.js";
+export {
+  wrapLangGraphTool,
+  type LangGraphToolConfig,
+} from "./integrations/langgraph.js";
 
 export const PACKAGE_NAME = "@salanor/aegis" as const;
 

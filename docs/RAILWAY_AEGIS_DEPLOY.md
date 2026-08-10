@@ -27,6 +27,25 @@ Body: {"one_shot":true,"execution":{"nodes":[]}}
 
 Expect **401** (key invalid). If the body is accepted with a real key, response `status` must be **`completed`**, not `running`.
 
+## Witness worker (60s Merkle batches)
+
+1. Railway → **New Service** → same repo `lan-dry/xyz`, branch `main`.
+2. Name it **aegis-witness-worker** (or similar).
+3. **Root Directory**: repo root (same as aegis-api).
+4. **Start Command**: `pnpm --filter aegis-api witness:worker`
+   (or copy `services/aegis-api/railway.witness.toml` settings).
+5. **Variables** (copy from aegis-api):
+   - `DATABASE_URL` (required)
+   - `WITNESS_INTERVAL_MS=60000` (optional; default 60s)
+6. Deploy and confirm logs show:
+   `[witness-worker] starting; interval=60000ms`
+
+One-shot test locally or in Railway shell:
+
+```bash
+pnpm --filter aegis-api witness:batch
+```
+
 ## Also check
 
 - Settings → **Source**: repo `lan-dry/xyz`, branch `main`

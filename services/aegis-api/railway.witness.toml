@@ -1,0 +1,18 @@
+# Railway service: aegis-witness-worker
+# Duplicate the aegis-api service in Railway, point at the same repo + env vars,
+# then set Custom Start Command to the value below (or use this file as railway.toml
+# on a dedicated "witness-worker" service with Root Directory = repo root).
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "pnpm --filter aegis-api witness:worker"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Required env (copy from aegis-api):
+#   DATABASE_URL
+#   WITNESS_INTERVAL_MS=60000   # 60s Merkle batch cadence
+#
+# Optional: same signing/BYOK vars as aegis-api if transparency publish needs them.

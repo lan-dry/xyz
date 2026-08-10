@@ -1,0 +1,134 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.timeline {
+  position: relative;
+  padding-left: 0.35rem;
+}
+
+.timelineTrack {
+  position: absolute;
+  left: 0.65rem;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 2px;
+  background: var(--console-border);
+  border-radius: 1px;
+}
+
+.timelineProgress {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  background: var(--console-accent, #0d9488);
+  border-radius: 1px;
+  transition: height 420ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stepButton {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  text-align: left;
+  font-size: 0.8125rem;
+  padding: 0.5rem 0.65rem 0.5rem 1.35rem;
+  margin-bottom: 0.35rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition:
+    background 220ms ease,
+    border-color 220ms ease,
+    transform 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.stepButton:hover {
+  transform: translateX(2px);
+}
+
+.stepActive {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--console-accent, #0d9488) 35%, transparent);
+}
+
+.stepDot {
+  position: absolute;
+  left: 0.15rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--console-bg);
+  border: 2px solid var(--console-border);
+  transition:
+    border-color 280ms ease,
+    background 280ms ease,
+    transform 280ms ease;
+}
+
+.stepDotActive {
+  border-color: var(--console-accent, #0d9488);
+  background: var(--console-accent, #0d9488);
+  transform: translateY(-50%) scale(1.15);
+}
+
+.stepDotDone {
+  border-color: var(--console-accent, #0d9488);
+  background: color-mix(in srgb, var(--console-accent, #0d9488) 25%, var(--console-bg));
+}
+
+.detailPanel {
+  transition:
+    opacity 320ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.detailEnter {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.detailExit {
+  opacity: 0.35;
+  transform: translateY(6px);
+}
+
+.playbackBar {
+  height: 4px;
+  background: var(--console-border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.playbackFill {
+  height: 100%;
+  background: var(--console-accent, #0d9488);
+  border-radius: 2px;
+  transition: width 420ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.playingLabel {
+  font-size: 0.75rem;
+  color: var(--console-fg-muted);
+  margin-left: 0.25rem;
+}

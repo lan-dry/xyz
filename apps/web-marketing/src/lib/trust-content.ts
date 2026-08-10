@@ -88,14 +88,14 @@ export const TRUST_FEATURES: TrustFeature[] = [
   {
     id: "langgraph",
     feature: "LangGraph integration",
-    status: "pilot",
-    notes: "TypeScript GovernanceBridge + docs. Native wrap() helper ships in SDK.",
+    status: "live",
+    notes: "wrapLangGraphTool() in @salanor/aegis SDK + integration guide.",
   },
   {
     id: "crewai",
     feature: "CrewAI integration",
-    status: "pilot",
-    notes: "Python SDK record helpers + integration guide.",
+    status: "live",
+    notes: "governed_tool() decorator in salanor-aegis-ledger + integration guide.",
   },
   {
     id: "soc2-cert",

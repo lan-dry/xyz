@@ -18,33 +18,32 @@ export default function CrewAiPage() {
       </p>
 
       <h2>Python SDK</h2>
-      <CodeBlock
-        language="bash"
-        code="pip install salanor-aegis"
-      />
+      <CodeBlock lang="bash" code="pip install salanor-aegis-ledger" />
 
       <CodeBlock
-        language="python"
-        code={`from salanor_aegis import sign_event, canonical_digest
-import os, httpx
+        lang="python"
+        code={`import os
+from salanor_aegis_ledger.crewai import governed_tool
+from crewai.tools import tool
 
-def check_policy(tool_name: str, payload: dict) -> dict:
-    r = httpx.post(
-        f"${api}/policy/evaluate",
-        headers={"Authorization": f"Bearer {os.environ['AEGIS_INGEST_TOKEN']}"},
-        json={
-            "organization_id": os.environ["AEGIS_ORG_ID"],
-            "agent_id": os.environ["AEGIS_AGENT_ID"],
-            "tool_name": tool_name,
-            "payload": payload,
-        },
-    )
-    r.raise_for_status()
-    return r.json()
-
-# BYOK: sign locally with your private key bytes — never send private key to Salanor
-# See Python SDK sign_event() and Console → Agents → Register BYOK key`}
+@governed_tool(
+    api_base_url="${api}",
+    ingest_token=os.environ["AEGIS_INGEST_TOKEN"],
+    organization_id=os.environ["AEGIS_ORG_ID"],
+    agent_id=os.environ["AEGIS_AGENT_ID"],
+    key_id=os.environ["AEGIS_KEY_ID"],
+    private_key_b64=os.environ["AEGIS_SIGNING_PRIVATE_KEY_B64"],
+    tool_name="app.payments.transfer",
+)
+@tool("Transfer funds")
+def transfer_funds(amount_usd: float) -> str:
+    return "Transferred $" + format(amount_usd, ",.2f")`}
       />
+
+      <p>
+        BYOK: register your public key in Console → Agents → Register BYOK key. Private key
+        stays in your runtime only.
+      </p>
 
       <p>
         TypeScript agents can use <Link href="/aegis/integrations/langgraph">LangGraph guide</Link>{" "}
