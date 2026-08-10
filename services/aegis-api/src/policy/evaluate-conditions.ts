@@ -54,12 +54,12 @@ async function conditionBreachReason(
   }
 
   const amountUsd = amountUsdFromPayload(ctx.payload);
-  const max = Number(conditions.max_amount_usd);
-  if (!Number.isFinite(max) || max < 0) {
-    return null;
-  }
 
   if (conditions.rule_type === "max_per_tx") {
+    const max = Number(conditions.max_amount_usd);
+    if (!Number.isFinite(max) || max < 0) {
+      return null;
+    }
     if (amountUsd === undefined) {
       return null;
     }
@@ -69,7 +69,25 @@ async function conditionBreachReason(
     return null;
   }
 
+  if (conditions.rule_type === "min_per_tx") {
+    const min = Number(conditions.min_amount_usd);
+    if (!Number.isFinite(min) || min < 0) {
+      return null;
+    }
+    if (amountUsd === undefined) {
+      return null;
+    }
+    if (amountUsd < min) {
+      return `transaction $${amountUsd} below minimum $${min}`;
+    }
+    return null;
+  }
+
   if (conditions.rule_type === "max_daily_total") {
+    const max = Number(conditions.max_amount_usd);
+    if (!Number.isFinite(max) || max < 0) {
+      return null;
+    }
     if (amountUsd === undefined) {
       return null;
     }
@@ -115,7 +133,7 @@ export async function evaluateRulesWithConditions(
         : "deny";
     return {
       decision,
-      policy_id: policyId,
+      policy_id: top.rule.policy_id ?? policyId,
       rule_id: top.rule.rule_id,
       reason: top.reason,
     };

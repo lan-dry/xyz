@@ -61,29 +61,38 @@ export async function getPolicyWithRules(
   return { policy, rules: rulesResult.rows };
 }
 
-export async function getActivePolicyWithRules(
+export async function getActivePoliciesWithRules(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
-): Promise<{ policy: PolicyRow; rules: PolicyRuleRow[] } | null> {
+): Promise<Array<{ policy: PolicyRow; rules: PolicyRuleRow[] }>> {
   const policyResult = await client.query<PolicyRow>(
     `SELECT policy_id, organization_id, name, version, rego_source,
             wasm_artifact, status, activated_at, created_at
      FROM policy
      WHERE organization_id = $1 AND status = 'active'
-     ORDER BY activated_at DESC NULLS LAST
-     LIMIT 1`,
+     ORDER BY activated_at DESC NULLS LAST`,
     [organizationId],
   );
-  const policy = policyResult.rows[0];
-  if (!policy) {
-    return null;
+
+  const results: Array<{ policy: PolicyRow; rules: PolicyRuleRow[] }> = [];
+  for (const policy of policyResult.rows) {
+    const rulesResult = await client.query<PolicyRuleRow>(
+      `SELECT rule_id, policy_id, tool_pattern, decision, priority, conditions
+       FROM policy_rule WHERE policy_id = $1 ORDER BY priority DESC`,
+      [policy.policy_id],
+    );
+    results.push({ policy, rules: rulesResult.rows });
   }
-  const rulesResult = await client.query<PolicyRuleRow>(
-    `SELECT rule_id, policy_id, tool_pattern, decision, priority, conditions
-     FROM policy_rule WHERE policy_id = $1 ORDER BY priority DESC`,
-    [policy.policy_id],
-  );
-  return { policy, rules: rulesResult.rows };
+  return results;
+}
+
+/** @deprecated Prefer getActivePoliciesWithRules — kept for callers expecting one bundle. */
+export async function getActivePolicyWithRules(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+): Promise<{ policy: PolicyRow; rules: PolicyRuleRow[] } | null> {
+  const actives = await getActivePoliciesWithRules(client, organizationId);
+  return actives[0] ?? null;
 }
 
 export type CreatePolicyInput = {
@@ -165,12 +174,6 @@ export async function activatePolicy(
   if (!policy) {
     return null;
   }
-
-  await client.query(
-    `UPDATE policy SET status = 'archived'
-     WHERE organization_id = $1 AND status = 'active' AND policy_id <> $2`,
-    [organizationId, policyId],
-  );
 
   const updated = await client.query<PolicyRow>(
     `UPDATE policy

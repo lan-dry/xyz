@@ -6,6 +6,8 @@ export type PolicyRuleInput = {
   decision: string;
   priority: number;
   conditions?: unknown;
+  /** Source policy when rules from multiple active bundles are merged. */
+  policy_id?: string;
 };
 
 export type PolicyDecisionResult =
@@ -42,7 +44,7 @@ export function evaluateRules(
   if (deny) {
     return {
       decision: "deny",
-      policy_id: policyId,
+      policy_id: deny.policy_id ?? policyId,
       rule_id: deny.rule_id,
       reason: `denied by rule ${deny.rule_id}`,
     };
@@ -51,7 +53,7 @@ export function evaluateRules(
   if (obligation) {
     return {
       decision: "allow_with_obligation",
-      policy_id: policyId,
+      policy_id: obligation.policy_id ?? policyId,
       rule_id: obligation.rule_id,
       reason: `human approval required (${obligation.rule_id})`,
     };
@@ -60,7 +62,7 @@ export function evaluateRules(
   if (allow) {
     return {
       decision: "allow",
-      policy_id: policyId,
+      policy_id: allow.policy_id ?? policyId,
       rule_id: allow.rule_id,
       reason: `allowed by rule ${allow.rule_id}`,
     };

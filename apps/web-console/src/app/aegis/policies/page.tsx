@@ -41,7 +41,7 @@ type PolicyFormState = {
   name: string;
   toolPattern: string;
   decision: "allow" | "deny" | "allow_with_obligation";
-  ruleType: "tool" | "max_per_tx" | "max_daily_total";
+  ruleType: "tool" | "max_per_tx" | "min_per_tx" | "max_daily_total";
   maxAmountUsd: string;
 };
 
@@ -57,11 +57,17 @@ function buildRulesPayload(form: PolicyFormState) {
   const conditions =
     form.ruleType === "tool"
       ? { rule_type: "tool" }
-      : {
-          rule_type: form.ruleType,
-          max_amount_usd: Number.parseFloat(form.maxAmountUsd),
-          window_hours: 24,
-        };
+      : form.ruleType === "min_per_tx"
+        ? {
+            rule_type: "min_per_tx",
+            min_amount_usd: Number.parseFloat(form.maxAmountUsd),
+            window_hours: 24,
+          }
+        : {
+            rule_type: form.ruleType,
+            max_amount_usd: Number.parseFloat(form.maxAmountUsd),
+            window_hours: 24,
+          };
   const ruleDecision = form.decision;
   return [
     {
@@ -74,11 +80,18 @@ function buildRulesPayload(form: PolicyFormState) {
 }
 
 function ruleSummary(rule: PolicyRule): string {
-  const cond = rule.conditions as { rule_type?: string; max_amount_usd?: number } | null;
+  const cond = rule.conditions as {
+    rule_type?: string;
+    max_amount_usd?: number;
+    min_amount_usd?: number;
+  } | null;
   const decisionLabel =
     rule.decision === "allow_with_obligation" ? "require approval" : rule.decision;
   if (cond?.rule_type === "max_per_tx") {
     return `Max $${cond.max_amount_usd ?? "?"} per transaction → ${decisionLabel}`;
+  }
+  if (cond?.rule_type === "min_per_tx") {
+    return `Min $${cond.min_amount_usd ?? "?"} per transaction → ${decisionLabel}`;
   }
   if (cond?.rule_type === "max_daily_total") {
     return `Max $${cond.max_amount_usd ?? "?"} daily → ${decisionLabel}`;
@@ -94,6 +107,8 @@ export default function PoliciesPage() {
   const [deletePolicyId, setDeletePolicyId] = useState<string | null>(null);
   const [retirePolicyId, setRetirePolicyId] = useState<string | null>(null);
   const [form, setForm] = useState<PolicyFormState>(DEFAULT_FORM);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const policiesQuery = useQuery({
     queryKey: ["console", "policies"],
@@ -191,7 +206,20 @@ export default function PoliciesPage() {
 
   const policies = policiesQuery.data?.policies ?? [];
   const draftConflicts = policiesQuery.data?.draft_conflicts ?? [];
+  const activeCount = policies.filter((p) => p.status === "active").length;
+  const filteredPolicies = policies.filter((p) => {
+    if (statusFilter !== "all" && p.status !== statusFilter) {
+      return false;
+    }
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.policy_id.toLowerCase().includes(q)
+    );
+  });
   const hasPolicies = policies.length > 0;
+  const hasFilteredResults = filteredPolicies.length > 0;
 
   const populateEditForm = useCallback(() => {
     const detail = detailQuery.data;
@@ -205,9 +233,11 @@ export default function PoliciesPage() {
     const ruleType =
       cond?.rule_type === "max_per_tx"
         ? "max_per_tx"
-        : cond?.rule_type === "max_daily_total"
-          ? "max_daily_total"
-          : "tool";
+        : cond?.rule_type === "min_per_tx"
+          ? "min_per_tx"
+          : cond?.rule_type === "max_daily_total"
+            ? "max_daily_total"
+            : "tool";
     setForm({
       name: detail.policy.name,
       toolPattern: rule.tool_pattern,
@@ -218,7 +248,9 @@ export default function PoliciesPage() {
             ? "allow_with_obligation"
             : "deny",
       ruleType,
-      maxAmountUsd: String(cond?.max_amount_usd ?? "10000"),
+      maxAmountUsd: String(
+        cond?.max_amount_usd ?? cond?.min_amount_usd ?? "10000",
+      ),
     });
   }, [detailQuery.data, editPolicyId]);
 
@@ -262,8 +294,9 @@ export default function PoliciesPage() {
             }
           >
             <option value="tool">When tool matches → allow / deny / require approval</option>
-            <option value="max_per_tx">When amount exceeds per-transaction limit → deny</option>
-            <option value="max_daily_total">When daily total exceeds limit → deny</option>
+            <option value="max_per_tx">When amount exceeds per-transaction limit</option>
+            <option value="min_per_tx">When amount is below minimum per transaction</option>
+            <option value="max_daily_total">When daily total exceeds limit</option>
           </select>
         </label>
         {form.ruleType === "tool" ? (
@@ -280,10 +313,10 @@ export default function PoliciesPage() {
                   }))
                 }
               >
-                <option value="allow">Allow — proceed without gate trace</option>
-                <option value="deny">Deny — block and record FAILED trace</option>
+                <option value="allow">Allow (proceed without gate trace)</option>
+                <option value="deny">Deny (block and record FAILED trace)</option>
                 <option value="allow_with_obligation">
-                  Require approval — pause until human approves
+                  Require approval (pause until human approves)
                 </option>
               </select>
             </label>
@@ -296,14 +329,14 @@ export default function PoliciesPage() {
               }}
             >
               Matches when the tool name equals your pattern (e.g.{" "}
-              <code className="mono">app.payments.transfer</code>). No amount check — use
-              rule type below for USD limits.
+              <code className="mono">app.payments.transfer</code>). No amount check. Use
+              the amount rule types below for USD limits.
             </p>
           </>
         ) : (
           <>
             <label className={ui.field} style={{ marginTop: "1rem" }}>
-              Max amount (USD)
+              {form.ruleType === "min_per_tx" ? "Minimum amount (USD)" : "Max amount (USD)"}
               <input
                 className={ui.input}
                 type="number"
@@ -314,7 +347,7 @@ export default function PoliciesPage() {
               />
             </label>
             <label className={ui.field} style={{ marginTop: "1rem" }}>
-              When limit exceeded
+              When limit {form.ruleType === "min_per_tx" ? "not met" : "exceeded"}
               <select
                 className={ui.select}
                 value={form.decision === "allow_with_obligation" ? "allow_with_obligation" : "deny"}
@@ -325,9 +358,9 @@ export default function PoliciesPage() {
                   }))
                 }
               >
-                <option value="deny">Deny — block and record FAILED trace</option>
+                <option value="deny">Deny (block and record FAILED trace)</option>
                 <option value="allow_with_obligation">
-                  Require approval — pause for human review
+                  Require approval (pause for human review)
                 </option>
               </select>
             </label>
@@ -339,8 +372,11 @@ export default function PoliciesPage() {
                 lineHeight: 1.5,
               }}
             >
-              Applies when Check Policy receives <code className="mono">amount_usd</code> above
-              this limit. Pass amount from n8n (Set node before Check Policy).
+              Applies when Check Policy receives <code className="mono">amount_usd</code>{" "}
+              {form.ruleType === "min_per_tx"
+                ? "below this minimum."
+                : "above this limit."}{" "}
+              Pass amount from n8n (Set node before Check Policy).
             </p>
           </>
         )}
@@ -352,8 +388,9 @@ export default function PoliciesPage() {
             lineHeight: 1.5,
           }}
         >
-          <strong>Enterprise lifecycle:</strong> only one active policy per org. Active
-          policies are immutable — retire, edit a draft, then activate to change rules.
+          <strong>Multiple active policies:</strong> activate as many drafts as you need
+          (e.g. max amount, min amount, tool rules). All active policies are enforced
+          together. Active policies are immutable; retire or roll back to change.
         </p>
       </>
     );
@@ -363,7 +400,7 @@ export default function PoliciesPage() {
     <ConsolePage>
       <PageHeader
         title="Policies"
-        subtitle="Draft → review → activate. Active policies are immutable; create a new draft or roll back to an archived version."
+        subtitle="Draft, review, activate. Multiple policies can be active at once; rules from all active policies are enforced together."
       />
 
       {draftConflicts.length > 0 ? (
@@ -386,8 +423,8 @@ export default function PoliciesPage() {
               color: "var(--console-fg-muted)",
             }}
           >
-            Multiple drafts target the same tool pattern. Only one can be active — resolve
-            before activating.
+            Multiple drafts target the same tool pattern. Resolve overlaps before
+            activating to avoid conflicting decisions.
           </p>
           <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.8125rem" }}>
             {draftConflicts.map((c) => (
@@ -400,7 +437,47 @@ export default function PoliciesPage() {
         </div>
       ) : null}
 
-      <div className={ui.toolbar} style={{ justifyContent: "flex-end", marginTop: 0 }}>
+      <div
+        className={ui.toolbar}
+        style={{ justifyContent: "space-between", marginTop: 0, flexWrap: "wrap", gap: "0.75rem" }}
+      >
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", flex: 1 }}>
+          <label className={ui.field} style={{ minWidth: "12rem", flex: 1 }}>
+            Search
+            <input
+              className={ui.input}
+              placeholder="Policy name or ID…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </label>
+          <label className={ui.field} style={{ minWidth: "9rem" }}>
+            Status
+            <select
+              className={ui.select}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+              <option value="archived">Archived</option>
+            </select>
+          </label>
+          {activeCount > 0 ? (
+            <p
+              style={{
+                margin: 0,
+                alignSelf: "flex-end",
+                fontSize: "0.8125rem",
+                color: "var(--console-fg-muted)",
+                paddingBottom: "0.5rem",
+              }}
+            >
+              {activeCount} active
+            </p>
+          ) : null}
+        </div>
         <button
           type="button"
           className={`${ui.btn} ${ui.btnPrimary}`}
@@ -424,7 +501,7 @@ export default function PoliciesPage() {
           description={
             <>
               Create a <strong>draft</strong>, review rules, then <strong>Activate</strong>.
-              Only one policy is live per organization; activating archives the previous one.
+              You can activate multiple policies at once; their rules combine at runtime.
             </>
           }
           action={
@@ -440,7 +517,15 @@ export default function PoliciesPage() {
         />
       ) : null}
 
-      {hasPolicies ? (
+      {hasPolicies && !hasFilteredResults ? (
+        <EmptyStatePanel
+          icon={Shield}
+          title="No policies match your filters"
+          description="Try a different search term or status filter."
+        />
+      ) : null}
+
+      {hasFilteredResults ? (
         <div className={ui.tableWrap}>
           <table className={ui.table}>
             <thead>
@@ -453,7 +538,7 @@ export default function PoliciesPage() {
               </tr>
             </thead>
             <tbody>
-              {policies.map((p) => (
+              {filteredPolicies.map((p) => (
                 <tr key={p.policy_id}>
                   <td>
                     {p.name}{" "}
@@ -474,7 +559,7 @@ export default function PoliciesPage() {
                   <td>
                     {p.activated_at
                       ? new Date(p.activated_at).toLocaleString()
-                      : "—"}
+                      : "n/a"}
                   </td>
                   <td style={{ textAlign: "right" }}>
                     <div
@@ -647,6 +732,7 @@ export default function PoliciesPage() {
         title={detailQuery.data?.policy.name ?? "Policy details"}
         description={detailQuery.data?.policy.policy_id}
         wide
+        closeOnOverlayClick={false}
         onClose={() => setViewPolicyId(null)}
         footer={
           <button
@@ -712,7 +798,7 @@ export default function PoliciesPage() {
       <Modal
         open={Boolean(retirePolicyId)}
         title="Retire active policy?"
-        description="No policy will be enforced until you activate another draft or roll back to an archived version."
+        description="This policy will stop being enforced. Other active policies remain in effect."
         onClose={() => setRetirePolicyId(null)}
         footer={
           <>

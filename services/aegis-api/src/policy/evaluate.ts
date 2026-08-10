@@ -1,5 +1,5 @@
 import type pg from "pg";
-import { getActivePolicyWithRules } from "../repo/policies.js";
+import { getActivePoliciesWithRules } from "../repo/policies.js";
 import { parseConditions } from "./amount.js";
 import { evaluateRulesWithConditions } from "./evaluate-conditions.js";
 import { evaluateWithOpa } from "./evaluate-opa.js";
@@ -23,7 +23,11 @@ export type EvaluateOutput = {
 function rulesNeedConditionEngine(rules: PolicyRuleInput[]): boolean {
   return rules.some((r) => {
     const c = parseConditions(r.conditions);
-    return c?.rule_type === "max_per_tx" || c?.rule_type === "max_daily_total";
+    return (
+      c?.rule_type === "max_per_tx" ||
+      c?.rule_type === "min_per_tx" ||
+      c?.rule_type === "max_daily_total"
+    );
   });
 }
 
@@ -31,8 +35,8 @@ export async function evaluateToolPolicy(
   client: pg.Pool | pg.PoolClient,
   input: EvaluateInput,
 ): Promise<EvaluateOutput> {
-  const active = await getActivePolicyWithRules(client, input.organizationId);
-  if (!active) {
+  const actives = await getActivePoliciesWithRules(client, input.organizationId);
+  if (actives.length === 0) {
     return {
       decision: "allow",
       policy_id: "none",
@@ -42,13 +46,18 @@ export async function evaluateToolPolicy(
     };
   }
 
-  const rules = active.rules.map((r) => ({
-    rule_id: r.rule_id,
-    tool_pattern: r.tool_pattern,
-    decision: r.decision,
-    priority: r.priority,
-    conditions: r.conditions,
-  }));
+  const rules: PolicyRuleInput[] = actives.flatMap(({ policy, rules: policyRules }) =>
+    policyRules.map((r) => ({
+      rule_id: r.rule_id,
+      tool_pattern: r.tool_pattern,
+      decision: r.decision,
+      priority: r.priority,
+      conditions: r.conditions,
+      policy_id: policy.policy_id,
+    })),
+  );
+
+  const fallbackPolicyId = actives[0]!.policy.policy_id;
 
   const evalContext = {
     toolName: input.toolName,
@@ -59,26 +68,29 @@ export async function evaluateToolPolicy(
   if (rulesNeedConditionEngine(rules)) {
     const rulesResult = await evaluateRulesWithConditions(
       client,
-      active.policy.policy_id,
+      fallbackPolicyId,
       rules,
       evalContext,
     );
     return { ...rulesResult, engine: "rules" };
   }
 
-  const opaResult = await evaluateWithOpa(
-    active.policy.policy_id,
-    rules,
-    input.toolName,
-    active.policy.wasm_artifact,
-  );
-  if (opaResult) {
-    return { ...opaResult, engine: "opa" };
+  if (actives.length === 1) {
+    const single = actives[0]!;
+    const opaResult = await evaluateWithOpa(
+      single.policy.policy_id,
+      rules,
+      input.toolName,
+      single.policy.wasm_artifact,
+    );
+    if (opaResult) {
+      return { ...opaResult, engine: "opa" };
+    }
   }
 
   const rulesResult = await evaluateRulesWithConditions(
     client,
-    active.policy.policy_id,
+    fallbackPolicyId,
     rules,
     evalContext,
   );
