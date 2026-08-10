@@ -54,12 +54,12 @@ async function conditionBreachReason(
   }
 
   const amountUsd = amountUsdFromPayload(ctx.payload);
-  const max = Number(conditions.max_amount_usd);
-  if (!Number.isFinite(max) || max < 0) {
-    return null;
-  }
 
   if (conditions.rule_type === "max_per_tx") {
+    const max = Number(conditions.max_amount_usd);
+    if (!Number.isFinite(max) || max < 0) {
+      return null;
+    }
     if (amountUsd === undefined) {
       return null;
     }
@@ -69,7 +69,25 @@ async function conditionBreachReason(
     return null;
   }
 
+  if (conditions.rule_type === "min_per_tx") {
+    const min = Number(conditions.min_amount_usd);
+    if (!Number.isFinite(min) || min < 0) {
+      return null;
+    }
+    if (amountUsd === undefined) {
+      return null;
+    }
+    if (amountUsd < min) {
+      return `transaction $${amountUsd} below minimum $${min}`;
+    }
+    return null;
+  }
+
   if (conditions.rule_type === "max_daily_total") {
+    const max = Number(conditions.max_amount_usd);
+    if (!Number.isFinite(max) || max < 0) {
+      return null;
+    }
     if (amountUsd === undefined) {
       return null;
     }
@@ -109,9 +127,13 @@ export async function evaluateRulesWithConditions(
   if (breaches.length > 0) {
     breaches.sort((a, b) => b.rule.priority - a.rule.priority);
     const top = breaches[0]!;
+    const decision =
+      top.rule.decision === "allow_with_obligation"
+        ? "allow_with_obligation"
+        : "deny";
     return {
-      decision: "deny",
-      policy_id: policyId,
+      decision,
+      policy_id: top.rule.policy_id ?? policyId,
       rule_id: top.rule.rule_id,
       reason: top.reason,
     };

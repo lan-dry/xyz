@@ -61,29 +61,38 @@ export async function getPolicyWithRules(
   return { policy, rules: rulesResult.rows };
 }
 
-export async function getActivePolicyWithRules(
+export async function getActivePoliciesWithRules(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
-): Promise<{ policy: PolicyRow; rules: PolicyRuleRow[] } | null> {
+): Promise<Array<{ policy: PolicyRow; rules: PolicyRuleRow[] }>> {
   const policyResult = await client.query<PolicyRow>(
     `SELECT policy_id, organization_id, name, version, rego_source,
             wasm_artifact, status, activated_at, created_at
      FROM policy
      WHERE organization_id = $1 AND status = 'active'
-     ORDER BY activated_at DESC NULLS LAST
-     LIMIT 1`,
+     ORDER BY activated_at DESC NULLS LAST`,
     [organizationId],
   );
-  const policy = policyResult.rows[0];
-  if (!policy) {
-    return null;
+
+  const results: Array<{ policy: PolicyRow; rules: PolicyRuleRow[] }> = [];
+  for (const policy of policyResult.rows) {
+    const rulesResult = await client.query<PolicyRuleRow>(
+      `SELECT rule_id, policy_id, tool_pattern, decision, priority, conditions
+       FROM policy_rule WHERE policy_id = $1 ORDER BY priority DESC`,
+      [policy.policy_id],
+    );
+    results.push({ policy, rules: rulesResult.rows });
   }
-  const rulesResult = await client.query<PolicyRuleRow>(
-    `SELECT rule_id, policy_id, tool_pattern, decision, priority
-     FROM policy_rule WHERE policy_id = $1 ORDER BY priority DESC`,
-    [policy.policy_id],
-  );
-  return { policy, rules: rulesResult.rows };
+  return results;
+}
+
+/** @deprecated Prefer getActivePoliciesWithRules — kept for callers expecting one bundle. */
+export async function getActivePolicyWithRules(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+): Promise<{ policy: PolicyRow; rules: PolicyRuleRow[] } | null> {
+  const actives = await getActivePoliciesWithRules(client, organizationId);
+  return actives[0] ?? null;
 }
 
 export type CreatePolicyInput = {
@@ -166,12 +175,6 @@ export async function activatePolicy(
     return null;
   }
 
-  await client.query(
-    `UPDATE policy SET status = 'archived'
-     WHERE organization_id = $1 AND status = 'active' AND policy_id <> $2`,
-    [organizationId, policyId],
-  );
-
   const updated = await client.query<PolicyRow>(
     `UPDATE policy
      SET status = 'active', activated_at = now()
@@ -181,4 +184,87 @@ export async function activatePolicy(
     [policyId],
   );
   return updated.rows[0] ?? null;
+}
+
+export async function updateDraftPolicy(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  policyId: string,
+  input: CreatePolicyInput,
+): Promise<{ policy: PolicyRow; rules: PolicyRuleRow[] } | null> {
+  const check = await client.query<{ status: string }>(
+    `SELECT status FROM policy
+     WHERE organization_id = $1 AND policy_id = $2`,
+    [organizationId, policyId],
+  );
+  const row = check.rows[0];
+  if (!row) return null;
+  if (row.status !== "draft") {
+    throw new Error("POLICY_NOT_DRAFT");
+  }
+
+  await client.query(
+    `UPDATE policy SET name = $3, rego_source = $4
+     WHERE organization_id = $1 AND policy_id = $2`,
+    [organizationId, policyId, input.name, input.rego_source ?? null],
+  );
+
+  await client.query(`DELETE FROM policy_rule WHERE policy_id = $1`, [policyId]);
+
+  const rules: PolicyRuleRow[] = [];
+  for (const rule of input.rules) {
+    const ruleId = `rule_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+    const inserted = await client.query<PolicyRuleRow>(
+      `INSERT INTO policy_rule (rule_id, policy_id, tool_pattern, decision, priority, conditions)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+       RETURNING rule_id, policy_id, tool_pattern, decision, priority, conditions`,
+      [
+        ruleId,
+        policyId,
+        rule.tool_pattern,
+        rule.decision,
+        rule.priority ?? 0,
+        rule.conditions ? JSON.stringify(rule.conditions) : null,
+      ],
+    );
+    rules.push(inserted.rows[0]!);
+  }
+
+  const policyResult = await client.query<PolicyRow>(
+    `SELECT policy_id, organization_id, name, version, rego_source,
+            wasm_artifact, status, activated_at, created_at
+     FROM policy WHERE policy_id = $1`,
+    [policyId],
+  );
+  return { policy: policyResult.rows[0]!, rules };
+}
+
+export async function deleteDraftPolicy(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  policyId: string,
+): Promise<boolean> {
+  const result = await client.query(
+    `DELETE FROM policy
+     WHERE organization_id = $1 AND policy_id = $2 AND status = 'draft'`,
+    [organizationId, policyId],
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
+/** Retire the active policy without activating a replacement. */
+export async function archivePolicy(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  policyId: string,
+): Promise<PolicyRow | null> {
+  const result = await client.query<PolicyRow>(
+    `UPDATE policy
+     SET status = 'archived', activated_at = NULL
+     WHERE organization_id = $1 AND policy_id = $2 AND status = 'active'
+     RETURNING policy_id, organization_id, name, version, rego_source,
+               wasm_artifact, status, activated_at, created_at`,
+    [organizationId, policyId],
+  );
+  return result.rows[0] ?? null;
 }

@@ -20,6 +20,7 @@ export function amountUsdFromPayload(
 export type PolicyConditions = {
   rule_type?: string;
   max_amount_usd?: number;
+  min_amount_usd?: number;
   window_hours?: number;
 };
 
