@@ -10,6 +10,14 @@ export const aegisNav: NavItem[] = [
   { title: "Getting started", href: "/aegis/getting-started" },
   { title: "n8n & orchestrators", href: "/aegis/n8n" },
   {
+    title: "Integrations",
+    href: "/aegis/integrations/langgraph",
+    children: [
+      { title: "LangGraph", href: "/aegis/integrations/langgraph" },
+      { title: "CrewAI", href: "/aegis/integrations/crewai" },
+    ],
+  },
+  {
     title: "SDK",
     href: "/aegis/sdk",
     children: [

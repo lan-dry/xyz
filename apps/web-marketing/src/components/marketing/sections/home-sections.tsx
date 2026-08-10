@@ -188,8 +188,8 @@ export function ComplianceStripSection() {
           <p className={`section-label ${s.centerLabel}`}>Compliance</p>
           <h2>Regulatory outputs, not slide decks</h2>
           <p>
-            Export bundles ship with Aegis at GA; the platform maps the same frameworks across
-            products.
+            Export bundles include control mapping for common frameworks. Formal certification is
+            on the roadmap — see <Link href="/trust">platform status</Link>.
           </p>
         </ScrollReveal>
         <ScrollReveal delay={60}>

@@ -14,6 +14,10 @@ import {
   type ConsoleVariables,
 } from "../../middleware/console-session.js";
 import { enableWorkflowBridgeForAgent } from "../../workflows/bridge.js";
+import {
+  registerByokSigningKey,
+} from "../../repo/signing-keys.js";
+import { validateEd25519PublicKey } from "../../crypto/signing-provider.js";
 
 export const agentRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
@@ -123,6 +127,77 @@ agentRoutes.post("/agents", requireConsoleSession, async (c) => {
     }
     console.error("[console] create agent", err);
     return c.json({ error: "Failed to create agent" }, 500);
+  } finally {
+    client.release();
+  }
+});
+
+/** Register a customer-held Ed25519 public key (BYOK — private key never sent to Salanor). */
+agentRoutes.post("/agents/:agentId/keys/byok", requireConsoleSession, async (c) => {
+  const session = c.get("consoleSession");
+  if (session.role !== "admin") {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const agentId = c.req.param("agentId");
+  if (!agentId) {
+    return c.json({ error: "agentId required" }, 422);
+  }
+
+  let body: {
+    public_key_b64?: string;
+    kms_provider?: "customer" | "aws" | "gcp" | "vault";
+    kms_key_arn?: string;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+
+  const publicKey = body.public_key_b64?.trim();
+  if (!publicKey) {
+    return c.json({ error: "public_key_b64 required" }, 422);
+  }
+
+  try {
+    validateEd25519PublicKey(publicKey);
+  } catch (err) {
+    return c.json({ error: err instanceof Error ? err.message : "Invalid public key" }, 422);
+  }
+
+  const kmsProvider = body.kms_provider ?? "customer";
+  if ((kmsProvider === "aws" || kmsProvider === "gcp") && !body.kms_key_arn?.trim()) {
+    return c.json({ error: "kms_key_arn required for aws/gcp providers" }, 422);
+  }
+
+  const client = await getPool().connect();
+  try {
+    const agentCheck = await client.query<{ agent_id: string }>(
+      `SELECT agent_id FROM agent WHERE organization_id = $1 AND agent_id = $2`,
+      [session.organizationId, agentId],
+    );
+    if (!agentCheck.rows[0]) {
+      return c.json({ error: "Agent not found" }, 404);
+    }
+
+    const created = await registerByokSigningKey(client, {
+      organizationId: session.organizationId,
+      agentId,
+      publicKeyB64: publicKey,
+      kmsProvider,
+      kmsKeyArn: body.kms_key_arn?.trim() ?? null,
+    });
+
+    return c.json(
+      {
+        key_id: created.key_id,
+        kms_provider: kmsProvider,
+        message:
+          "BYOK key registered. Sign events with your private key or KMS; Salanor stores and verifies the public key only.",
+      },
+      201,
+    );
   } finally {
     client.release();
   }

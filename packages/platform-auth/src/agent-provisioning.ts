@@ -80,7 +80,8 @@ function buildDidDocument(input: {
 
 /**
  * Register an agent + active Ed25519 signing key for an organization.
- * Industry pattern: platform generates key pair; private key returned once (BYOK later).
+ * Default: platform generates key pair; private key returned once (customer-held BYOK).
+ * Also supports POST /agents/:id/keys/byok to register customer public keys only.
  */
 export async function createAgentWithSigningKey(
   client: pg.Pool | pg.PoolClient,

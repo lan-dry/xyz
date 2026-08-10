@@ -22,10 +22,10 @@ export const INTEGRATION_LOGOS = [
 ] as const;
 
 export const HOME_METRICS = [
-  { value: "<5ms", label: "SDK overhead p50", detail: "Policy + sign on the hot path" },
-  { value: "50k", label: "Events / sec / region", detail: "Horizontally scaled ingest" },
-  { value: "7yr", label: "Ledger retention", detail: "WORM cold storage default" },
-  { value: "0", label: "Breaking changes", detail: "Drop-in wrap(), same agent code" },
+  { value: "BYOK", label: "Customer signing keys", detail: "Register public keys; sign in your KMS or agent runtime" },
+  { value: "<5ms", label: "Policy p50 (target)", detail: "Rules engine on Check Policy hot path" },
+  { value: "60s", label: "Witness cadence", detail: "Merkle batch worker (WITNESS_INTERVAL_MS)" },
+  { value: "Live", label: "Design partner pilot", detail: "n8n, approvals, exports — see /trust" },
 ] as const;
 
 export const PLATFORM_DATA_POINTS = [
@@ -33,37 +33,41 @@ export const PLATFORM_DATA_POINTS = [
     id: "non-repudiation",
     value: "BYOK",
     label: "Customer-controlled keys",
-    detail: "Ed25519 signing in your KMS. Salanor cannot rewrite history.",
+    detail:
+      "Register Ed25519 public keys in Console. Sign with AWS KMS, GCP KMS, Vault, or agent-held keys. Salanor verifies; it does not hold your private key.",
   },
   {
     id: "standard",
     value: "APS-1",
     label: "Open provenance standard",
-    detail: "CC BY 4.0 spec. MIT verifier CLI. No vendor lock-in on the format.",
+    detail: "Published JSON Schema + verifier. Export bundles use the same wire format.",
   },
   {
     id: "regulatory",
     value: "6+",
-    label: "Regimes at GA",
-    detail: "EU AI Act, SOC 2, NIST AI RMF, HIPAA paths, FedRAMP target.",
+    label: "Regulatory export mappings",
+    detail:
+      "SOC 2, EU AI Act, NIST AI RMF, HIPAA paths, FedRAMP target — control mapping in exports, not certification claims.",
   },
   {
     id: "verify",
-    value: "30s",
+    value: "<1s",
     label: "Trace reconstruction",
-    detail: "Causal chain from obligation to tool call to signed event.",
+    detail:
+      "Console rebuilds the signed causal chain interactively — click any step, view payload preview, open signed events.",
   },
   {
     id: "transparency",
     value: "60s",
     label: "Merkle witness cadence",
-    detail: "RFC 6962-style log. Third parties detect tamper without your keys.",
+    detail:
+      "witness:worker batches pending events every 60 seconds and publishes transparency log entries.",
   },
   {
     id: "insurance",
     value: "2027",
-    label: "Liability bridge",
-    detail: "Aether exports differentially-private telemetry to underwriters.",
+    label: "Liability bridge (Aether)",
+    detail: "Future: differentially-private telemetry for underwriters on top of Aegis ledger.",
   },
 ] as const;
 
@@ -71,33 +75,33 @@ export const HOW_IT_WORKS = [
   {
     step: "01",
     title: "Instrument once",
-    desc: "Connect agents with the Aegis SDK. Tool calls and LLM turns are captured across LangGraph, CrewAI, OpenAI Agents, and MCP.",
+    desc: "Connect via n8n Workflow Bridge, TypeScript GovernanceBridge, Python/Go SDK, or direct APS-1 ingest. LangGraph and CrewAI guides in docs.",
   },
   {
     step: "02",
     title: "Sign & enforce",
-    desc: "OPA/WASM policies evaluate in under 5ms. Events are signed with keys that never leave your infrastructure.",
+    desc: "Policies evaluate before risky tools run. Events are Ed25519-signed with BYOK keys you control.",
   },
   {
     step: "03",
     title: "Ledger & witness",
-    desc: "Hash-chained append-only storage. Merkle roots published to a public transparency log on a fixed cadence.",
+    desc: "Hash-chained append-only storage. Merkle roots batched every 60s into a transparency log.",
   },
   {
     step: "04",
     title: "Audit & comply",
-    desc: "Reconstruct traces in seconds. Export SOC 2, EU AI Act, and NIST bundles. Stream OTel to your SIEM.",
+    desc: "Reconstruct traces interactively in Console. Download compliance ZIPs. Stream OTLP logs to Splunk, Datadog, or Sentinel.",
   },
 ] as const;
 
 export const INVESTOR_QUOTES = [
   {
     text: "The gap isn't model safety. It's decision defensibility when an agent acts on a Tuesday in March.",
-    attr: "Model risk · top-15 US bank (design partner)",
+    attr: "Representative concern · regulated industries (design partner interviews)",
   },
   {
-    text: "We need court-admissible provenance before we scale autonomous workflows in regulated lines.",
-    attr: "AI governance · national health system",
+    text: "We need cryptographically verifiable provenance before we scale autonomous workflows in regulated lines.",
+    attr: "Representative concern · AI governance teams (design partner interviews)",
   },
 ] as const;
 
@@ -106,7 +110,7 @@ export const PRODUCTS = {
     slug: "aegis",
     name: "Aegis",
     tag: "Provenance & Audit",
-    status: "GA Q4 2026",
+    status: "Design partner · 2026",
     brandLine: BRAND.taglineFull,
     headline: "Signed provenance for every agent action",
     subhead:
@@ -117,11 +121,11 @@ export const PRODUCTS = {
       "Aegis is the managed control plane for APS-1 events: ingest, policy, human approvals, witness batches, transparency proofs, and compliance exports, scoped per organization.",
     features: [
       "APS-1 open standard with Ed25519 signed events",
-      "Hash-chained append-only ledger, WORM cold storage",
-      "Public Merkle transparency log (RFC 6962)",
-      "OPA/WASM policy engine with human approvals",
-      "EU AI Act, SOC 2, NIST AI RMF compliance bundles",
-      "TypeScript, Python & Go SDKs",
+      "BYOK: register customer public keys + optional AWS/GCP KMS sign",
+      "Hash-chained append-only ledger with Merkle witness batches",
+      "Policy engine with human approvals (email, Slack, PagerDuty, SMS)",
+      "Compliance export bundles with SOC 2 / EU AI Act control mapping",
+      "n8n Workflow Bridge + TypeScript, Python & Go SDKs",
     ],
     metrics: [
       {
@@ -149,24 +153,30 @@ export const PRODUCTS = {
         detail: "Splunk, Datadog, Sentinel",
       },
     ],
-    code: `import { aegis } from "@salanor/aegis";
+    code: `import { evaluatePolicyViaApi, signAndIngest } from "@salanor/aegis";
 
-const agent = aegis.wrap(myLangGraphAgent, {
-  organization: "acme",
-  agentDid: "did:agent:acme:fin-bot-prod",
-  policy: "prod-finance",
-  redact: ["customer.email", "card.*"],
-});
+// BYOK: private key stays in your runtime — register public key in Console
+const decision = await evaluatePolicyViaApi(
+  "https://api.salanor.com/v1/aegis",
+  process.env.AEGIS_INGEST_TOKEN!,
+  {
+    organization_id: "org_…",
+    agent_id: "agt_…",
+    tool_name: "app.payments.transfer",
+    payload: { amount_usd: 2500, recipient: "vendor@example.com" },
+  },
+);
 
-await agent.invoke({ task: "refund order #4421" });
-const proof = await aegis.verify(eventId);`,
+if (decision.decision === "allow_with_obligation") {
+  // Pause until human approves in Console
+}`,
     compliance: [
-      { name: "SOC 2 Type II", note: "Q4 2026" },
-      { name: "EU AI Act", note: "Art. 12, 14, 19, 26" },
-      { name: "NIST AI RMF", note: "Govern · Map · Manage" },
-      { name: "HIPAA", note: "BYOC & on-prem" },
-      { name: "FedRAMP Mod.", note: "Target Q2 2027" },
-      { name: "ISO 42001", note: "AI Management" },
+      { name: "SOC 2 Type II", note: "Export mapping · audit target Q4 2026" },
+      { name: "EU AI Act", note: "Art. 12, 14, 19, 26 mapping" },
+      { name: "NIST AI RMF", note: "Govern · Map · Manage exports" },
+      { name: "HIPAA", note: "BYOC path · roadmap" },
+      { name: "FedRAMP Mod.", note: "Architecture path · Q2 2027" },
+      { name: "ISO 42001", note: "AI management mapping" },
     ],
   },
   aether: {
@@ -218,10 +228,10 @@ const proof = await aegis.verify(eventId);`,
 } as const;
 
 export const COMPLIANCE_STRIP = [
-  { name: "SOC 2", note: "Type II path" },
-  { name: "EU AI Act", note: "Art. 12+" },
-  { name: "NIST AI RMF", note: "Mapped exports" },
-  { name: "HIPAA", note: "BYOC" },
+  { name: "SOC 2", note: "Export mapping" },
+  { name: "EU AI Act", note: "Art. 12+ mapping" },
+  { name: "NIST AI RMF", note: "Bundle exports" },
+  { name: "HIPAA", note: "BYOC path" },
 ] as const;
 
 /** Pull quote for homepage + metadata */
@@ -240,7 +250,7 @@ export const SALANOR_STACK = [
     name: "Aegis",
     slug: "aegis",
     role: "Provenance & audit",
-    status: "GA Q4 2026",
+    status: "Design partner · 2026",
     description: "Signed APS-1 ledger, policy engine, human approvals, compliance exports.",
     href: "/products/aegis",
   },

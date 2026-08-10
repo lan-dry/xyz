@@ -39,7 +39,7 @@ export function createApp(): Hono {
 
   app.get("/health", async (c) => {
     const db = process.env.DATABASE_URL ? await pingDatabase() : null;
-    const ok = db !== false;
+    const ok = db === null || db?.ok === true;
     return c.json(
       {
         status: ok ? "ok" : "degraded",

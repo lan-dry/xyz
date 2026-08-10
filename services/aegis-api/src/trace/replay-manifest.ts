@@ -8,6 +8,8 @@ export type ReplayStep = {
   policy_decision: string;
   tool_name: string | null;
   summary: string;
+  emitted_at: string | null;
+  payload_preview: Record<string, unknown> | null;
   /** Audit step-through always available; external side-effects need local re-run. */
   mode: "audit" | "local_rerun";
   local_hint: string | null;
@@ -16,9 +18,11 @@ export type ReplayStep = {
 export function buildReplayManifest(events: EventDetail[]): {
   trace_id: string;
   step_count: number;
+  reconstruction_ms: number;
   steps: ReplayStep[];
   disclaimer: string;
 } {
+  const started = performance.now();
   const traceId = events[0]?.trace_id ?? "";
   const steps: ReplayStep[] = events.map((e, index) => {
     const payload =
@@ -31,6 +35,13 @@ export function buildReplayManifest(events: EventDetail[]): {
     const summary = e.tool_name
       ? `${e.action_kind}: ${e.tool_name} → ${e.policy_decision}`
       : `${e.action_kind}: ${String(purpose)} → ${e.policy_decision}`;
+
+    const preview: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(payload)) {
+      if (value == null || typeof value === "object") continue;
+      preview[key] = value;
+      if (Object.keys(preview).length >= 8) break;
+    }
 
     const sideEffect =
       e.action_kind === "tool_call" ||
@@ -46,6 +57,8 @@ export function buildReplayManifest(events: EventDetail[]): {
       policy_decision: e.policy_decision,
       tool_name: e.tool_name,
       summary: String(summary),
+      emitted_at: e.emitted_at instanceof Date ? e.emitted_at.toISOString() : null,
+      payload_preview: Object.keys(preview).length > 0 ? preview : null,
       mode: sideEffect || llm ? "local_rerun" : "audit",
       local_hint:
         llm || sideEffect
@@ -57,8 +70,9 @@ export function buildReplayManifest(events: EventDetail[]): {
   return {
     trace_id: traceId,
     step_count: steps.length,
+    reconstruction_ms: Math.round(performance.now() - started),
     steps,
     disclaimer:
-      "Replay in the console is an audit walkthrough of signed events. Re-running tools or LLMs happens in your environment, not on Salanor servers.",
+      "Interactive reconstruction walks the signed causal chain in order. Pick any step to inspect payload fields. Re-running side-effectful tools happens in your environment (local_rerun), not on Salanor servers.",
   };
 }
