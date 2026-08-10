@@ -27,24 +27,60 @@ Body: {"one_shot":true,"execution":{"nodes":[]}}
 
 Expect **401** (key invalid). If the body is accepted with a real key, response `status` must be **`completed`**, not `running`.
 
-## Witness worker (60s Merkle batches)
+## Background workers (Railway)
 
-1. Railway → **New Service** → same repo `lan-dry/xyz`, branch `main`.
-2. Name it **aegis-witness-worker** (or similar).
-3. **Root Directory**: repo root (same as aegis-api).
-4. **Start Command**: `pnpm --filter aegis-api witness:worker`
-   (or copy `services/aegis-api/railway.witness.toml` settings).
-5. **Variables** (copy from aegis-api):
-   - `DATABASE_URL` (required)
-   - `WITNESS_INTERVAL_MS=60000` (optional; default 60s)
-6. Deploy and confirm logs show:
-   `[witness-worker] starting; interval=60000ms`
+All worker services share:
 
-One-shot test locally or in Railway shell:
+- **Repo**: `lan-dry/xyz`, branch `main`
+- **Root directory**: repo root
+- **Custom build command** (required for witness/compliance/housekeeping):
 
 ```bash
-pnpm --filter aegis-api witness:batch
+pnpm install --frozen-lockfile && pnpm --filter @salanor/witness-merkle build
 ```
+
+Do **not** use default `pnpm run build` (builds entire monorepo and fails).
+
+Apply migration **026_worker_runs** on production Postgres before worker history appears in Platform Ops.
+
+### 1. Witness worker (always on, 60s loop)
+
+| Setting | Value |
+|---------|--------|
+| Service | `aegis-witness-worker` |
+| Start | `pnpm --filter aegis-api witness:worker` |
+| Cron | **None** (long-running process) |
+| Env | `DATABASE_URL`, optional `WITNESS_INTERVAL_MS=60000` |
+
+Logs: `[witness-worker] starting; interval=60000ms`
+
+### 2. Compliance worker (daily cron)
+
+| Setting | Value |
+|---------|--------|
+| Service | `aegis-compliance-worker` |
+| Start | `pnpm --filter aegis-api compliance:worker` |
+| Cron | `0 6 * * *` (daily 06:00 UTC) |
+| Env | `DATABASE_URL`, `COMPLIANCE_EXPORT_DIR` (volume path) |
+
+Processes scheduled export jobs and due monthly schedules.
+
+### 3. Housekeeping (hourly cron)
+
+| Setting | Value |
+|---------|--------|
+| Service | `aegis-housekeeping` |
+| Start | `pnpm --filter aegis-api maintenance:housekeeping` |
+| Cron | `0 * * * *` (hourly) |
+| Env | `DATABASE_URL` |
+
+Expires stale approvals and closes orphaned RUNNING traces.
+
+### Platform Ops: worker run history
+
+After migration 026, platform admins see all runs at **Platform Ops → Workers** (`ops.salanor.com/workers`).
+
+Each witness tick, compliance run, and housekeeping run is stored in `worker_run` with status, duration, and summary JSON.
 
 ## Also check
 

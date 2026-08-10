@@ -17,6 +17,7 @@
     "compliance:schedule": "tsx src/compliance/schedule-cli.ts",
     "maintenance:housekeeping": "tsx src/maintenance/housekeeping-cli.ts",
     "witness:worker": "tsx src/witness/worker-cli.ts",
+    "witness:worker:prod": "node dist/witness/worker-cli.js",
     "witness:batch": "tsx src/witness/worker-cli.ts --once",
     "publish-transparency": "tsx src/transparency/publish-cli.ts"
   },

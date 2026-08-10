@@ -5,6 +5,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import "../db/load-env.js";
 import { closePool, getPool } from "../db/pool.js";
+import { recordWorkerRunResult } from "../workers/record-run.js";
 import { runGlobalHousekeeping } from "./housekeeping.js";
 
 function loadEnvFile(): void {
@@ -26,12 +27,35 @@ function loadEnvFile(): void {
 
 loadEnvFile();
 
-const results = await runGlobalHousekeeping(getPool());
-const summary = {
-  ok: true,
-  organizations: results.length,
-  expired_approvals: results.reduce((n, r) => n + r.expired_approvals, 0),
-  stale_traces_failed: results.reduce((n, r) => n + r.stale_traces_failed, 0),
-};
-console.log(JSON.stringify({ ...summary, results }, null, 2));
-await closePool();
+const pool = getPool();
+const startedAt = new Date();
+
+try {
+  const results = await runGlobalHousekeeping(pool);
+  const summary = {
+    organizations: results.length,
+    expired_approvals: results.reduce((n, r) => n + r.expired_approvals, 0),
+    stale_traces_failed: results.reduce((n, r) => n + r.stale_traces_failed, 0),
+    results,
+  };
+  await recordWorkerRunResult(pool, {
+    workerName: "housekeeping",
+    status:
+      summary.expired_approvals > 0 || summary.stale_traces_failed > 0 ? "ok" : "skipped",
+    startedAt,
+    summary,
+  });
+  console.log(JSON.stringify({ ok: true, ...summary }, null, 2));
+} catch (err) {
+  const message = err instanceof Error ? err.message : String(err);
+  await recordWorkerRunResult(pool, {
+    workerName: "housekeeping",
+    status: "error",
+    startedAt,
+    summary: {},
+    errorMessage: message,
+  });
+  throw err;
+} finally {
+  await closePool();
+}

@@ -5,6 +5,7 @@
 import "../db/load-env.js";
 import { getPool } from "../db/pool.js";
 import { publishTransparencyLogForOrg } from "../transparency/publish.js";
+import { recordWorkerRunResult } from "../workers/record-run.js";
 import { listOrganizationIds, runWitnessBatchForOrg } from "./batch.js";
 
 const intervalMs = Math.max(
@@ -15,38 +16,64 @@ const runOnce = process.argv.includes("--once");
 
 async function tick(): Promise<void> {
   const pool = getPool();
-  const orgIds = await listOrganizationIds(pool);
-  const results: Array<{ organization_id: string; root_id?: string; tree_size?: number }> =
-    [];
+  const startedAt = new Date();
+  try {
+    const orgIds = await listOrganizationIds(pool);
+    const results: Array<{ organization_id: string; root_id?: string; tree_size?: number }> =
+      [];
 
-  for (const organizationId of orgIds) {
-    const batch = await runWitnessBatchForOrg(pool, organizationId);
-    if (batch) {
-      results.push({
-        organization_id: organizationId,
-        root_id: batch.root_id,
-        tree_size: batch.tree_size,
-      });
-      try {
-        await publishTransparencyLogForOrg(pool, organizationId);
-      } catch (err) {
-        console.error(
-          `[witness-worker] transparency publish failed for ${organizationId}:`,
-          err,
-        );
+    for (const organizationId of orgIds) {
+      const batch = await runWitnessBatchForOrg(pool, organizationId);
+      if (batch) {
+        results.push({
+          organization_id: organizationId,
+          root_id: batch.root_id,
+          tree_size: batch.tree_size,
+        });
+        try {
+          await publishTransparencyLogForOrg(pool, organizationId);
+        } catch (err) {
+          console.error(
+            `[witness-worker] transparency publish failed for ${organizationId}:`,
+            err,
+          );
+        }
       }
     }
-  }
 
-  if (results.length > 0) {
-    console.log(
-      JSON.stringify({
-        ok: true,
-        at: new Date().toISOString(),
-        interval_ms: intervalMs,
-        batches: results,
-      }),
-    );
+    const summary = {
+      interval_ms: intervalMs,
+      organizations_scanned: orgIds.length,
+      batches: results,
+      batch_count: results.length,
+    };
+
+    await recordWorkerRunResult(pool, {
+      workerName: "witness",
+      status: results.length > 0 ? "ok" : "skipped",
+      startedAt,
+      summary,
+    });
+
+    if (results.length > 0) {
+      console.log(
+        JSON.stringify({
+          ok: true,
+          at: new Date().toISOString(),
+          ...summary,
+        }),
+      );
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await recordWorkerRunResult(pool, {
+      workerName: "witness",
+      status: "error",
+      startedAt,
+      summary: { interval_ms: intervalMs },
+      errorMessage: message,
+    });
+    throw err;
   }
 }
 

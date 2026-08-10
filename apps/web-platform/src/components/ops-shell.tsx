@@ -18,6 +18,7 @@ import {
   UserCircle,
   UserPlus,
   Users,
+  ServerCog,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -45,6 +46,7 @@ const NAV: Array<{ href: string; label: string; icon: LucideIcon }> = [
   { href: "/plans", label: "Plans", icon: CreditCard },
   { href: "/leads", label: "Leads", icon: Inbox },
   { href: "/audit-logs", label: "Audit log", icon: ClipboardList },
+  { href: "/workers", label: "Workers", icon: ServerCog },
   { href: "/commands", label: "Commands", icon: Terminal },
   { href: "/settings", label: "Profile", icon: UserCircle },
 ];

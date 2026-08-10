@@ -8,6 +8,7 @@ import {
   platformGetAccount,
   platformListAccountsPaginated,
   platformListAuditLogs,
+  platformListWorkerRuns,
   platformListOrganizations,
   platformGetOrganization,
   platformOverviewStats,
@@ -414,6 +415,33 @@ platformRoutes.get("/audit-logs", async (c) => {
     total: result.total,
     limit: result.limit,
     offset: result.offset,
+  });
+});
+
+platformRoutes.get("/worker-runs", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:read");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const limit = Number(c.req.query("limit") || "50");
+  const offset = Number(c.req.query("offset") || "0");
+  const worker = c.req.query("worker");
+  const workerName =
+    worker === "witness" || worker === "compliance" || worker === "housekeeping"
+      ? worker
+      : undefined;
+  const result = await platformListWorkerRuns(getPool(), {
+    workerName,
+    limit,
+    offset,
+  });
+  return c.json({
+    runs: result.runs.map((row) => ({
+      ...row,
+      started_at: row.started_at.toISOString(),
+      finished_at: row.finished_at?.toISOString() ?? null,
+    })),
+    total: result.total,
+    limit,
+    offset,
   });
 });
 

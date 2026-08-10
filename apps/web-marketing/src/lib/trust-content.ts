@@ -65,7 +65,7 @@ export const TRUST_FEATURES: TrustFeature[] = [
     feature: "Merkle witness batching (60s cadence)",
     status: "live",
     notes:
-      "Run pnpm witness:worker on API (WITNESS_INTERVAL_MS=60000). Batches pending events + publishes transparency log.",
+      "witness:worker on Railway (60s). Batches pending events + transparency log. History in Platform Ops → Workers.",
   },
   {
     id: "compliance-export",
@@ -76,8 +76,8 @@ export const TRUST_FEATURES: TrustFeature[] = [
   {
     id: "compliance-schedule",
     feature: "Monthly scheduled exports",
-    status: "pilot",
-    notes: "UI saves schedule; requires daily compliance:worker cron + persistent COMPLIANCE_EXPORT_DIR.",
+    status: "live",
+    notes: "Daily cron: compliance:worker + COMPLIANCE_EXPORT_DIR volume. Run history in Platform Ops → Workers.",
   },
   {
     id: "otel-siem",

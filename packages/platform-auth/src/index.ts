@@ -180,3 +180,8 @@ export {
   type AgentRow,
   type SigningKeySummary,
 } from "./agent-provisioning.js";
+export {
+  platformListWorkerRuns,
+  type PlatformWorkerName,
+  type PlatformWorkerRunRow,
+} from "./platform-worker-runs.js";
