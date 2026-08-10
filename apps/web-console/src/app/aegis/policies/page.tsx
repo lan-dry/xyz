@@ -229,6 +229,7 @@ export default function PoliciesPage() {
     const cond = rule.conditions as {
       rule_type?: string;
       max_amount_usd?: number;
+      min_amount_usd?: number;
     } | null;
     const ruleType =
       cond?.rule_type === "max_per_tx"
