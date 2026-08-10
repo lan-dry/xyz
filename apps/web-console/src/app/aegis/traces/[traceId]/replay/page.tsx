@@ -41,7 +41,7 @@ type ReplayManifest = {
   disclaimer: string;
 };
 
-const STEP_MS = 900;
+const STEP_MS = 2_400;
 
 export default function TraceReplayPage() {
   const params = useParams<{ traceId: string }>();
@@ -279,7 +279,8 @@ export default function TraceReplayPage() {
                   clearPlayTimer();
                   setIsPlaying(false);
                 } else {
-                  playFrom(stepIndex);
+                  const atEnd = stepIndex >= stepCount - 1;
+                  playFrom(atEnd ? 0 : stepIndex);
                 }
               }}
             >

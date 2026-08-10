@@ -351,10 +351,31 @@ export default function AgentsPage() {
             });
           }}
         >
-          <p style={{ fontSize: "0.8125rem", color: "var(--muted)", margin: 0 }}>
-            Bring your own Ed25519 key. Salanor stores and verifies the public key only —
-            never upload a private key.
-          </p>
+          <div
+            style={{
+              fontSize: "0.8125rem",
+              color: "var(--muted)",
+              margin: 0,
+              display: "grid",
+              gap: "0.5rem",
+            }}
+          >
+            <p style={{ margin: 0 }}>
+              <strong>What this does:</strong> Salanor will trust events signed with your
+              private key by storing your public key here. We verify signatures on ingest; we
+              never receive or store your private key.
+            </p>
+            <ul style={{ margin: 0, paddingLeft: "1.15rem" }}>
+              <li>
+                <strong>Customer-held:</strong> your SDK or agent signs locally with the
+                private key.
+              </li>
+              <li>
+                <strong>AWS / GCP KMS:</strong> for Workflow Bridge and human-approval signing,
+                Salanor calls your KMS to sign (no raw private key on our servers).
+              </li>
+            </ul>
+          </div>
           <label className={ui.field}>
             Public key (base64)
             <textarea
