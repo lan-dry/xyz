@@ -252,42 +252,83 @@ export default function PoliciesPage() {
               }))
             }
           >
-            <option value="tool">Tool allow / deny</option>
-            <option value="max_per_tx">Max per transaction (USD)</option>
-            <option value="max_daily_total">Max daily total (USD, 24h)</option>
+            <option value="tool">When tool matches → allow / deny / require approval</option>
+            <option value="max_per_tx">When amount exceeds per-transaction limit → deny</option>
+            <option value="max_daily_total">When daily total exceeds limit → deny</option>
           </select>
         </label>
         {form.ruleType === "tool" ? (
-          <label className={ui.field} style={{ marginTop: "1rem" }}>
-            Decision
-            <select
-              className={ui.select}
-              value={form.decision}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  decision: e.target.value as PolicyFormState["decision"],
-                }))
-              }
+          <>
+            <label className={ui.field} style={{ marginTop: "1rem" }}>
+              Decision
+              <select
+                className={ui.select}
+                value={form.decision}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    decision: e.target.value as PolicyFormState["decision"],
+                  }))
+                }
+              >
+                <option value="allow">Allow — proceed without gate trace</option>
+                <option value="deny">Deny — block and record FAILED trace</option>
+                <option value="allow_with_obligation">
+                  Require approval — pause until human approves
+                </option>
+              </select>
+            </label>
+            <p
+              style={{
+                margin: "0.5rem 0 0",
+                fontSize: "0.8125rem",
+                color: "var(--console-fg-muted)",
+                lineHeight: 1.5,
+              }}
             >
-              <option value="allow">allow</option>
-              <option value="deny">deny</option>
-              <option value="allow_with_obligation">require approval</option>
-            </select>
-          </label>
+              Matches when the tool name equals your pattern (e.g.{" "}
+              <code className="mono">app.payments.transfer</code>). No amount check — use
+              rule type below for USD limits.
+            </p>
+          </>
         ) : (
-          <label className={ui.field} style={{ marginTop: "1rem" }}>
-            Max amount (USD)
-            <input
-              className={ui.input}
-              type="number"
-              min={0}
-              step="0.01"
-              value={form.maxAmountUsd}
-              onChange={(e) => setForm((f) => ({ ...f, maxAmountUsd: e.target.value }))}
-            />
-          </label>
+          <>
+            <label className={ui.field} style={{ marginTop: "1rem" }}>
+              Max amount (USD)
+              <input
+                className={ui.input}
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.maxAmountUsd}
+                onChange={(e) => setForm((f) => ({ ...f, maxAmountUsd: e.target.value }))}
+              />
+            </label>
+            <p
+              style={{
+                margin: "0.5rem 0 0",
+                fontSize: "0.8125rem",
+                color: "var(--console-fg-muted)",
+                lineHeight: 1.5,
+              }}
+            >
+              Automatically <strong>denies</strong> when Check Policy receives{" "}
+              <code className="mono">amount_usd</code> in the payload above this limit.
+              Pass amount from n8n (e.g. Set node before Check Policy).
+            </p>
+          </>
         )}
+        <p
+          style={{
+            marginTop: "1rem",
+            fontSize: "0.8125rem",
+            color: "var(--console-fg-subtle)",
+            lineHeight: 1.5,
+          }}
+        >
+          <strong>Enterprise lifecycle:</strong> only one active policy per org. Active
+          policies are immutable — retire, edit a draft, then activate to change rules.
+        </p>
       </>
     );
   }

@@ -3,6 +3,7 @@ import { resolveIngestKey } from "../auth/ingest-key.js";
 import { getPool } from "../db/pool.js";
 import {
   createApprovalRequest,
+  expireStaleApprovals,
   getApproval,
   type DeferredRequest,
 } from "../repo/approvals.js";
@@ -102,6 +103,7 @@ export async function getApprovalStatus(c: Context): Promise<Response> {
       return c.json({ error: "Invalid ingest API key" }, 401);
     }
 
+    await expireStaleApprovals(client, auth.organizationId);
     const approval = await getApproval(client, auth.organizationId, approvalId);
     if (!approval) {
       return c.json({ error: "Not found" }, 404);

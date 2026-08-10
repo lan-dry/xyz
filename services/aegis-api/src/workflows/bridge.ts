@@ -63,7 +63,10 @@ export type PolicyGateCapture = {
   engine?: string;
 };
 
-function policyGateStep(gate: PolicyGateCapture): WorkflowStepInput {
+function policyGateStep(
+  gate: PolicyGateCapture,
+  requestPayload?: Record<string, unknown>,
+): WorkflowStepInput {
   const denied = gate.decision === "deny";
   return {
     action_kind: "policy_decision",
@@ -79,7 +82,12 @@ function policyGateStep(gate: PolicyGateCapture): WorkflowStepInput {
       blocked: denied,
       investor_summary: denied
         ? `Denied ${gate.tool_name} — ${gate.reason}`
-        : `Allowed ${gate.tool_name}`,
+        : gate.decision === "allow_with_obligation"
+          ? `Approval required: ${gate.tool_name} — ${gate.reason}`
+          : `Allowed ${gate.tool_name}`,
+      ...(requestPayload && Object.keys(requestPayload).length > 0
+        ? { request_payload: requestPayload }
+        : {}),
     },
   };
 }
@@ -751,6 +759,8 @@ export async function recordPolicyObligationGate(
     externalExecutionId?: string;
     actorPrincipal?: string;
     approvalFocusUrl?: string;
+    /** Workflow item payload shown to approvers (amount, recipient, etc.). */
+    requestPayload?: Record<string, unknown>;
   },
 ): Promise<{
   trace_id: string;
@@ -773,14 +783,17 @@ export async function recordPolicyObligationGate(
     organizationId: input.organizationId,
     traceId: started.trace_id,
     steps: [
-      policyGateStep({
-        tool_name: input.toolName,
-        decision: "allow_with_obligation",
-        policy_id: input.policyId,
-        rule_id: input.ruleId,
-        reason: input.reason,
-        engine: input.engine,
-      }),
+      policyGateStep(
+        {
+          tool_name: input.toolName,
+          decision: "allow_with_obligation",
+          policy_id: input.policyId,
+          rule_id: input.ruleId,
+          reason: input.reason,
+          engine: input.engine,
+        },
+        input.requestPayload,
+      ),
     ],
     actorPrincipal: input.actorPrincipal ?? "workflow:n8n",
   });

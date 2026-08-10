@@ -19,6 +19,12 @@ export type ApprovalDetail = ApprovalRow & {
   agent_id: string;
 };
 
+export type ApprovalRichDetail = ApprovalDetail & {
+  event_payload: Record<string, unknown> | null;
+  approver_email: string | null;
+  policy_reason: string | null;
+};
+
 export type DeferredRequest = {
   url: string;
   method: string;
@@ -84,6 +90,72 @@ export async function createApprovalRequest(
   return { approval_id: approvalId };
 }
 
+/** Mark overdue pending approvals expired and fail their traces. */
+export async function expireStaleApprovals(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+): Promise<number> {
+  const expired = await client.query<{ approval_id: string; trace_id: string }>(
+    `UPDATE approval a
+     SET status = 'expired', decided_at = now()
+     FROM event e
+     WHERE a.event_id = e.event_id
+       AND a.organization_id = $1
+       AND a.status = 'pending'
+       AND a.expires_at IS NOT NULL
+       AND a.expires_at < now()
+     RETURNING a.approval_id, e.trace_id`,
+    [organizationId],
+  );
+
+  for (const row of expired.rows) {
+    if (row.trace_id) {
+      await client.query(
+        `UPDATE trace SET status = 'failed', ended_at = now()
+         WHERE trace_id = $1 AND organization_id = $2 AND status = 'blocked'`,
+        [row.trace_id, organizationId],
+      );
+    }
+  }
+
+  return expired.rowCount ?? 0;
+}
+
+function approvalSelectJoin(): string {
+  return `
+    SELECT a.approval_id, a.event_id, a.organization_id, a.approver_user_id,
+           a.channel_type, a.status, a.expires_at, a.decided_at, a.created_at,
+           e.trace_id, e.tool_name, e.agent_id,
+           e.payload AS event_payload,
+           acc.email AS approver_email,
+           COALESCE(e.payload->>'rationale', e.payload->>'investor_summary') AS policy_reason
+     FROM approval a
+     JOIN event e ON e.event_id = a.event_id
+     LEFT JOIN membership m ON m.membership_id = a.approver_user_id
+     LEFT JOIN account acc ON acc.account_id = m.account_id`;
+}
+
+export async function getApprovalRich(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  approvalId: string,
+): Promise<ApprovalRichDetail | null> {
+  const result = await client.query<ApprovalRichDetail & { event_payload: unknown }>(
+    `${approvalSelectJoin()}
+     WHERE a.organization_id = $1 AND a.approval_id = $2`,
+    [organizationId, approvalId],
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    ...row,
+    event_payload:
+      row.event_payload && typeof row.event_payload === "object"
+        ? (row.event_payload as Record<string, unknown>)
+        : null,
+  };
+}
+
 export async function getApproval(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
@@ -104,18 +176,43 @@ export async function getApproval(
 export async function listPendingApprovals(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
-): Promise<ApprovalDetail[]> {
-  const result = await client.query<ApprovalDetail>(
-    `SELECT a.approval_id, a.event_id, a.organization_id, a.approver_user_id,
-            a.channel_type, a.status, a.expires_at, a.decided_at, a.created_at,
-            e.trace_id, e.tool_name, e.agent_id
-     FROM approval a
-     JOIN event e ON e.event_id = a.event_id
+): Promise<ApprovalRichDetail[]> {
+  await expireStaleApprovals(client, organizationId);
+  const result = await client.query<ApprovalRichDetail & { event_payload: unknown }>(
+    `${approvalSelectJoin()}
      WHERE a.organization_id = $1 AND a.status = 'pending'
      ORDER BY a.created_at ASC`,
     [organizationId],
   );
-  return result.rows;
+  return result.rows.map((row) => ({
+    ...row,
+    event_payload:
+      row.event_payload && typeof row.event_payload === "object"
+        ? (row.event_payload as Record<string, unknown>)
+        : null,
+  }));
+}
+
+export async function listRecentApprovals(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  limit = 25,
+): Promise<ApprovalRichDetail[]> {
+  const result = await client.query<ApprovalRichDetail & { event_payload: unknown }>(
+    `${approvalSelectJoin()}
+     WHERE a.organization_id = $1
+       AND a.status IN ('approved', 'rejected', 'expired')
+     ORDER BY COALESCE(a.decided_at, a.created_at) DESC
+     LIMIT $2`,
+    [organizationId, limit],
+  );
+  return result.rows.map((row) => ({
+    ...row,
+    event_payload:
+      row.event_payload && typeof row.event_payload === "object"
+        ? (row.event_payload as Record<string, unknown>)
+        : null,
+  }));
 }
 
 export async function decideApproval(
@@ -129,6 +226,7 @@ export async function decideApproval(
     `UPDATE approval
      SET status = $1, approver_user_id = $2, decided_at = now()
      WHERE organization_id = $3 AND approval_id = $4 AND status = 'pending'
+       AND (expires_at IS NULL OR expires_at > now())
      RETURNING approval_id, event_id, organization_id, approver_user_id,
                channel_type, status, expires_at, decided_at, created_at`,
     [decision, approverUserId, organizationId, approvalId],

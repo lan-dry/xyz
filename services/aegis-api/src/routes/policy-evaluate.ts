@@ -6,6 +6,7 @@ import {
   recordPolicyGateAsTrace,
   recordPolicyObligationGate,
 } from "../workflows/bridge.js";
+import { notifyApprovalPending } from "../approvals/notify.js";
 
 function bearerToken(authorization: string | undefined): string | null {
   if (!authorization?.startsWith("Bearer ")) {
@@ -111,8 +112,17 @@ export async function postPolicyEvaluate(c: Context): Promise<Response> {
           externalSystem: body.external_system ?? "n8n",
           externalWorkflowId: body.external_workflow_id,
           externalExecutionId: body.external_execution_id,
+          requestPayload: body.payload,
         });
         await client.query("COMMIT");
+
+        notifyApprovalPending(client, {
+          organizationId: body.organization_id,
+          approvalId: recorded.approval_id,
+          toolName: body.tool_name,
+          traceId: recorded.trace_id,
+          eventId: recorded.events[0]?.event_id ?? "",
+        });
 
         return c.json({
           ...result,

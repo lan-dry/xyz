@@ -101,6 +101,7 @@ async function sendApprovalEmail(
     input.approveUrl,
     "",
     "The trace stays blocked until an admin approves or rejects.",
+    "Pending approvals expire after 24 hours if not decided.",
   ].join("\n");
 
   console.log("\n[aegis-api] ── Approval notification ─────────────────────");
@@ -128,7 +129,8 @@ async function sendApprovalEmail(
       html: `<p>A tool call in <strong>${input.orgName}</strong> is waiting for your approval.</p>
 <p>Tool: <code>${input.toolName}</code></p>
 <p><a href="${input.approveUrl}">Review in Salanor Console</a></p>
-<p>The trace stays blocked until an admin approves or rejects.</p>`,
+<p>The trace stays blocked until an admin approves or rejects.</p>
+<p>Pending approvals expire after 24 hours if not decided.</p>`,
     }),
   });
 

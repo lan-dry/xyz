@@ -44,8 +44,10 @@ export function StatusBadge({
     className = ui.badgeSuccess;
   } else if (s === "blocked" || s === "pending" || s === "draft") {
     className = ui.badgeWarning;
-  } else if (s === "deny" || s === "revoked" || s === "failed" || s === "rejected") {
+  } else if (s === "deny" || s === "revoked" || s === "failed" || s === "rejected" || s === "expired") {
     className = ui.badgeDanger;
+  } else if (s === "approved") {
+    className = ui.badgeSuccess;
   }
   return <span className={`${ui.badge} ${className}`}>{status}</span>;
 }

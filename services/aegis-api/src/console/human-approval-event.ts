@@ -29,6 +29,7 @@ export async function ingestHumanApprovalEvent(
     approverEmail: string;
     approvalId: string;
     decision: "approved" | "rejected";
+    toolName?: string;
   },
 ): Promise<string> {
   const privateKeyB64 = process.env.DEV_SIGNING_PRIVATE_KEY_B64;
@@ -48,10 +49,17 @@ export async function ingestHumanApprovalEvent(
     actor_principal: params.approverEmail,
     action_kind: "human_approval",
     policy_decision: params.decision === "approved" ? "allow" : "deny",
+    tool_name: params.toolName ?? "aegis.approval.decision",
     parent_event_id: params.parentEventId,
     payload: {
       approval_id: params.approvalId,
       decision: params.decision,
+      tool_name: params.toolName,
+      approver_email: params.approverEmail,
+      investor_summary:
+        params.decision === "approved"
+          ? `Human approved ${params.toolName ?? "tool call"}`
+          : `Human rejected ${params.toolName ?? "tool call"}`,
     },
   };
 

@@ -95,6 +95,35 @@ export function buildEventProvenance(input: {
   if (riskIfUnmonitored) {
     lines.push({ label: "Risk if unmonitored", value: riskIfUnmonitored });
   }
+
+  const requestPayload =
+    payload?.request_payload && typeof payload.request_payload === "object"
+      ? (payload.request_payload as Record<string, unknown>)
+      : null;
+  if (requestPayload) {
+    const reqAmount = num(requestPayload.amount_usd ?? requestPayload.amount);
+    if (reqAmount !== null) {
+      lines.push({ label: "Requested amount", value: `$${reqAmount} USD` });
+    }
+    for (const [key, value] of Object.entries(requestPayload)) {
+      if (key === "amount_usd" || key === "amount") continue;
+      if (value == null || typeof value === "object") continue;
+      lines.push({ label: key, value: String(value) });
+      if (lines.length > 12) break;
+    }
+  }
+
+  if (input.action_kind === "human_approval") {
+    const decision = str(payload?.decision);
+    const approver = str(payload?.approver_email);
+    if (decision) {
+      lines.push({ label: "Approval decision", value: decision });
+    }
+    if (approver) {
+      lines.push({ label: "Decided by", value: approver });
+    }
+  }
+
   lines.push({ label: "Policy", value: input.policy_decision });
 
   if (lines.length <= 1 && !input.tool_name && input.action_kind !== "llm_invocation") {
