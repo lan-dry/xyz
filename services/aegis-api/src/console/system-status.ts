@@ -1,5 +1,11 @@
 import type pg from "pg";
 
+export type ServiceStatus = {
+  state: "inactive" | "active" | "attention";
+  label: string;
+  last_run_at: string | null;
+};
+
 export type ConsoleSystemStatus = {
   witness: {
     state: "ok" | "degraded" | "unknown";
@@ -9,7 +15,50 @@ export type ConsoleSystemStatus = {
     pending_events: number;
     merkle_roots_total: number;
   };
+  services: {
+    scheduled_exports: ServiceStatus;
+    maintenance: ServiceStatus;
+  };
 };
+
+async function serviceStatus(
+  client: pg.Pool | pg.PoolClient,
+  workerName: "compliance" | "housekeeping",
+): Promise<ServiceStatus> {
+  try {
+    const r = await client.query<{ started_at: Date; status: string }>(
+      `SELECT started_at, status FROM worker_run
+       WHERE worker_name = $1 ORDER BY started_at DESC LIMIT 1`,
+      [workerName],
+    );
+    const row = r.rows[0];
+    if (!row) {
+      return {
+        state: "inactive",
+        label: "Not active yet",
+        last_run_at: null,
+      };
+    }
+    if (row.status === "error") {
+      return {
+        state: "attention",
+        label: "Needs attention",
+        last_run_at: row.started_at.toISOString(),
+      };
+    }
+    return {
+      state: "active",
+      label: row.status === "ok" ? "Active" : "Active (no work pending)",
+      last_run_at: row.started_at.toISOString(),
+    };
+  } catch {
+    return {
+      state: "inactive",
+      label: "Not active yet",
+      last_run_at: null,
+    };
+  }
+}
 
 export async function getConsoleSystemStatus(
   client: pg.Pool | pg.PoolClient,
@@ -79,6 +128,11 @@ export async function getConsoleSystemStatus(
     detail = "Verification batches are recorded for your organization.";
   }
 
+  const [scheduled_exports, maintenance] = await Promise.all([
+    serviceStatus(client, "compliance"),
+    serviceStatus(client, "housekeeping"),
+  ]);
+
   return {
     witness: {
       state,
@@ -87,6 +141,10 @@ export async function getConsoleSystemStatus(
       last_batch_at: lastBatchAt?.toISOString() ?? null,
       pending_events: pendingEvents,
       merkle_roots_total: merkleRootsTotal,
+    },
+    services: {
+      scheduled_exports,
+      maintenance,
     },
   };
 }
