@@ -1,6 +1,18 @@
 # JMT-S Content Sync + Aegis
 
-Import **`jmt-s-content-sync-with-aegis.json`** into n8n.
+## Which file to import?
+
+**Use `examples/n8n/jmt-s-content-sync-with-aegis.json`** — this is the canonical copy in the repo.
+
+The file under `integrations/n8n-nodes-salanor-aegis/examples/` is the same workflow, kept for the n8n package. Regenerate both from the base workflow with:
+
+```bash
+node integrations/n8n-nodes-salanor-aegis/examples/build-jmts-aegis.mjs
+```
+
+Then copy the output to `examples/n8n/` if you edit the base `jmt-s-content-sync.json` there.
+
+Import **`examples/n8n/jmt-s-content-sync-with-aegis.json`** into n8n.
 
 ## One-time setup
 

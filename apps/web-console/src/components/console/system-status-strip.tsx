@@ -6,6 +6,12 @@ import { useQuery } from "@tanstack/react-query";
 import { consoleApi } from "@/lib/api";
 import { ui } from "./console-ui";
 
+type ServiceStatus = {
+  state: "inactive" | "active" | "attention";
+  label: string;
+  last_run_at: string | null;
+};
+
 type SystemStatus = {
   witness: {
     state: "ok" | "degraded" | "unknown";
@@ -15,6 +21,10 @@ type SystemStatus = {
     pending_events: number;
     merkle_roots_total: number;
   };
+  services: {
+    scheduled_exports: ServiceStatus;
+    maintenance: ServiceStatus;
+  };
 };
 
 function dotColor(state: "ok" | "degraded" | "unknown"): string {
@@ -23,16 +33,11 @@ function dotColor(state: "ok" | "degraded" | "unknown"): string {
   return "var(--console-fg-muted)";
 }
 
-function formatLastVerified(iso: string): string {
-  const date = new Date(iso);
-  const diffMin = Math.floor((Date.now() - date.getTime()) / 60_000);
-  if (diffMin < 2) return "just now";
-  if (diffMin < 60) return `${diffMin} min ago`;
-  if (diffMin < 24 * 60) {
-    const h = Math.floor(diffMin / 60);
-    return h === 1 ? "1 hour ago" : `${h} hours ago`;
+function serviceLine(name: string, svc: ServiceStatus): string {
+  if (svc.last_run_at && svc.state === "active") {
+    return `${name}: ${svc.label} · ${new Date(svc.last_run_at).toLocaleString()}`;
   }
-  return date.toLocaleString();
+  return `${name}: ${svc.label}`;
 }
 
 export function SystemStatusStrip() {
@@ -57,8 +62,20 @@ export function SystemStatusStrip() {
     return null;
   }
 
-  const { witness } = data.status;
+  const { witness, services } = data.status;
   const showWarning = witness.state === "degraded";
+
+  const metaParts: string[] = [];
+  if (witness.merkle_roots_total > 0) {
+    metaParts.push(`Merkle roots: ${witness.merkle_roots_total}`);
+  }
+  if (witness.last_batch_at) {
+    metaParts.push(
+      `Last batch: ${new Date(witness.last_batch_at).toLocaleString()}`,
+    );
+  }
+  metaParts.push(serviceLine("Scheduled exports", services.scheduled_exports));
+  metaParts.push(serviceLine("Maintenance", services.maintenance));
 
   return (
     <div
@@ -86,29 +103,22 @@ export function SystemStatusStrip() {
           {witness.detail}
         </span>
       </div>
-      {witness.merkle_roots_total > 0 || witness.last_batch_at ? (
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "1rem",
-            fontSize: "0.75rem",
-            color: "var(--console-fg-subtle)",
-          }}
-        >
-          {witness.merkle_roots_total > 0 ? (
-            <span>
-              Verification batches: <strong>{witness.merkle_roots_total}</strong>
-            </span>
-          ) : null}
-          {witness.last_batch_at ? (
-            <span>Last verified {formatLastVerified(witness.last_batch_at)}</span>
-          ) : null}
-          <Link href="/aegis/exports" className={ui.tableLink}>
-            Exports
-          </Link>
-        </div>
-      ) : null}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "1rem",
+          fontSize: "0.75rem",
+          color: "var(--console-fg-subtle)",
+        }}
+      >
+        {metaParts.map((part) => (
+          <span key={part}>{part}</span>
+        ))}
+        <Link href="/aegis/exports" className={ui.tableLink}>
+          Exports
+        </Link>
+      </div>
     </div>
   );
 }
