@@ -202,21 +202,74 @@ export async function listRecentApprovals(
   organizationId: string,
   limit = 25,
 ): Promise<ApprovalRichDetail[]> {
+  const result = await listRecentApprovalsPaginated(client, organizationId, {
+    limit,
+    offset: 0,
+  });
+  return result.rows;
+}
+
+export async function listRecentApprovalsPaginated(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  opts: {
+    limit?: number;
+    offset?: number;
+    decision?: "approved" | "rejected" | "expired" | "all";
+    tool?: string;
+  },
+): Promise<{ rows: ApprovalRichDetail[]; total: number }> {
+  const limit = Math.min(Math.max(opts.limit ?? 25, 1), 100);
+  const offset = Math.max(opts.offset ?? 0, 0);
+  const decision = opts.decision ?? "all";
+  const tool = opts.tool?.trim() ?? "";
+
+  const statuses =
+    decision === "all"
+      ? ["approved", "rejected", "expired"]
+      : [decision];
+
+  const params: unknown[] = [organizationId, statuses];
+  let toolClause = "";
+  if (tool) {
+    params.push(`%${tool}%`);
+    toolClause = ` AND e.tool_name ILIKE $${params.length}`;
+  }
+
+  const countResult = await client.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count
+     FROM approval a
+     JOIN event e ON e.event_id = a.event_id
+     WHERE a.organization_id = $1
+       AND a.status = ANY($2::text[])
+       ${toolClause}`,
+    params,
+  );
+
+  params.push(limit, offset);
+  const limitIdx = params.length - 1;
+  const offsetIdx = params.length;
+
   const result = await client.query<ApprovalRichDetail & { event_payload: unknown }>(
     `${approvalSelectJoin()}
      WHERE a.organization_id = $1
-       AND a.status IN ('approved', 'rejected', 'expired')
+       AND a.status = ANY($2::text[])
+       ${toolClause}
      ORDER BY COALESCE(a.decided_at, a.created_at) DESC
-     LIMIT $2`,
-    [organizationId, limit],
+     LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+    params,
   );
-  return result.rows.map((row) => ({
-    ...row,
-    event_payload:
-      row.event_payload && typeof row.event_payload === "object"
-        ? (row.event_payload as Record<string, unknown>)
-        : null,
-  }));
+
+  return {
+    rows: result.rows.map((row) => ({
+      ...row,
+      event_payload:
+        row.event_payload && typeof row.event_payload === "object"
+          ? (row.event_payload as Record<string, unknown>)
+          : null,
+    })),
+    total: Number(countResult.rows[0]?.count ?? 0),
+  };
 }
 
 export async function decideApproval(

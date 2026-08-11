@@ -1180,6 +1180,8 @@ export async function platformOverviewStats(client: pg.Pool | pg.PoolClient): Pr
   accounts_total: number;
   accounts_active: number;
   events_this_month: number;
+  worker_runs_24h: number;
+  worker_errors_24h: number;
 }> {
   const period = monthStart();
   const result = await client.query<{
@@ -1188,6 +1190,8 @@ export async function platformOverviewStats(client: pg.Pool | pg.PoolClient): Pr
     accounts_total: string;
     accounts_active: string;
     events_this_month: string;
+    worker_runs_24h: string;
+    worker_errors_24h: string;
   }>(
     `SELECT
        (SELECT COUNT(*)::text FROM organization) AS organizations_total,
@@ -1195,7 +1199,11 @@ export async function platformOverviewStats(client: pg.Pool | pg.PoolClient): Pr
        (SELECT COUNT(*)::text FROM account) AS accounts_total,
        (SELECT COUNT(*)::text FROM account WHERE active) AS accounts_active,
        (SELECT COALESCE(SUM(event_count), 0)::text FROM organization_usage_monthly
-        WHERE period_month = $1::date) AS events_this_month`,
+        WHERE period_month = $1::date) AS events_this_month,
+       (SELECT COUNT(*)::text FROM worker_run
+        WHERE started_at > now() - interval '24 hours') AS worker_runs_24h,
+       (SELECT COUNT(*)::text FROM worker_run
+        WHERE status = 'error' AND started_at > now() - interval '24 hours') AS worker_errors_24h`,
     [period],
   );
   const row = result.rows[0];
@@ -1205,6 +1213,8 @@ export async function platformOverviewStats(client: pg.Pool | pg.PoolClient): Pr
     accounts_total: Number(row?.accounts_total ?? 0),
     accounts_active: Number(row?.accounts_active ?? 0),
     events_this_month: Number(row?.events_this_month ?? 0),
+    worker_runs_24h: Number(row?.worker_runs_24h ?? 0),
+    worker_errors_24h: Number(row?.worker_errors_24h ?? 0),
   };
 }
 

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AegisMark } from "@/components/console/aegis-mark";
+import { ConsolePagination } from "@/components/console/console-pagination";
 import { EmptyStatePanel } from "@/components/console/empty-state-panel";
 import { Modal } from "@/components/console/modal";
 import {
@@ -304,6 +305,13 @@ export default function ApprovalsPage() {
   const focusRef = useRef<HTMLDivElement | null>(null);
   const [tab, setTab] = useState<"pending" | "history">("pending");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyLimit, setHistoryLimit] = useState(25);
+  const [historyDecision, setHistoryDecision] = useState<
+    "all" | "approved" | "rejected" | "expired"
+  >("all");
+  const [historyTool, setHistoryTool] = useState("");
+  const [historyToolDraft, setHistoryToolDraft] = useState("");
 
   const governanceQuery = useQuery({
     queryKey: ["console", "governance-settings"],
@@ -329,9 +337,29 @@ export default function ApprovalsPage() {
   });
 
   const historyQuery = useQuery({
-    queryKey: ["console", "approvals", "history"],
-    queryFn: () =>
-      consoleApi<{ approvals: ApprovalSummary[] }>("/approvals?status=history"),
+    queryKey: [
+      "console",
+      "approvals",
+      "history",
+      historyPage,
+      historyLimit,
+      historyDecision,
+      historyTool,
+    ],
+    queryFn: () => {
+      const params = new URLSearchParams({
+        status: "history",
+        limit: String(historyLimit),
+        offset: String((historyPage - 1) * historyLimit),
+        decision: historyDecision,
+      });
+      if (historyTool.trim()) {
+        params.set("tool", historyTool.trim());
+      }
+      return consoleApi<{ approvals: ApprovalSummary[]; total: number }>(
+        `/approvals?${params.toString()}`,
+      );
+    },
     enabled: tab === "history",
   });
 
@@ -367,6 +395,7 @@ export default function ApprovalsPage() {
 
   const pending = pendingQuery.data?.approvals ?? [];
   const history = historyQuery.data?.approvals ?? [];
+  const historyTotal = historyQuery.data?.total ?? 0;
   const blockedTraces = pendingQuery.data?.blocked_traces ?? pending.length;
   const isEmptyPending = pending.length === 0 && !pendingQuery.isLoading;
   const ttlHours = governanceQuery.data?.settings.approval_ttl_hours ?? 24;
@@ -448,6 +477,50 @@ export default function ApprovalsPage() {
         </>
       ) : (
         <>
+          <div
+            className={ui.toolbar}
+            style={{ marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}
+          >
+            <select
+              className={ui.select}
+              value={historyDecision}
+              onChange={(e) => {
+                setHistoryDecision(
+                  e.target.value as "all" | "approved" | "rejected" | "expired",
+                );
+                setHistoryPage(1);
+              }}
+              aria-label="Filter by decision"
+            >
+              <option value="all">All decisions</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="expired">Expired</option>
+            </select>
+            <input
+              className={ui.input}
+              style={{ maxWidth: "16rem" }}
+              placeholder="Filter by tool name…"
+              value={historyToolDraft}
+              onChange={(e) => setHistoryToolDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  setHistoryTool(historyToolDraft);
+                  setHistoryPage(1);
+                }
+              }}
+            />
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnSecondary}`}
+              onClick={() => {
+                setHistoryTool(historyToolDraft);
+                setHistoryPage(1);
+              }}
+            >
+              Apply filter
+            </button>
+          </div>
           {historyQuery.isLoading ? <LoadingBlock /> : null}
           {historyQuery.error ? (
             <ErrorAlert message="Failed to load approval history." />
@@ -466,6 +539,20 @@ export default function ApprovalsPage() {
               onViewDetails={() => setDetailId(a.approval_id)}
             />
           ))}
+          {historyTotal > 0 ? (
+            <ConsolePagination
+              total={historyTotal}
+              limit={historyLimit}
+              page={historyPage}
+              onPageChange={setHistoryPage}
+              onLimitChange={(n) => {
+                setHistoryLimit(n);
+                setHistoryPage(1);
+              }}
+              noun="decision"
+              pageSizes={[10, 25, 50, 100]}
+            />
+          ) : null}
         </>
       )}
 

@@ -9,6 +9,7 @@ import {
   getApprovalRich,
   listPendingApprovals,
   listRecentApprovals,
+  listRecentApprovalsPaginated,
   type ApprovalRichDetail,
 } from "../../repo/approvals.js";
 import {
@@ -52,8 +53,29 @@ approvalRoutes.get("/approvals", requireConsoleSession, async (c) => {
   const status = c.req.query("status") ?? "pending";
 
   if (status === "history") {
-    const rows = await listRecentApprovals(getPool(), orgId);
-    return c.json({ approvals: rows.map(serializeApproval) });
+    const limit = Math.min(Math.max(Number(c.req.query("limit") || "25"), 1), 100);
+    const offset = Math.max(Number(c.req.query("offset") || "0"), 0);
+    const decisionRaw = c.req.query("decision") ?? "all";
+    const decision =
+      decisionRaw === "approved" ||
+      decisionRaw === "rejected" ||
+      decisionRaw === "expired" ||
+      decisionRaw === "all"
+        ? decisionRaw
+        : "all";
+    const tool = c.req.query("tool") ?? undefined;
+    const result = await listRecentApprovalsPaginated(getPool(), orgId, {
+      limit,
+      offset,
+      decision,
+      tool,
+    });
+    return c.json({
+      approvals: result.rows.map(serializeApproval),
+      total: result.total,
+      limit,
+      offset,
+    });
   }
 
   if (status !== "pending") {
