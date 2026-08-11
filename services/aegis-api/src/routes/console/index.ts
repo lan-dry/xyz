@@ -59,6 +59,7 @@ import {
   type SpanWithEvents,
 } from "../../repo/spans.js";
 import { buildReplayManifest } from "../../trace/replay-manifest.js";
+import { getConsoleSystemStatus } from "../../console/system-status.js";
 import { groupEventsIntoSpans } from "../../trace/span-grouping.js";
 import { agentRoutes } from "./agents.js";
 import { organizationRoutes } from "./organization.js";
@@ -67,6 +68,7 @@ import { approvalRoutes } from "./approvals.js";
 import { verifyRoutes } from "./verify.js";
 import { exportRoutes } from "./exports.js";
 import { siemRoutes } from "./siem.js";
+import { governanceRoutes } from "./governance.js";
 
 const LEGACY_SESSION_COOKIE = "aegis_session";
 
@@ -203,6 +205,7 @@ consoleRoutes.route("/", approvalRoutes);
 consoleRoutes.route("/", verifyRoutes);
 consoleRoutes.route("/", exportRoutes);
 consoleRoutes.route("/", siemRoutes);
+consoleRoutes.route("/", governanceRoutes);
 
 consoleRoutes.post("/auth/login", async (c) => {
   const ip = getClientIp(c.req.raw.headers);
@@ -309,6 +312,12 @@ consoleRoutes.get("/insights", requireConsoleSession, async (c) => {
   const orgId = c.get("consoleSession").organizationId;
   const insights = await getOrgGovernanceInsights(getPool(), orgId);
   return c.json({ insights });
+});
+
+consoleRoutes.get("/system-status", requireConsoleSession, async (c) => {
+  const orgId = c.get("consoleSession").organizationId;
+  const status = await getConsoleSystemStatus(getPool(), orgId);
+  return c.json({ status });
 });
 
 consoleRoutes.get("/traces", requireConsoleSession, async (c) => {

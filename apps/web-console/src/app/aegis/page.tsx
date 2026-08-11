@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, KeyRound, UserCheck } from "lucide-react";
+import { Activity, KeyRound, Shield, UserCheck } from "lucide-react";
 
 import {
   ConsolePage,
@@ -15,6 +15,7 @@ import {
 } from "@/components/console/console-ui";
 import { DemoGuidePanel } from "@/components/console/demo-guide";
 import { GovernanceInsightsPanel } from "@/components/console/governance-insights-panel";
+import { SystemStatusStrip } from "@/components/console/system-status-strip";
 import { consoleApi } from "@/lib/api";
 import type { TraceSummary } from "@/lib/types";
 
@@ -30,6 +31,12 @@ export default function AegisDashboardPage() {
       consoleApi<{ approvals: { approval_id: string }[] }>(
         "/approvals?status=pending",
       ),
+  });
+
+  const policiesQuery = useQuery({
+    queryKey: ["console", "policies"],
+    queryFn: () =>
+      consoleApi<{ policies: Array<{ status: string }> }>("/policies"),
   });
 
   const insightsQuery = useQuery({
@@ -55,6 +62,8 @@ export default function AegisDashboardPage() {
   const traces = tracesQuery.data?.traces ?? [];
   const pending = approvalsQuery.data?.approvals.length ?? 0;
   const blocked = traces.filter((t) => t.status === "blocked").length;
+  const activePolicies =
+    policiesQuery.data?.policies.filter((p) => p.status === "active").length ?? 0;
   const recent = [...traces]
     .sort(
       (a, b) =>
@@ -76,6 +85,8 @@ export default function AegisDashboardPage() {
           </Link>
         }
       />
+
+      <SystemStatusStrip />
 
       {loading ? <LoadingBlock /> : null}
       {error ? <ErrorAlert message="Failed to load dashboard metrics." /> : null}
@@ -106,6 +117,15 @@ export default function AegisDashboardPage() {
               <p className={ui.cardValue}>{blocked}</p>
               <p className={ui.cardHint}>Awaiting human decision</p>
             </div>
+            <div className={`${ui.card} ${ui.cardPad}`}>
+              <p className={ui.cardTitle}>Active policies</p>
+              <p className={ui.cardValue}>{activePolicies}</p>
+              <p className={ui.cardHint}>
+                <Link href="/aegis/policies" className={ui.tableLink}>
+                  Manage policies →
+                </Link>
+              </p>
+            </div>
           </div>
 
           {insightsQuery.data?.insights ? (
@@ -135,6 +155,12 @@ export default function AegisDashboardPage() {
                   </Link>
                 </li>
                 <li style={{ marginBottom: "0.75rem" }}>
+                  <Link href="/aegis/policies" className={ui.tableLink}>
+                    <Shield size={14} style={{ verticalAlign: "-2px" }} /> Policy
+                    engine
+                  </Link>
+                </li>
+                <li style={{ marginBottom: "0.75rem" }}>
                   <Link href="/aegis/keys" className={ui.tableLink}>
                     <KeyRound size={14} style={{ verticalAlign: "-2px" }} /> Ingest API
                     keys
@@ -154,7 +180,7 @@ export default function AegisDashboardPage() {
                 <div className={ui.tableWrap}>
                   <EmptyState
                     title="No traces yet"
-                    description="Run pnpm demo:ingest after creating an ingest key."
+                    description="Create an ingest API key, then send signed APS-1 events from your runtime or automation workflow."
                   />
                 </div>
               ) : (
