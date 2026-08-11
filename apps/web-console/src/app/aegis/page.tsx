@@ -15,6 +15,7 @@ import {
 } from "@/components/console/console-ui";
 import { DemoGuidePanel } from "@/components/console/demo-guide";
 import { GovernanceInsightsPanel } from "@/components/console/governance-insights-panel";
+import { SystemStatusStrip } from "@/components/console/system-status-strip";
 import { consoleApi } from "@/lib/api";
 import type { TraceSummary } from "@/lib/types";
 
@@ -84,6 +85,8 @@ export default function AegisDashboardPage() {
           </Link>
         }
       />
+
+      <SystemStatusStrip />
 
       {loading ? <LoadingBlock /> : null}
       {error ? <ErrorAlert message="Failed to load dashboard metrics." /> : null}

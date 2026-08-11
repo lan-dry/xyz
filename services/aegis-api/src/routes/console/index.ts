@@ -59,6 +59,7 @@ import {
   type SpanWithEvents,
 } from "../../repo/spans.js";
 import { buildReplayManifest } from "../../trace/replay-manifest.js";
+import { getConsoleSystemStatus } from "../../console/system-status.js";
 import { groupEventsIntoSpans } from "../../trace/span-grouping.js";
 import { agentRoutes } from "./agents.js";
 import { organizationRoutes } from "./organization.js";
@@ -311,6 +312,12 @@ consoleRoutes.get("/insights", requireConsoleSession, async (c) => {
   const orgId = c.get("consoleSession").organizationId;
   const insights = await getOrgGovernanceInsights(getPool(), orgId);
   return c.json({ insights });
+});
+
+consoleRoutes.get("/system-status", requireConsoleSession, async (c) => {
+  const orgId = c.get("consoleSession").organizationId;
+  const status = await getConsoleSystemStatus(getPool(), orgId);
+  return c.json({ status });
 });
 
 consoleRoutes.get("/traces", requireConsoleSession, async (c) => {
