@@ -41,12 +41,22 @@ Node **11** uses the **Salanor Aegis** community node (Record Run), not a separa
 
 ### Error path (governed)
 
-If publish fails after approval (bad credentials on node 8, HTTP error, etc.):
+**Any node failure** (bad credentials, HTTP 500, OpenAI timeout, etc.) should close the Aegis trace as **FAILED**, not leave it stuck on EXECUTING.
 
-1. **Node 8 error output** → **E1 → E2** closes the obligation trace as **FAILED** (works on **Manual Trigger** runs).
-2. **Error Trigger** → E1 → E2 is a backup for **production** runs only (n8n does not fire Error Trigger on manual test executions).
+n8n gives you two mechanisms:
 
-When Check Policy (7b) created an obligation trace, node **11** completes that same trace via `/workflows/runs/{trace_id}/complete` instead of starting a new one-shot run.
+| Mechanism | When it runs | This workflow |
+|-----------|----------------|---------------|
+| **Per-node error output** (`On Error → Continue → Error Output`) | Manual Trigger **and** production | **Built in:** every HTTP, Code, Set, and Drive node (except soft-fail extract) routes to **E1 → E2** |
+| **Settings → Error Workflow** (separate workflow with Error Trigger) | **Production only** (active workflow, real trigger). **Not** Manual Trigger test runs. | Optional backup — import `jmt-s-aegis-error-handler.json` and link it in workflow settings |
+
+**7b Check Policy** is excluded from the global error wire on purpose: deny/reject is already handled by Aegis (FAILED or stays blocked).
+
+**2g JMT-S Extract text** uses Continue On Fail (soft-fail per file) and is excluded.
+
+After **7c Store obligation trace**, the obligation `trace_id` is in workflow static data so **E1** can close the correct trace even when **7b** is not reachable from the error branch.
+
+When Check Policy (7b) created an obligation trace, node **11** (success) or **E2** (failure) completes that same trace.
 
 Re-import after updates: `node examples/n8n/build-jmts-aegis.mjs`
 
