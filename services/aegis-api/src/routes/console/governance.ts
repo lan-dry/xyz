@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import { getPool } from "../../db/pool.js";
+import { smsDeliveryAvailable } from "../../approvals/notify.js";
 import {
   getGovernanceSettings,
   governanceSettingsForClient,
@@ -16,7 +17,11 @@ export const governanceRoutes = new Hono<{ Variables: ConsoleVariables }>();
 governanceRoutes.get("/governance/settings", requireConsoleSession, async (c) => {
   const orgId = c.get("consoleSession").organizationId;
   const settings = await getGovernanceSettings(getPool(), orgId);
-  return c.json({ settings: governanceSettingsForClient(settings) });
+  return c.json({
+    settings: governanceSettingsForClient(settings, {
+      smsDeliveryAvailable: smsDeliveryAvailable(),
+    }),
+  });
 });
 
 governanceRoutes.patch("/governance/settings", requireConsoleSession, async (c) => {
@@ -84,5 +89,9 @@ governanceRoutes.patch("/governance/settings", requireConsoleSession, async (c) 
     },
   });
 
-  return c.json({ settings: governanceSettingsForClient(updated) });
+  return c.json({
+    settings: governanceSettingsForClient(updated, {
+      smsDeliveryAvailable: smsDeliveryAvailable(),
+    }),
+  });
 });

@@ -147,7 +147,7 @@ export function buildEventProvenance(input: {
   if (trigger) {
     parts.push(`triggered by ${trigger}${triggerDetail ? ` (${triggerDetail})` : ""}`);
   }
-  parts.push(`→ ${input.policy_decision}`);
+  parts.push(`policy: ${input.policy_decision}`);
 
   return { summary: parts.join(" · "), lines };
 }

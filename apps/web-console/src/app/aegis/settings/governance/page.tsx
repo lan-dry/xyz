@@ -19,6 +19,7 @@ type GovernanceSettings = {
     pagerduty_routing_key: string | null;
     pagerduty_configured: boolean;
     sms_numbers: string[];
+    sms_delivery_available: boolean;
   };
 };
 
@@ -80,9 +81,8 @@ export default function GovernanceSettingsPage() {
         Governance & approvals
       </h2>
       <p>
-        Configure how long approvals stay pending, when orphaned traces are closed,
-        and which channels notify org admins. SMS uses Twilio credentials on the API
-        (<code className="mono">TWILIO_*</code> env vars).
+        Control how long approval requests stay open, when stale workflow traces are
+        closed, and how your team is notified when an action needs a human decision.
       </p>
 
       {settingsQuery.error ? (
@@ -140,11 +140,14 @@ export default function GovernanceSettingsPage() {
               checked={emailEnabled}
               onChange={(e) => setEmailEnabled(e.target.checked)}
             />
-            Email org admins (Resend)
+            Email organization admins
           </label>
+          <p className={ui.cardHint} style={{ margin: "-0.5rem 0 0.75rem" }}>
+            Sends a formatted alert to every admin on the account when approval is required.
+          </p>
 
           <label className={ui.field}>
-            Slack incoming webhook
+            Slack channel webhook
             <input
               className={ui.input}
               placeholder="https://hooks.slack.com/services/..."
@@ -152,28 +155,36 @@ export default function GovernanceSettingsPage() {
               onChange={(e) => setSlackWebhook(e.target.value)}
             />
           </label>
+          <p className={ui.cardHint} style={{ margin: "-0.5rem 0 0.75rem" }}>
+            Posts a message to your Slack workspace when an approval is pending. In Slack,
+            create an Incoming Webhook for the channel you want (for example{" "}
+            <code className="mono">#security-approvals</code>) and paste the URL here.
+          </p>
           {s?.notifications.slack_configured && !slackWebhook ? (
-            <p className={ui.cardHint}>Webhook configured (hidden). Paste a new URL to replace.</p>
+            <p className={ui.cardHint}>Webhook saved. Paste a new URL to replace it.</p>
           ) : null}
 
           <label className={ui.field}>
-            PagerDuty routing key
+            PagerDuty integration key
             <input
               className={ui.input}
               type="password"
               placeholder={
                 s?.notifications.pagerduty_configured
-                  ? "•••••••• (configured)"
-                  : "Integration key from PagerDuty service"
+                  ? "Saved (enter a new key to replace)"
+                  : "Routing key from your PagerDuty service"
               }
               value={pagerdutyKey}
               onChange={(e) => setPagerdutyKey(e.target.value)}
               autoComplete="off"
             />
           </label>
+          <p className={ui.cardHint} style={{ margin: "-0.5rem 0 0.75rem" }}>
+            Opens a PagerDuty incident so on-call staff can respond to pending approvals.
+          </p>
 
           <label className={ui.field}>
-            SMS numbers (E.164, one per line)
+            SMS alert numbers
             <textarea
               className={ui.input}
               rows={3}
@@ -182,6 +193,13 @@ export default function GovernanceSettingsPage() {
               onChange={(e) => setSmsNumbers(e.target.value)}
             />
           </label>
+          <p className={ui.cardHint} style={{ margin: "-0.5rem 0 0.5rem" }}>
+            One mobile number per line, international format with country code (example{" "}
+            <code className="mono">+15551234567</code>).
+            {s?.notifications.sms_delivery_available
+              ? " Text alerts are enabled for your deployment."
+              : " Text alerts are not enabled on this deployment yet. Contact Salanor support to activate SMS."}
+          </p>
         </div>
 
         {save.error ? <ErrorAlert message={(save.error as Error).message} /> : null}

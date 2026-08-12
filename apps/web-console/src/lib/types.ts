@@ -113,6 +113,7 @@ export type TraceSummary = {
   ended_at: string | null;
   total_events: number;
   denied_events: number;
+  pending_approval?: boolean;
   root_event_id?: string | null;
   root_event_hash?: string | null;
   chain_root_hash?: string;

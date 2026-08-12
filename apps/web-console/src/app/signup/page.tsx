@@ -98,7 +98,7 @@ function SignupForm() {
           {fromOauth && email ? (
             <p className={styles.oauthHint}>
               No account for <strong>{email}</strong> yet. You can also use{" "}
-              <Link href="/login">Sign in → Continue with GitHub/Google</Link> to create an account
+              <Link href="/login">Sign in, then continue with GitHub or Google</Link> to create an account
               and name your company on the next screen.
             </p>
           ) : null}

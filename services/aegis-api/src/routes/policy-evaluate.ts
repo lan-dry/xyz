@@ -125,6 +125,9 @@ export async function postPolicyEvaluate(c: Context): Promise<Response> {
               ? Number.parseFloat(amountRaw)
               : undefined;
 
+        const recipient =
+          typeof payload.recipient === "string" ? payload.recipient : undefined;
+
         notifyApprovalPending(client, {
           organizationId: body.organization_id,
           approvalId: recorded.approval_id,
@@ -134,6 +137,7 @@ export async function postPolicyEvaluate(c: Context): Promise<Response> {
           requestSummary:
             typeof payload.summary === "string" ? payload.summary : undefined,
           amountUsd: Number.isFinite(amountUsd) ? amountUsd : undefined,
+          recipient,
         });
 
         return c.json({

@@ -187,7 +187,7 @@ export default function OrganizationSettingsPage() {
             </div>
             <p className={ui.muted} style={{ fontSize: "0.75rem", marginTop: "0.5rem" }}>
               Short ID used in agent DIDs and internal paths (letters, numbers, hyphens).
-              Not a website URL — e.g. <span className="mono">acme</span>, not{" "}
+              Not a website URL. Use e.g. <span className="mono">acme</span>, not{" "}
               <span className="mono">https://acme.com</span>.
             </p>
             {editMessage ? (
@@ -230,7 +230,7 @@ export default function OrganizationSettingsPage() {
           <p className={ui.muted}>Loading plan…</p>
         )}
         <p style={{ margin: 0 }}>
-          <Link href="/aegis/settings/billing">Manage plan, usage & billing →</Link>
+          <Link href="/aegis/settings/billing">Manage plan, usage and billing</Link>
         </p>
       </section>
 

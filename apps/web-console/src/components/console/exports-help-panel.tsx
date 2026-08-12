@@ -9,7 +9,7 @@ import styles from "./exports-help-panel.module.css";
 const ZIP_FILES = [
   {
     name: "events.ndjson",
-    desc: "Signed APS-1 agent events: tool calls, LLM steps, policy decisions, provenance claims.",
+    desc: "Signed APS-1 events: tool calls, model steps, policy decisions, provenance claims.",
   },
   {
     name: "policies.json",

@@ -37,7 +37,6 @@ const DOCS_NAV: DocsNavItem[] = [
 
 const NAV_LINKS = [
   { href: "/about", label: "About" },
-  { href: "/trust", label: "Trust" },
   { href: "/spec", label: "Specs" },
   { href: "/#how", label: "How it works" },
   { href: "/contact", label: "Contact" },

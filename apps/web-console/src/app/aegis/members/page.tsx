@@ -199,7 +199,7 @@ export default function MembersPage() {
           <strong>
             {inviteBannerOk
               ? "Invitation ready"
-              : "Invitation created — email not delivered"}
+              : "Invitation created. Email not delivered"}
           </strong>
           <p style={{ margin: "0.5rem 0 0", fontSize: "0.8125rem" }}>
             {lastInvite.warning ??

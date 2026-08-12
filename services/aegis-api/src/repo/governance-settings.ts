@@ -15,7 +15,7 @@ export type GovernanceSettings = {
 
 const DEFAULTS: GovernanceSettings = {
   approval_ttl_hours: 24,
-  stale_trace_hours: 72,
+  stale_trace_hours: 24,
   notifications: {
     email_enabled: true,
     slack_webhook_url: null,
@@ -103,7 +103,10 @@ export async function updateGovernanceSettings(
   return merged;
 }
 
-export function governanceSettingsForClient(settings: GovernanceSettings) {
+export function governanceSettingsForClient(
+  settings: GovernanceSettings,
+  options?: { smsDeliveryAvailable?: boolean },
+) {
   return {
     approval_ttl_hours: settings.approval_ttl_hours,
     stale_trace_hours: settings.stale_trace_hours,
@@ -116,6 +119,7 @@ export function governanceSettingsForClient(settings: GovernanceSettings) {
       pagerduty_configured: Boolean(settings.notifications.pagerduty_routing_key),
       sms_numbers: settings.notifications.sms_numbers,
       slack_configured: Boolean(settings.notifications.slack_webhook_url),
+      sms_delivery_available: options?.smsDeliveryAvailable ?? false,
     },
   };
 }

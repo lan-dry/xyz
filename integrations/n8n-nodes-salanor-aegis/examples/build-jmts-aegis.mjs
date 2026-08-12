@@ -335,7 +335,7 @@ return [{
       status: runStatus,
       summary:
         summary.status +
-        (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : ''),
+        (summary.updateCount != null ? ' — ' + summary.updateCount + ' update(s)' : ''),
       execution: {
         workflow_name: $workflow.name,
         execution_id: String($execution.id),
@@ -379,7 +379,7 @@ return [{
       credentials: {
         httpHeaderAuth: {
           id: "CONFIGURE_AEGIS_INGEST",
-          name: "Aegis Ingest API Header Auth",
+          name: "Aegis Ingest API — Header Auth",
         },
       },
     },
@@ -390,78 +390,6 @@ return [{
   };
   wf.connections["10. Prepare Aegis capture"] = {
     main: [[{ node: "11. Record in Aegis", type: "main", index: 0 }]],
-  };
-}
-
-function addErrorTriggerPath(wf) {
-  const failurePrepareCode = String.raw`/**
- * Close the governed trace when n8n stops on an error (credentials, HTTP 4xx, etc.).
- */
-const err = $input.first().json;
-let aegisPolicy = null;
-try {
-  const row = $('7b. Check Policy (publish)').first().json;
-  aegisPolicy = row.aegis_policy ?? null;
-} catch {}
-
-const message =
-  err.execution?.error?.message ??
-  err.error?.message ??
-  err.message ??
-  'Workflow failed';
-
-return [{
-  json: {
-    ...(aegisPolicy ? { aegis_policy: aegisPolicy } : {}),
-    aegis_tool: 'jmts.content.publish',
-    failure_summary: String(message).slice(0, 500),
-  },
-}];`;
-
-  wf.nodes.push(
-    {
-      parameters: {},
-      id: "sync-gov-error-trigger",
-      name: "Error Trigger",
-      type: "n8n-nodes-base.errorTrigger",
-      typeVersion: 1,
-      position: [3520, 720],
-    },
-    {
-      parameters: { jsCode: failurePrepareCode },
-      id: "sync-gov-error-prepare",
-      name: "E1. Prepare failure capture",
-      type: "n8n-nodes-base.code",
-      typeVersion: 2,
-      position: [3740, 720],
-    },
-    {
-      parameters: {
-        operation: "recordRun",
-        businessContext: "JMT-S daily content sync from Google Drive",
-        summary: "={{ $json.failure_summary }}",
-        runStatus: "failed",
-        nodesJson: "[]",
-      },
-      id: "sync-gov-error-record",
-      name: "E2. Record failure in Aegis",
-      type: "n8n-nodes-salanor-aegis.salanorAegis",
-      typeVersion: 1,
-      position: [3960, 720],
-      credentials: {
-        salanorAegisApi: {
-          id: "CONFIGURE_SALANOR_AEGIS",
-          name: "Salanor Aegis API",
-        },
-      },
-    },
-  );
-
-  wf.connections["Error Trigger"] = {
-    main: [[{ node: "E1. Prepare failure capture", type: "main", index: 0 }]],
-  };
-  wf.connections["E1. Prepare failure capture"] = {
-    main: [[{ node: "E2. Record failure in Aegis", type: "main", index: 0 }]],
   };
 }
 
@@ -481,17 +409,13 @@ function buildVariant(mode) {
 
   addAegisCapture(wf, { includePolicyStep: governed });
 
-  if (governed) {
-    addErrorTriggerPath(wf);
-  }
-
   wf.name = governed
     ? "JMT-S Content Sync (Drive + OpenAI + Aegis governed)"
     : "JMT-S Content Sync (Drive + OpenAI + Aegis audit)";
   wf.meta = {
     templateCredsSetupCompleted: false,
     description: governed
-      ? "Drive-to-CMS sync. Dry-run always; live publish requires Console approval on jmts.content.publish. Records signed trace at end. Error Trigger closes the trace on workflow failure."
+      ? "Drive-to-CMS sync. Dry-run always; live publish requires Console approval on jmts.content.publish. Records signed trace at end."
       : "Drive-to-CMS sync with dry-run validation and signed Aegis trace. No live publish.",
   };
 

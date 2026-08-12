@@ -28,9 +28,14 @@ export default function AegisDashboardPage() {
   const approvalsQuery = useQuery({
     queryKey: ["console", "approvals", "pending"],
     queryFn: () =>
-      consoleApi<{ approvals: { approval_id: string }[] }>(
-        "/approvals?status=pending",
-      ),
+      consoleApi<{
+        approvals: Array<{
+          approval_id: string;
+          tool_name: string | null;
+          trace_id: string;
+          request_preview: { summary?: string; fields: Array<{ key: string; value: string }> };
+        }>;
+      }>("/approvals?status=pending"),
   });
 
   const policiesQuery = useQuery({
@@ -60,7 +65,8 @@ export default function AegisDashboardPage() {
   });
 
   const traces = tracesQuery.data?.traces ?? [];
-  const pending = approvalsQuery.data?.approvals.length ?? 0;
+  const pendingApprovals = approvalsQuery.data?.approvals ?? [];
+  const pending = pendingApprovals.length;
   const blocked = traces.filter((t) => t.status === "blocked").length;
   const activePolicies =
     policiesQuery.data?.policies.filter((p) => p.status === "active").length ?? 0;
@@ -80,9 +86,15 @@ export default function AegisDashboardPage() {
         title="Dashboard"
         subtitle="Operational view of provenance, obligations, and policy for your organization."
         actions={
-          <Link href="/aegis/traces" className={`${ui.btn} ${ui.btnPrimary}`}>
-            View all traces
-          </Link>
+          pending > 0 ? (
+            <Link href="/aegis/approvals" className={`${ui.btn} ${ui.btnPrimary}`}>
+              Review approvals ({pending})
+            </Link>
+          ) : (
+            <Link href="/aegis/traces" className={`${ui.btn} ${ui.btnPrimary}`}>
+              View all traces
+            </Link>
+          )
         }
       />
 
@@ -95,17 +107,12 @@ export default function AegisDashboardPage() {
         <>
           <div className={ui.statGrid}>
             <div className={`${ui.card} ${ui.cardPad}`}>
-              <p className={ui.cardTitle}>Traces</p>
-              <p className={ui.cardValue}>{traces.length}</p>
-              <p className={ui.cardHint}>Recorded agent workflows</p>
-            </div>
-            <div className={`${ui.card} ${ui.cardPad}`}>
               <p className={ui.cardTitle}>Pending approvals</p>
               <p className={ui.cardValue}>{pending}</p>
               <p className={ui.cardHint}>
                 {pending > 0 ? (
                   <Link href="/aegis/approvals" className={ui.tableLink}>
-                    Review queue →
+                    Review queue
                   </Link>
                 ) : (
                   "No obligations waiting"
@@ -115,18 +122,72 @@ export default function AegisDashboardPage() {
             <div className={`${ui.card} ${ui.cardPad}`}>
               <p className={ui.cardTitle}>Blocked traces</p>
               <p className={ui.cardValue}>{blocked}</p>
-              <p className={ui.cardHint}>Awaiting human decision</p>
+              <p className={ui.cardHint}>Awaiting human decision or post-approval run</p>
+            </div>
+            <div className={`${ui.card} ${ui.cardPad}`}>
+              <p className={ui.cardTitle}>Traces</p>
+              <p className={ui.cardValue}>{traces.length}</p>
+              <p className={ui.cardHint}>Recorded agent workflows</p>
             </div>
             <div className={`${ui.card} ${ui.cardPad}`}>
               <p className={ui.cardTitle}>Active policies</p>
               <p className={ui.cardValue}>{activePolicies}</p>
               <p className={ui.cardHint}>
                 <Link href="/aegis/policies" className={ui.tableLink}>
-                  Manage policies →
+                  Manage policies
                 </Link>
               </p>
             </div>
           </div>
+
+          {pending > 0 ? (
+            <section className={`${ui.card} ${ui.cardPad}`} style={{ marginTop: "1.5rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: "1rem",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  marginBottom: "1rem",
+                }}
+              >
+                <h2 className={ui.panelTitle} style={{ margin: 0 }}>
+                  Approvals need attention
+                </h2>
+                <Link href="/aegis/approvals" className={`${ui.btn} ${ui.btnPrimary}`}>
+                  Open approvals
+                </Link>
+              </div>
+              <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                {pendingApprovals.slice(0, 3).map((a) => (
+                  <li
+                    key={a.approval_id}
+                    style={{
+                      padding: "0.75rem 0",
+                      borderTop: "1px solid var(--console-border)",
+                    }}
+                  >
+                    <Link
+                      href={`/aegis/approvals?focus=${encodeURIComponent(a.approval_id)}`}
+                      className={ui.tableLink}
+                      style={{ fontWeight: 600 }}
+                    >
+                      {a.tool_name ?? "Unknown tool"}
+                    </Link>
+                    <p className={ui.cardHint} style={{ margin: "0.25rem 0 0" }}>
+                      {a.request_preview.summary ??
+                        a.request_preview.fields
+                          .slice(0, 2)
+                          .map((f) => `${f.key}: ${f.value}`)
+                          .join(" · ") ??
+                        "Review before side effects run"}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           {insightsQuery.data?.insights ? (
             <GovernanceInsightsPanel
@@ -143,15 +204,15 @@ export default function AegisDashboardPage() {
               <h2 className={ui.panelTitle}>Quick actions</h2>
               <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
                 <li style={{ marginBottom: "0.75rem" }}>
-                  <Link href="/aegis/traces" className={ui.tableLink}>
-                    <Activity size={14} style={{ verticalAlign: "-2px" }} /> Browse
-                    traces
-                  </Link>
-                </li>
-                <li style={{ marginBottom: "0.75rem" }}>
                   <Link href="/aegis/approvals" className={ui.tableLink}>
                     <UserCheck size={14} style={{ verticalAlign: "-2px" }} /> Pending
                     approvals
+                  </Link>
+                </li>
+                <li style={{ marginBottom: "0.75rem" }}>
+                  <Link href="/aegis/traces" className={ui.tableLink}>
+                    <Activity size={14} style={{ verticalAlign: "-2px" }} /> Browse
+                    traces
                   </Link>
                 </li>
                 <li style={{ marginBottom: "0.75rem" }}>

@@ -11,6 +11,7 @@ export type TraceSummary = {
   denied_events: number;
   root_event_id: string | null;
   root_event_hash: string | null;
+  pending_approval: boolean;
 };
 
 export type TraceListFilters = {
@@ -44,7 +45,15 @@ const TRACE_SELECT = `
               AND e.action_kind = 'policy_decision'
               AND e.policy_decision = 'deny'),
            0
-         ) AS denied_events
+         ) AS denied_events,
+         EXISTS (
+           SELECT 1 FROM approval a
+           JOIN event ev ON ev.event_id = a.event_id AND ev.organization_id = a.organization_id
+           WHERE ev.trace_id = t.trace_id
+             AND a.organization_id = t.organization_id
+             AND a.status = 'pending'
+             AND (a.expires_at IS NULL OR a.expires_at > now())
+         ) AS pending_approval
   FROM trace t
   LEFT JOIN event re
     ON re.event_id = t.root_event_id

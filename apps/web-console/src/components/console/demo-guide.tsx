@@ -7,39 +7,39 @@ import { ui } from "./console-ui";
 
 const STEPS = [
   {
+    id: "policy",
+    label: "Create & activate a policy",
+    hint: "Require approval on jmts.content.publish (or your riskiest tool)",
+    href: "/aegis/policies",
+  },
+  {
+    id: "n8n",
+    label: "Run governed n8n workflow",
+    hint: "Import examples/n8n/jmt-s-content-sync-with-aegis.json. Publish requires approval.",
+    href: "/aegis/policies",
+  },
+  {
+    id: "approval",
+    label: "Human approval (obligation queue)",
+    hint: "Start the demo here: blocked publish with context, then approve",
+    href: "/aegis/approvals",
+  },
+  {
+    id: "trace",
+    label: "Open trace & verify event",
+    hint: "Event detail: Verify chain + inclusion",
+    href: "/aegis/traces",
+  },
+  {
     id: "ingest",
     label: "Ingest a signed event",
     hint: "Issue an ingest API key and send signed APS-1 events from your runtime",
     href: "/aegis/keys",
   },
   {
-    id: "n8n",
-    label: "Run governed n8n workflow",
-    hint: "Import examples/n8n/jmt-s-content-sync-with-aegis.json — publish requires approval",
-    href: "/aegis/policies",
-  },
-  {
-    id: "trace",
-    label: "Open trace & verify event",
-    hint: "Event detail → Verify chain + inclusion",
-    href: "/aegis/traces",
-  },
-  {
-    id: "policy",
-    label: "Create & activate a policy",
-    hint: "Deny a tool or set $ max per tx / daily total",
-    href: "/aegis/policies",
-  },
-  {
-    id: "approval",
-    label: "Human approval (if obligation)",
-    hint: "Policy obligations route tool decisions to the Approvals queue",
-    href: "/aegis/approvals",
-  },
-  {
     id: "members",
     label: "Invite teammate & change role",
-    hint: "Members → invite → role dropdown",
+    hint: "Members: invite, role dropdown",
     href: "/aegis/members",
   },
   {

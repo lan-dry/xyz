@@ -70,7 +70,7 @@ export default function SearchPage() {
     <ConsolePage>
       <PageHeader
         title="Search"
-        subtitle="Full-text search across your signed event ledger — trace IDs, agents, tools, policy decisions, and payload text."
+        subtitle="Full-text search across your signed event ledger: trace IDs, agents, tools, policy decisions, and payload text."
       />
 
       <div className={`${ui.card} ${ui.cardPad}`} style={{ marginBottom: "1.25rem" }}>

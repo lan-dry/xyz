@@ -33,8 +33,8 @@ export function buildReplayManifest(events: EventDetail[]): {
       typeof payload.span_id === "string" ? payload.span_id : null;
     const purpose = payload.purpose ?? payload.action ?? e.action_kind;
     const summary = e.tool_name
-      ? `${e.action_kind}: ${e.tool_name} → ${e.policy_decision}`
-      : `${e.action_kind}: ${String(purpose)} → ${e.policy_decision}`;
+      ? `${e.action_kind}: ${e.tool_name} · policy ${e.policy_decision}`
+      : `${e.action_kind}: ${String(purpose)} · policy ${e.policy_decision}`;
 
     const preview: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(payload)) {

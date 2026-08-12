@@ -312,6 +312,8 @@ export default function ApprovalsPage() {
   >("all");
   const [historyTool, setHistoryTool] = useState("");
   const [historyToolDraft, setHistoryToolDraft] = useState("");
+  const [decidedIds, setDecidedIds] = useState<Set<string>>(() => new Set());
+  const [actingId, setActingId] = useState<string | null>(null);
 
   const governanceQuery = useQuery({
     queryKey: ["console", "governance-settings"],
@@ -375,9 +377,23 @@ export default function ApprovalsPage() {
         `/approvals/${encodeURIComponent(approvalId)}/approve`,
         { method: "POST" },
       ),
+    onMutate: (approvalId) => {
+      setActingId(approvalId);
+      setDecidedIds((prev) => new Set(prev).add(approvalId));
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["console", "approvals"] });
       void queryClient.invalidateQueries({ queryKey: ["console", "traces"] });
+    },
+    onError: (_err, approvalId) => {
+      setDecidedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(approvalId);
+        return next;
+      });
+    },
+    onSettled: () => {
+      setActingId(null);
     },
   });
 
@@ -387,13 +403,29 @@ export default function ApprovalsPage() {
         `/approvals/${encodeURIComponent(approvalId)}/reject`,
         { method: "POST" },
       ),
+    onMutate: (approvalId) => {
+      setActingId(approvalId);
+      setDecidedIds((prev) => new Set(prev).add(approvalId));
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["console", "approvals"] });
       void queryClient.invalidateQueries({ queryKey: ["console", "traces"] });
     },
+    onError: (_err, approvalId) => {
+      setDecidedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(approvalId);
+        return next;
+      });
+    },
+    onSettled: () => {
+      setActingId(null);
+    },
   });
 
-  const pending = pendingQuery.data?.approvals ?? [];
+  const pending = (pendingQuery.data?.approvals ?? []).filter(
+    (a) => !decidedIds.has(a.approval_id),
+  );
   const history = historyQuery.data?.approvals ?? [];
   const historyTotal = historyQuery.data?.total ?? 0;
   const blockedTraces = pendingQuery.data?.blocked_traces ?? pending.length;
@@ -468,7 +500,7 @@ export default function ApprovalsPage() {
               approval={a}
               focusRef={a.approval_id === focusId ? focusRef : undefined}
               focused={a.approval_id === focusId}
-              busy={approve.isPending || reject.isPending}
+              busy={actingId === a.approval_id}
               onApprove={() => approve.mutate(a.approval_id)}
               onReject={() => reject.mutate(a.approval_id)}
               onViewDetails={() => setDetailId(a.approval_id)}

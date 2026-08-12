@@ -82,6 +82,14 @@ After migration 026, platform admins see all runs at **Platform Ops → Workers*
 
 Each witness tick, compliance run, and housekeeping run is stored in `worker_run` with status, duration, and summary JSON.
 
+**Note:** Console customers never see worker names or infra details — only org-scoped ledger verification status on the dashboard.
+
+### Railway plan limits
+
+Railway **Free** tier caps how many services you can run. If you see *"Free plan resource provision limit exceeded"*, you cannot add compliance/housekeeping as separate services until you **Upgrade to Hobby** (~$5/mo) or remove an existing service.
+
+**Workaround on Free:** keep only `aegis-api` + `aegis-witness-worker`. Compliance exports can be triggered manually or via Platform Ops until you upgrade. Housekeeping (stale approvals) runs are optional for early pilots.
+
 ## Also check
 
 - Settings → **Source**: repo `lan-dry/xyz`, branch `main`

@@ -193,7 +193,7 @@ export default function TracesPage() {
                   <td className="mono">{t.agent_id}</td>
                   <td>
                     <StatusBadge status={t.status} />
-                    {t.status === "blocked" ? (
+                    {t.status === "blocked" && t.pending_approval ? (
                       <span
                         style={{
                           marginLeft: "0.5rem",
@@ -202,6 +202,16 @@ export default function TracesPage() {
                         }}
                       >
                         awaiting approval
+                      </span>
+                    ) : t.status === "blocked" ? (
+                      <span
+                        style={{
+                          marginLeft: "0.5rem",
+                          fontSize: "0.75rem",
+                          color: "var(--console-fg-muted)",
+                        }}
+                      >
+                        approved, workflow in progress
                       </span>
                     ) : null}
                   </td>

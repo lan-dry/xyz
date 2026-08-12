@@ -16,14 +16,26 @@ export async function runOrganizationHousekeeping(
   const settings = await getGovernanceSettings(client, organizationId);
   const expired = await expireStaleApprovals(client, organizationId);
 
+  const staleHours = String(settings.stale_trace_hours);
   const stale = await client.query<{ trace_id: string }>(
     `UPDATE trace
      SET status = 'failed', ended_at = COALESCE(ended_at, now())
      WHERE organization_id = $1
-       AND status = 'running'
+       AND status IN ('running', 'blocked')
        AND started_at < now() - ($2::int * interval '1 hour')
+       AND (
+         status = 'running'
+         OR NOT EXISTS (
+           SELECT 1 FROM approval a
+           JOIN event e ON e.event_id = a.event_id AND e.organization_id = a.organization_id
+           WHERE e.trace_id = trace.trace_id
+             AND a.organization_id = $1
+             AND a.status = 'pending'
+             AND (a.expires_at IS NULL OR a.expires_at > now())
+         )
+       )
      RETURNING trace_id`,
-    [organizationId, String(settings.stale_trace_hours)],
+    [organizationId, staleHours],
   );
 
   return {

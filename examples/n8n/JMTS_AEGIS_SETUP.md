@@ -27,7 +27,13 @@ node examples/n8n/build-jmts-aegis.mjs
 1. Console → **API keys** → ingest key
 2. Console → **Agents** → **Enable Workflow Bridge**
 3. n8n env: `AEGIS_API_URL=https://api.salanor.com`
-4. Credential **Aegis Ingest API — Header Auth** on node **11. Record in Aegis**
+4. Credential **Aegis Ingest API Header Auth** on node **11. Record in Aegis**
+
+### Error path (governed)
+
+If the workflow errors after Check Policy (bad credentials, HTTP failure, etc.), **Error Trigger** runs **E1 → E2. Record failure in Aegis**, which closes the same trace as **FAILED** when a policy trace exists.
+
+Re-import the workflow JSON after updates: `node examples/n8n/build-jmts-aegis.mjs`
 
 ### Aegis — Policy gate (governed workflow only, node 7b)
 

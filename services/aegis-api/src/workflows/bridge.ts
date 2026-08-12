@@ -81,9 +81,9 @@ function policyGateStep(
       engine: gate.engine ?? "rules",
       blocked: denied,
       investor_summary: denied
-        ? `Denied ${gate.tool_name} — ${gate.reason}`
+        ? `Denied ${gate.tool_name}: ${gate.reason}`
         : gate.decision === "allow_with_obligation"
-          ? `Approval required: ${gate.tool_name} — ${gate.reason}`
+          ? `Approval required: ${gate.tool_name}: ${gate.reason}`
           : `Allowed ${gate.tool_name}`,
       ...(requestPayload && Object.keys(requestPayload).length > 0
         ? { request_payload: requestPayload }
@@ -598,7 +598,7 @@ export async function completeWorkflowRun(
       result_status: finalStatus === "completed" ? "ok" : "error",
       investor_summary:
         input.summary ??
-        `n8n workflow ${finalStatus} — ${appended.events.length} step(s) recorded.`,
+        `n8n workflow ${finalStatus}: ${appended.events.length} step(s) recorded.`,
     },
   };
 

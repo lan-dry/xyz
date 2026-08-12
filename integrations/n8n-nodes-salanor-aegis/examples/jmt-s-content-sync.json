@@ -1,5 +1,5 @@
 {
-  "name": "JMT-S Content Sync (Drive + OpenAI + Aegis audit)",
+  "name": "JMT-S Content Sync (Drive + OpenAI)",
   "nodes": [
     {
       "parameters": {},
@@ -34,7 +34,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function normalizeDriveId(raw, label) {\n  const s = String(raw || '').trim();\n  if (!s) return '';\n  if (s.includes('googleusercontent.com')) {\n    throw new Error(label + ' looks like a Google OAuth Client ID  -  use the folder/file ID from the Drive URL');\n  }\n  const folderMatch = s.match(/\\/folders\\/([a-zA-Z0-9_-]+)/);\n  if (folderMatch) return folderMatch[1];\n  const fileMatch = s.match(/\\/file\\/d\\/([a-zA-Z0-9_-]+)/);\n  if (fileMatch) return fileMatch[1];\n  if (s.includes('/')) {\n    throw new Error(label + ' is invalid  -  paste only the ID from the Drive URL (no slashes). Example: 1H3huWIa3RiWu4md95eBPs-QecKr1vhJN');\n  }\n  return s;\n}\n\nconst baseUrl = ($env.JMTS_API_BASE_URL || 'http://host.docker.internal:3000').replace(/\\/+$/, '');\nconst driveFolderId = normalizeDriveId($env.GOOGLE_DRIVE_FOLDER_ID, 'GOOGLE_DRIVE_FOLDER_ID');\nconst driveFileId = normalizeDriveId($env.GOOGLE_DRIVE_FILE_ID, 'GOOGLE_DRIVE_FILE_ID');\nconst openAiModel = ($env.OPENAI_MODEL || 'gpt-4o-mini').trim();\n\nif (!driveFolderId && !driveFileId) {\n  throw new Error('Set GOOGLE_DRIVE_FOLDER_ID (recommended) or GOOGLE_DRIVE_FILE_ID in .env');\n}\n\nreturn [{ json: { baseUrl, driveFolderId, driveFileId, useFolder: !!driveFolderId, openAiModel } }];"
+        "jsCode": "function normalizeDriveId(raw, label) {\n  const s = String(raw || '').trim();\n  if (!s) return '';\n  if (s.includes('googleusercontent.com')) {\n    throw new Error(label + ' looks like a Google OAuth Client ID  -  use the folder/file ID from the Drive URL');\n  }\n  const folderMatch = s.match(/\\/folders\\/([a-zA-Z0-9_-]+)/);\n  if (folderMatch) return folderMatch[1];\n  const fileMatch = s.match(/\\/file\\/d\\/([a-zA-Z0-9_-]+)/);\n  if (fileMatch) return fileMatch[1];\n  if (s.includes('/')) {\n    throw new Error(label + ' is invalid  -  paste only the ID from the Drive URL (no slashes). Example: 1H3huWIa3RiWu4md95eBPs-QecKr1vhJN');\n  }\n  return s;\n}\n\nconst baseUrl = ($env.JMTS_API_BASE_URL || 'http://host.docker.internal:3000').replace(/\\/+$/, '');\nconst driveFolderId = normalizeDriveId($env.GOOGLE_DRIVE_FOLDER_ID, 'GOOGLE_DRIVE_FOLDER_ID');\nconst driveFileId = normalizeDriveId($env.GOOGLE_DRIVE_FILE_ID, 'GOOGLE_DRIVE_FILE_ID');\nconst autoPublish = String($env.JMTS_AUTO_PUBLISH || 'false').toLowerCase() === 'true';\nconst openAiModel = ($env.OPENAI_MODEL || 'gpt-4o-mini').trim();\n\nif (!driveFolderId && !driveFileId) {\n  throw new Error('Set GOOGLE_DRIVE_FOLDER_ID (recommended) or GOOGLE_DRIVE_FILE_ID in .env');\n}\n\nreturn [{ json: { baseUrl, driveFolderId, driveFileId, useFolder: !!driveFolderId, autoPublish, openAiModel } }];"
       },
       "id": "sync-0010",
       "name": "0. Config",
@@ -713,7 +713,94 @@
     },
     {
       "parameters": {
-        "jsCode": "const config = $('0. Config').first().json;\nconst agg = $('2h. Aggregate extracted content').first().json;\n\nif (agg?.noUsableContent) {\n  return [{\n    json: {\n      status: 'EXTRACTION_FAILED',\n      instructionSummary: agg.extractionNote || 'No usable text extracted from Drive files.',\n      updateCount: 0,\n      filteredOnServer: 0,\n      driveFilesRead: agg.sourceItemCount ?? 0,\n      skipped: agg.skipped ?? [],\n      extractErrors: agg.extractErrors ?? [],\n      skippedFilenames: agg.skippedFilenames ?? [],\n      note: agg.extractionNote ?? null,\n      baseUrl: config.baseUrl,\n    },\n  }];\n}\n\nconst parsed = $('5. Parse AI diff').first().json;\n\nlet dryRun = null;\nlet published = null;\nlet policy = null;\ntry { dryRun = $('6. JMT-S Apply dry-run').first().json; } catch {}\ntry { published = $('8. JMT-S Apply publish').first().json; } catch {}\ntry { policy = $('7b. Check Policy (publish)').first().json; } catch {}\n\nconst updates = parsed.updates ?? parsed.applyDryRun?.updates ?? [];\nconst updateCount = updates.length;\nconst allFilteredOnServer = Boolean(dryRun?.filteredCount && !(dryRun?.results?.length));\n\nlet status = 'FAILED';\nif (parsed.skipApply || allFilteredOnServer) {\n  status = 'NO_CHANGES';\n} else if (published?.status === 'success') {\n  status = 'PUBLISHED';\n} else if (dryRun?.status === 'success') {\n  status = 'DRY_RUN_OK';\n} else {\n  status = 'FAILED';\n}\n\nreturn [{\n  json: {\n    status,\n    instructionSummary: parsed.instructionSummary,\n    updateCount,\n    filteredOnServer: dryRun?.filteredCount ?? 0,\n    updatesPreview: updates.slice(0, 5).map((u) => ({\n      resource: u.resource,\n      action: u.action,\n      id: u.id,\n      title: u.data?.title ?? u.patch?.title ?? null,\n    })),\n    driveFilesRead: agg?.fileCount ?? null,\n    dryRunStatus: dryRun?.status ?? null,\n    dryRunRunId: dryRun?.runId ?? null,\n    dryRunMessage: dryRun?.message ?? null,\n    publishStatus: published?.status ?? null,\n    publishRunId: published?.runId ?? null,\n    policyDecision: policy?.decision ?? null,\n    policyApprovalId: policy?.approval_id ?? null,\n    note: parsed.note ?? dryRun?.message ?? null,\n    baseUrl: config.baseUrl,\n  },\n}];"
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dry-ok",
+              "leftValue": "={{ $('6. JMT-S Apply dry-run').first().json.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "auto-pub",
+              "leftValue": "={{ $('0. Config').first().json.autoPublish }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "has-results",
+              "leftValue": "={{ ($('6. JMT-S Apply dry-run').first().json.results || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sync-0080",
+      "name": "7. Auto-publish?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2860,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('0. Config').first().json.baseUrl }}/api/agent/v1/content/apply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('5. Parse AI diff').first().json.applyReal) }}",
+        "options": {}
+      },
+      "id": "sync-0090",
+      "name": "8. JMT-S Apply publish",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3080,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_JMTS_AGENT",
+          "name": "JMT-S Agent API  -  Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('0. Config').first().json;\nconst agg = $('2h. Aggregate extracted content').first().json;\n\nif (agg?.noUsableContent) {\n  return [{\n    json: {\n      status: 'EXTRACTION_FAILED',\n      instructionSummary: agg.extractionNote || 'No usable text extracted from Drive files.',\n      updateCount: 0,\n      filteredOnServer: 0,\n      driveFilesRead: agg.sourceItemCount ?? 0,\n      skipped: agg.skipped ?? [],\n      extractErrors: agg.extractErrors ?? [],\n      skippedFilenames: agg.skippedFilenames ?? [],\n      autoPublish: config.autoPublish,\n      note: agg.extractionNote ?? null,\n      baseUrl: config.baseUrl,\n    },\n  }];\n}\n\nconst parsed = $('5. Parse AI diff').first().json;\n\nlet dryRun = null;\nlet published = null;\ntry { dryRun = $('6. JMT-S Apply dry-run').first().json; } catch {}\ntry { published = $('8. JMT-S Apply publish').first().json; } catch {}\n\nconst updates = parsed.updates ?? parsed.applyDryRun?.updates ?? [];\nconst updateCount = updates.length;\nconst allFilteredOnServer = Boolean(dryRun?.filteredCount && !(dryRun?.results?.length));\n\nconst status = parsed.skipApply || allFilteredOnServer\n  ? 'NO_CHANGES'\n  : published?.status === 'success'\n    ? 'PUBLISHED'\n    : dryRun?.status === 'success'\n      ? config.autoPublish\n        ? 'DRY_RUN_OK'\n        : `READY_TO_PUBLISH (${updateCount} update(s) validated  -  set JMTS_AUTO_PUBLISH=true or run node 8)`\n      : 'FAILED';\n\nreturn [{\n  json: {\n    status,\n    instructionSummary: parsed.instructionSummary,\n    updateCount,\n    filteredOnServer: dryRun?.filteredCount ?? 0,\n    updatesPreview: updates.slice(0, 5).map((u) => ({ resource: u.resource, action: u.action, id: u.id, title: u.data?.title ?? u.patch?.title ?? null })),\n    driveFilesRead: agg?.fileCount ?? null,\n    autoPublish: config.autoPublish,\n    dryRunStatus: dryRun?.status ?? null,\n    dryRunRunId: dryRun?.runId ?? null,\n    dryRunMessage: dryRun?.message ?? null,\n    dryRunTraceId: dryRun?.governance?.traceId ?? null,\n    dryRunTraceUrl: dryRun?.governance?.traceUrl ?? null,\n    publishStatus: published?.status ?? null,\n    publishRunId: published?.runId ?? null,\n    publishTraceId: published?.governance?.traceId ?? null,\n    publishTraceUrl: published?.governance?.traceUrl ?? null,\n    note: parsed.note ?? dryRun?.message ?? null,\n    baseUrl: config.baseUrl,\n  },\n}];"
       },
       "id": "sync-0100",
       "name": "9. Summary",
@@ -856,54 +943,6 @@
         2580,
         500
       ]
-    },
-    {
-      "parameters": {
-        "jsCode": "/**\n * Build one-shot Workflow Bridge payload from JMT-S summary + captured steps.\n */\nconst summary = $('9. Summary').first().json;\n\nfunction safeJson(nodeName, max = 400) {\n  try {\n    return JSON.stringify($(nodeName).first().json).slice(0, max);\n  } catch {\n    return '';\n  }\n}\n\nfunction safeSlice(nodeName, path, max = 400) {\n  try {\n    const j = $(nodeName).first().json;\n    const parts = path.split('.');\n    let v = j;\n    for (const p of parts) v = v?.[p];\n    return String(v ?? '').slice(0, max);\n  } catch {\n    return '';\n  }\n}\n\nconst nodes = [];\n\nnodes.push({\n  name: '4. OpenAI diff',\n  kind: 'llm',\n  purpose: 'Propose CMS updates from Drive documents and site snapshot',\n  input_preview: safeSlice('3. Prepare OpenAI', 'messages.1.content'),\n  output_preview: safeSlice('4. OpenAI diff', 'choices.0.message.content'),\n});\n\ntry {\n  $('6. JMT-S Apply dry-run').first();\n  nodes.push({\n    name: '6. JMT-S Apply dry-run',\n    kind: 'tool',\n    tool_name: 'jmts.content.apply',\n    status: summary.dryRunStatus === 'success' ? 'success' : 'skipped',\n    output_preview: safeJson('6. JMT-S Apply dry-run'),\n  });\n} catch {}\n\ntry {\n  $('8. JMT-S Apply publish').first();\n  nodes.push({\n    name: '8. JMT-S Apply publish',\n    kind: 'tool',\n    tool_name: 'jmts.content.publish',\n    status: summary.publishStatus === 'success' ? 'success' : 'skipped',\n    output_preview: safeJson('8. JMT-S Apply publish'),\n  });\n} catch {}\n\nconst runStatus =\n  summary.status === 'FAILED' || summary.status === 'EXTRACTION_FAILED'\n    ? 'failed'\n    : 'completed';\n\nreturn [{\n  json: {\n    aegisBody: {\n      one_shot: true,\n      business_context: 'JMT-S daily content sync from Google Drive',\n      external_system: 'n8n',\n      external_workflow_id: String($workflow.id),\n      external_execution_id: String($execution.id),\n      status: runStatus,\n      summary:\n        summary.status +\n        (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : ''),\n      execution: {\n        workflow_name: $workflow.name,\n        execution_id: String($execution.id),\n        nodes,\n      },\n    },\n  },\n}];"
-      },
-      "id": "sync-aegis-0010",
-      "name": "10. Prepare Aegis capture",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3520,
-        500
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/workflows/runs",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.aegisBody) }}",
-        "options": {}
-      },
-      "id": "sync-aegis-0020",
-      "name": "11. Record in Aegis",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3740,
-        500
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "CONFIGURE_AEGIS_INGEST",
-          "name": "Aegis Ingest API Header Auth"
-        }
-      }
     }
   ],
   "connections": {
@@ -1254,6 +1293,35 @@
       "main": [
         [
           {
+            "node": "7. Auto-publish?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7. Auto-publish?": {
+      "main": [
+        [
+          {
+            "node": "8. JMT-S Apply publish",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "9. Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8. JMT-S Apply publish": {
+      "main": [
+        [
+          {
             "node": "9. Summary",
             "type": "main",
             "index": 0
@@ -1329,28 +1397,6 @@
           }
         ]
       ]
-    },
-    "9. Summary": {
-      "main": [
-        [
-          {
-            "node": "10. Prepare Aegis capture",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "10. Prepare Aegis capture": {
-      "main": [
-        [
-          {
-            "node": "11. Record in Aegis",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "active": false,
@@ -1358,8 +1404,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "templateCredsSetupCompleted": false,
-    "description": "Drive-to-CMS sync with dry-run validation and signed Aegis trace. No live publish."
+    "templateCredsSetupCompleted": false
   },
   "tags": []
 }

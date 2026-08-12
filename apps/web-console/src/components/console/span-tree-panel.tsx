@@ -97,9 +97,9 @@ export function SpanTreePanel({
     <section style={{ marginBottom: "1.5rem" }}>
       <h2 className={ui.panelTitle}>Trace timeline</h2>
       <p className={styles.intro}>
-        A <strong>trace</strong> is one agent session. <strong>Spans</strong> group steps (tool,
-        LLM, decision). Each row below is an atomic <strong>event</strong>: input, output, policy,
-        or governance: signed and chained (Ed25519, APS-1).
+        A <strong>trace</strong> is one agent session. <strong>Spans</strong> group steps (tool
+        calls and policy decisions). Each row below is an atomic <strong>event</strong>: input,
+        output, policy, or governance. Every event is signed and chained (Ed25519, APS-1).
       </p>
       {tree.map((node) => (
         <SpanNode key={node.span_id} node={node} depth={0} />

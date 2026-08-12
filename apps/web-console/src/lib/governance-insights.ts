@@ -127,8 +127,8 @@ export function buildGovernanceInsights(
       severity: stats.data_classifications.some((c) => c.includes("financial"))
         ? "attention"
         : "info",
-      title: "Customer data crossed the AI boundary",
-      detail: `Models accessed: ${stats.pii_fields.join(", ")}. Without a signed ledger you cannot prove this to regulators or answer “what did the AI see?” in an incident.`,
+      title: "Customer data in governed steps",
+      detail: `Models accessed: ${stats.pii_fields.join(", ")}. Without a signed ledger you cannot prove this to regulators or answer what data was processed in an incident.`,
       metric: `${stats.pii_fields.length} field type(s)`,
     });
   }
@@ -137,8 +137,8 @@ export function buildGovernanceInsights(
     insights.push({
       id: "audit-trail",
       severity: "info",
-      title: "Complete model audit trail",
-      detail: `${stats.llm_steps} LLM step(s) signed and chained: exportable for SOC 2, EU AI Act, and internal risk review even when nothing was blocked.`,
+      title: "Complete signed audit trail",
+      detail: `${stats.llm_steps} model step(s) signed and chained: exportable for SOC 2 and internal risk review even when nothing was blocked.`,
       metric: String(stats.llm_steps),
     });
   }
@@ -168,7 +168,7 @@ export function buildGovernanceInsights(
       id: "human-loop",
       severity: "attention",
       title: "Human-in-the-loop required",
-      detail: `${stats.obligation_required} action(s) need explicit approval before running: separates “AI suggested” from “human authorized”.`,
+      detail: `${stats.obligation_required} action(s) need explicit approval before running: separates automated requests from human authorization.`,
       metric: String(stats.obligation_required),
     });
   }

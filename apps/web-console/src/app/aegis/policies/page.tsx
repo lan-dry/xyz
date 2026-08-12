@@ -89,15 +89,15 @@ function ruleSummary(rule: PolicyRule): string {
   const decisionLabel =
     rule.decision === "allow_with_obligation" ? "require approval" : rule.decision;
   if (cond?.rule_type === "max_per_tx") {
-    return `Max $${cond.max_amount_usd ?? "?"} per transaction → ${decisionLabel}`;
+    return `Max $${cond.max_amount_usd ?? "?"} per transaction, then ${decisionLabel}`;
   }
   if (cond?.rule_type === "min_per_tx") {
-    return `Min $${cond.min_amount_usd ?? "?"} per transaction → ${decisionLabel}`;
+    return `Min $${cond.min_amount_usd ?? "?"} per transaction, then ${decisionLabel}`;
   }
   if (cond?.rule_type === "max_daily_total") {
-    return `Max $${cond.max_amount_usd ?? "?"} daily → ${decisionLabel}`;
+    return `Max $${cond.max_amount_usd ?? "?"} daily, then ${decisionLabel}`;
   }
-  return `${rule.tool_pattern} → ${decisionLabel}`;
+  return `${rule.tool_pattern}, then ${decisionLabel}`;
 }
 
 export default function PoliciesPage() {
@@ -305,7 +305,7 @@ export default function PoliciesPage() {
               }))
             }
           >
-            <option value="tool">When tool matches → allow / deny / require approval</option>
+            <option value="tool">When tool matches: allow, deny, or require approval</option>
             <option value="max_per_tx">When amount exceeds per-transaction limit</option>
             <option value="min_per_tx">When amount is below minimum per transaction</option>
             <option value="max_daily_total">When daily total exceeds limit</option>

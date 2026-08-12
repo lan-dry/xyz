@@ -56,8 +56,10 @@ Only one of these should be **active** at a time (activate the draft you want to
 ## 4. Amount limit → require approval
 
 1. Create draft: rule type **Max per transaction**, tool `app.payments.transfer`, limit `$1000`, **When limit exceeded → Require approval**
-2. Activate; run workflow with **Request context** `amount_usd: 2500`
-3. Expect: blocked trace + Approvals inbox with $2,500 USD in request details
+2. Activate
+3. **Required in n8n:** wire **Manual Trigger → Request context → Check Policy** (not Manual Trigger → Check Policy directly). The Set node must define `amount_usd` (e.g. `2500`), `recipient`, and `summary`.
+4. Run workflow
+5. Expect: blocked trace, Approvals inbox shows **$2,500 USD** and recipient, formatted email includes amount
 
 ---
 
