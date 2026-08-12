@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 
 export const TRACE_STATUSES = [
   "running",
+  "executing",
   "completed",
   "failed",
   "blocked",

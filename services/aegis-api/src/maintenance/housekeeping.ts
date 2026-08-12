@@ -8,7 +8,7 @@ export type HousekeepingResult = {
   stale_traces_failed: number;
 };
 
-/** Expire pending approvals and fail orphaned RUNNING traces per org governance settings. */
+/** Expire pending approvals and fail orphaned open traces per org governance settings. */
 export async function runOrganizationHousekeeping(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
@@ -21,10 +21,10 @@ export async function runOrganizationHousekeeping(
     `UPDATE trace
      SET status = 'failed', ended_at = COALESCE(ended_at, now())
      WHERE organization_id = $1
-       AND status IN ('running', 'blocked')
+       AND status IN ('running', 'blocked', 'executing')
        AND started_at < now() - ($2::int * interval '1 hour')
        AND (
-         status = 'running'
+         status IN ('running', 'executing')
          OR NOT EXISTS (
            SELECT 1 FROM approval a
            JOIN event e ON e.event_id = a.event_id AND e.organization_id = a.organization_id

@@ -269,7 +269,7 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
       });
 
       traceStatus = await getTraceStatus(pool, DEV_ORG, traceId);
-      expect(traceStatus).toBe("running");
+      expect(traceStatus).toBe("executing");
 
       const res = await wrapFetchResume(
         caught!.approvalId,

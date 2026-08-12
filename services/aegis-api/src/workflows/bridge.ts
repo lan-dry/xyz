@@ -615,7 +615,7 @@ export async function completeWorkflowRun(
     await client.query(
       `UPDATE trace
        SET status = 'failed', ended_at = now()
-       WHERE organization_id = $1 AND trace_id = $2 AND status IN ('running', 'blocked')`,
+       WHERE organization_id = $1 AND trace_id = $2 AND status IN ('running', 'blocked', 'executing')`,
       [input.organizationId, input.traceId],
     );
   }

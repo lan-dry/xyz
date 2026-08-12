@@ -127,7 +127,8 @@ export default function GovernanceSettingsPage() {
             />
           </label>
           <p className={ui.cardHint} style={{ margin: "-0.5rem 0 0.5rem" }}>
-            RUNNING traces older than this are marked FAILED by the housekeeping job.
+            Open traces (running, executing, or stale blocked) older than this are marked
+            FAILED by the housekeeping job.
           </p>
 
           <h3 style={{ margin: "1rem 0 0.5rem", fontSize: "0.9375rem", fontWeight: 600 }}>

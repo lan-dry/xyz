@@ -203,7 +203,7 @@ export default function TracesPage() {
                       >
                         awaiting approval
                       </span>
-                    ) : t.status === "blocked" ? (
+                    ) : t.status === "executing" ? (
                       <span
                         style={{
                           marginLeft: "0.5rem",

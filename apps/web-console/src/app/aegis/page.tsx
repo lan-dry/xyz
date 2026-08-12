@@ -68,6 +68,7 @@ export default function AegisDashboardPage() {
   const pendingApprovals = approvalsQuery.data?.approvals ?? [];
   const pending = pendingApprovals.length;
   const blocked = traces.filter((t) => t.status === "blocked").length;
+  const executing = traces.filter((t) => t.status === "executing").length;
   const activePolicies =
     policiesQuery.data?.policies.filter((p) => p.status === "active").length ?? 0;
   const recent = [...traces]
@@ -122,7 +123,12 @@ export default function AegisDashboardPage() {
             <div className={`${ui.card} ${ui.cardPad}`}>
               <p className={ui.cardTitle}>Blocked traces</p>
               <p className={ui.cardValue}>{blocked}</p>
-              <p className={ui.cardHint}>Awaiting human decision or post-approval run</p>
+              <p className={ui.cardHint}>Awaiting human decision</p>
+            </div>
+            <div className={`${ui.card} ${ui.cardPad}`}>
+              <p className={ui.cardTitle}>Executing</p>
+              <p className={ui.cardValue}>{executing}</p>
+              <p className={ui.cardHint}>Approved, workflow side effects in progress</p>
             </div>
             <div className={`${ui.card} ${ui.cardPad}`}>
               <p className={ui.cardTitle}>Traces</p>

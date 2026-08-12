@@ -298,7 +298,13 @@ export async function decideApproval(
     return null;
   }
 
-  if (decision !== "approved") {
+  if (decision === "approved") {
+    await client.query(
+      `UPDATE trace SET status = 'executing'
+       WHERE trace_id = $1 AND organization_id = $2 AND status = 'blocked'`,
+      [detail.trace_id, organizationId],
+    );
+  } else {
     await client.query(
       `UPDATE trace SET status = 'failed', ended_at = now()
        WHERE trace_id = $1 AND organization_id = $2`,
