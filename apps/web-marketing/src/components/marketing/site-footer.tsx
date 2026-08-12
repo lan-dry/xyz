@@ -22,10 +22,10 @@ const DEVELOPER_LINKS = [
 ] as const;
 
 const COMPLIANCE_LINKS = [
-  { href: "/#compliance", label: "EU AI Act" },
-  { href: "/#compliance", label: "SOC 2" },
-  { href: "/#compliance", label: "HIPAA" },
-  { href: "/#compliance", label: "FedRAMP" },
+  { href: "/trust", label: "Trust center" },
+  { href: "/legal/security", label: "Security" },
+  { href: "/legal/fedramp", label: "FedRAMP" },
+  { href: "/legal/privacy", label: "Privacy" },
 ] as const;
 
 const COMPANY_LINKS = [

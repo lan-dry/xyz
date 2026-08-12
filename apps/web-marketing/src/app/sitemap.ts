@@ -15,6 +15,8 @@ const routes: Array<{ path: string; changeFrequency: MetadataRoute.Sitemap[numbe
   { path: "/legal/privacy", changeFrequency: "yearly", priority: 0.3 },
   { path: "/legal/terms", changeFrequency: "yearly", priority: 0.3 },
   { path: "/legal/security", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/legal/fedramp", changeFrequency: "yearly", priority: 0.35 },
+  { path: "/trust", changeFrequency: "monthly", priority: 0.85 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

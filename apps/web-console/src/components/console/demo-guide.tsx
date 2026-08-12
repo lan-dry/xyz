@@ -13,6 +13,12 @@ const STEPS = [
     href: "/aegis/keys",
   },
   {
+    id: "n8n",
+    label: "Run governed n8n workflow",
+    hint: "Import examples/n8n/jmt-s-content-sync-with-aegis.json — publish requires approval",
+    href: "/aegis/policies",
+  },
+  {
     id: "trace",
     label: "Open trace & verify event",
     hint: "Event detail → Verify chain + inclusion",

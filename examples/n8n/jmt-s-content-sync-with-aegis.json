@@ -1,0 +1,1556 @@
+{
+  "name": "JMT-S Content Sync (Drive + OpenAI + Aegis governed)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "sync-0001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "sync-0001b",
+      "name": "Daily schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalizeDriveId(raw, label) {\n  const s = String(raw || '').trim();\n  if (!s) return '';\n  if (s.includes('googleusercontent.com')) {\n    throw new Error(label + ' looks like a Google OAuth Client ID  -  use the folder/file ID from the Drive URL');\n  }\n  const folderMatch = s.match(/\\/folders\\/([a-zA-Z0-9_-]+)/);\n  if (folderMatch) return folderMatch[1];\n  const fileMatch = s.match(/\\/file\\/d\\/([a-zA-Z0-9_-]+)/);\n  if (fileMatch) return fileMatch[1];\n  if (s.includes('/')) {\n    throw new Error(label + ' is invalid  -  paste only the ID from the Drive URL (no slashes). Example: 1H3huWIa3RiWu4md95eBPs-QecKr1vhJN');\n  }\n  return s;\n}\n\nconst baseUrl = ($env.JMTS_API_BASE_URL || 'http://host.docker.internal:3000').replace(/\\/+$/, '');\nconst driveFolderId = normalizeDriveId($env.GOOGLE_DRIVE_FOLDER_ID, 'GOOGLE_DRIVE_FOLDER_ID');\nconst driveFileId = normalizeDriveId($env.GOOGLE_DRIVE_FILE_ID, 'GOOGLE_DRIVE_FILE_ID');\nconst openAiModel = ($env.OPENAI_MODEL || 'gpt-4o-mini').trim();\n\nif (!driveFolderId && !driveFileId) {\n  throw new Error('Set GOOGLE_DRIVE_FOLDER_ID (recommended) or GOOGLE_DRIVE_FILE_ID in .env');\n}\n\nreturn [{ json: { baseUrl, driveFolderId, driveFileId, useFolder: !!driveFolderId, openAiModel } }];"
+      },
+      "id": "sync-0010",
+      "name": "0. Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $('0. Config').first().json.baseUrl }}/api/agent/v1/content/snapshot",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "sync-0020",
+      "name": "1. JMT-S Snapshot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        500
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_JMTS_AGENT",
+          "name": "JMT-S Agent API  -  Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "use-folder",
+              "leftValue": "={{ $('0. Config').first().json.useFolder }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sync-0025",
+      "name": "2a. Folder mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "trashed = false",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $('0. Config').first().json.driveFolderId }}"
+          },
+          "whatToSearch": "all"
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "sync-0031",
+      "name": "2b-1 List root",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "alwaysOutputData": true,
+      "position": [
+        860,
+        400
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "CONFIGURE_GOOGLE_DRIVE",
+          "name": "Google Drive  -  connect in n8n Credentials"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 10000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const subfolderIds = [];\nfor (const item of $('2b-1 List root').all()) {\n  if (item.json?.mimeType === 'application/vnd.google-apps.folder' && item.json?.id) {\n    subfolderIds.push({ id: item.json.id, name: item.json.name });\n  }\n}\nreturn [{ json: { subfolderIds } }];"
+      },
+      "id": "sync-0031b",
+      "name": "2b-2 Subfolders L1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-l1",
+              "leftValue": "={{ $('2b-2 Subfolders L1').first().json.subfolderIds.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sync-0031c",
+      "name": "2b-if1 Has subfolders?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1220,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return $('2b-2 Subfolders L1').first().json.subfolderIds.map((s) => ({ json: { id: s.id, name: s.name } }));"
+      },
+      "id": "sync-0031d",
+      "name": "2b-2split Expand L1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "trashed = false",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.id }}"
+          },
+          "whatToSearch": "all"
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "sync-0031e",
+      "name": "2b-3 List subfolders L1",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "alwaysOutputData": true,
+      "position": [
+        1580,
+        300
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "CONFIGURE_GOOGLE_DRIVE",
+          "name": "Google Drive  -  connect in n8n Credentials"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 10000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const subfolderIds = [];\nfor (const item of $('2b-3 List subfolders L1').all()) {\n  if (item.json?.mimeType === 'application/vnd.google-apps.folder' && item.json?.id) {\n    subfolderIds.push({ id: item.json.id, name: item.json.name });\n  }\n}\nreturn [{ json: { subfolderIds } }];"
+      },
+      "id": "sync-0031f",
+      "name": "2b-4 Subfolders L2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-l2",
+              "leftValue": "={{ $('2b-4 Subfolders L2').first().json.subfolderIds.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sync-0031g",
+      "name": "2b-if2 Has subfolders L2?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1940,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return $('2b-4 Subfolders L2').first().json.subfolderIds.map((s) => ({ json: { id: s.id, name: s.name } }));"
+      },
+      "id": "sync-0031h",
+      "name": "2b-5split Expand L2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "trashed = false",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.id }}"
+          },
+          "whatToSearch": "all"
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "sync-0031i",
+      "name": "2b-5 List subfolders L2",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "alwaysOutputData": true,
+      "position": [
+        2300,
+        200
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "CONFIGURE_GOOGLE_DRIVE",
+          "name": "Google Drive  -  connect in n8n Credentials"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 10000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/**\r\n * n8n node \"2b-6 Merge all files\"  -  dedupe files from all Drive list nodes.\r\n */\r\nfunction fileItems(nodeName) {\r\n  try {\r\n    return $(nodeName).all()\r\n      .filter((i) => i.json?.id && i.json.mimeType !== 'application/vnd.google-apps.folder')\r\n      .map((i) => i.json);\r\n  } catch {\r\n    return [];\r\n  }\r\n}\r\n\r\nconst seen = new Set();\r\nconst out = [];\r\nconst sources = [\r\n  '2b-1 List root',\r\n  '2b-3 List subfolders L1',\r\n  '2b-5 List subfolders L2',\r\n  '2b-5 List subfolders L3',\r\n];\r\n\r\nfor (const name of sources) {\r\n  for (const f of fileItems(name)) {\r\n    if (!f.id || seen.has(f.id)) continue;\r\n    seen.add(f.id);\r\n    out.push({ json: { id: f.id, name: String(f.name || f.id), mimeType: String(f.mimeType || '') } });\r\n  }\r\n}\r\n\r\nif (out.length === 0) {\r\n  throw new Error('No files found in Drive folder tree. Check GOOGLE_DRIVE_FOLDER_ID and Google OAuth access.');\r\n}\r\n\r\nreturn out;\r\n"
+      },
+      "id": "sync-0031j",
+      "name": "2b-6 Merge all files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fileId = $('0. Config').first().json.driveFileId;\nreturn [{ json: { id: fileId, name: 'content-source', mimeType: 'text/plain' } }];"
+      },
+      "id": "sync-0032",
+      "name": "2c. Single file item",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "slidesToFormat": "text/plain",
+              "sheetsToFormat": "csv"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "sync-0034b",
+      "name": "2e. Google Drive Download",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1500,
+        500
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "CONFIGURE_GOOGLE_DRIVE",
+          "name": "Google Drive  -  connect in n8n Credentials"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 10000
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/**\r\n * n8n node \"2f. Prepare extract payload\"  -  skip bad downloads, never fail the whole batch.\r\n */\r\nconst items = $input.all();\r\nconst results = [];\r\nconst skipped = [];\r\n\r\nfor (let index = 0; index < items.length; index++) {\r\n  const item = items[index];\r\n  const json = item.json || {};\r\n  let filename = String(json.name || json.filename || json.id || 'unknown');\r\n  let mimeType = String(json.mimeType || '');\r\n  const binary = item.binary || {};\r\n  const binaryKey = Object.keys(binary)[0];\r\n\r\n  if (!binaryKey) {\r\n    skipped.push({ filename, reason: 'no_binary_from_drive' });\r\n    continue;\r\n  }\r\n\r\n  let buffer;\r\n  try {\r\n    buffer = await this.helpers.getBinaryDataBuffer(index, binaryKey);\r\n  } catch (err) {\r\n    skipped.push({ filename, reason: err?.message || 'binary_read_failed' });\r\n    continue;\r\n  }\r\n\r\n  if (!buffer?.length) {\r\n    skipped.push({ filename, reason: 'empty_download' });\r\n    continue;\r\n  }\r\n\r\n  if (mimeType.startsWith('application/vnd.google-apps.')) {\r\n    if (mimeType.includes('spreadsheet')) mimeType = 'text/csv';\r\n    else if (mimeType.includes('presentation')) mimeType = 'text/plain';\r\n    else mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';\r\n  }\r\n\r\n  const isPdf = mimeType === 'application/pdf' || filename.toLowerCase().endsWith('.pdf');\r\n  if (isPdf && !buffer.subarray(0, 5).toString('latin1').startsWith('%PDF')) {\r\n    skipped.push({ filename, reason: 'invalid_pdf_bytes' });\r\n    continue;\r\n  }\r\n\r\n  const isServiceImage =\r\n    ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(mimeType) ||\r\n    /\\.(png|jpe?g|webp|gif)$/i.test(filename);\r\n\r\n  results.push({\r\n    json: {\r\n      filename,\r\n      mimeType,\r\n      contentBase64: buffer.toString('base64'),\r\n      isServiceImage,\r\n    },\r\n  });\r\n}\r\n\r\nif (results.length === 0) {\r\n  throw new Error('No downloadable Drive files. Skipped: ' + JSON.stringify(skipped));\r\n}\r\n\r\nreturn results;\r\n"
+      },
+      "id": "sync-0036",
+      "name": "2f. Prepare extract payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-image",
+              "leftValue": "={{ $json.isServiceImage }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sync-0036b",
+      "name": "2f-b Image file?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1860,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('0. Config').first().json.baseUrl }}/api/agent/v1/content/upload-media",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filename: $json.filename, mimeType: $json.mimeType, contentBase64: $json.contentBase64, purpose: 'service-image' }) }}",
+        "options": {}
+      },
+      "id": "sync-0037b",
+      "name": "2g-img. JMT-S Upload image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2040,
+        380
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_JMTS_AGENT",
+          "name": "JMT-S Agent API  -  Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "sync-0037c",
+      "name": "2g-merge. Merge media results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        2220,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('0. Config').first().json.baseUrl }}/api/agent/v1/content/extract",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filename: $json.filename, mimeType: $json.mimeType, contentBase64: $json.contentBase64 }) }}",
+        "options": {
+          "timeout": 300000,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "sync-0037",
+      "name": "2g. JMT-S Extract text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2040,
+        620
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_JMTS_AGENT",
+          "name": "JMT-S Agent API  -  Header Auth"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/**\r\n * n8n node \"2h. Aggregate extracted content\"\r\n * Reads directly from extract/upload nodes (merge input is unreliable with large binaries).\r\n */\r\nfunction collectItems() {\r\n  const out = [];\r\n  for (const name of ['2g-img. JMT-S Upload image', '2g. JMT-S Extract text']) {\r\n    try {\r\n      out.push(...$(name).all());\r\n    } catch {\r\n      // node did not run\r\n    }\r\n  }\r\n  if (out.length > 0) return out;\r\n  return $input.all();\r\n}\r\n\r\nconst items = collectItems();\r\nconst parts = [];\r\nconst skipped = [];\r\nconst uploadedImages = [];\r\nconst extractErrors = [];\r\n\r\nfunction isHttpError(json) {\r\n  if (!json || typeof json !== 'object') return false;\r\n  if (json.status === 'success' || json.status === 'no_text') return false;\r\n  if (Array.isArray(json.results) && json.results.length > 0) return false;\r\n  return Boolean(json.error || json.message);\r\n}\r\n\r\nfunction ingestExtractPayload(json) {\r\n  if (!Array.isArray(json.results)) return;\r\n  for (const result of json.results) {\r\n    if (!result || typeof result !== 'object') continue;\r\n    if (result.skipped || !String(result.text || '').trim()) {\r\n      skipped.push({\r\n        filename: result.filename || 'unknown',\r\n        reason: result.reason || result.mode || 'empty',\r\n        mode: result.mode || null,\r\n      });\r\n      continue;\r\n    }\r\n    parts.push('=== ' + (result.filename || 'unknown') + ' ===\\n' + String(result.text).trim());\r\n  }\r\n}\r\n\r\nfor (const item of items) {\r\n  const json = item.json || {};\r\n\r\n  if (json.url && json.filename && json.status === 'success') {\r\n    uploadedImages.push({ filename: json.filename, url: json.url });\r\n    continue;\r\n  }\r\n\r\n  if (isHttpError(json)) {\r\n    extractErrors.push({\r\n      filename: json.filename || 'unknown',\r\n      reason:\r\n        (json.error && json.error.message) ||\r\n        json.message ||\r\n        (typeof json.error === 'string' ? json.error : 'extract_http_error'),\r\n    });\r\n    continue;\r\n  }\r\n\r\n  ingestExtractPayload(json);\r\n}\r\n\r\nlet driveText = parts.join('\\n\\n');\r\n\r\nif (!driveText.trim() && uploadedImages.length > 0) {\r\n  driveText = uploadedImages\r\n    .map((img) => '=== ' + img.filename + ' ===\\n[Image uploaded: ' + img.url + ']')\r\n    .join('\\n\\n');\r\n}\r\n\r\nif (!driveText.trim() && uploadedImages.length === 0) {\r\n  const summary = {\r\n    itemCount: items.length,\r\n    skippedCount: skipped.length,\r\n    errorCount: extractErrors.length,\r\n    skipped: skipped.slice(0, 20),\r\n    extractErrors: extractErrors.slice(0, 20),\r\n  };\r\n  const skippedNames = skipped.map((s) => s.filename).filter(Boolean).slice(0, 5);\r\n  return [{\r\n    json: {\r\n      driveText: '',\r\n      fileCount: 0,\r\n      uploadedImages,\r\n      skipped,\r\n      extractErrors,\r\n      driveChars: 0,\r\n      sourceItemCount: items.length,\r\n      noUsableContent: true,\r\n      extractionNote:\r\n        'No usable Drive content after extraction. Every file was skipped or failed. ' +\r\n        'Add a Word/Google Doc export alongside scanned PDFs, or ensure GEMINI_API_KEY is set and restart Next.js.',\r\n      extractionSummary: summary,\r\n      skippedFilenames: skippedNames,\r\n    },\r\n  }];\r\n}\r\n\r\nreturn [{\r\n  json: {\r\n    driveText,\r\n    fileCount: parts.length,\r\n    totalFilesProcessed: items.length,\r\n    uploadedImages,\r\n    skipped,\r\n    extractErrors,\r\n    driveChars: driveText.length,\r\n    sourceItemCount: items.length,\r\n    partialExtraction: skipped.length > 0,\r\n  },\r\n}];\r\n"
+      },
+      "id": "sync-0035",
+      "name": "2h. Aggregate extracted content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\r\n * n8n node \"3. Prepare OpenAI\"  -  build chat/completions payload (n8n calls OpenAI directly).\r\n */\r\nconst snapshot = $('1. JMT-S Snapshot').first().json;\r\nconst agg = $('2h. Aggregate extracted content').first().json;\r\nconst driveText = agg.driveText || '';\r\nconst uploadedImages = agg.uploadedImages || [];\r\n\r\nfunction trimSnapshot(raw) {\r\n  const clip = (v, max) => {\r\n    const s = String(v ?? '');\r\n    return s.length > max ? s.slice(0, max) + '…' : s;\r\n  };\r\n  return {\r\n    fetchedAt: raw.fetchedAt,\r\n    home: raw.home\r\n      ? {\r\n          id: raw.home.id,\r\n          heroH1: raw.home.heroH1,\r\n          heroLead: clip(raw.home.heroLead, 400),\r\n          whyBullets: raw.home.whyBullets,\r\n        }\r\n      : null,\r\n    about: raw.about\r\n      ? {\r\n          id: raw.about.id,\r\n          missionLead: clip(raw.about.missionLead, 400),\r\n          ctaTitle: raw.about.ctaTitle,\r\n        }\r\n      : null,\r\n    company: raw.company\r\n      ? {\r\n          id: raw.company.id,\r\n          name: raw.company.name,\r\n          emails: raw.company.emails,\r\n          phones: raw.company.phones,\r\n        }\r\n      : null,\r\n    services: (raw.services || []).map((s) => ({\r\n      id: s.id,\r\n      title: s.title,\r\n      slug: s.slug,\r\n      shortDesc: clip(s.shortDesc, 240),\r\n      sector: s.sector,\r\n      detailedDesc: clip(s.detailedDesc, 600),\r\n      imageUrl: s.imageUrl,\r\n      isActive: s.isActive,\r\n    })),\r\n    announcements: (raw.announcements || []).map((a) => ({\r\n      id: a.id,\r\n      title: a.title,\r\n      audience: a.audience,\r\n      content: clip(a.content, 400),\r\n      isActive: a.isActive,\r\n    })),\r\n  };\r\n}\r\n\r\nconst systemPrompt = [\r\n  'You are the JMT-S CMS diff engine. Synchronize the FULL public website CMS from Google Drive source material.',\r\n  'Resources: home (hero, pillars, catalog, process steps), about (mission, bullets, CTA), company (contact, social), services, announcements.',\r\n  'Output ONLY valid JSON: { instructionSummary: string, updates: array }. No markdown fences.',\r\n  'Each update MUST use apply shape: { resource: \"home\"|\"about\"|\"company\", patch: { heroH1?, heroLead?, ... } with CMS keys directly in patch (never nest under a \"fields\" key). Service: { resource: \"service\", id: \"uuid-from-snapshot\", patch: { detailedDesc?, shortDesc?, ... } } OR { resource: \"service\", action: \"create\", data: { title, shortDesc, detailedDesc, sector, imageUrl? } }. NEVER put CMS fields at top level without resource+patch wrappers.',\r\n  'Jacob dumps ALL company documents in one Drive folder (PDF, Word, Google Docs, slides, images) with NO required structure  -  infer home, about, company, services, announcements from the combined text of every file. Emit updates for EVERY section that differs or is missing on site but present in Drive.',\r\n  'Partial patches only. Use service/announcement ids from snapshot  -  never invent UUIDs.',\r\n  'List fields (whyBullets, approachBullets, etc.): 3-8 items, each 8-180 chars.',\r\n  'Service shortDesc: one punchy sentence, max 240 chars, catalog card style.',\r\n  'Service detailedDesc: HTML string with intro <p>, then <h3>Ce que nous vous proposons:</h3>, then <ul><li>...</li></ul> (3-6 bullets).',\r\n  'Service sector: exactly education, enterprise, or both (lowercase).',\r\n  'Service imageUrl: when driveUploadedImages contains a file whose name matches a service title/slug, set imageUrl to that exact url on create or patch. If no matching Drive image exists, omit imageUrl  -  JMT-S will auto-generate a professional service image on publish.',\r\n  'Prefer patch existing services by id; use action:create only for new services. Prefer isActive:false over delete.',\r\n  'If snapshot and Drive already match: updates:[].',\r\n].join(' ');\r\n\r\nconst userContent = JSON.stringify({\r\n  instruction:\r\n    'Produce updates array for POST /api/agent/v1/content/apply covering home, about, company, services, announcements as needed.',\r\n  snapshot: trimSnapshot(snapshot),\r\n  driveSourceDocuments: driveText.slice(0, 120000),\r\n  driveUploadedImages: uploadedImages,\r\n  driveTextFileCount: agg.fileCount,\r\n  skippedDriveFiles: agg.skipped || [],\r\n});\r\n\r\nreturn [\r\n  {\r\n    json: {\r\n      messages: [\r\n        { role: 'system', content: systemPrompt },\r\n        { role: 'user', content: userContent },\r\n      ],\r\n      driveChars: driveText.length,\r\n      driveFileCount: agg.fileCount,\r\n      uploadedImageCount: uploadedImages.length,\r\n      skippedCount: (agg.skipped || []).length,\r\n      snapshotAt: snapshot.fetchedAt,\r\n    },\r\n  },\r\n];\r\n"
+      },
+      "id": "sync-0040",
+      "name": "3. Prepare OpenAI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2580,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $('0. Config').first().json.openAiModel, temperature: 0.2, response_format: { type: 'json_object' }, messages: $('3. Prepare OpenAI').first().json.messages }) }}",
+        "options": {
+          "timeout": 180000,
+          "retry": {
+            "maxTries": 5,
+            "waitBetweenTries": 8000
+          }
+        }
+      },
+      "id": "sync-0050",
+      "name": "4. OpenAI diff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2760,
+        500
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "CONFIGURE_OPENAI",
+          "name": "OpenAI  -  connect in n8n Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\r\n * n8n node \"5. Parse AI diff\"  -  normalize OpenAI flat output into apply payload shape.\r\n * Keep in sync with apps/web/src/lib/validation/sanitize-agent-apply.ts coerceFlatUpdate.\r\n */\r\nconst raw = $('4. OpenAI diff').first().json;\r\nconst snapshot = $('1. JMT-S Snapshot').first().json;\r\nconst content = raw.choices?.[0]?.message?.content;\r\nif (!content) throw new Error('OpenAI returned empty content');\r\n\r\nlet parsed;\r\ntry {\r\n  parsed = JSON.parse(content);\r\n} catch {\r\n  throw new Error('OpenAI output is not valid JSON: ' + content.slice(0, 200));\r\n}\r\n\r\nconst UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-9a-f][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\r\nconst isUuid = (v) => typeof v === 'string' && UUID_RE.test(v);\r\nconst normSector = (v) => {\r\n  const s = String(v || '').trim().toLowerCase();\r\n  if (s.includes('edu') || s.includes('enseign')) return 'education';\r\n  if (s.includes('enter') || s.includes('entreprise')) return 'enterprise';\r\n  if (s === 'both') return 'both';\r\n  return s;\r\n};\r\n\r\nconst HOME_KEYS = [\r\n  'heroH1', 'heroLead', 'whyBullets', 'pillarsEducationTitle', 'pillarsEducationDesc',\r\n  'pillarsEnterpriseTitle', 'pillarsEnterpriseDesc', 'catalogKicker', 'catalogTitle', 'catalogDesc',\r\n  'processStep1Title', 'processStep1Body', 'processStep2Title', 'processStep2Body',\r\n  'processStep3Title', 'processStep3Body',\r\n];\r\nconst ABOUT_KEYS = [\r\n  'missionLead', 'missionBody', 'approachBullets', 'whyTitle', 'whySubtitle',\r\n  'whyEducationTitle', 'whyEducationBullets', 'whyEnterpriseTitle', 'whyEnterpriseBullets',\r\n  'challengesTitle', 'challengesBullets', 'ctaTitle', 'ctaBody',\r\n];\r\nconst COMPANY_KEYS = ['name', 'taglinePro', 'taglineEducation', 'emails', 'phones', 'addresses', 'socialLinks'];\r\nconst SERVICE_KEYS = ['title', 'slug', 'shortDesc', 'detailedDesc', 'iconName', 'imageUrl', 'sector', 'displayOrder', 'isActive'];\r\nconst ANN_KEYS = ['title', 'content', 'audience', 'isActive'];\r\n\r\nconst pick = (src, keys) => {\r\n  const out = {};\r\n  for (const k of keys) {\r\n    if (Object.prototype.hasOwnProperty.call(src, k) && src[k] !== undefined && src[k] !== null) {\r\n      out[k] = src[k];\r\n    }\r\n  }\r\n  return out;\r\n};\r\n\r\nconst normResource = (v) => {\r\n  const s = String(v || '').trim().toLowerCase();\r\n  if (s === 'services' || s === 'service') return 'service';\r\n  if (s === 'announcements' || s === 'announcement') return 'announcement';\r\n  if (s === 'accueil' || s === 'home') return 'home';\r\n  if (s === 'apropos' || s === 'about' || s.includes('propos')) return 'about';\r\n  if (s === 'entreprise' || s === 'company') return 'company';\r\n  return s;\r\n};\r\n\r\nconst servicesByTitle = new Map((snapshot.services || []).map((s) => [String(s.title || '').trim().toLowerCase(), s]));\r\nconst servicesById = new Map((snapshot.services || []).map((s) => [s.id, s]));\r\nconst announcementsById = new Map((snapshot.announcements || []).map((a) => [a.id, a]));\r\n\r\nfunction resolveServiceId(rawId, patch) {\r\n  if (rawId && servicesById.has(rawId)) return rawId;\r\n\r\n  if (patch?.title) {\r\n    const hit = servicesByTitle.get(String(patch.title).trim().toLowerCase());\r\n    if (hit?.id) return hit.id;\r\n  }\r\n\r\n  if (patch?.shortDesc) {\r\n    const needle = String(patch.shortDesc).trim().toLowerCase();\r\n    for (const s of snapshot.services || []) {\r\n      if (String(s.shortDesc || '').trim().toLowerCase() === needle) return s.id;\r\n    }\r\n  }\r\n\r\n  const compact = String(rawId || '').toLowerCase().replace(/[^a-f0-9]/g, '');\r\n  if (compact.length >= 20) {\r\n    let bestId = null;\r\n    let bestDistance = Infinity;\r\n    for (const s of snapshot.services || []) {\r\n      const good = String(s.id || '').toLowerCase().replace(/-/g, '');\r\n      if (!good) continue;\r\n      if (compact === good || compact.includes(good) || good.includes(compact)) {\r\n        return s.id;\r\n      }\r\n      const dist = levenshtein(compact, good);\r\n      if (dist < bestDistance) {\r\n        bestDistance = dist;\r\n        bestId = s.id;\r\n      }\r\n    }\r\n    if (bestId && bestDistance <= 4) return bestId;\r\n  }\r\n\r\n  return null;\r\n}\r\n\r\nfunction unwrapNestedFields(obj) {\r\n  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;\r\n  const nested = obj.fields;\r\n  if (nested && typeof nested === 'object' && !Array.isArray(nested)) {\r\n    const { fields: _ignored, ...rest } = obj;\r\n    return { ...rest, ...nested };\r\n  }\r\n  return obj;\r\n}\r\n\r\nfunction levenshtein(a, b) {\r\n  const m = a.length;\r\n  const n = b.length;\r\n  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));\r\n  for (let i = 0; i <= m; i++) dp[i][0] = i;\r\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\r\n  for (let i = 1; i <= m; i++) {\r\n    for (let j = 1; j <= n; j++) {\r\n      dp[i][j] = Math.min(\r\n        dp[i - 1][j] + 1,\r\n        dp[i][j - 1] + 1,\r\n        dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),\r\n      );\r\n    }\r\n  }\r\n  return dp[m][n];\r\n}\r\n\r\nfunction coerceShape(u) {\r\n  if (!u || typeof u !== 'object' || Array.isArray(u)) return null;\r\n\r\n  let resource = normResource(u.resource);\r\n  let action = u.action;\r\n  let id = isUuid(u.id) ? u.id : undefined;\r\n  let patch = u.patch && typeof u.patch === 'object' && !Array.isArray(u.patch) ? unwrapNestedFields({ ...u.patch }) : null;\r\n  let data = u.data && typeof u.data === 'object' && !Array.isArray(u.data) ? unwrapNestedFields({ ...u.data }) : null;\r\n\r\n  if (patch?.id && isUuid(patch.id) && !id) {\r\n    id = patch.id;\r\n    delete patch.id;\r\n  }\r\n\r\n  if (!patch && !data && !action) {\r\n    const src = { ...u };\r\n    delete src.resource;\r\n    delete src.action;\r\n    delete src.instructionSummary;\r\n    const maybeId = src.id;\r\n    delete src.id;\r\n\r\n    const home = pick(src, HOME_KEYS);\r\n    const about = pick(src, ABOUT_KEYS);\r\n    const company = pick(src, COMPANY_KEYS);\r\n    const service = pick(src, SERVICE_KEYS);\r\n    const ann = pick(src, ANN_KEYS);\r\n\r\n    if (maybeId && isUuid(maybeId)) {\r\n      if (servicesById.has(maybeId)) {\r\n        resource = 'service';\r\n        id = maybeId;\r\n        patch = service;\r\n      } else if (announcementsById.has(maybeId)) {\r\n        resource = 'announcement';\r\n        id = maybeId;\r\n        patch = ann;\r\n      } else if (snapshot.home?.id === maybeId) {\r\n        resource = 'home';\r\n        patch = home;\r\n        id = undefined;\r\n      } else if (snapshot.about?.id === maybeId) {\r\n        resource = 'about';\r\n        patch = about;\r\n        id = undefined;\r\n      } else if (snapshot.company?.id === maybeId) {\r\n        resource = 'company';\r\n        patch = company;\r\n        id = undefined;\r\n      }\r\n    }\r\n\r\n    if (!resource) {\r\n      const candidates = [\r\n        ['home', home],\r\n        ['about', about],\r\n        ['company', company],\r\n        ['service', service],\r\n        ['announcement', ann],\r\n      ].sort((a, b) => Object.keys(b[1]).length - Object.keys(a[1]).length);\r\n\r\n      const [bestResource, bestPatch] = candidates[0] || [];\r\n      if (bestResource && Object.keys(bestPatch).length > 0) {\r\n        resource = bestResource;\r\n        if (bestResource === 'service') {\r\n          if (bestPatch.title) {\r\n            const hit = servicesByTitle.get(String(bestPatch.title).trim().toLowerCase());\r\n            if (hit?.id) id = hit.id;\r\n          }\r\n          if (id) {\r\n            patch = bestPatch;\r\n          } else if (bestPatch.title && bestPatch.shortDesc && bestPatch.detailedDesc && bestPatch.sector) {\r\n            action = 'create';\r\n            data = bestPatch;\r\n            patch = null;\r\n          } else {\r\n            patch = bestPatch;\r\n          }\r\n        } else {\r\n          patch = bestPatch;\r\n        }\r\n      }\r\n    }\r\n  }\r\n\r\n  if (!resource || !['home', 'about', 'company', 'service', 'announcement'].includes(resource)) {\r\n    return null;\r\n  }\r\n\r\n  const out = { resource };\r\n  if (action === 'create' && data) {\r\n    out.action = 'create';\r\n    out.data = data;\r\n  } else if (action === 'delete' && id) {\r\n    out.id = id;\r\n    out.action = 'delete';\r\n  } else {\r\n    if (patch && Object.keys(patch).length > 0) out.patch = patch;\r\n    if (id && (resource === 'service' || resource === 'announcement')) out.id = id;\r\n  }\r\n\r\n  if (['home', 'about', 'company'].includes(resource) && !out.patch) return null;\r\n  if (resource === 'service' && !out.patch && !out.data && out.action !== 'delete') return null;\r\n  if (resource === 'announcement' && !out.patch && !out.data) return null;\r\n  return out;\r\n}\r\n\r\nlet updates = Array.isArray(parsed.updates) ? parsed.updates : [];\r\nconst cleaned = [];\r\n\r\nfor (const u of updates) {\r\n  const item = coerceShape(u);\r\n  if (!item) continue;\r\n\r\n  if (item.resource === 'service' && item.action === 'create' && item.data) {\r\n    item.data = { ...item.data, sector: normSector(item.data.sector) };\r\n    const hit = servicesByTitle.get(String(item.data.title || '').trim().toLowerCase());\r\n    if (hit?.id) {\r\n      item.id = hit.id;\r\n      item.patch = {\r\n        ...(item.data.shortDesc ? { shortDesc: item.data.shortDesc } : {}),\r\n        ...(item.data.detailedDesc ? { detailedDesc: item.data.detailedDesc } : {}),\r\n        ...(item.data.sector ? { sector: item.data.sector } : {}),\r\n        ...(item.data.imageUrl ? { imageUrl: item.data.imageUrl } : {}),\r\n        ...(item.data.title ? { title: item.data.title } : {}),\r\n      };\r\n      delete item.action;\r\n      delete item.data;\r\n    }\r\n  }\r\n\r\n  if (item.resource === 'service' && item.patch && !item.action) {\r\n    const resolved = resolveServiceId(item.id, item.patch);\r\n    if (resolved) item.id = resolved;\r\n    if (!isUuid(item.id)) continue;\r\n    if (item.patch.sector) item.patch.sector = normSector(item.patch.sector);\r\n    if (Object.keys(item.patch).length === 0) continue;\r\n  }\r\n\r\n  if (item.resource === 'service' && item.action === 'create') {\r\n    if (!item.data?.title || !item.data?.shortDesc || !item.data?.detailedDesc || !item.data?.sector) continue;\r\n    if (!['education', 'enterprise', 'both'].includes(item.data.sector)) continue;\r\n  }\r\n\r\n  cleaned.push(item);\r\n}\r\n\r\nupdates = cleaned;\r\nconst instructionSummary = String(parsed.instructionSummary || 'Synchronisation Drive → JMT-S').slice(0, 500);\r\n\r\nif (updates.length === 0) {\r\n  return [{ json: { skipApply: true, instructionSummary, updates: [], note: 'Aucune update valide apres nettoyage.' } }];\r\n}\r\n\r\nconst base = { source: 'n8n-content-sync', instructionSummary, strict: false, updates };\r\nreturn [{\r\n  json: {\r\n    skipApply: false,\r\n    instructionSummary,\r\n    updates,\r\n    updateCount: updates.length,\r\n    applyDryRun: { ...base, dryRun: true },\r\n    applyReal: { ...base, dryRun: false },\r\n  },\r\n}];\r\n"
+      },
+      "id": "sync-0060",
+      "name": "5. Parse AI diff",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-updates",
+              "leftValue": "={{ $('5. Parse AI diff').first().json.skipApply }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sync-0065",
+      "name": "5b. Has updates?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2420,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('0. Config').first().json.baseUrl }}/api/agent/v1/content/apply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('5. Parse AI diff').first().json.applyDryRun) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "sync-0070",
+      "name": "6. JMT-S Apply dry-run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2640,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_JMTS_AGENT",
+          "name": "JMT-S Agent API  -  Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = $input.first().json || {};\nif (res.status === 'success') {\n  return $input.all();\n}\nif (res.message === 'Invalid payload.' || res.errors) {\n  throw new Error('Apply dry-run rejected: ' + JSON.stringify(res.errors || res.message));\n}\nthrow new Error('Apply dry-run failed: ' + JSON.stringify(res));"
+      },
+      "id": "sync-0070b",
+      "name": "6b. Check dry-run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2760,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('0. Config').first().json.baseUrl }}/api/agent/v1/content/apply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('5. Parse AI diff').first().json.applyReal) }}",
+        "options": {}
+      },
+      "id": "sync-0090",
+      "name": "8. JMT-S Apply publish",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3080,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_JMTS_AGENT",
+          "name": "JMT-S Agent API  -  Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('0. Config').first().json;\nconst agg = $('2h. Aggregate extracted content').first().json;\n\nif (agg?.noUsableContent) {\n  return [{\n    json: {\n      status: 'EXTRACTION_FAILED',\n      instructionSummary: agg.extractionNote || 'No usable text extracted from Drive files.',\n      updateCount: 0,\n      filteredOnServer: 0,\n      driveFilesRead: agg.sourceItemCount ?? 0,\n      skipped: agg.skipped ?? [],\n      extractErrors: agg.extractErrors ?? [],\n      skippedFilenames: agg.skippedFilenames ?? [],\n      note: agg.extractionNote ?? null,\n      baseUrl: config.baseUrl,\n    },\n  }];\n}\n\nconst parsed = $('5. Parse AI diff').first().json;\n\nlet dryRun = null;\nlet published = null;\nlet policy = null;\ntry { dryRun = $('6. JMT-S Apply dry-run').first().json; } catch {}\ntry { published = $('8. JMT-S Apply publish').first().json; } catch {}\ntry { policy = $('7b. Check Policy (publish)').first().json; } catch {}\n\nconst updates = parsed.updates ?? parsed.applyDryRun?.updates ?? [];\nconst updateCount = updates.length;\nconst allFilteredOnServer = Boolean(dryRun?.filteredCount && !(dryRun?.results?.length));\n\nlet status = 'FAILED';\nif (parsed.skipApply || allFilteredOnServer) {\n  status = 'NO_CHANGES';\n} else if (published?.status === 'success') {\n  status = 'PUBLISHED';\n} else if (dryRun?.status === 'success') {\n  status = 'DRY_RUN_OK';\n} else {\n  status = 'FAILED';\n}\n\nreturn [{\n  json: {\n    status,\n    instructionSummary: parsed.instructionSummary,\n    updateCount,\n    filteredOnServer: dryRun?.filteredCount ?? 0,\n    updatesPreview: updates.slice(0, 5).map((u) => ({\n      resource: u.resource,\n      action: u.action,\n      id: u.id,\n      title: u.data?.title ?? u.patch?.title ?? null,\n    })),\n    driveFilesRead: agg?.fileCount ?? null,\n    dryRunStatus: dryRun?.status ?? null,\n    dryRunRunId: dryRun?.runId ?? null,\n    dryRunMessage: dryRun?.message ?? null,\n    publishStatus: published?.status ?? null,\n    publishRunId: published?.runId ?? null,\n    policyDecision: policy?.decision ?? null,\n    policyApprovalId: policy?.approval_id ?? null,\n    note: parsed.note ?? dryRun?.message ?? null,\n    baseUrl: config.baseUrl,\n  },\n}];"
+      },
+      "id": "sync-0100",
+      "name": "9. Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3300,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const subfolderIds = [];\nfor (const item of $('2b-5 List subfolders L2').all()) {\n  if (item.json?.mimeType === 'application/vnd.google-apps.folder' && item.json?.id) {\n    subfolderIds.push({ id: item.json.id, name: item.json.name });\n  }\n}\nreturn [{ json: { subfolderIds } }];"
+      },
+      "id": "sync-0031k",
+      "name": "2b-4b Subfolders L3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-l3",
+              "leftValue": "={{ $('2b-4b Subfolders L3').first().json.subfolderIds.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sync-0031l",
+      "name": "2b-if3 Has subfolders L3?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return $('2b-4b Subfolders L3').first().json.subfolderIds.map((s) => ({ json: { id: s.id, name: s.name } }));"
+      },
+      "id": "sync-0031m",
+      "name": "2b-5split Expand L3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2840,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "trashed = false",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.id }}"
+          },
+          "whatToSearch": "all"
+        },
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "sync-0031n",
+      "name": "2b-5 List subfolders L3",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "alwaysOutputData": true,
+      "position": [
+        3020,
+        100
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "CONFIGURE_GOOGLE_DRIVE",
+          "name": "Google Drive  -  connect in n8n Credentials"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 10000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-content",
+              "leftValue": "={{ !$('2h. Aggregate extracted content').first().json.noUsableContent }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sync-0036b",
+      "name": "2h-b. Has drive content?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2580,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dry-ok",
+              "leftValue": "={{ $('6. JMT-S Apply dry-run').first().json.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "has-results",
+              "leftValue": "={{ ($('6. JMT-S Apply dry-run').first().json.results || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sync-gov-0070",
+      "name": "7. Publishable updates?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2860,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "summary",
+              "name": "summary",
+              "value": "={{ $('5. Parse AI diff').first().json.instructionSummary || 'CMS publish after Drive sync' }}",
+              "type": "string"
+            },
+            {
+              "id": "update_count",
+              "name": "update_count",
+              "value": "={{ ($('6. JMT-S Apply dry-run').first().json.results || []).length }}",
+              "type": "number"
+            },
+            {
+              "id": "recipient",
+              "name": "recipient",
+              "value": "CMS live site (JMT-S)",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "sync-gov-0075",
+      "name": "7a. Publish context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3080,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "checkPolicy",
+        "organizationId": "YOUR_ORG_ID",
+        "agentId": "YOUR_AGENT_ID",
+        "toolName": "jmts.content.publish",
+        "onDeny": "error",
+        "waitForApproval": true,
+        "approvalPollSeconds": 5,
+        "approvalTimeoutSeconds": 86400
+      },
+      "id": "sync-gov-007b",
+      "name": "7b. Check Policy (publish)",
+      "type": "n8n-nodes-salanor-aegis.salanorAegis",
+      "typeVersion": 1,
+      "position": [
+        3300,
+        300
+      ],
+      "credentials": {
+        "salanorAegisApi": {
+          "id": "CONFIGURE_SALANOR_AEGIS",
+          "name": "Salanor Aegis API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Build one-shot Workflow Bridge payload from JMT-S summary + captured steps.\n */\nconst summary = $('9. Summary').first().json;\n\nfunction safeJson(nodeName, max = 400) {\n  try {\n    return JSON.stringify($(nodeName).first().json).slice(0, max);\n  } catch {\n    return '';\n  }\n}\n\nfunction safeSlice(nodeName, path, max = 400) {\n  try {\n    const j = $(nodeName).first().json;\n    const parts = path.split('.');\n    let v = j;\n    for (const p of parts) v = v?.[p];\n    return String(v ?? '').slice(0, max);\n  } catch {\n    return '';\n  }\n}\n\nconst nodes = [];\n\nnodes.push({\n  name: '4. OpenAI diff',\n  kind: 'llm',\n  purpose: 'Propose CMS updates from Drive documents and site snapshot',\n  input_preview: safeSlice('3. Prepare OpenAI', 'messages.1.content'),\n  output_preview: safeSlice('4. OpenAI diff', 'choices.0.message.content'),\n});\n\ntry {\n  $('6. JMT-S Apply dry-run').first();\n  nodes.push({\n    name: '6. JMT-S Apply dry-run',\n    kind: 'tool',\n    tool_name: 'jmts.content.apply',\n    status: summary.dryRunStatus === 'success' ? 'success' : 'skipped',\n    output_preview: safeJson('6. JMT-S Apply dry-run'),\n  });\n} catch {}\n\ntry {\n  $('7b. Check Policy (publish)').first();\n  nodes.push({\n    name: '7b. Check Policy (publish)',\n    kind: 'decision',\n    purpose: 'Human approval before live CMS publish',\n    output_preview: safeJson('7b. Check Policy (publish)'),\n  });\n} catch {}\n\ntry {\n  $('8. JMT-S Apply publish').first();\n  nodes.push({\n    name: '8. JMT-S Apply publish',\n    kind: 'tool',\n    tool_name: 'jmts.content.publish',\n    status: summary.publishStatus === 'success' ? 'success' : 'skipped',\n    output_preview: safeJson('8. JMT-S Apply publish'),\n  });\n} catch {}\n\nconst runStatus =\n  summary.status === 'FAILED' || summary.status === 'EXTRACTION_FAILED'\n    ? 'failed'\n    : 'completed';\n\nreturn [{\n  json: {\n    aegisBody: {\n      one_shot: true,\n      business_context: 'JMT-S daily content sync from Google Drive',\n      external_system: 'n8n',\n      external_workflow_id: String($workflow.id),\n      external_execution_id: String($execution.id),\n      status: runStatus,\n      summary:\n        summary.status +\n        (summary.updateCount != null ? ' — ' + summary.updateCount + ' update(s)' : ''),\n      execution: {\n        workflow_name: $workflow.name,\n        execution_id: String($execution.id),\n        nodes,\n      },\n    },\n  },\n}];"
+      },
+      "id": "sync-aegis-0010",
+      "name": "10. Prepare Aegis capture",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/workflows/runs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.aegisBody) }}",
+        "options": {}
+      },
+      "id": "sync-aegis-0020",
+      "name": "11. Record in Aegis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3740,
+        500
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_AEGIS_INGEST",
+          "name": "Aegis Ingest API — Header Auth"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "0. Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily schedule": {
+      "main": [
+        [
+          {
+            "node": "0. Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "0. Config": {
+      "main": [
+        [
+          {
+            "node": "1. JMT-S Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. JMT-S Snapshot": {
+      "main": [
+        [
+          {
+            "node": "2a. Folder mode?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2a. Folder mode?": {
+      "main": [
+        [
+          {
+            "node": "2b-1 List root",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "2c. Single file item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-1 List root": {
+      "main": [
+        [
+          {
+            "node": "2b-2 Subfolders L1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-2 Subfolders L1": {
+      "main": [
+        [
+          {
+            "node": "2b-if1 Has subfolders?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-if1 Has subfolders?": {
+      "main": [
+        [
+          {
+            "node": "2b-2split Expand L1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "2b-6 Merge all files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-2split Expand L1": {
+      "main": [
+        [
+          {
+            "node": "2b-3 List subfolders L1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-3 List subfolders L1": {
+      "main": [
+        [
+          {
+            "node": "2b-4 Subfolders L2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-4 Subfolders L2": {
+      "main": [
+        [
+          {
+            "node": "2b-if2 Has subfolders L2?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-if2 Has subfolders L2?": {
+      "main": [
+        [
+          {
+            "node": "2b-5split Expand L2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "2b-6 Merge all files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-5split Expand L2": {
+      "main": [
+        [
+          {
+            "node": "2b-5 List subfolders L2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-5 List subfolders L2": {
+      "main": [
+        [
+          {
+            "node": "2b-4b Subfolders L3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-6 Merge all files": {
+      "main": [
+        [
+          {
+            "node": "2e. Google Drive Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2c. Single file item": {
+      "main": [
+        [
+          {
+            "node": "2e. Google Drive Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2e. Google Drive Download": {
+      "main": [
+        [
+          {
+            "node": "2f. Prepare extract payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2f. Prepare extract payload": {
+      "main": [
+        [
+          {
+            "node": "2f-b Image file?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2f-b Image file?": {
+      "main": [
+        [
+          {
+            "node": "2g-img. JMT-S Upload image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "2g. JMT-S Extract text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2g-img. JMT-S Upload image": {
+      "main": [
+        [
+          {
+            "node": "2g-merge. Merge media results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2g. JMT-S Extract text": {
+      "main": [
+        [
+          {
+            "node": "2g-merge. Merge media results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "2g-merge. Merge media results": {
+      "main": [
+        [
+          {
+            "node": "2h. Aggregate extracted content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2h. Aggregate extracted content": {
+      "main": [
+        [
+          {
+            "node": "2h-b. Has drive content?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Prepare OpenAI": {
+      "main": [
+        [
+          {
+            "node": "4. OpenAI diff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. OpenAI diff": {
+      "main": [
+        [
+          {
+            "node": "5. Parse AI diff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Parse AI diff": {
+      "main": [
+        [
+          {
+            "node": "5b. Has updates?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5b. Has updates?": {
+      "main": [
+        [
+          {
+            "node": "6. JMT-S Apply dry-run",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "9. Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6. JMT-S Apply dry-run": {
+      "main": [
+        [
+          {
+            "node": "6b. Check dry-run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6b. Check dry-run": {
+      "main": [
+        [
+          {
+            "node": "7. Publishable updates?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8. JMT-S Apply publish": {
+      "main": [
+        [
+          {
+            "node": "9. Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-4b Subfolders L3": {
+      "main": [
+        [
+          {
+            "node": "2b-if3 Has subfolders L3?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-if3 Has subfolders L3?": {
+      "main": [
+        [
+          {
+            "node": "2b-5split Expand L3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "2b-6 Merge all files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-5split Expand L3": {
+      "main": [
+        [
+          {
+            "node": "2b-5 List subfolders L3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b-5 List subfolders L3": {
+      "main": [
+        [
+          {
+            "node": "2b-6 Merge all files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2h-b. Has drive content?": {
+      "main": [
+        [
+          {
+            "node": "3. Prepare OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "9. Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7. Publishable updates?": {
+      "main": [
+        [
+          {
+            "node": "7a. Publish context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "9. Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7a. Publish context": {
+      "main": [
+        [
+          {
+            "node": "7b. Check Policy (publish)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7b. Check Policy (publish)": {
+      "main": [
+        [
+          {
+            "node": "8. JMT-S Apply publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "9. Summary": {
+      "main": [
+        [
+          {
+            "node": "10. Prepare Aegis capture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10. Prepare Aegis capture": {
+      "main": [
+        [
+          {
+            "node": "11. Record in Aegis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Drive-to-CMS sync. Dry-run always; live publish requires Console approval on jmts.content.publish. Records signed trace at end."
+  },
+  "tags": []
+}
