@@ -318,7 +318,49 @@ try {
 } catch {}
 `;
 
-  const tail = String.raw`
+  const tail = includePolicyStep
+    ? String.raw`
+const runStatus =
+  summary.status === 'FAILED' || summary.status === 'EXTRACTION_FAILED'
+    ? 'failed'
+    : 'completed';
+
+let obligationTraceId = null;
+try {
+  const policyRow = $('7b. Check Policy (publish)').first().json;
+  obligationTraceId =
+    policyRow?.aegis_policy?.trace_id ??
+    policyRow?.trace_id ??
+    null;
+} catch {}
+
+const aegisBody = {
+  business_context: 'JMT-S daily content sync from Google Drive',
+  external_system: 'n8n',
+  external_workflow_id: String($workflow.id),
+  external_execution_id: String($execution.id),
+  status: runStatus,
+  summary:
+    summary.status +
+    (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : ''),
+  execution: {
+    workflow_name: $workflow.name,
+    execution_id: String($execution.id),
+    nodes,
+  },
+};
+
+if (!obligationTraceId) {
+  aegisBody.one_shot = true;
+}
+
+return [{
+  json: {
+    obligationTraceId,
+    aegisBody,
+  },
+}];`
+    : String.raw`
 const runStatus =
   summary.status === 'FAILED' || summary.status === 'EXTRACTION_FAILED'
     ? 'failed'
@@ -326,6 +368,7 @@ const runStatus =
 
 return [{
   json: {
+    obligationTraceId: null,
     aegisBody: {
       one_shot: true,
       business_context: 'JMT-S daily content sync from Google Drive',
@@ -359,7 +402,7 @@ return [{
     {
       parameters: {
         method: "POST",
-        url: "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/workflows/runs",
+        url: "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') + ($json.obligationTraceId ? '/v1/aegis/workflows/runs/' + encodeURIComponent($json.obligationTraceId) + '/complete' : '/v1/aegis/workflows/runs') }}",
         authentication: "genericCredentialType",
         genericAuthType: "httpHeaderAuth",
         sendHeaders: true,

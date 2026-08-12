@@ -33,7 +33,7 @@ node examples/n8n/build-jmts-aegis.mjs
 
 If the workflow errors after Check Policy (bad credentials, HTTP failure, etc.), **Error Trigger** runs **E1 → E2. Record failure in Aegis**, which closes the same trace as **FAILED** when a policy trace exists.
 
-Re-import the workflow JSON after updates: `node examples/n8n/build-jmts-aegis.mjs`
+When Check Policy (7b) created an obligation trace, node **11** completes that same trace via `/workflows/runs/{trace_id}/complete` instead of starting a new one-shot run.
 
 ### Aegis — Policy gate (governed workflow only, node 7b)
 
