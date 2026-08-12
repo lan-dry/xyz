@@ -744,7 +744,8 @@
           "id": "CONFIGURE_JMTS_AGENT",
           "name": "JMT-S Agent API  -  Header Auth"
         }
-      }
+      },
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -999,7 +1000,20 @@
     },
     {
       "parameters": {
-        "jsCode": "/**\n * Build one-shot Workflow Bridge payload from JMT-S summary + captured steps.\n */\nconst summary = $('9. Summary').first().json;\n\nfunction safeJson(nodeName, max = 400) {\n  try {\n    return JSON.stringify($(nodeName).first().json).slice(0, max);\n  } catch {\n    return '';\n  }\n}\n\nfunction safeSlice(nodeName, path, max = 400) {\n  try {\n    const j = $(nodeName).first().json;\n    const parts = path.split('.');\n    let v = j;\n    for (const p of parts) v = v?.[p];\n    return String(v ?? '').slice(0, max);\n  } catch {\n    return '';\n  }\n}\n\nconst nodes = [];\n\nnodes.push({\n  name: '4. OpenAI diff',\n  kind: 'llm',\n  purpose: 'Propose CMS updates from Drive documents and site snapshot',\n  input_preview: safeSlice('3. Prepare OpenAI', 'messages.1.content'),\n  output_preview: safeSlice('4. OpenAI diff', 'choices.0.message.content'),\n});\n\ntry {\n  $('6. JMT-S Apply dry-run').first();\n  nodes.push({\n    name: '6. JMT-S Apply dry-run',\n    kind: 'tool',\n    tool_name: 'jmts.content.apply',\n    status: summary.dryRunStatus === 'success' ? 'success' : 'skipped',\n    output_preview: safeJson('6. JMT-S Apply dry-run'),\n  });\n} catch {}\n\ntry {\n  $('7b. Check Policy (publish)').first();\n  nodes.push({\n    name: '7b. Check Policy (publish)',\n    kind: 'decision',\n    purpose: 'Human approval before live CMS publish',\n    output_preview: safeJson('7b. Check Policy (publish)'),\n  });\n} catch {}\n\ntry {\n  $('8. JMT-S Apply publish').first();\n  nodes.push({\n    name: '8. JMT-S Apply publish',\n    kind: 'tool',\n    tool_name: 'jmts.content.publish',\n    status: summary.publishStatus === 'success' ? 'success' : 'skipped',\n    output_preview: safeJson('8. JMT-S Apply publish'),\n  });\n} catch {}\n\nconst runStatus =\n  summary.status === 'FAILED' || summary.status === 'EXTRACTION_FAILED'\n    ? 'failed'\n    : 'completed';\n\nlet obligationTraceId = null;\ntry {\n  const policyRow = $('7b. Check Policy (publish)').first().json;\n  obligationTraceId =\n    policyRow?.aegis_policy?.trace_id ??\n    policyRow?.trace_id ??\n    null;\n} catch {}\n\nconst aegisBody = {\n  business_context: 'JMT-S daily content sync from Google Drive',\n  external_system: 'n8n',\n  external_workflow_id: String($workflow.id),\n  external_execution_id: String($execution.id),\n  status: runStatus,\n  summary:\n    summary.status +\n    (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : ''),\n  execution: {\n    workflow_name: $workflow.name,\n    execution_id: String($execution.id),\n    nodes,\n  },\n};\n\nif (!obligationTraceId) {\n  aegisBody.one_shot = true;\n}\n\nreturn [{\n  json: {\n    obligationTraceId,\n    aegisBody,\n  },\n}];"
+        "jsCode": "/** Persist obligation trace id for error handlers (Error Trigger + node 8 error output). */\nconst item = $input.first().json;\nconst policy = item.aegis_policy ?? item;\nconst staticData = $getWorkflowStaticData('global');\nif (policy?.trace_id) {\n  staticData.obligationTraceId = policy.trace_id;\n  staticData.aegisPolicy = policy;\n}\nreturn [{ json: item }];"
+      },
+      "id": "sync-gov-007c",
+      "name": "7c. Store obligation trace",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3410,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Build one-shot Workflow Bridge payload from JMT-S summary + captured steps.\n */\nconst summary = $('9. Summary').first().json;\n\nfunction safeJson(nodeName, max = 400) {\n  try {\n    return JSON.stringify($(nodeName).first().json).slice(0, max);\n  } catch {\n    return '';\n  }\n}\n\nfunction safeSlice(nodeName, path, max = 400) {\n  try {\n    const j = $(nodeName).first().json;\n    const parts = path.split('.');\n    let v = j;\n    for (const p of parts) v = v?.[p];\n    return String(v ?? '').slice(0, max);\n  } catch {\n    return '';\n  }\n}\n\nconst nodes = [];\n\nnodes.push({\n  name: '4. OpenAI diff',\n  kind: 'llm',\n  purpose: 'Propose CMS updates from Drive documents and site snapshot',\n  input_preview: safeSlice('3. Prepare OpenAI', 'messages.1.content'),\n  output_preview: safeSlice('4. OpenAI diff', 'choices.0.message.content'),\n});\n\ntry {\n  $('6. JMT-S Apply dry-run').first();\n  nodes.push({\n    name: '6. JMT-S Apply dry-run',\n    kind: 'tool',\n    tool_name: 'jmts.content.apply',\n    status: summary.dryRunStatus === 'success' ? 'success' : 'skipped',\n    output_preview: safeJson('6. JMT-S Apply dry-run'),\n  });\n} catch {}\n\ntry {\n  $('7b. Check Policy (publish)').first();\n  nodes.push({\n    name: '7b. Check Policy (publish)',\n    kind: 'decision',\n    purpose: 'Human approval before live CMS publish',\n    output_preview: safeJson('7b. Check Policy (publish)'),\n  });\n} catch {}\n\ntry {\n  $('8. JMT-S Apply publish').first();\n  nodes.push({\n    name: '8. JMT-S Apply publish',\n    kind: 'tool',\n    tool_name: 'jmts.content.publish',\n    status: summary.publishStatus === 'success' ? 'success' : 'skipped',\n    output_preview: safeJson('8. JMT-S Apply publish'),\n  });\n} catch {}\n\nconst runStatus =\n  summary.status === 'FAILED' || summary.status === 'EXTRACTION_FAILED'\n    ? 'failed'\n    : 'completed';\n\nconst runSummary =\n  summary.status +\n  (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : '');\n\nlet aegisPolicy = null;\ntry {\n  const policyRow = $('7b. Check Policy (publish)').first().json;\n  aegisPolicy = policyRow?.aegis_policy ?? (policyRow?.trace_id ? policyRow : null);\n} catch {}\n\nreturn [{\n  json: {\n    ...(aegisPolicy ? { aegis_policy: aegisPolicy } : {}),\n    aegis_tool: 'jmts.content.publish',\n    runStatus,\n    summary: runSummary,\n    captureNodes: nodes,\n  },\n}];"
       },
       "id": "sync-aegis-0010",
       "name": "10. Prepare Aegis capture",
@@ -1012,36 +1026,24 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/workflows/runs",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.aegisBody) }}",
-        "options": {}
+        "operation": "recordRun",
+        "businessContext": "JMT-S daily content sync from Google Drive",
+        "summary": "={{ $json.summary }}",
+        "runStatus": "={{ $json.runStatus }}",
+        "nodesJson": "={{ JSON.stringify($json.captureNodes) }}"
       },
       "id": "sync-aegis-0020",
       "name": "11. Record in Aegis",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-salanor-aegis.salanorAegis",
+      "typeVersion": 1,
       "position": [
         3740,
         500
       ],
       "credentials": {
-        "httpHeaderAuth": {
-          "id": "CONFIGURE_AEGIS_INGEST",
-          "name": "Aegis Ingest API Header Auth"
+        "salanorAegisApi": {
+          "id": "CONFIGURE_SALANOR_AEGIS",
+          "name": "Salanor Aegis API"
         }
       }
     },
@@ -1058,7 +1060,7 @@
     },
     {
       "parameters": {
-        "jsCode": "/**\n * Close the governed trace when n8n stops on an error (credentials, HTTP 4xx, etc.).\n */\nconst err = $input.first().json;\nlet aegisPolicy = null;\ntry {\n  const row = $('7b. Check Policy (publish)').first().json;\n  aegisPolicy = row.aegis_policy ?? null;\n} catch {}\n\nconst message =\n  err.execution?.error?.message ??\n  err.error?.message ??\n  err.message ??\n  'Workflow failed';\n\nreturn [{\n  json: {\n    ...(aegisPolicy ? { aegis_policy: aegisPolicy } : {}),\n    aegis_tool: 'jmts.content.publish',\n    failure_summary: String(message).slice(0, 500),\n  },\n}];"
+        "jsCode": "/**\n * Close the governed trace when publish fails (node 8 error output or Error Trigger).\n */\nconst item = $input.first().json;\nlet aegisPolicy = null;\ntry {\n  const row = $('7b. Check Policy (publish)').first().json;\n  aegisPolicy = row.aegis_policy ?? row;\n} catch {}\n\nif (!aegisPolicy?.trace_id) {\n  const staticData = $getWorkflowStaticData('global');\n  aegisPolicy = staticData.aegisPolicy ?? null;\n}\n\nconst message =\n  item.execution?.error?.message ??\n  item.error?.message ??\n  item.message ??\n  'Workflow failed';\n\nreturn [{\n  json: {\n    ...(aegisPolicy?.trace_id ? { aegis_policy: aegisPolicy } : {}),\n    aegis_tool: 'jmts.content.publish',\n    failure_summary: String(message).slice(0, 500),\n  },\n}];"
       },
       "id": "sync-gov-error-prepare",
       "name": "E1. Prepare failure capture",
@@ -1456,6 +1458,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "E1. Prepare failure capture",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -1558,6 +1567,17 @@
       ]
     },
     "7b. Check Policy (publish)": {
+      "main": [
+        [
+          {
+            "node": "7c. Store obligation trace",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7c. Store obligation trace": {
       "main": [
         [
           {

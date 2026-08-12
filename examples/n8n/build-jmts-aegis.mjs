@@ -231,8 +231,30 @@ function addPublishGateNodes(wf) {
     main: [[{ node: "7b. Check Policy (publish)", type: "main", index: 0 }]],
   };
   wf.connections["7b. Check Policy (publish)"] = {
+    main: [[{ node: "7c. Store obligation trace", type: "main", index: 0 }]],
+  };
+  wf.connections["7c. Store obligation trace"] = {
     main: [[{ node: "8. JMT-S Apply publish", type: "main", index: 0 }]],
   };
+
+  wf.nodes.push({
+    parameters: {
+      jsCode: String.raw`/** Persist obligation trace id for error handlers (Error Trigger + node 8 error output). */
+const item = $input.first().json;
+const policy = item.aegis_policy ?? item;
+const staticData = $getWorkflowStaticData('global');
+if (policy?.trace_id) {
+  staticData.obligationTraceId = policy.trace_id;
+  staticData.aegisPolicy = policy;
+}
+return [{ json: item }];`,
+    },
+    id: "sync-gov-007c",
+    name: "7c. Store obligation trace",
+    type: "n8n-nodes-base.code",
+    typeVersion: 2,
+    position: [3410, 300],
+  });
 }
 
 function stripPublishPath(wf) {
@@ -325,39 +347,23 @@ const runStatus =
     ? 'failed'
     : 'completed';
 
-let obligationTraceId = null;
+const runSummary =
+  summary.status +
+  (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : '');
+
+let aegisPolicy = null;
 try {
   const policyRow = $('7b. Check Policy (publish)').first().json;
-  obligationTraceId =
-    policyRow?.aegis_policy?.trace_id ??
-    policyRow?.trace_id ??
-    null;
+  aegisPolicy = policyRow?.aegis_policy ?? (policyRow?.trace_id ? policyRow : null);
 } catch {}
-
-const aegisBody = {
-  business_context: 'JMT-S daily content sync from Google Drive',
-  external_system: 'n8n',
-  external_workflow_id: String($workflow.id),
-  external_execution_id: String($execution.id),
-  status: runStatus,
-  summary:
-    summary.status +
-    (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : ''),
-  execution: {
-    workflow_name: $workflow.name,
-    execution_id: String($execution.id),
-    nodes,
-  },
-};
-
-if (!obligationTraceId) {
-  aegisBody.one_shot = true;
-}
 
 return [{
   json: {
-    obligationTraceId,
-    aegisBody,
+    ...(aegisPolicy ? { aegis_policy: aegisPolicy } : {}),
+    aegis_tool: 'jmts.content.publish',
+    runStatus,
+    summary: runSummary,
+    captureNodes: nodes,
   },
 }];`
     : String.raw`
@@ -366,25 +372,15 @@ const runStatus =
     ? 'failed'
     : 'completed';
 
+const runSummary =
+  summary.status +
+  (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : '');
+
 return [{
   json: {
-    obligationTraceId: null,
-    aegisBody: {
-      one_shot: true,
-      business_context: 'JMT-S daily content sync from Google Drive',
-      external_system: 'n8n',
-      external_workflow_id: String($workflow.id),
-      external_execution_id: String($execution.id),
-      status: runStatus,
-      summary:
-        summary.status +
-        (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : ''),
-      execution: {
-        workflow_name: $workflow.name,
-        execution_id: String($execution.id),
-        nodes,
-      },
-    },
+    runStatus,
+    summary: runSummary,
+    captureNodes: nodes,
   },
 }];`;
 
@@ -401,28 +397,21 @@ return [{
     },
     {
       parameters: {
-        method: "POST",
-        url: "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') + ($json.obligationTraceId ? '/v1/aegis/workflows/runs/' + encodeURIComponent($json.obligationTraceId) + '/complete' : '/v1/aegis/workflows/runs') }}",
-        authentication: "genericCredentialType",
-        genericAuthType: "httpHeaderAuth",
-        sendHeaders: true,
-        headerParameters: {
-          parameters: [{ name: "Content-Type", value: "application/json" }],
-        },
-        sendBody: true,
-        specifyBody: "json",
-        jsonBody: "={{ JSON.stringify($json.aegisBody) }}",
-        options: {},
+        operation: "recordRun",
+        businessContext: "JMT-S daily content sync from Google Drive",
+        summary: "={{ $json.summary }}",
+        runStatus: "={{ $json.runStatus }}",
+        nodesJson: "={{ JSON.stringify($json.captureNodes) }}",
       },
       id: "sync-aegis-0020",
       name: "11. Record in Aegis",
-      type: "n8n-nodes-base.httpRequest",
-      typeVersion: 4.2,
+      type: "n8n-nodes-salanor-aegis.salanorAegis",
+      typeVersion: 1,
       position: [3740, 500],
       credentials: {
-        httpHeaderAuth: {
-          id: "CONFIGURE_AEGIS_INGEST",
-          name: "Aegis Ingest API Header Auth",
+        salanorAegisApi: {
+          id: "CONFIGURE_SALANOR_AEGIS",
+          name: "Salanor Aegis API",
         },
       },
     },
@@ -438,24 +427,29 @@ return [{
 
 function addErrorTriggerPath(wf) {
   const failurePrepareCode = String.raw`/**
- * Close the governed trace when n8n stops on an error (credentials, HTTP 4xx, etc.).
+ * Close the governed trace when publish fails (node 8 error output or Error Trigger).
  */
-const err = $input.first().json;
+const item = $input.first().json;
 let aegisPolicy = null;
 try {
   const row = $('7b. Check Policy (publish)').first().json;
-  aegisPolicy = row.aegis_policy ?? null;
+  aegisPolicy = row.aegis_policy ?? row;
 } catch {}
 
+if (!aegisPolicy?.trace_id) {
+  const staticData = $getWorkflowStaticData('global');
+  aegisPolicy = staticData.aegisPolicy ?? null;
+}
+
 const message =
-  err.execution?.error?.message ??
-  err.error?.message ??
-  err.message ??
+  item.execution?.error?.message ??
+  item.error?.message ??
+  item.message ??
   'Workflow failed';
 
 return [{
   json: {
-    ...(aegisPolicy ? { aegis_policy: aegisPolicy } : {}),
+    ...(aegisPolicy?.trace_id ? { aegis_policy: aegisPolicy } : {}),
     aegis_tool: 'jmts.content.publish',
     failure_summary: String(message).slice(0, 500),
   },
@@ -508,6 +502,19 @@ return [{
   };
 }
 
+function wirePublishFailureHandler(wf) {
+  const node8 = wf.nodes.find((n) => n.name === "8. JMT-S Apply publish");
+  if (node8) {
+    node8.onError = "continueErrorOutput";
+  }
+  wf.connections["8. JMT-S Apply publish"] = {
+    main: [
+      [{ node: "9. Summary", type: "main", index: 0 }],
+      [{ node: "E1. Prepare failure capture", type: "main", index: 0 }],
+    ],
+  };
+}
+
 function buildVariant(mode) {
   const wf = loadBase();
   stripAutoPublishFromConfig(wf);
@@ -526,6 +533,7 @@ function buildVariant(mode) {
 
   if (governed) {
     addErrorTriggerPath(wf);
+    wirePublishFailureHandler(wf);
   }
 
   wf.name = governed

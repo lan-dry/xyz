@@ -22,18 +22,33 @@ node examples/n8n/build-jmts-aegis.mjs
 - `JMTS_API_BASE_URL`, `GOOGLE_DRIVE_FOLDER_ID` (or file ID)
 - Credentials: JMT-S Agent API, OpenAI, Google Drive
 
-### Aegis — Workflow Bridge (node 11)
+### Aegis — Workflow Bridge
 
 1. Console → **API keys** → ingest key
 2. Console → **Agents** → **Enable Workflow Bridge**
-3. n8n env: `AEGIS_API_URL=https://api.salanor.com`
-4. Credential **Aegis Ingest API Header Auth** on node **11. Record in Aegis**
+3. n8n credential **Salanor Aegis API** on **7b**, **11**, and **E2** (same ingest key on all three Salanor nodes)
+
+### Credentials (do not mix these up)
+
+| n8n credential | Used on | Purpose |
+|----------------|---------|---------|
+| **Salanor Aegis API** | **7b**, **11**, **E2** | Check Policy, Record Run, record failure |
+| **JMT-S Agent API Header Auth** (your "Authorization JMT-S API") | **1, 6, 8**, extract nodes | Calls to JMT-S CMS API |
+
+Node **11** uses the **Salanor Aegis** community node (Record Run), not a separate Header Auth credential. You can delete **Auth Aegis** after re-import if nothing else in n8n still references it.
+
+**Do not** use the Aegis ingest key on node **8**. Node 8 talks to JMT-S (`/api/agent/v1/content/apply`), not Salanor Aegis.
 
 ### Error path (governed)
 
-If the workflow errors after Check Policy (bad credentials, HTTP failure, etc.), **Error Trigger** runs **E1 → E2. Record failure in Aegis**, which closes the same trace as **FAILED** when a policy trace exists.
+If publish fails after approval (bad credentials on node 8, HTTP error, etc.):
+
+1. **Node 8 error output** → **E1 → E2** closes the obligation trace as **FAILED** (works on **Manual Trigger** runs).
+2. **Error Trigger** → E1 → E2 is a backup for **production** runs only (n8n does not fire Error Trigger on manual test executions).
 
 When Check Policy (7b) created an obligation trace, node **11** completes that same trace via `/workflows/runs/{trace_id}/complete` instead of starting a new one-shot run.
+
+Re-import after updates: `node examples/n8n/build-jmts-aegis.mjs`
 
 ### Aegis — Policy gate (governed workflow only, node 7b)
 
