@@ -22,10 +22,10 @@ const DEVELOPER_LINKS = [
 ] as const;
 
 const COMPLIANCE_LINKS = [
-  { href: "/#compliance", label: "EU AI Act" },
-  { href: "/#compliance", label: "SOC 2" },
-  { href: "/#compliance", label: "HIPAA" },
-  { href: "/#compliance", label: "FedRAMP" },
+  { href: "/trust", label: "Trust center" },
+  { href: "/legal/security", label: "Security" },
+  { href: "/legal/fedramp", label: "FedRAMP" },
+  { href: "/legal/privacy", label: "Privacy" },
 ] as const;
 
 const COMPANY_LINKS = [
@@ -83,7 +83,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className={styles.bottom}>
-        <p>© {year} Salanor Systems, Inc. All rights reserved.</p>
+        <p>© {year} Salanor Ltd. All rights reserved.</p>
         <nav className={styles.legal} aria-label="Legal">
           <Link href="/legal/privacy">Privacy</Link>
           <Link href="/legal/terms">Terms</Link>
