@@ -5,6 +5,7 @@ import { getPool } from "../db/pool.js";
 import {
   appendWorkflowSteps,
   completeWorkflowRun,
+  findOpenWorkflowRunByExternalExecution,
   getWorkflowRun,
   startWorkflowRun,
   type ExecutionNodeCapture,
@@ -341,6 +342,46 @@ export async function postWorkflowRunCapture(c: Context): Promise<Response> {
     const message = err instanceof Error ? err.message : "Failed to capture workflow run";
     const status = message.includes("No Workflow Bridge") ? 409 : 500;
     return c.json({ error: message }, status);
+  } finally {
+    client.release();
+  }
+}
+
+export async function getWorkflowRunLookup(c: Context): Promise<Response> {
+  const token = bearerToken(c.req.header("Authorization"));
+  if (!token) {
+    return c.json({ error: "Missing or invalid Authorization" }, 401);
+  }
+
+  const externalSystem = c.req.query("external_system")?.trim() || "n8n";
+  const externalExecutionId = c.req.query("external_execution_id")?.trim();
+  if (!externalExecutionId) {
+    return c.json({ error: "external_execution_id required" }, 422);
+  }
+
+  const client = await getPool().connect();
+  try {
+    const auth = await resolveIngestKey(client, token);
+    if (!auth) {
+      return c.json({ error: "Invalid ingest API key" }, 401);
+    }
+
+    const run = await findOpenWorkflowRunByExternalExecution(
+      client,
+      auth.organizationId,
+      externalSystem,
+      externalExecutionId,
+    );
+
+    if (!run) {
+      return c.json({ trace_id: null, status: null });
+    }
+
+    return c.json({
+      trace_id: run.trace_id,
+      status: run.status,
+      trace_url: traceUrl(run.trace_id),
+    });
   } finally {
     client.release();
   }

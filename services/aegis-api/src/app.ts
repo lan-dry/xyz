@@ -7,6 +7,7 @@ import { postEvent } from "./routes/events.js";
 import { getEventInclusionProof } from "./routes/inclusion-proof.js";
 import { postPolicyEvaluate } from "./routes/policy-evaluate.js";
 import {
+  getWorkflowRunLookup,
   getWorkflowRunStatus,
   postWorkflowRunCapture,
   postWorkflowRunComplete,
@@ -66,6 +67,7 @@ export function createApp(): Hono {
   // Alias for orchestrators / docs
   aegis.post("/workflow-bridge/record", postWorkflowRunCapture);
   aegis.post("/workflows/runs", postWorkflowRunStart);
+  aegis.get("/workflows/runs/lookup", getWorkflowRunLookup);
   aegis.post("/workflows/runs/:traceId/steps", postWorkflowRunSteps);
   aegis.post("/workflows/runs/:traceId/complete", postWorkflowRunComplete);
   aegis.get("/workflows/runs/:traceId", getWorkflowRunStatus);

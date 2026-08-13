@@ -642,6 +642,29 @@ export async function completeWorkflowRun(
   };
 }
 
+export async function findOpenWorkflowRunByExternalExecution(
+  client: pg.PoolClient,
+  organizationId: string,
+  externalSystem: string,
+  externalExecutionId: string,
+): Promise<{ trace_id: string; status: string } | null> {
+  const result = await client.query<{ trace_id: string; status: string }>(
+    `SELECT wr.trace_id, t.status
+     FROM workflow_run wr
+     JOIN trace t
+       ON t.trace_id = wr.trace_id
+      AND t.organization_id = wr.organization_id
+     WHERE wr.organization_id = $1
+       AND wr.external_system = $2
+       AND wr.external_execution_id = $3
+       AND t.status IN ('running', 'blocked', 'executing')
+     ORDER BY wr.created_at DESC
+     LIMIT 1`,
+    [organizationId, externalSystem, externalExecutionId],
+  );
+  return result.rows[0] ?? null;
+}
+
 export async function getWorkflowRun(
   client: pg.PoolClient,
   organizationId: string,

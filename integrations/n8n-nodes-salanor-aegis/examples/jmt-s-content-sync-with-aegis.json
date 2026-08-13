@@ -43,8 +43,7 @@
       "position": [
         220,
         500
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -66,8 +65,7 @@
           "id": "CONFIGURE_JMTS_AGENT",
           "name": "JMT-S Agent API  -  Header Auth"
         }
-      },
-      "onError": "continueErrorOutput"
+      }
     },
     {
       "parameters": {
@@ -139,8 +137,7 @@
       },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 10000,
-      "onError": "continueErrorOutput"
+      "waitBetweenTries": 10000
     },
     {
       "parameters": {
@@ -154,8 +151,7 @@
       "position": [
         1040,
         400
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -202,8 +198,7 @@
       "position": [
         1400,
         300
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -241,8 +236,7 @@
       },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 10000,
-      "onError": "continueErrorOutput"
+      "waitBetweenTries": 10000
     },
     {
       "parameters": {
@@ -256,8 +250,7 @@
       "position": [
         1760,
         300
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -304,8 +297,7 @@
       "position": [
         2120,
         200
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -343,8 +335,7 @@
       },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 10000,
-      "onError": "continueErrorOutput"
+      "waitBetweenTries": 10000
     },
     {
       "parameters": {
@@ -358,8 +349,7 @@
       "position": [
         2480,
         400
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -372,8 +362,7 @@
       "position": [
         880,
         600
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -411,8 +400,7 @@
       },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 10000,
-      "onError": "continueErrorOutput"
+      "waitBetweenTries": 10000
     },
     {
       "parameters": {
@@ -426,8 +414,7 @@
       "position": [
         1680,
         500
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -496,8 +483,7 @@
           "id": "CONFIGURE_JMTS_AGENT",
           "name": "JMT-S Agent API  -  Header Auth"
         }
-      },
-      "onError": "continueErrorOutput"
+      }
     },
     {
       "parameters": {
@@ -568,8 +554,7 @@
       "position": [
         2400,
         500
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -582,8 +567,7 @@
       "position": [
         2580,
         500
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -624,8 +608,7 @@
           "id": "CONFIGURE_OPENAI",
           "name": "OpenAI  -  connect in n8n Credentials"
         }
-      },
-      "onError": "continueErrorOutput"
+      }
     },
     {
       "parameters": {
@@ -638,8 +621,7 @@
       "position": [
         2200,
         500
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -714,8 +696,7 @@
           "id": "CONFIGURE_JMTS_AGENT",
           "name": "JMT-S Agent API  -  Header Auth"
         }
-      },
-      "onError": "continueErrorOutput"
+      }
     },
     {
       "parameters": {
@@ -728,8 +709,7 @@
       "position": [
         2760,
         400
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -764,8 +744,7 @@
           "id": "CONFIGURE_JMTS_AGENT",
           "name": "JMT-S Agent API  -  Header Auth"
         }
-      },
-      "onError": "continueErrorOutput"
+      }
     },
     {
       "parameters": {
@@ -778,8 +757,7 @@
       "position": [
         3300,
         500
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -793,8 +771,7 @@
       "position": [
         2480,
         200
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -841,8 +818,7 @@
       "position": [
         2840,
         100
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -880,8 +856,7 @@
       },
       "retryOnFail": true,
       "maxTries": 5,
-      "waitBetweenTries": 10000,
-      "onError": "continueErrorOutput"
+      "waitBetweenTries": 10000
     },
     {
       "parameters": {
@@ -994,8 +969,7 @@
       "position": [
         3080,
         300
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -1025,20 +999,6 @@
     },
     {
       "parameters": {
-        "jsCode": "/** Persist obligation trace id for error handlers (Error Trigger + node 8 error output). */\nconst item = $input.first().json;\nconst policy = item.aegis_policy ?? item;\nconst staticData = $getWorkflowStaticData('global');\nif (policy?.trace_id) {\n  staticData.obligationTraceId = policy.trace_id;\n  staticData.aegisPolicy = policy;\n}\nreturn [{ json: item }];"
-      },
-      "id": "sync-gov-007c",
-      "name": "7c. Store obligation trace",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3410,
-        300
-      ],
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {
         "jsCode": "/**\n * Build one-shot Workflow Bridge payload from JMT-S summary + captured steps.\n */\nconst summary = $('9. Summary').first().json;\n\nfunction safeJson(nodeName, max = 400) {\n  try {\n    return JSON.stringify($(nodeName).first().json).slice(0, max);\n  } catch {\n    return '';\n  }\n}\n\nfunction safeSlice(nodeName, path, max = 400) {\n  try {\n    const j = $(nodeName).first().json;\n    const parts = path.split('.');\n    let v = j;\n    for (const p of parts) v = v?.[p];\n    return String(v ?? '').slice(0, max);\n  } catch {\n    return '';\n  }\n}\n\nconst nodes = [];\n\nnodes.push({\n  name: '4. OpenAI diff',\n  kind: 'llm',\n  purpose: 'Propose CMS updates from Drive documents and site snapshot',\n  input_preview: safeSlice('3. Prepare OpenAI', 'messages.1.content'),\n  output_preview: safeSlice('4. OpenAI diff', 'choices.0.message.content'),\n});\n\ntry {\n  $('6. JMT-S Apply dry-run').first();\n  nodes.push({\n    name: '6. JMT-S Apply dry-run',\n    kind: 'tool',\n    tool_name: 'jmts.content.apply',\n    status: summary.dryRunStatus === 'success' ? 'success' : 'skipped',\n    output_preview: safeJson('6. JMT-S Apply dry-run'),\n  });\n} catch {}\n\ntry {\n  $('7b. Check Policy (publish)').first();\n  nodes.push({\n    name: '7b. Check Policy (publish)',\n    kind: 'decision',\n    purpose: 'Human approval before live CMS publish',\n    output_preview: safeJson('7b. Check Policy (publish)'),\n  });\n} catch {}\n\ntry {\n  $('8. JMT-S Apply publish').first();\n  nodes.push({\n    name: '8. JMT-S Apply publish',\n    kind: 'tool',\n    tool_name: 'jmts.content.publish',\n    status: summary.publishStatus === 'success' ? 'success' : 'skipped',\n    output_preview: safeJson('8. JMT-S Apply publish'),\n  });\n} catch {}\n\nconst runStatus =\n  summary.status === 'FAILED' || summary.status === 'EXTRACTION_FAILED'\n    ? 'failed'\n    : 'completed';\n\nconst runSummary =\n  summary.status +\n  (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : '');\n\nlet aegisPolicy = null;\ntry {\n  const policyRow = $('7b. Check Policy (publish)').first().json;\n  aegisPolicy = policyRow?.aegis_policy ?? (policyRow?.trace_id ? policyRow : null);\n} catch {}\n\nreturn [{\n  json: {\n    ...(aegisPolicy ? { aegis_policy: aegisPolicy } : {}),\n    aegis_tool: 'jmts.content.publish',\n    runStatus,\n    summary: runSummary,\n    captureNodes: nodes,\n  },\n}];"
       },
       "id": "sync-aegis-0010",
@@ -1048,8 +1008,7 @@
       "position": [
         3520,
         500
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -1066,54 +1025,6 @@
       "position": [
         3740,
         500
-      ],
-      "credentials": {
-        "salanorAegisApi": {
-          "id": "CONFIGURE_SALANOR_AEGIS",
-          "name": "Salanor Aegis API"
-        }
-      },
-      "onError": "continueErrorOutput"
-    },
-    {
-      "parameters": {},
-      "id": "sync-gov-error-trigger",
-      "name": "Error Trigger",
-      "type": "n8n-nodes-base.errorTrigger",
-      "typeVersion": 1,
-      "position": [
-        3520,
-        720
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "/**\n * Close the governed trace when any wired node fails (error output or Error Trigger).\n */\nconst item = $input.first().json;\n\nconst failedNode =\n  item.error?.node?.name ??\n  item.execution?.error?.node?.name ??\n  item.execution?.lastNodeExecuted ??\n  'unknown node';\n\nlet aegisPolicy = null;\ntry {\n  const row = $('7b. Check Policy (publish)').first().json;\n  aegisPolicy = row.aegis_policy ?? row;\n} catch {}\n\nif (!aegisPolicy?.trace_id) {\n  const staticData = $getWorkflowStaticData('global');\n  aegisPolicy = staticData.aegisPolicy ?? null;\n}\n\nconst message =\n  item.execution?.error?.message ??\n  item.error?.message ??\n  item.error?.description ??\n  item.message ??\n  'Workflow failed';\n\nreturn [{\n  json: {\n    ...(aegisPolicy?.trace_id ? { aegis_policy: aegisPolicy } : {}),\n    aegis_tool: 'jmts.content.publish',\n    failure_summary: String(failedNode) + ': ' + String(message).slice(0, 450),\n  },\n}];"
-      },
-      "id": "sync-gov-error-prepare",
-      "name": "E1. Prepare failure capture",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3740,
-        720
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "recordRun",
-        "businessContext": "JMT-S daily content sync from Google Drive",
-        "summary": "={{ $json.failure_summary }}",
-        "runStatus": "failed",
-        "nodesJson": "[]"
-      },
-      "id": "sync-gov-error-record",
-      "name": "E2. Record failure in Aegis",
-      "type": "n8n-nodes-salanor-aegis.salanorAegis",
-      "typeVersion": 1,
-      "position": [
-        3960,
-        720
       ],
       "credentials": {
         "salanorAegisApi": {
@@ -1154,13 +1065,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1169,13 +1073,6 @@
         [
           {
             "node": "2a. Folder mode?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1208,13 +1105,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1223,13 +1113,6 @@
         [
           {
             "node": "2b-if1 Has subfolders?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1262,13 +1145,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1280,13 +1156,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1295,13 +1164,6 @@
         [
           {
             "node": "2b-if2 Has subfolders L2?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1334,13 +1196,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1349,13 +1204,6 @@
         [
           {
             "node": "2b-4b Subfolders L3",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1370,13 +1218,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1385,13 +1226,6 @@
         [
           {
             "node": "2e. Google Drive Download",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1406,13 +1240,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1421,13 +1248,6 @@
         [
           {
             "node": "2f-b Image file?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1457,13 +1277,6 @@
         [
           {
             "node": "2g-merge. Merge media results",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1500,13 +1313,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1515,13 +1321,6 @@
         [
           {
             "node": "4. OpenAI diff",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1536,13 +1335,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1551,13 +1343,6 @@
         [
           {
             "node": "5b. Has updates?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1590,13 +1375,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1605,13 +1383,6 @@
         [
           {
             "node": "7. Publishable updates?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1626,13 +1397,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1641,13 +1405,6 @@
         [
           {
             "node": "2b-if3 Has subfolders L3?",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1680,13 +1437,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1695,13 +1445,6 @@
         [
           {
             "node": "2b-6 Merge all files",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1752,13 +1495,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1766,25 +1502,7 @@
       "main": [
         [
           {
-            "node": "7c. Store obligation trace",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "7c. Store obligation trace": {
-      "main": [
-        [
-          {
             "node": "8. JMT-S Apply publish",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1799,13 +1517,6 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
         ]
       ]
     },
@@ -1814,47 +1525,6 @@
         [
           {
             "node": "11. Record in Aegis",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Error Trigger": {
-      "main": [
-        [
-          {
-            "node": "E1. Prepare failure capture",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "E1. Prepare failure capture": {
-      "main": [
-        [
-          {
-            "node": "E2. Record failure in Aegis",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "11. Record in Aegis": {
-      "main": [
-        [],
-        [
-          {
-            "node": "E1. Prepare failure capture",
             "type": "main",
             "index": 0
           }
@@ -1868,7 +1538,7 @@
   },
   "meta": {
     "templateCredsSetupCompleted": false,
-    "description": "Drive-to-CMS sync. Dry-run always; live publish requires Console approval on jmts.content.publish. Records signed trace at end. Any node failure routes to E1 → E2 (FAILED trace)."
+    "description": "Drive-to-CMS sync. Dry-run always; live publish requires Console approval on jmts.content.publish. Records signed trace at end. Link jmt-s-aegis-error-handler.json in Settings → Error Workflow (no in-canvas error wires)."
   },
   "tags": []
 }

@@ -5,9 +5,10 @@
 | Workflow | File | Use when |
 |----------|------|----------|
 | **Governed (default)** | `jmt-s-content-sync-with-aegis.json` | Sales demos & production — publish requires Console approval |
+| **Error handler** | `jmt-s-aegis-error-handler.json` | Import once; link from main workflow settings (see below) |
 | Audit only | `jmt-s-content-sync-with-aegis-audit.json` | Dry-run validation + signed trace, no live CMS publish |
 
-Both live in `examples/n8n/` (canonical). Regenerate after editing the base workflow:
+Regenerate the main workflows after editing the base:
 
 ```bash
 node examples/n8n/build-jmts-aegis.mjs
@@ -17,59 +18,35 @@ node examples/n8n/build-jmts-aegis.mjs
 
 ## One-time setup
 
-### JMT-S + OpenAI (same as base workflow)
+### 1. Import both workflows
 
-- `JMTS_API_BASE_URL`, `GOOGLE_DRIVE_FOLDER_ID` (or file ID)
-- Credentials: JMT-S Agent API, OpenAI, Google Drive
+1. Import **`jmt-s-content-sync-with-aegis.json`** (main canvas — clean, no error wires)
+2. Import **`jmt-s-aegis-error-handler.json`** (small 5-node workflow)
 
-### Aegis — Workflow Bridge
+### 2. Link the error handler (main workflow)
+
+Open the **main** JMT-S workflow → **⋯ menu → Settings → Error Workflow** → select **Aegis error handler (JMT-S governed)**.
+
+n8n calls this automatically when **any node fails** in a **production** run (active workflow, schedule/webhook). No extra lines on the canvas.
+
+**Manual Trigger** test runs do **not** invoke the error workflow (n8n limitation). To test failure handling: **activate** the workflow and run via **Daily schedule** (or fix a node, wait for the schedule, then check Console → Traces → FAILED).
+
+### 3. Credentials
+
+| Credential | Used on | Purpose |
+|------------|---------|---------|
+| **Salanor Aegis API** | **7b**, **11**, error handler **Record failure** | Check Policy + Record Run |
+| **Header Auth** (same ingest key) | error handler **Lookup open trace** | Find open trace by n8n execution id |
+| **JMT-S Agent API Header Auth** | **1, 6, 8**, extract nodes | JMT-S CMS API |
+
+On the error handler **Lookup open trace** node, create Header Auth with header name `Authorization` and value `Bearer <your ingest key>` (same key as Salanor Aegis API).
+
+### 4. Aegis console
 
 1. Console → **API keys** → ingest key
 2. Console → **Agents** → **Enable Workflow Bridge**
-3. n8n credential **Salanor Aegis API** on **7b**, **11**, and **E2** (same ingest key on all three Salanor nodes)
-
-### Credentials (do not mix these up)
-
-| n8n credential | Used on | Purpose |
-|----------------|---------|---------|
-| **Salanor Aegis API** | **7b**, **11**, **E2** | Check Policy, Record Run, record failure |
-| **JMT-S Agent API Header Auth** (your "Authorization JMT-S API") | **1, 6, 8**, extract nodes | Calls to JMT-S CMS API |
-
-Node **11** uses the **Salanor Aegis** community node (Record Run), not a separate Header Auth credential. You can delete **Auth Aegis** after re-import if nothing else in n8n still references it.
-
-**Do not** use the Aegis ingest key on node **8**. Node 8 talks to JMT-S (`/api/agent/v1/content/apply`), not Salanor Aegis.
-
-### Error path (governed)
-
-**Any node failure** (bad credentials, HTTP 500, OpenAI timeout, etc.) should close the Aegis trace as **FAILED**, not leave it stuck on EXECUTING.
-
-n8n gives you two mechanisms:
-
-| Mechanism | When it runs | This workflow |
-|-----------|----------------|---------------|
-| **Per-node error output** (`On Error → Continue → Error Output`) | Manual Trigger **and** production | **Built in:** every HTTP, Code, Set, and Drive node (except soft-fail extract) routes to **E1 → E2** |
-| **Settings → Error Workflow** (separate workflow with Error Trigger) | **Production only** (active workflow, real trigger). **Not** Manual Trigger test runs. | Optional backup — import `jmt-s-aegis-error-handler.json` and link it in workflow settings |
-
-**7b Check Policy** is excluded from the global error wire on purpose: deny/reject is already handled by Aegis (FAILED or stays blocked).
-
-**2g JMT-S Extract text** uses Continue On Fail (soft-fail per file) and is excluded.
-
-After **7c Store obligation trace**, the obligation `trace_id` is in workflow static data so **E1** can close the correct trace even when **7b** is not reachable from the error branch.
-
-When Check Policy (7b) created an obligation trace, node **11** (success) or **E2** (failure) completes that same trace.
-
-Re-import after updates: `node examples/n8n/build-jmts-aegis.mjs`
-
-### Aegis — Policy gate (governed workflow only, node 7b)
-
-1. Console → **Policies** → create draft:
-   - **Tool pattern:** `jmts.content.publish`
-   - **Decision:** require approval
-   - **Activate** the draft
-2. n8n credential **Salanor Aegis API** on node **7b. Check Policy (publish)**
-3. Set **Organization ID** and **Agent ID** on that node (Console → Settings → Organization, Agents page)
-
-Optional: create a separate **allow** policy for `jmts.content.apply` (dry-run) so only publish is gated.
+3. **Policies** → `jmts.content.publish` → require approval → activate
+4. Set **Organization ID** and **Agent ID** on node **7b**
 
 ---
 
@@ -81,25 +58,23 @@ Optional: create a separate **allow** policy for `jmts.content.apply` (dry-run) 
   → no  → Summary → Record in Aegis
 ```
 
-**No `JMTS_AUTO_PUBLISH` env var.** Live publish always goes through policy when updates exist.
+On failure anywhere: n8n → **Error Workflow** → lookup open trace → **Record failure** → Console shows **FAILED**.
 
 ---
 
 ## Demo run (5 minutes)
 
-1. Import **governed** workflow, wire credentials and org/agent IDs on node 7b
-2. Activate policy `jmts.content.publish` → require approval
-3. **Manual Trigger** in n8n
-4. Workflow **pauses** at Check Policy → Console → **Approvals** → approve
-5. Publish completes → node 11 returns `trace_url`
-6. Console → **Traces** → COMPLETED → **Replay** → **Verify chain + inclusion**
+1. Import both workflows; link error handler in settings
+2. Wire credentials on main workflow (7b, 11) and error handler (Lookup + Record)
+3. **Manual Trigger** → approve in Console → **COMPLETED** trace
+4. **Replay** → verify chain
 
-See `DEMO_SCRIPT.md` for the spoken 60-second script.
+See `DEMO_SCRIPT.md` for the spoken script.
 
 ---
 
 ## After a run
 
-- **Traces:** COMPLETED with LLM + apply + (if approved) publish steps
+- **Traces:** COMPLETED (success) or FAILED (error workflow)
 - **Approvals → History:** who approved, when
-- **Exports:** auditor bundle when scheduled exports are active on your plan
+- Stale **EXECUTING** rows from old test runs: housekeeping closes them after 24h

@@ -231,30 +231,8 @@ function addPublishGateNodes(wf) {
     main: [[{ node: "7b. Check Policy (publish)", type: "main", index: 0 }]],
   };
   wf.connections["7b. Check Policy (publish)"] = {
-    main: [[{ node: "7c. Store obligation trace", type: "main", index: 0 }]],
-  };
-  wf.connections["7c. Store obligation trace"] = {
     main: [[{ node: "8. JMT-S Apply publish", type: "main", index: 0 }]],
   };
-
-  wf.nodes.push({
-    parameters: {
-      jsCode: String.raw`/** Persist obligation trace id for error handlers (Error Trigger + node 8 error output). */
-const item = $input.first().json;
-const policy = item.aegis_policy ?? item;
-const staticData = $getWorkflowStaticData('global');
-if (policy?.trace_id) {
-  staticData.obligationTraceId = policy.trace_id;
-  staticData.aegisPolicy = policy;
-}
-return [{ json: item }];`,
-    },
-    id: "sync-gov-007c",
-    name: "7c. Store obligation trace",
-    type: "n8n-nodes-base.code",
-    typeVersion: 2,
-    position: [3410, 300],
-  });
 }
 
 function stripPublishPath(wf) {
@@ -425,131 +403,6 @@ return [{
   };
 }
 
-function addErrorTriggerPath(wf) {
-  const failurePrepareCode = String.raw`/**
- * Close the governed trace when any wired node fails (error output or Error Trigger).
- */
-const item = $input.first().json;
-
-const failedNode =
-  item.error?.node?.name ??
-  item.execution?.error?.node?.name ??
-  item.execution?.lastNodeExecuted ??
-  'unknown node';
-
-let aegisPolicy = null;
-try {
-  const row = $('7b. Check Policy (publish)').first().json;
-  aegisPolicy = row.aegis_policy ?? row;
-} catch {}
-
-if (!aegisPolicy?.trace_id) {
-  const staticData = $getWorkflowStaticData('global');
-  aegisPolicy = staticData.aegisPolicy ?? null;
-}
-
-const message =
-  item.execution?.error?.message ??
-  item.error?.message ??
-  item.error?.description ??
-  item.message ??
-  'Workflow failed';
-
-return [{
-  json: {
-    ...(aegisPolicy?.trace_id ? { aegis_policy: aegisPolicy } : {}),
-    aegis_tool: 'jmts.content.publish',
-    failure_summary: String(failedNode) + ': ' + String(message).slice(0, 450),
-  },
-}];`;
-
-  wf.nodes.push(
-    {
-      parameters: {},
-      id: "sync-gov-error-trigger",
-      name: "Error Trigger",
-      type: "n8n-nodes-base.errorTrigger",
-      typeVersion: 1,
-      position: [3520, 720],
-    },
-    {
-      parameters: { jsCode: failurePrepareCode },
-      id: "sync-gov-error-prepare",
-      name: "E1. Prepare failure capture",
-      type: "n8n-nodes-base.code",
-      typeVersion: 2,
-      position: [3740, 720],
-    },
-    {
-      parameters: {
-        operation: "recordRun",
-        businessContext: "JMT-S daily content sync from Google Drive",
-        summary: "={{ $json.failure_summary }}",
-        runStatus: "failed",
-        nodesJson: "[]",
-      },
-      id: "sync-gov-error-record",
-      name: "E2. Record failure in Aegis",
-      type: "n8n-nodes-salanor-aegis.salanorAegis",
-      typeVersion: 1,
-      position: [3960, 720],
-      credentials: {
-        salanorAegisApi: {
-          id: "CONFIGURE_SALANOR_AEGIS",
-          name: "Salanor Aegis API",
-        },
-      },
-    },
-  );
-
-  wf.connections["Error Trigger"] = {
-    main: [[{ node: "E1. Prepare failure capture", type: "main", index: 0 }]],
-  };
-  wf.connections["E1. Prepare failure capture"] = {
-    main: [[{ node: "E2. Record failure in Aegis", type: "main", index: 0 }]],
-  };
-}
-
-function wireGlobalFailureHandler(wf) {
-  const errorHandler = "E1. Prepare failure capture";
-  const skipNames = new Set([
-    "Manual Trigger",
-    "Daily schedule",
-    "Error Trigger",
-    errorHandler,
-    "E2. Record failure in Aegis",
-    "7b. Check Policy (publish)",
-  ]);
-  const skipTypes = new Set([
-    "n8n-nodes-base.manualTrigger",
-    "n8n-nodes-base.scheduleTrigger",
-    "n8n-nodes-base.errorTrigger",
-    "n8n-nodes-base.if",
-    "n8n-nodes-base.switch",
-    "n8n-nodes-base.merge",
-  ]);
-
-  for (const node of wf.nodes) {
-    if (skipNames.has(node.name)) continue;
-    if (skipTypes.has(node.type)) continue;
-    if (node.continueOnFail === true) continue;
-    if (node.onError === "continueRegularOutput") continue;
-
-    node.onError = "continueErrorOutput";
-
-    const existing = wf.connections[node.name]?.main ?? [];
-    const successBranch = existing[0] ?? [];
-    let errorBranch = existing[1] ?? [];
-    if (!errorBranch.some((c) => c.node === errorHandler)) {
-      errorBranch = [
-        ...errorBranch,
-        { node: errorHandler, type: "main", index: 0 },
-      ];
-    }
-    wf.connections[node.name] = { main: [successBranch, errorBranch] };
-  }
-}
-
 function buildVariant(mode) {
   const wf = loadBase();
   stripAutoPublishFromConfig(wf);
@@ -566,18 +419,13 @@ function buildVariant(mode) {
 
   addAegisCapture(wf, { includePolicyStep: governed });
 
-  if (governed) {
-    addErrorTriggerPath(wf);
-    wireGlobalFailureHandler(wf);
-  }
-
   wf.name = governed
     ? "JMT-S Content Sync (Drive + OpenAI + Aegis governed)"
     : "JMT-S Content Sync (Drive + OpenAI + Aegis audit)";
   wf.meta = {
     templateCredsSetupCompleted: false,
     description: governed
-      ? "Drive-to-CMS sync. Dry-run always; live publish requires Console approval on jmts.content.publish. Records signed trace at end. Any node failure routes to E1 → E2 (FAILED trace)."
+      ? "Drive-to-CMS sync. Dry-run always; live publish requires Console approval on jmts.content.publish. Records signed trace at end. Link jmt-s-aegis-error-handler.json in Settings → Error Workflow (no in-canvas error wires)."
       : "Drive-to-CMS sync with dry-run validation and signed Aegis trace. No live publish.",
   };
 

@@ -11,7 +11,7 @@
     },
     {
       "parameters": {
-        "jsCode": "/**\n * Production error workflow payload (Settings → Error Workflow).\n * Link this workflow from the main JMT-S governed workflow.\n */\nconst item = $input.first().json;\nconst err = item.execution?.error ?? {};\nconst failedNode = err.node?.name ?? item.execution?.lastNodeExecuted ?? 'unknown node';\nconst message = err.message ?? err.description ?? 'Workflow failed';\n\nreturn [{\n  json: {\n    failure_summary: String(failedNode) + ': ' + String(message).slice(0, 450),\n    external_execution_id: String(item.execution?.id ?? ''),\n    failed_workflow: item.workflow?.name ?? '',\n  },\n}];"
+        "jsCode": "/**\n * n8n Error Workflow payload (Settings → Error Workflow on the main JMT-S workflow).\n */\nconst item = $input.first().json;\nconst err = item.execution?.error ?? {};\nconst failedNode = err.node?.name ?? item.execution?.lastNodeExecuted ?? 'unknown node';\nconst message = err.message ?? err.description ?? 'Workflow failed';\n\nreturn [{\n  json: {\n    failure_summary: String(failedNode) + ': ' + String(message).slice(0, 450),\n    external_execution_id: String(item.execution?.id ?? ''),\n    failed_workflow: item.workflow?.name ?? '',\n  },\n}];"
       },
       "id": "aegis-err-prepare",
       "name": "Prepare failure capture",
@@ -21,8 +21,37 @@
     },
     {
       "parameters": {
+        "url": "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') + '/v1/aegis/workflows/runs/lookup?external_system=n8n&external_execution_id=' + encodeURIComponent($json.external_execution_id) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "aegis-err-lookup",
+      "name": "Lookup open trace",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_SALANOR_AEGIS",
+          "name": "Salanor Aegis API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const prep = $('Prepare failure capture').first().json;\nconst lookup = $input.first().json;\nconst traceId = lookup.trace_id ?? null;\n\nreturn [{\n  json: {\n    failure_summary: prep.failure_summary,\n    ...(traceId\n      ? {\n          aegis_policy: {\n            trace_id: traceId,\n            decision: 'allow_with_obligation',\n            recorded: true,\n          },\n        }\n      : {}),\n    aegis_tool: 'jmts.content.publish',\n  },\n}];"
+      },
+      "id": "aegis-err-build",
+      "name": "Build record payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
         "operation": "recordRun",
-        "businessContext": "={{ $json.failed_workflow || 'JMT-S governed workflow' }}",
+        "businessContext": "={{ $('Prepare failure capture').first().json.failed_workflow || 'JMT-S governed workflow' }}",
         "summary": "={{ $json.failure_summary }}",
         "runStatus": "failed",
         "nodesJson": "[]"
@@ -31,7 +60,7 @@
       "name": "Record failure in Aegis",
       "type": "n8n-nodes-salanor-aegis.salanorAegis",
       "typeVersion": 1,
-      "position": [680, 300],
+      "position": [1120, 300],
       "credentials": {
         "salanorAegisApi": {
           "id": "CONFIGURE_SALANOR_AEGIS",
@@ -45,6 +74,12 @@
       "main": [[{ "node": "Prepare failure capture", "type": "main", "index": 0 }]]
     },
     "Prepare failure capture": {
+      "main": [[{ "node": "Lookup open trace", "type": "main", "index": 0 }]]
+    },
+    "Lookup open trace": {
+      "main": [[{ "node": "Build record payload", "type": "main", "index": 0 }]]
+    },
+    "Build record payload": {
       "main": [[{ "node": "Record failure in Aegis", "type": "main", "index": 0 }]]
     }
   },
@@ -52,7 +87,7 @@
   "settings": { "executionOrder": "v1" },
   "meta": {
     "templateCredsSetupCompleted": false,
-    "description": "Optional production error workflow. Import separately, wire Salanor Aegis API credential, then in the main JMT-S workflow open Settings → Error Workflow and select this workflow. Does not run on Manual Trigger tests."
+    "description": "Import this workflow separately. Wire the same ingest API key on Lookup (Header Auth) and Record failure (Salanor Aegis API). Then open the main JMT-S workflow → Settings → Error Workflow → select this workflow. Keeps the main canvas clean (no error wires)."
   },
   "tags": []
 }
