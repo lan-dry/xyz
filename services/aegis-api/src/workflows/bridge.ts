@@ -8,7 +8,7 @@ import {
   isBridgeMasterKeyConfigured,
 } from "../crypto/bridge-key-vault.js";
 import { persistSignedEvent } from "../ingest/persist.js";
-import { createApprovalRequest } from "../repo/approvals.js";
+import { createApprovalRequest, voidPendingApprovalsForTerminalTrace } from "../repo/approvals.js";
 import { completeTrace } from "../repo/trace-status.js";
 import { generateEd25519KeyPair } from "@salanor/platform-auth";
 
@@ -611,12 +611,22 @@ export async function completeWorkflowRun(
 
   if (finalStatus === "completed") {
     await completeTrace(client, input.organizationId, input.traceId);
+    await voidPendingApprovalsForTerminalTrace(
+      client,
+      input.organizationId,
+      input.traceId,
+    );
   } else {
     await client.query(
       `UPDATE trace
        SET status = 'failed', ended_at = now()
        WHERE organization_id = $1 AND trace_id = $2 AND status IN ('running', 'blocked', 'executing')`,
       [input.organizationId, input.traceId],
+    );
+    await voidPendingApprovalsForTerminalTrace(
+      client,
+      input.organizationId,
+      input.traceId,
     );
   }
 

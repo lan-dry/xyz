@@ -18,6 +18,7 @@ type LoginEvent = {
   ip_address: string | null;
   user_agent: string | null;
   device: string | null;
+  location: string | null;
   created_at: string;
 };
 
@@ -96,6 +97,7 @@ export default function SecuritySettingsPage() {
                   <th>Method</th>
                   <th>Result</th>
                   <th>IP address</th>
+                  <th>Location</th>
                   <th>Device</th>
                 </tr>
               </thead>
@@ -114,6 +116,7 @@ export default function SecuritySettingsPage() {
                       )}
                     </td>
                     <td className="mono">{e.ip_address ?? "-"}</td>
+                    <td>{e.location ?? "-"}</td>
                     <td>{e.device ?? "-"}</td>
                   </tr>
                 ))}
@@ -122,7 +125,7 @@ export default function SecuritySettingsPage() {
           </div>
         ) : null}
         <p className={ui.muted} style={{ marginTop: "0.75rem", fontSize: "0.8125rem" }}>
-          City and country are not shown yet. We store IP and browser user-agent for your review.
+          Location is inferred from IP when you sign in. It is approximate, not exact GPS.
         </p>
       </section>
 

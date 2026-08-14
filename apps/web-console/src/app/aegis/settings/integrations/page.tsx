@@ -74,10 +74,10 @@ export default function IntegrationsSettingsPage() {
         SIEM forwarding
       </h2>
       <p>
-        Send Aegis events into your security tools (Datadog, Splunk, Microsoft Sentinel) via
-        OpenTelemetry (OTel). Your SOC can alert on denies and audit agent actions alongside the
-        rest of your stack. Use your vendor’s OTLP HTTP intake URL (we append{" "}
-        <code>/v1/logs</code> when needed).
+        <strong>SIEM</strong> (Security Information and Event Management) is where your security team
+        collects logs and alerts: Splunk, Datadog, Microsoft Sentinel, and similar tools. Forwarding
+        sends Aegis policy decisions and agent actions into that stream so denies and approvals show up
+        next to the rest of your stack. Configure an OpenTelemetry (OTel) HTTP endpoint below.
       </p>
 
       {listQuery.error ? (

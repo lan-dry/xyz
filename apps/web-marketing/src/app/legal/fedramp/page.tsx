@@ -38,7 +38,7 @@ export default function FedRampPage() {
             </li>
             <li>
               <strong>Aegis API:</strong> tenant isolation, signed audit logs, encryption in
-              transit (TLS 1.2+), secrets via environment — no customer private signing keys stored
+              transit (TLS 1.2+), secrets via environment; no customer private signing keys stored
               for BYOK customer-held keys.
             </li>
             <li>
@@ -50,11 +50,11 @@ export default function FedRampPage() {
 
         <LegalSection title="Control families we map today">
           <ul>
-            <li>AC / IA — API keys, console sessions, org-scoped RBAC</li>
-            <li>AU — append-only signed events, export bundles, OTel SIEM forwarding</li>
-            <li>CM — immutable active policies, versioned drafts</li>
-            <li>IR — approval workflows, trace reconstruction, incident export ZIPs</li>
-            <li>SC — Ed25519 signatures, Merkle witness batches, transparency log</li>
+            <li>AC / IA: API keys, console sessions, org-scoped RBAC</li>
+            <li>AU: append-only signed events, export bundles, OTel SIEM forwarding</li>
+            <li>CM: immutable active policies, versioned drafts</li>
+            <li>IR: approval workflows, trace reconstruction, incident export ZIPs</li>
+            <li>SC: Ed25519 signatures, Merkle witness batches, transparency log</li>
           </ul>
         </LegalSection>
 

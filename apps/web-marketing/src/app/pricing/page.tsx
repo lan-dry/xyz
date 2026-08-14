@@ -28,7 +28,7 @@ function CellValue({ value }: { value: string | boolean }) {
     return <span className={styles.check}>Included</span>;
   }
   if (value === false) {
-    return <span style={{ color: "var(--text-dim)" }}>—</span>;
+    return <span style={{ color: "var(--text-dim)" }}>-</span>;
   }
   return <>{value}</>;
 }

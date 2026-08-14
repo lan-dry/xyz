@@ -201,7 +201,7 @@ export default function PlatformTeamPage() {
                           {a.email}
                         </Link>
                       </td>
-                      <td>{a.display_name ?? "—"}</td>
+                      <td>{a.display_name ?? "-"}</td>
                       <td>{platformRoleLabel(a.platform_role)}</td>
                       <td>{a.active ? "Active" : "Suspended"}</td>
                       {canWriteRoles ? (

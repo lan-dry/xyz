@@ -189,7 +189,7 @@ export function ComplianceStripSection() {
           <h2>Regulatory outputs, not slide decks</h2>
           <p>
             Export bundles include control mapping for common frameworks. Formal certification is
-            on the roadmap — see <Link href="/trust">platform status</Link>.
+            on the roadmap. See <Link href="/trust">platform status</Link>.
           </p>
         </ScrollReveal>
         <ScrollReveal delay={60}>

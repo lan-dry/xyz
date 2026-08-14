@@ -1,4 +1,4 @@
-/** Platform capability matrix for /trust — keep in sync with product reality. */
+/** Platform capability matrix for /trust. Keep in sync with product reality. */
 export type TrustStatus = "live" | "pilot" | "roadmap";
 
 export type TrustFeature = {
@@ -17,21 +17,21 @@ export const TRUST_FEATURES: TrustFeature[] = [
   },
   {
     id: "byok-customer",
-    feature: "BYOK — customer-held signing keys",
+    feature: "BYOK (customer-held signing keys)",
     status: "live",
     notes:
       "Register public keys via Console (Agents → Register BYOK key). Private key never sent to Salanor. Sign with your KMS or local HSM.",
   },
   {
     id: "byok-aws-kms",
-    feature: "BYOK — AWS KMS server sign",
+    feature: "BYOK (AWS KMS server sign)",
     status: "live",
     notes:
       "Optional kms_provider=aws + kms_key_arn for bridge/human-approval paths. Salanor calls kms:Sign; no raw private key stored.",
   },
   {
     id: "byok-gcp-kms",
-    feature: "BYOK — GCP Cloud KMS server sign",
+    feature: "BYOK (GCP Cloud KMS server sign)",
     status: "pilot",
     notes: "Requires GCP_KMS_ACCESS_TOKEN on API service. Customer grants asymmetricSign on key version.",
   },

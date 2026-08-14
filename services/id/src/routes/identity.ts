@@ -969,6 +969,7 @@ identityRoutes.get("/account/login-events", async (c) => {
       ip_address: e.ip_address,
       user_agent: e.user_agent,
       device: describeUserAgent(e.user_agent),
+      location: e.geo_location,
       created_at: e.created_at.toISOString(),
     })),
   });

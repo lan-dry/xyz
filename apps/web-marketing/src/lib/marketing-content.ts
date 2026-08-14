@@ -25,7 +25,7 @@ export const HOME_METRICS = [
   { value: "BYOK", label: "Customer signing keys", detail: "Register public keys; sign in your KMS or agent runtime" },
   { value: "<5ms", label: "Policy p50 (target)", detail: "Rules engine on Check Policy hot path" },
   { value: "60s", label: "Witness cadence", detail: "Merkle batch worker (WITNESS_INTERVAL_MS)" },
-  { value: "Live", label: "Design partner pilot", detail: "n8n, approvals, exports — see /trust" },
+  { value: "Live", label: "Design partner pilot", detail: "n8n, approvals, exports. See /trust" },
 ] as const;
 
 export const PLATFORM_DATA_POINTS = [
@@ -47,14 +47,14 @@ export const PLATFORM_DATA_POINTS = [
     value: "6+",
     label: "Regulatory export mappings",
     detail:
-      "SOC 2, EU AI Act, NIST AI RMF, HIPAA paths, FedRAMP target — control mapping in exports, not certification claims.",
+      "SOC 2, EU AI Act, NIST AI RMF, HIPAA paths, FedRAMP target. Control mapping in exports, not certification claims.",
   },
   {
     id: "verify",
     value: "<1s",
     label: "Trace reconstruction",
     detail:
-      "Console rebuilds the signed causal chain interactively — click any step, view payload preview, open signed events.",
+      "Console rebuilds the signed causal chain interactively: click any step, view payload preview, open signed events.",
   },
   {
     id: "transparency",

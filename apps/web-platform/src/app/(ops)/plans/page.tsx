@@ -174,7 +174,7 @@ export default function PlansPage() {
   return (
     <OpsShell
       title="Plan catalog"
-      subtitle="Limits for ingest, API keys, and members. List prices match www.salanor.com/pricing (packages/plan-display). Paste Stripe Price IDs (price_…) for Team checkout — dollar amount is set in Stripe Dashboard."
+      subtitle="Limits for ingest, API keys, and members. List prices match www.salanor.com/pricing (packages/plan-display). Paste Stripe Price IDs (price_…) for Team checkout. Dollar amount is set in Stripe Dashboard."
       staffEmail={email}
       onLogout={logout}
     >
