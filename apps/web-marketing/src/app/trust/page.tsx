@@ -60,17 +60,17 @@ export default function TrustPage() {
         <h2>Production ops checklist</h2>
         <ul>
           <li>
-            <code>pnpm witness:worker</code> — Merkle batches every 60s (
+            <code>pnpm witness:worker</code>: Merkle batches every 60s (
             <code>WITNESS_INTERVAL_MS</code>)
           </li>
           <li>
-            <code>pnpm compliance:worker</code> — daily pending exports + monthly schedules
+            <code>pnpm compliance:worker</code>: daily pending exports + monthly schedules
           </li>
           <li>
-            <code>pnpm maintenance:housekeeping</code> — hourly approval expiry + stale traces
+            <code>pnpm maintenance:housekeeping</code>: hourly approval expiry + stale traces
           </li>
           <li>
-            <code>COMPLIANCE_EXPORT_DIR</code> — persistent volume for export ZIPs
+            <code>COMPLIANCE_EXPORT_DIR</code>: persistent volume for export ZIPs
           </li>
           <li>
             <code>AEGIS_SIGNING_KEY_FILE</code> or customer KMS ARN for server-side signing paths

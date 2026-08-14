@@ -144,6 +144,11 @@ const MIGRATIONS = [
     up: "028_compliance_export_created_at.up.sql",
     down: "028_compliance_export_created_at.down.sql",
   },
+  {
+    version: "029_account_login_geo",
+    up: "029_account_login_geo.up.sql",
+    down: "029_account_login_geo.down.sql",
+  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {

@@ -177,11 +177,52 @@ export async function getApproval(
   return result.rows[0] ?? null;
 }
 
+/** Close pending approvals when the trace is no longer waiting (failed or completed). */
+export async function voidPendingApprovalsForTerminalTrace(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  traceId: string,
+): Promise<number> {
+  const result = await client.query(
+    `UPDATE approval a
+     SET status = 'expired', decided_at = now()
+     FROM event e
+     JOIN trace t ON t.trace_id = e.trace_id AND t.organization_id = e.organization_id
+     WHERE a.event_id = e.event_id
+       AND a.organization_id = $1
+       AND e.trace_id = $2
+       AND a.status = 'pending'
+       AND t.status IN ('failed', 'completed')`,
+    [organizationId, traceId],
+  );
+  return result.rowCount ?? 0;
+}
+
+/** Expire pending approvals whose trace already ended. */
+export async function syncPendingApprovalsWithTraces(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+): Promise<number> {
+  const result = await client.query(
+    `UPDATE approval a
+     SET status = 'expired', decided_at = now()
+     FROM event e
+     JOIN trace t ON t.trace_id = e.trace_id AND t.organization_id = e.organization_id
+     WHERE a.event_id = e.event_id
+       AND a.organization_id = $1
+       AND a.status = 'pending'
+       AND t.status IN ('failed', 'completed')`,
+    [organizationId],
+  );
+  return result.rowCount ?? 0;
+}
+
 export async function listPendingApprovals(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
 ): Promise<ApprovalRichDetail[]> {
   await expireStaleApprovals(client, organizationId);
+  await syncPendingApprovalsWithTraces(client, organizationId);
   const result = await client.query<ApprovalRichDetail & { event_payload: unknown }>(
     `${approvalSelectJoin()}
      WHERE a.organization_id = $1 AND a.status = 'pending'

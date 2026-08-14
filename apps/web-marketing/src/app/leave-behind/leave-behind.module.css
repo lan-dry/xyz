@@ -1,0 +1,147 @@
+@media print {
+  :global(header),
+  :global(footer) {
+    display: none !important;
+  }
+
+  .toolbar {
+    display: none !important;
+  }
+
+  .page {
+    background: #fff;
+    color: #111;
+    padding: 0;
+  }
+
+  .sheet {
+    box-shadow: none;
+    border: none;
+    max-width: none;
+    padding: 0;
+  }
+
+  a {
+    color: #111;
+    text-decoration: none;
+  }
+}
+
+.page {
+  min-height: 100vh;
+  background: var(--bg2);
+  padding: 1.5rem var(--section-pad-x) 3rem;
+}
+
+.toolbar {
+  max-width: 42rem;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.toolbar a {
+  color: var(--teal-bright);
+}
+
+.printBtn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-bright);
+  background: var(--teal-dim);
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.sheet {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 2rem 2.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--teal-bright);
+}
+
+.header h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+.tagline {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.sheet h2 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+.sheet p,
+.sheet li {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.sheet ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.links {
+  font-size: 0.8125rem !important;
+}
+
+.links a {
+  color: var(--teal-bright);
+}
+
+.footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.footer p {
+  margin: 0;
+  font-size: inherit;
+  color: inherit;
+}

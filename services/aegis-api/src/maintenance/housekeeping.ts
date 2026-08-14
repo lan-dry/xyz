@@ -1,5 +1,5 @@
 import type pg from "pg";
-import { expireStaleApprovals } from "../repo/approvals.js";
+import { expireStaleApprovals, syncPendingApprovalsWithTraces } from "../repo/approvals.js";
 import { getGovernanceSettings } from "../repo/governance-settings.js";
 
 export type HousekeepingResult = {
@@ -15,6 +15,7 @@ export async function runOrganizationHousekeeping(
 ): Promise<HousekeepingResult> {
   const settings = await getGovernanceSettings(client, organizationId);
   const expired = await expireStaleApprovals(client, organizationId);
+  await syncPendingApprovalsWithTraces(client, organizationId);
 
   const staleHours = String(settings.stale_trace_hours);
   const stale = await client.query<{ trace_id: string }>(
