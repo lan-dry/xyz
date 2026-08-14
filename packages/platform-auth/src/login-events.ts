@@ -28,8 +28,32 @@ export async function resolveIpGeoLocation(ip: string | null | undefined): Promi
       success?: boolean;
       city?: string;
       country?: string;
+      connection?: { org?: string; isp?: string };
+      security?: {
+        hosting?: boolean;
+        vpn?: boolean;
+        proxy?: boolean;
+        tor?: boolean;
+        relay?: boolean;
+      };
     };
     if (data.success === false) return null;
+
+    const org = `${data.connection?.org ?? ""} ${data.connection?.isp ?? ""}`.toLowerCase();
+    const cloudLike =
+      data.security?.hosting === true ||
+      data.security?.vpn === true ||
+      data.security?.proxy === true ||
+      data.security?.tor === true ||
+      data.security?.relay === true ||
+      /amazon|aws|google cloud|microsoft azure|cloudflare|digitalocean|linode|oracle cloud|hetzner|rackspace|fastly|akamai|contabo|ovh/.test(
+        org,
+      );
+
+    if (cloudLike) {
+      return "Cloud or VPN (city not shown)";
+    }
+
     const city = data.city?.trim();
     const country = data.country?.trim();
     if (city && country) return `${city}, ${country}`;

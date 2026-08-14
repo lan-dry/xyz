@@ -1,6 +1,6 @@
 # Go-live checklist (prospecting)
 
-See also: `PRODUCTION_READY.md` (Tier 1–3), `BILLING_AND_PLANS.md`, `RAILWAY_AEGIS_DEPLOY.md`.
+See also: `PRODUCTION_READY.md` (Tier 1–3), `BILLING_AND_PLANS.md`, `RAILWAY_AEGIS_DEPLOY.md`, `SOC2_READINESS.md`, `ROADMAP.md`.
 
 ## Product demo path
 
@@ -26,7 +26,7 @@ See also: `PRODUCTION_READY.md` (Tier 1–3), `BILLING_AND_PLANS.md`, `RAILWAY_A
 
 - [ ] Push `lan-dry/xyz` main → Railway + Vercel auto-deploy
 - [ ] Console: `app.salanor.com` — dashboard strip shows Merkle roots + service status
-- [ ] Marketing: `www.salanor.com/trust` and **`/pricing`** live
+- [ ] Marketing: `www.salanor.com/trust`, **`/pricing`**, and **`/leave-behind`** live
 - [ ] Docs: integration guides (n8n, LangGraph, CrewAI)
 
 ## Billing (before quoting Team)

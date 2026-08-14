@@ -38,7 +38,7 @@ Use this alongside `GO_LIVE_CHECKLIST.md` before prospecting, LinkedIn, and live
 | Item | Status | Notes |
 |------|--------|-------|
 | Self-serve signup → org → key → first trace | Test | `SELF_SERVE_SIGNUP_ENABLED=1` |
-| Stripe Team checkout | Configure | Create Product + Price ($299/mo), paste `stripe_price_id` in Platform Ops → Plans |
+| Stripe Team checkout | Configure | Create Product + Price ($299/mo), paste `stripe_price_id` in Platform Ops → Plans — **or invoice-only if Stripe unsupported in Salanor's country** (see `BILLING_AND_PLANS.md`) |
 | Billing portal | Configure | `STRIPE_*` + `BILLING_API_URL` on console deploy |
 | Approval notifications | Verify | Resend + optional Slack webhook |
 | Compliance export limits (Free) | Done | 2 exports/month; Team+ unlimited |
@@ -89,3 +89,9 @@ Keep deck and LinkedIn aligned with `/trust` status badges.
 - `examples/n8n/JMTS_AEGIS_SETUP.md` — Publish, webhook, credentials
 - `examples/n8n/jmt-s-content-sync-with-aegis.json` — main workflow
 - `examples/n8n/jmt-s-aegis-error-handler.json` — global error workflow
+
+## Further reading
+
+- `docs/ROADMAP.md` — live vs in-product vs external programs
+- `docs/SOC2_READINESS.md` — auditor checklist mapped to Aegis exports
+- `docs/BILLING_AND_PLANS.md` — tiers, invoice billing, non-Stripe regions

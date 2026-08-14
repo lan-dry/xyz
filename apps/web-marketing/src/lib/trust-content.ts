@@ -98,10 +98,25 @@ export const TRUST_FEATURES: TrustFeature[] = [
     notes: "governed_tool() decorator in salanor-aegis-ledger + integration guide.",
   },
   {
+    id: "manual-billing",
+    feature: "Invoice billing (Team / Enterprise)",
+    status: "live",
+    notes:
+      "Platform Ops records pending invoice → mark paid. Use when Stripe is unavailable in Salanor's country.",
+  },
+  {
+    id: "stripe-checkout",
+    feature: "Stripe self-serve checkout",
+    status: "roadmap",
+    notes:
+      "Requires Stripe account in a supported country. Until then, Team/Enterprise via invoice.",
+  },
+  {
     id: "soc2-cert",
     feature: "SOC 2 Type II certification",
     status: "roadmap",
-    notes: "Export mapping available now. Formal audit target Q4 2026.",
+    notes:
+      "Export bundle includes control-mapping-soc2.json and soc2-type1-report.json. Formal Salanor audit target Q4 2026.",
   },
   {
     id: "fedramp",

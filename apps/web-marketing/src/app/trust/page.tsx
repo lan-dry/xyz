@@ -28,8 +28,27 @@ export default function TrustPage() {
         <strong>{live}</strong> capabilities live · <strong>{pilot}</strong> in pilot ·{" "}
         remainder on roadmap.{" "}
         <Link href="/legal/security">Security whitepaper</Link> ·{" "}
-        <Link href="/legal/fedramp">FedRAMP path</Link>
+        <Link href="/legal/fedramp">FedRAMP path</Link> ·{" "}
+        <Link href="/contact">Enterprise & invoicing</Link>
       </p>
+
+      <section className={styles.ops}>
+        <h2>Certifications & billing (honest status)</h2>
+        <ul>
+          <li>
+            <strong>SOC 2 Type II:</strong> not certified. Export mapping + readiness report in
+            compliance ZIP. Audit target Q4 2026.
+          </li>
+          <li>
+            <strong>FedRAMP Moderate:</strong> architecture path only. Not authorized. Target Q2
+            2027.
+          </li>
+          <li>
+            <strong>Stripe self-serve:</strong> when Salanor can register Stripe in a supported
+            country. Until then, Team and Enterprise via invoice (Platform Ops or contact sales).
+          </li>
+        </ul>
+      </section>
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>

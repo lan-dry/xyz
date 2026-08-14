@@ -444,8 +444,11 @@ export default function ApprovalsPage() {
           <>
             Human-in-the-loop for <code className="mono">require approval</code> policies.
             Aegis notifies org admins by email, Slack, PagerDuty, or SMS (Settings,
-            Governance). Pending requests expire after <strong>{ttlHours} hours</strong>.
-            n8n stops waiting when expired or rejected.
+            Governance). While waiting, the trace stays <strong>blocked</strong> for up to{" "}
+            <strong>{ttlHours} hours</strong> — it does not fail early just because you
+            stepped away. If the workflow errors elsewhere (n8n, CMS, timeout), the trace
+            can fail immediately and the pending approval is closed. n8n stops waiting when
+            expired, rejected, or the trace ends.
           </>
         }
       />
