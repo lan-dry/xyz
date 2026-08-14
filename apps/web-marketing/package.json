@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@salanor/plan-display": "workspace:*",
     "next": "^15.3.3",
     "pg": "^8.16.0",
     "react": "^19.1.0",

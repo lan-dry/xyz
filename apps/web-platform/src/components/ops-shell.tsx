@@ -109,9 +109,18 @@ export function OpsShell({
         aria-label="Platform navigation"
       >
         <div className={shell.brand}>
-          <div className={shell.brandText}>
-            <p className={shell.brandEyebrow}>Salanor internal</p>
-            <p className={shell.brandName}>Platform Ops</p>
+          <div className={shell.brandRow}>
+            <img
+              src="/salanor-logo.png"
+              alt=""
+              width={28}
+              height={28}
+              className={shell.brandMark}
+            />
+            <div className={shell.brandText}>
+              <p className={shell.brandEyebrow}>Salanor internal</p>
+              <p className={shell.brandName}>Platform Ops</p>
+            </div>
           </div>
           <button
             type="button"

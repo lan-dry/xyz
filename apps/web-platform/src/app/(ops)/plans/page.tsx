@@ -1,8 +1,10 @@
 "use client";
 
 import { CreditCard } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { planListPrice } from "@salanor/plan-display";
 
 import { OpsShell } from "@/components/ops-shell";
 import card from "@/components/ops-ui/setting-card.module.css";
@@ -60,6 +62,8 @@ function PlanEditorCard({
     },
   });
 
+  const listPrice = planListPrice(plan.plan_slug);
+
   return (
     <section className={card.settingCard}>
       <h2 className={styles.heading}>
@@ -75,6 +79,15 @@ function PlanEditorCard({
         </span>
       </h2>
       <div className={styles.fields}>
+        <div className={`${ui.field} ${styles.listPriceField}`}>
+          <span>List price (marketing)</span>
+          <output className={styles.listPriceValue}>
+            {listPrice ?? "Not configured"}
+          </output>
+          <span className={styles.listPriceHint}>
+            Read-only · edit in <code>packages/plan-display</code> and Stripe
+          </span>
+        </div>
         <label className={ui.field}>
           Events / month
           <input
@@ -162,7 +175,7 @@ export default function PlansPage() {
   return (
     <OpsShell
       title="Plan catalog"
-      subtitle="Limits for ingest, API keys, and members. Paste Stripe Price IDs (price_…) for Team self-serve checkout. Money, invoices, and cards live in Stripe Dashboard — ops assign plans here or customers upgrade in Console → Billing."
+      subtitle="Limits for ingest, API keys, and members. List prices match www.salanor.com/pricing (packages/plan-display). Paste Stripe Price IDs (price_…) for Team checkout — dollar amount is set in Stripe Dashboard."
       staffEmail={email}
       onLogout={logout}
     >
