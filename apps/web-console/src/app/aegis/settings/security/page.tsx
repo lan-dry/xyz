@@ -125,7 +125,9 @@ export default function SecuritySettingsPage() {
           </div>
         ) : null}
         <p className={ui.muted} style={{ marginTop: "0.75rem", fontSize: "0.8125rem" }}>
-          Location is inferred from IP when you sign in. It is approximate, not exact GPS.
+          Location is inferred from IP when you sign in. Cloud, VPN, and mobile carrier IPs
+          often show a datacenter city instead of where you are — we label those as
+          &quot;Cloud or VPN&quot; instead of a misleading place name.
         </p>
       </section>
 

@@ -66,6 +66,24 @@ Retention is displayed in Console; automated purge by retention is roadmap.
 
 Customer flow: Console → Settings → Billing → **Upgrade to Team** → Stripe Checkout → webhook activates plan.
 
+## Non-Stripe regions (invoice-first GTM)
+
+Stripe only supports merchants in [Stripe-supported countries](https://stripe.com/global). If **Salanor Ltd is not registered in a supported country**, self-serve card checkout cannot be enabled yet.
+
+**What works today without Stripe:**
+
+| Step | Who | Action |
+|------|-----|--------|
+| 1 | Customer | Console → Billing → **Contact sales** or `/contact` |
+| 2 | Salanor ops | Platform Ops → Organizations → org → **Record pending invoice** (plan: team or enterprise) |
+| 3 | Customer | Pays by bank transfer / Wise / agreed method |
+| 4 | Salanor ops | **Mark paid** → plan activates, billing history in Console |
+| 5 | Optional | Set `BILLING_CHECKOUT_ENABLED=0` on billing service so UI hides Stripe buttons |
+
+**Prospecting:** Quote Team at **$299/mo** and Enterprise from **~$999/mo** using `/pricing`. Invoice is normal for B2B; do not block design partners on Stripe.
+
+**When Stripe becomes available:** create Product + Price, paste `price_…` in Ops → Plans, set `STRIPE_*` env vars, enable checkout.
+
 ## Sales-led (Enterprise)
 
 1. Platform Ops → Organizations → select org.

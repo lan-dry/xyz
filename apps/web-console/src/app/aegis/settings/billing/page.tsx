@@ -428,9 +428,16 @@ function BillingSettingsInner() {
             </>
           ) : (
             <>
-              <li>Self-serve upgrades use Stripe when configured. We do not store full card numbers.</li>
-              <li>Larger deals are invoiced by Salanor; the plan activates after payment is confirmed.</li>
-              <li>If you pay with Stripe, use the portal for receipts and payment methods.</li>
+              <li>
+                Team upgrades use Stripe Checkout when Salanor has Stripe in your region.
+                Otherwise we invoice by bank transfer (Platform Ops or{" "}
+                <a href={`${MARKETING_URL}/contact`}>contact sales</a>).
+              </li>
+              <li>We do not store full card numbers. Stripe handles card payments when enabled.</li>
+              <li>Enterprise and custom deals are always sales-led with a confirmed invoice.</li>
+              <li>
+                After payment is confirmed, your plan activates and billing history updates here.
+              </li>
             </>
           )}
         </ul>
