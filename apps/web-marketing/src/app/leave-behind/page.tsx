@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function LeaveBehindPage() {
   return (
-    <div className={styles.page} data-marketing-shell>
+    <div className={styles.page}>
       <PrintToolbar backHref="/products/aegis" />
 
       <article className={styles.sheet}>
