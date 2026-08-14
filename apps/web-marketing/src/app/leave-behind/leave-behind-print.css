@@ -1,0 +1,10 @@
+@media print {
+  [data-marketing-shell] > header,
+  [data-marketing-shell] > footer {
+    display: none !important;
+  }
+
+  [data-marketing-shell] > main {
+    padding-top: 0 !important;
+  }
+}
