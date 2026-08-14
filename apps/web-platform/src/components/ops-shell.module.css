@@ -38,6 +38,18 @@
   margin-bottom: 0.25rem;
 }
 
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.brandMark {
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+
 .brandText {
   min-width: 0;
 }

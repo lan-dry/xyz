@@ -2,7 +2,7 @@
 
 Published pricing: **https://www.salanor.com/pricing**
 
-Source of truth for limits: Postgres `plan_catalog` (seed migration 008, GTM update **028**). Marketing copy: `apps/web-marketing/src/lib/pricing-content.ts`.
+Source of truth for limits: Postgres `plan_catalog` (Platform Ops → Plans). List prices: `packages/plan-display` (marketing + Ops read-only).
 
 ## Three tiers
 
@@ -23,7 +23,7 @@ Source of truth for limits: Postgres `plan_catalog` (seed migration 008, GTM upd
 | What you change | Where |
 |-----------------|--------|
 | Events/month, keys, members, retention | **Platform Ops → Plans** (`PATCH /v1/id/platform/plan-catalog/:slug`) |
-| Dollar amount on website | `apps/web-marketing/src/lib/pricing-content.ts` |
+| Dollar amount on website | `packages/plan-display` (imported by marketing + Ops Plans) |
 | What Stripe charges | Stripe Dashboard → new Price → paste `stripe_price_id` in Ops → Plans |
 | Per-org custom caps | Platform Ops → Organization → `plan_overrides` |
 

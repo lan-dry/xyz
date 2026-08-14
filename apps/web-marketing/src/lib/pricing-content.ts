@@ -1,25 +1,14 @@
-/**
- * Published Aegis pricing. Keep in sync with plan_catalog (migration 028) and Platform Ops → Plans.
- */
-export type PlanSlug = "free" | "team" | "enterprise";
+import {
+  PLAN_DISPLAY_LIST,
+  type PlanDisplayInfo,
+  type PlanSlug,
+} from "@salanor/plan-display";
 
-export type PricingPlan = {
-  slug: PlanSlug;
-  name: string;
-  tagline: string;
+export type { PlanSlug };
+
+export type PricingPlan = PlanDisplayInfo & {
   priceLabel: string;
   priceDetail: string;
-  billingNote: string;
-  cta: { label: string; href: string; external?: boolean };
-  highlighted?: boolean;
-  limits: {
-    eventsPerMonth: string;
-    apiKeys: number;
-    members: number;
-    retention: string;
-  };
-  includes: string[];
-  notIncluded?: string[];
 };
 
 export const PRICING_FAQ = [
@@ -45,98 +34,12 @@ export const PRICING_FAQ = [
   },
 ] as const;
 
-/** Early GTM: priced above your infra stack (Railway, Resend) but below legacy GRC per-seat tools. Adjust in this file + Stripe + Ops UI. */
-export const AEGIS_PLANS: PricingPlan[] = [
-  {
-    slug: "free",
-    name: "Free",
-    tagline: "Evaluate and demo",
-    priceLabel: "$0",
-    priceDetail: "forever",
-    billingNote: "Self-serve signup · no card",
-    cta: {
-      label: "Start free",
-      href: "https://app.salanor.com/signup",
-      external: true,
-    },
-    limits: {
-      eventsPerMonth: "10,000",
-      apiKeys: 3,
-      members: 5,
-      retention: "90 days",
-    },
-    includes: [
-      "Signed APS-1 ingest and hash-chained ledger",
-      "Policy engine with human approvals",
-      "Trace replay and cryptographic verify",
-      "Merkle witness and transparency proofs",
-      "n8n Workflow Bridge and SDKs (TS, Python, Go)",
-      "Up to 2 compliance export bundles per month",
-      "Community support",
-    ],
-    notIncluded: [
-      "Scheduled compliance exports",
-      "OTel / SIEM streaming export",
-      "SSO / SAML",
-    ],
-  },
-  {
-    slug: "team",
-    name: "Team",
-    tagline: "Production governance",
-    priceLabel: "$299",
-    priceDetail: "/ month",
-    billingNote: "Billed monthly · annual discount on request",
-    cta: {
-      label: "Upgrade in Console",
-      href: "https://app.salanor.com/aegis/settings/billing",
-      external: true,
-    },
-    highlighted: true,
-    limits: {
-      eventsPerMonth: "100,000",
-      apiKeys: 15,
-      members: 25,
-      retention: "1 year",
-    },
-    includes: [
-      "Everything in Free",
-      "100,000 events per month",
-      "Unlimited on-demand compliance exports",
-      "Scheduled monthly export jobs",
-      "OTel export to Splunk, Datadog, Sentinel",
-      "Approval notifications (email, Slack, PagerDuty, SMS)",
-      "Priority email support",
-    ],
-  },
-  {
-    slug: "enterprise",
-    name: "Enterprise",
-    tagline: "Regulated scale",
-    priceLabel: "Custom",
-    priceDetail: "from ~$999 / mo",
-    billingNote: "Annual contract · invoice or PO",
-    cta: {
-      label: "Contact sales",
-      href: "/contact",
-    },
-    limits: {
-      eventsPerMonth: "Unlimited",
-      apiKeys: 100,
-      members: 500,
-      retention: "Up to 7 years",
-    },
-    includes: [
-      "Everything in Team",
-      "Fair-use unlimited events",
-      "SSO / SAML (WorkOS) and JIT provisioning",
-      "Custom plan overrides and retention",
-      "Dedicated support and SLA options",
-      "Security review, DPA, and procurement pack",
-      "FedRAMP and private-cloud path (roadmap)",
-    ],
-  },
-];
+/** Marketing cards — sourced from @salanor/plan-display (same as Platform Ops list price). */
+export const AEGIS_PLANS: PricingPlan[] = PLAN_DISPLAY_LIST.map((p) => ({
+  ...p,
+  priceLabel: p.listPrice,
+  priceDetail: p.listPriceDetail,
+}));
 
 export const PRICING_COMPARISON_ROWS: Array<{
   feature: string;

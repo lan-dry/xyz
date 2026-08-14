@@ -19,7 +19,7 @@ importers:
         version: 21.2.0(@babel/traverse@7.29.7)(nx@21.2.0)
       '@nx/next':
         specifier: 21.2.0
-        version: 21.2.0(@babel/core@7.29.7)(@babel/traverse@7.29.7)(@rspack/core@1.7.11(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@zkochan/js-yaml@0.0.7)(eslint@9.39.4(jiti@2.7.0))(next@15.5.18(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(nx@21.2.0)(postcss@8.5.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)(webpack@5.99.9(postcss@8.5.15))
+        version: 21.2.0(@babel/core@7.29.7)(@babel/traverse@7.29.7)(@rspack/core@1.7.11(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@zkochan/js-yaml@0.0.7)(eslint@9.39.4(jiti@2.7.0))(next@15.5.18(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(nx@21.2.0)(postcss@8.5.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)(webpack@5.107.2(postcss@8.5.15))
       '@nx/node':
         specifier: 21.2.0
         version: 21.2.0(@babel/traverse@7.29.7)(@types/node@22.19.19)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.39.4(jiti@2.7.0))(nx@21.2.0)(typescript@5.9.3)
@@ -176,6 +176,9 @@ importers:
 
   apps/web-marketing:
     dependencies:
+      '@salanor/plan-display':
+        specifier: workspace:*
+        version: link:../../packages/plan-display
       next:
         specifier: ^15.3.3
         version: 15.5.18(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0)
@@ -222,6 +225,9 @@ importers:
 
   apps/web-platform:
     dependencies:
+      '@salanor/plan-display':
+        specifier: workspace:*
+        version: link:../../packages/plan-display
       '@tanstack/react-query':
         specifier: ^5.77.2
         version: 5.100.14(react@19.2.6)
@@ -359,6 +365,15 @@ importers:
       '@types/node':
         specifier: ^22.15.21
         version: 22.19.19
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/plan-display:
+    devDependencies:
+      '@salanor/config':
+        specifier: workspace:*
+        version: link:../config
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
@@ -11187,19 +11202,19 @@ snapshots:
       - vue-tsc
       - webpack-cli
 
-  '@nx/next@21.2.0(@babel/core@7.29.7)(@babel/traverse@7.29.7)(@rspack/core@1.7.11(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@zkochan/js-yaml@0.0.7)(eslint@9.39.4(jiti@2.7.0))(next@15.5.18(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(nx@21.2.0)(postcss@8.5.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)(webpack@5.99.9(postcss@8.5.15))':
+  '@nx/next@21.2.0(@babel/core@7.29.7)(@babel/traverse@7.29.7)(@rspack/core@1.7.11(@swc/helpers@0.5.15))(@swc/helpers@0.5.15)(@zkochan/js-yaml@0.0.7)(eslint@9.39.4(jiti@2.7.0))(next@15.5.18(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0))(nx@21.2.0)(postcss@8.5.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)(webpack@5.107.2(postcss@8.5.15))':
     dependencies:
       '@babel/plugin-proposal-decorators': 7.29.7(@babel/core@7.29.7)
       '@nx/devkit': 21.2.0(nx@21.2.0)
       '@nx/eslint': 21.2.0(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@9.39.4(jiti@2.7.0))(nx@21.2.0)
       '@nx/js': 21.2.0(@babel/traverse@7.29.7)(nx@21.2.0)
-      '@nx/react': 21.2.0(@babel/traverse@7.29.7)(@swc/helpers@0.5.15)(@zkochan/js-yaml@0.0.7)(eslint@9.39.4(jiti@2.7.0))(nx@21.2.0)(postcss@8.5.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)(webpack@5.99.9(postcss@8.5.15))
+      '@nx/react': 21.2.0(@babel/traverse@7.29.7)(@swc/helpers@0.5.15)(@zkochan/js-yaml@0.0.7)(eslint@9.39.4(jiti@2.7.0))(nx@21.2.0)(postcss@8.5.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)(webpack@5.107.2(postcss@8.5.15))
       '@nx/web': 21.2.0(@babel/traverse@7.29.7)(nx@21.2.0)
       '@nx/webpack': 21.2.0(@babel/traverse@7.29.7)(@rspack/core@1.7.11(@swc/helpers@0.5.15))(nx@21.2.0)(typescript@5.9.3)
       '@phenomnomnominal/tsquery': 5.0.1(typescript@5.9.3)
       '@svgr/webpack': 8.1.0(typescript@5.9.3)
-      copy-webpack-plugin: 10.2.4(webpack@5.99.9(postcss@8.5.15))
-      file-loader: 6.2.0(webpack@5.99.9(postcss@8.5.15))
+      copy-webpack-plugin: 10.2.4(webpack@5.107.2(postcss@8.5.15))
+      file-loader: 6.2.0(webpack@5.107.2(postcss@8.5.15))
       ignore: 5.3.2
       next: 15.5.18(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0)
       semver: 7.8.1
@@ -11297,7 +11312,7 @@ snapshots:
   '@nx/nx-win32-x64-msvc@21.2.0':
     optional: true
 
-  '@nx/react@21.2.0(@babel/traverse@7.29.7)(@swc/helpers@0.5.15)(@zkochan/js-yaml@0.0.7)(eslint@9.39.4(jiti@2.7.0))(nx@21.2.0)(postcss@8.5.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)(webpack@5.99.9(postcss@8.5.15))':
+  '@nx/react@21.2.0(@babel/traverse@7.29.7)(@swc/helpers@0.5.15)(@zkochan/js-yaml@0.0.7)(eslint@9.39.4(jiti@2.7.0))(nx@21.2.0)(postcss@8.5.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)(webpack@5.107.2(postcss@8.5.15))':
     dependencies:
       '@nx/devkit': 21.2.0(nx@21.2.0)
       '@nx/eslint': 21.2.0(@babel/traverse@7.29.7)(@zkochan/js-yaml@0.0.7)(eslint@9.39.4(jiti@2.7.0))(nx@21.2.0)
@@ -11307,7 +11322,7 @@ snapshots:
       '@phenomnomnominal/tsquery': 5.0.1(typescript@5.9.3)
       '@svgr/webpack': 8.1.0(typescript@5.9.3)
       express: 4.22.2
-      file-loader: 6.2.0(webpack@5.99.9(postcss@8.5.15))
+      file-loader: 6.2.0(webpack@5.107.2(postcss@8.5.15))
       http-proxy-middleware: 3.0.5
       minimatch: 9.0.3
       picocolors: 1.1.1
@@ -13718,6 +13733,16 @@ snapshots:
     dependencies:
       is-what: 3.14.1
 
+  copy-webpack-plugin@10.2.4(webpack@5.107.2(postcss@8.5.15)):
+    dependencies:
+      fast-glob: 3.3.3
+      glob-parent: 6.0.2
+      globby: 12.2.0
+      normalize-path: 3.0.0
+      schema-utils: 4.3.3
+      serialize-javascript: 6.0.2
+      webpack: 5.107.2(postcss@8.5.15)
+
   copy-webpack-plugin@10.2.4(webpack@5.99.9(postcss@8.5.15)):
     dependencies:
       fast-glob: 3.3.3
@@ -14625,11 +14650,11 @@ snapshots:
     dependencies:
       flat-cache: 4.0.1
 
-  file-loader@6.2.0(webpack@5.99.9(postcss@8.5.15)):
+  file-loader@6.2.0(webpack@5.107.2(postcss@8.5.15)):
     dependencies:
       loader-utils: 2.0.4
       schema-utils: 3.3.0
-      webpack: 5.99.9(postcss@8.5.15)
+      webpack: 5.107.2(postcss@8.5.15)
 
   filelist@1.0.6:
     dependencies:
