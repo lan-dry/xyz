@@ -1,7 +1,6 @@
 "use client";
 
 import { CreditCard } from "lucide-react";
-import Image from "next/image";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { planListPrice } from "@salanor/plan-display";

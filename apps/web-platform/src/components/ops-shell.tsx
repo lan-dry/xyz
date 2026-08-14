@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Building2,
@@ -110,12 +111,13 @@ export function OpsShell({
       >
         <div className={shell.brand}>
           <div className={shell.brandRow}>
-            <img
+            <NextImage
               src="/salanor-logo.png"
               alt=""
               width={28}
               height={28}
               className={shell.brandMark}
+              priority
             />
             <div className={shell.brandText}>
               <p className={shell.brandEyebrow}>Salanor internal</p>
