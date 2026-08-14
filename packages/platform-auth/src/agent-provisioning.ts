@@ -29,6 +29,7 @@ export type SigningKeySummary = {
   public_key_b64: string;
   kms_provider: string | null;
   revoked: boolean;
+  bridge_enabled: boolean;
   valid_from: Date;
   created_at: Date;
 };
@@ -79,7 +80,8 @@ function buildDidDocument(input: {
 
 /**
  * Register an agent + active Ed25519 signing key for an organization.
- * Industry pattern: platform generates key pair; private key returned once (BYOK later).
+ * Default: platform generates key pair; private key returned once (customer-held BYOK).
+ * Also supports POST /agents/:id/keys/byok to register customer public keys only.
  */
 export async function createAgentWithSigningKey(
   client: pg.Pool | pg.PoolClient,
@@ -166,7 +168,9 @@ export async function listAgentsForOrganization(
   );
 
   const keys = await client.query<SigningKeySummary>(
-    `SELECT key_id, agent_id, public_key_b64, kms_provider, revoked, valid_from, created_at
+    `SELECT key_id, agent_id, public_key_b64, kms_provider, revoked,
+            COALESCE(bridge_enabled, false) AS bridge_enabled,
+            valid_from, created_at
      FROM signing_key
      WHERE organization_id = $1
      ORDER BY created_at ASC`,

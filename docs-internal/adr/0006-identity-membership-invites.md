@@ -32,6 +32,8 @@ Legacy `"user"` table is removed after migration `004_identity_membership`.
 | GET | `/v1/id/auth/me` | account + active org + all orgs |
 | POST | `/v1/id/orgs/switch` | change active org on session |
 | GET | `/v1/id/orgs/:orgId/members` | list memberships (admin) |
-| GET/POST/DELETE | `/v1/id/orgs/:orgId/invitations` | list / create / revoke |
+| GET/POST | `/v1/id/orgs/:orgId/invitations` | list / create |
+| POST | `/v1/id/orgs/:orgId/invitations/:id/resend` | resend email + rotate token |
+| DELETE | `/v1/id/invitations/:id` | revoke |
 | GET | `/v1/id/invitations/preview` | public invite metadata |
 | POST | `/v1/id/invitations/accept` | accept with session or login |

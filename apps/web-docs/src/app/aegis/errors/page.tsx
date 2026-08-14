@@ -18,10 +18,10 @@ export default function ErrorsPage() {
         rows={[
           { status: "401", body: "Missing or invalid Authorization bearer token" },
           { status: "403", body: "Organization mismatch; org suspended; forbidden scope" },
-          { status: "402 / 429", body: "Plan limit — events/month or feature cap (code: plan_limit)" },
+          { status: "402 / 429", body: "Plan limit: events/month or feature cap (code: plan_limit)" },
           { status: "404", body: "Resource not found (approvals, events)" },
-          { status: "409", body: "Conflict — e.g. approval not in approved state" },
-          { status: "422", body: "Validation — invalid JSON, signature, envelope fields" },
+          { status: "409", body: "Conflict: e.g. approval not in approved state" },
+          { status: "422", body: "Validation: invalid JSON, signature, envelope fields" },
           { status: "503", body: "Dependency unavailable (database, policy engine)" },
         ]}
       />
@@ -29,10 +29,10 @@ export default function ErrorsPage() {
       <h2>SDK errors</h2>
       <ul>
         <li>
-          <code>PolicyDeniedError</code> — wrapFetch policy returned deny; no HTTP call made
+          <code>PolicyDeniedError</code>: wrapFetch policy returned deny; no HTTP call made
         </li>
         <li>
-          <code>ApprovalRequiredError</code> — includes <code>approvalId</code> for obligation flow
+          <code>ApprovalRequiredError</code>: includes <code>approvalId</code> for obligation flow
         </li>
         <li>
           Network errors include hint to start <code>pnpm dev</code> when API unreachable
@@ -51,7 +51,7 @@ export default function ErrorsPage() {
       <h2>Idempotency</h2>
       <p>
         Re-posting the same event with the same <code>Idempotency-Key</code> returns{" "}
-        <code>200</code> with <code>status: "replayed"</code> — safe for retries after network
+        <code>200</code> with <code>status: "replayed"</code>: safe for retries after network
         failures.
       </p>
     </>

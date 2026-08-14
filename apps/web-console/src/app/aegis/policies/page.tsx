@@ -8,6 +8,7 @@ import { EmptyStatePanel } from "@/components/console/empty-state-panel";
 import { Modal } from "@/components/console/modal";
 import {
   ConsolePage,
+  ConsolePagination,
   ErrorAlert,
   LoadingBlock,
   PageHeader,
@@ -88,15 +89,15 @@ function ruleSummary(rule: PolicyRule): string {
   const decisionLabel =
     rule.decision === "allow_with_obligation" ? "require approval" : rule.decision;
   if (cond?.rule_type === "max_per_tx") {
-    return `Max $${cond.max_amount_usd ?? "?"} per transaction → ${decisionLabel}`;
+    return `Max $${cond.max_amount_usd ?? "?"} per transaction, then ${decisionLabel}`;
   }
   if (cond?.rule_type === "min_per_tx") {
-    return `Min $${cond.min_amount_usd ?? "?"} per transaction → ${decisionLabel}`;
+    return `Min $${cond.min_amount_usd ?? "?"} per transaction, then ${decisionLabel}`;
   }
   if (cond?.rule_type === "max_daily_total") {
-    return `Max $${cond.max_amount_usd ?? "?"} daily → ${decisionLabel}`;
+    return `Max $${cond.max_amount_usd ?? "?"} daily, then ${decisionLabel}`;
   }
-  return `${rule.tool_pattern} → ${decisionLabel}`;
+  return `${rule.tool_pattern}, then ${decisionLabel}`;
 }
 
 export default function PoliciesPage() {
@@ -109,6 +110,8 @@ export default function PoliciesPage() {
   const [form, setForm] = useState<PolicyFormState>(DEFAULT_FORM);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [policyPage, setPolicyPage] = useState(1);
+  const [policyLimit, setPolicyLimit] = useState(25);
 
   const policiesQuery = useQuery({
     queryKey: ["console", "policies"],
@@ -220,6 +223,14 @@ export default function PoliciesPage() {
   });
   const hasPolicies = policies.length > 0;
   const hasFilteredResults = filteredPolicies.length > 0;
+  const pagedPolicies = filteredPolicies.slice(
+    (policyPage - 1) * policyLimit,
+    policyPage * policyLimit,
+  );
+
+  useEffect(() => {
+    setPolicyPage(1);
+  }, [statusFilter, searchQuery]);
 
   const populateEditForm = useCallback(() => {
     const detail = detailQuery.data;
@@ -294,7 +305,7 @@ export default function PoliciesPage() {
               }))
             }
           >
-            <option value="tool">When tool matches → allow / deny / require approval</option>
+            <option value="tool">When tool matches: allow, deny, or require approval</option>
             <option value="max_per_tx">When amount exceeds per-transaction limit</option>
             <option value="min_per_tx">When amount is below minimum per transaction</option>
             <option value="max_daily_total">When daily total exceeds limit</option>
@@ -539,7 +550,7 @@ export default function PoliciesPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredPolicies.map((p) => (
+              {pagedPolicies.map((p) => (
                 <tr key={p.policy_id}>
                   <td>
                     {p.name}{" "}
@@ -645,6 +656,20 @@ export default function PoliciesPage() {
               ))}
             </tbody>
           </table>
+          {filteredPolicies.length > policyLimit ? (
+            <ConsolePagination
+              total={filteredPolicies.length}
+              limit={policyLimit}
+              page={policyPage}
+              onPageChange={setPolicyPage}
+              onLimitChange={(n) => {
+                setPolicyLimit(n);
+                setPolicyPage(1);
+              }}
+              noun="policy"
+              pageSizes={[10, 25, 50, 100]}
+            />
+          ) : null}
         </div>
       ) : null}
 

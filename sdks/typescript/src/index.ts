@@ -46,6 +46,29 @@ export {
   type GovernanceInsightsResult,
   type InsightSeverity,
 } from "./governance-insights.js";
+export {
+  GovernanceBridge,
+  GovernanceSession,
+  createGovernanceBridge,
+  getActiveGovernanceSession,
+  getGovernanceBridgeSingleton,
+  resetGovernanceBridgeSingleton,
+  safeGovernance,
+  withOptionalTrace,
+  buildAegisTraceUrl,
+  AEGIS_TRACE_ID_HEADER,
+  type DataAccessRecordInput,
+  type DecisionRecordInput,
+  type GovernedFetchInput,
+  type GovernanceBridgeConfig,
+  type LlmRecordInput,
+  type TraceStartInput,
+  type WithOptionalTraceResult,
+} from "./bridge.js";
+export {
+  wrapLangGraphTool,
+  type LangGraphToolConfig,
+} from "./integrations/langgraph.js";
 
 export const PACKAGE_NAME = "@salanor/aegis" as const;
 

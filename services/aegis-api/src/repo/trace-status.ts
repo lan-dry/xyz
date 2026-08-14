@@ -8,7 +8,7 @@ export async function completeTrace(
   await client.query(
     `UPDATE trace
      SET status = 'completed', ended_at = now()
-     WHERE organization_id = $1 AND trace_id = $2 AND status IN ('running', 'blocked')`,
+     WHERE organization_id = $1 AND trace_id = $2 AND status IN ('running', 'blocked', 'executing')`,
     [organizationId, traceId],
   );
 }

@@ -318,30 +318,47 @@ try {
 } catch {}
 `;
 
-  const tail = String.raw`
+  const tail = includePolicyStep
+    ? String.raw`
 const runStatus =
   summary.status === 'FAILED' || summary.status === 'EXTRACTION_FAILED'
     ? 'failed'
     : 'completed';
 
+const runSummary =
+  summary.status +
+  (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : '');
+
+let aegisPolicy = null;
+try {
+  const policyRow = $('7b. Check Policy (publish)').first().json;
+  aegisPolicy = policyRow?.aegis_policy ?? (policyRow?.trace_id ? policyRow : null);
+} catch {}
+
 return [{
   json: {
-    aegisBody: {
-      one_shot: true,
-      business_context: 'JMT-S daily content sync from Google Drive',
-      external_system: 'n8n',
-      external_workflow_id: String($workflow.id),
-      external_execution_id: String($execution.id),
-      status: runStatus,
-      summary:
-        summary.status +
-        (summary.updateCount != null ? ' — ' + summary.updateCount + ' update(s)' : ''),
-      execution: {
-        workflow_name: $workflow.name,
-        execution_id: String($execution.id),
-        nodes,
-      },
-    },
+    ...(aegisPolicy ? { aegis_policy: aegisPolicy } : {}),
+    aegis_tool: 'jmts.content.publish',
+    runStatus,
+    summary: runSummary,
+    captureNodes: nodes,
+  },
+}];`
+    : String.raw`
+const runStatus =
+  summary.status === 'FAILED' || summary.status === 'EXTRACTION_FAILED'
+    ? 'failed'
+    : 'completed';
+
+const runSummary =
+  summary.status +
+  (summary.updateCount != null ? ': ' + summary.updateCount + ' update(s)' : '');
+
+return [{
+  json: {
+    runStatus,
+    summary: runSummary,
+    captureNodes: nodes,
   },
 }];`;
 
@@ -358,28 +375,21 @@ return [{
     },
     {
       parameters: {
-        method: "POST",
-        url: "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/workflows/runs",
-        authentication: "genericCredentialType",
-        genericAuthType: "httpHeaderAuth",
-        sendHeaders: true,
-        headerParameters: {
-          parameters: [{ name: "Content-Type", value: "application/json" }],
-        },
-        sendBody: true,
-        specifyBody: "json",
-        jsonBody: "={{ JSON.stringify($json.aegisBody) }}",
-        options: {},
+        operation: "recordRun",
+        businessContext: "JMT-S daily content sync from Google Drive",
+        summary: "={{ $json.summary }}",
+        runStatus: "={{ $json.runStatus }}",
+        nodesJson: "={{ JSON.stringify($json.captureNodes) }}",
       },
       id: "sync-aegis-0020",
       name: "11. Record in Aegis",
-      type: "n8n-nodes-base.httpRequest",
-      typeVersion: 4.2,
+      type: "n8n-nodes-salanor-aegis.salanorAegis",
+      typeVersion: 1,
       position: [3740, 500],
       credentials: {
-        httpHeaderAuth: {
-          id: "CONFIGURE_AEGIS_INGEST",
-          name: "Aegis Ingest API — Header Auth",
+        salanorAegisApi: {
+          id: "CONFIGURE_SALANOR_AEGIS",
+          name: "Salanor Aegis API",
         },
       },
     },
@@ -393,6 +403,27 @@ return [{
   };
 }
 
+/** Production trigger for error-workflow testing (Manual Trigger does not count as production). */
+function addProductionWebhookTrigger(wf) {
+  wf.nodes.push({
+    parameters: {
+      httpMethod: "POST",
+      path: "jmts-content-sync-run",
+      responseMode: "onReceived",
+      options: {},
+    },
+    id: "sync-gov-webhook",
+    name: "Webhook (production run)",
+    type: "n8n-nodes-base.webhook",
+    typeVersion: 2,
+    position: [0, 480],
+    webhookId: "jmts-content-sync-run",
+  });
+  wf.connections["Webhook (production run)"] = {
+    main: [[{ node: "0. Config", type: "main", index: 0 }]],
+  };
+}
+
 function buildVariant(mode) {
   const wf = loadBase();
   stripAutoPublishFromConfig(wf);
@@ -403,6 +434,7 @@ function buildVariant(mode) {
 
   if (governed) {
     addPublishGateNodes(wf);
+    addProductionWebhookTrigger(wf);
   } else {
     stripPublishPath(wf);
   }
@@ -415,7 +447,7 @@ function buildVariant(mode) {
   wf.meta = {
     templateCredsSetupCompleted: false,
     description: governed
-      ? "Drive-to-CMS sync. Dry-run always; live publish requires Console approval on jmts.content.publish. Records signed trace at end."
+      ? "Drive-to-CMS sync. Dry-run always; live publish requires Console approval on jmts.content.publish. Records signed trace at end. Link jmt-s-aegis-error-handler.json in Settings → Error Workflow (no in-canvas error wires)."
       : "Drive-to-CMS sync with dry-run validation and signed Aegis trace. No live publish.",
   };
 

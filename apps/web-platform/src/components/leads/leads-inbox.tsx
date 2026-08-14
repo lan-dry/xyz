@@ -264,7 +264,7 @@ export function LeadsInbox({ canWrite }: { canWrite: boolean }) {
                       </button>
                       <div className={styles.email}>{lead.email}</div>
                     </td>
-                    <td>{lead.organization ?? "—"}</td>
+                    <td>{lead.organization ?? "-"}</td>
                     <td>{REASON_LABELS[lead.reason] ?? lead.reason}</td>
                     <td>
                       <span className={`${styles.badge} ${styles[`badge_${lead.status}`]}`}>
@@ -337,11 +337,11 @@ export function LeadsInbox({ canWrite }: { canWrite: boolean }) {
               </div>
               <div>
                 <dt>Organization</dt>
-                <dd>{selected.organization ?? "—"}</dd>
+                <dd>{selected.organization ?? "-"}</dd>
               </div>
               <div>
                 <dt>Title</dt>
-                <dd>{selected.role ?? "—"}</dd>
+                <dd>{selected.role ?? "-"}</dd>
               </div>
               <div>
                 <dt>Source page</dt>

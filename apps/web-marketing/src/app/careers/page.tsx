@@ -5,15 +5,15 @@ import { MarketingPage } from "@/components/marketing/marketing-page";
 
 export const metadata: Metadata = {
   title: "Careers",
-  description: "Join Salanor — trust infrastructure for agentic AI.",
+  description: "Join Salanor. Build provenance and audit systems for production agents.",
 };
 
 export default function CareersPage() {
   return (
     <MarketingPage
       label="Careers"
-      title="Build the trust layer"
-      lead="We are hiring senior engineers across platform, cryptography, and developer experience."
+      title="Open roles"
+      lead="We hire senior engineers across platform, cryptography, and developer experience."
     >
       <p>
         Open roles will be posted here. For now, send your portfolio and a short note on what you would

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
+import { PasswordField } from "@/components/auth/password-field";
 import { PlatformAuthAside } from "@/components/auth/platform-auth-aside";
 import { idApi } from "@/lib/id-api";
 
@@ -81,31 +82,25 @@ function ResetPasswordForm() {
             </p>
           ) : null}
           <form onSubmit={onSubmit}>
-            <label className={styles.field}>
-              <span>New password</span>
-              <input
-                className={styles.input}
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={10}
-                autoComplete="new-password"
-                disabled={!token}
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Confirm password</span>
-              <input
-                className={styles.input}
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-                autoComplete="new-password"
-                disabled={!token}
-              />
-            </label>
+            <PasswordField
+              label="New password"
+              fieldClassName={styles.field}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={10}
+              autoComplete="new-password"
+              disabled={!token}
+            />
+            <PasswordField
+              label="Confirm password"
+              fieldClassName={styles.field}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
+              autoComplete="new-password"
+              disabled={!token}
+            />
             {error ? <p className={styles.error}>{error}</p> : null}
             <button
               type="submit"

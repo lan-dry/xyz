@@ -34,7 +34,7 @@ export default function CommandsPage() {
   return (
     <OpsShell
       title="Command reference"
-      subtitle="Every pnpm script and ops command — what it does, when to run it, and prerequisites. Run from monorepo root unless noted."
+      subtitle="Every pnpm script and ops command: what it does, when to run it, and prerequisites. Run from monorepo root unless noted."
       staffEmail={email}
       onLogout={logout}
     >
@@ -69,7 +69,7 @@ export default function CommandsPage() {
           <section id="roles" className={styles.section}>
             <h2 className={styles.sectionTitle}>Roles & access</h2>
             <p className={styles.sectionDesc}>
-              Two different “admin” concepts — do not confuse them.
+              Two different “admin” concepts: do not confuse them.
             </p>
             <div className={styles.roleGrid}>
               <RoleCard
@@ -181,7 +181,7 @@ function RoleCard({
         <ul className={styles.roleBody} style={{ margin: "0.75rem 0 0", paddingLeft: "1.25rem" }}>
           {roles.map((r) => (
             <li key={r.slug}>
-              <strong>{r.name}</strong> ({r.slug}) — {r.summary}
+              <strong>{r.name}</strong> ({r.slug}): {r.summary}
             </li>
           ))}
         </ul>

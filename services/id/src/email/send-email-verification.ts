@@ -1,3 +1,4 @@
+import { buildBrandedEmailHtml } from "./branded-email.js";
 import { EmailDeliveryError, getInviteFromAddress, getResendApiKey } from "./email-delivery.js";
 
 export type VerifyEmailInput = {
@@ -5,11 +6,25 @@ export type VerifyEmailInput = {
   verifyUrl: string;
 };
 
+export function buildVerifyEmailHtml(verifyUrl: string): string {
+  return buildBrandedEmailHtml({
+    title: "Verify your Salanor account",
+    heading: "Verify your email",
+    bodyHtml: `<p style="margin:0 0 20px;font-size:15px;line-height:1.65;color:#3d4540;">Welcome to <strong>Salanor Aegis</strong>. Confirm this email address to activate your organization admin account and open the console.</p>
+<p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#5c6660;">After verification you can invite teammates, issue API keys, and start recording signed AI activity.</p>`,
+    ctaLabel: "Verify email address",
+    ctaUrl: verifyUrl,
+    footerNote:
+      "This link expires in 24 hours. If you did not create a Salanor account, you can ignore this email.",
+  });
+}
+
 export async function sendEmailVerificationEmail(
   input: VerifyEmailInput,
 ): Promise<void> {
   const from = getInviteFromAddress();
   const subject = "Verify your Salanor account";
+  const html = buildVerifyEmailHtml(input.verifyUrl);
   const bodyText = [
     "Welcome to Salanor Aegis.",
     "",
@@ -17,6 +32,7 @@ export async function sendEmailVerificationEmail(
     input.verifyUrl,
     "",
     "This link expires in 24 hours.",
+    "If you did not create a Salanor account, ignore this email.",
   ].join("\n");
 
   const apiKey = getResendApiKey();
@@ -31,9 +47,7 @@ export async function sendEmailVerificationEmail(
       to: [input.to],
       subject,
       text: bodyText,
-      html: `<p>Welcome to Salanor Aegis.</p>
-<p><a href="${input.verifyUrl}">Verify your email</a> to access the console.</p>
-<p>This link expires in 24 hours.</p>`,
+      html,
     }),
   });
 

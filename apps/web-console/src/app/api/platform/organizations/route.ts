@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 const idUrl = process.env.SALANOR_ID_URL ?? "http://127.0.0.1:8091";
 const platformSecret = process.env.PLATFORM_BOOTSTRAP_SECRET?.trim();
 
-/** Server-only proxy — never expose PLATFORM_BOOTSTRAP_SECRET to the browser. */
+/** Server-only proxy: never expose PLATFORM_BOOTSTRAP_SECRET to the browser. */
 export async function POST(request: Request) {
   if (!platformSecret) {
     return NextResponse.json(

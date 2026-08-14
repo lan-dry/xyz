@@ -21,7 +21,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 const siteDescription =
-  "The trust layer for systems that act — verifiable decisions for autonomous and AI-driven systems.";
+  "The trust layer for systems that act: verifiable decisions for autonomous and AI-driven systems.";
 
 function resolveMetadataBase(): URL {
   const raw =

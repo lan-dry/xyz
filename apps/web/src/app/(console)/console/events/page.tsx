@@ -33,7 +33,7 @@ export default async function ConsoleEventsPage() {
     <section className="space-y-5">
       <ConsolePageHeader
         title="Events"
-        subtitle="Verifiable decision records from ingest (tenant ledger). Not console admin activity — see Audit log."
+        subtitle="Verifiable decision records from ingest (tenant ledger). Not console admin activity: see Audit log."
       />
 
       <div className="flex flex-wrap items-center gap-2">

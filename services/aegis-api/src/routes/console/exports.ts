@@ -19,6 +19,11 @@ import {
   requireConsoleSession,
   type ConsoleVariables,
 } from "../../middleware/console-session.js";
+import {
+  assertCanCreateComplianceExport,
+  assertCanUseComplianceSchedule,
+  PlanLimitError,
+} from "@salanor/platform-auth";
 
 function serializeExport(row: {
   export_id: string;
@@ -96,6 +101,18 @@ exportRoutes.post("/compliance/exports", requireConsoleSession, async (c) => {
   }
 
   const pool = getPool();
+  try {
+    await assertCanCreateComplianceExport(pool, session.organizationId);
+  } catch (error) {
+    if (error instanceof PlanLimitError) {
+      return c.json(
+        { error: error.message, code: error.code },
+        error.httpStatus as 402 | 403 | 404,
+      );
+    }
+    throw error;
+  }
+
   const row = await createComplianceExport(pool, {
     organizationId: session.organizationId,
     requestedBy: session.userId,
@@ -241,6 +258,20 @@ exportRoutes.put("/compliance/schedule", requireConsoleSession, async (c) => {
   }
 
   const pool = getPool();
+  if (Boolean(body.enabled)) {
+    try {
+      await assertCanUseComplianceSchedule(pool, session.organizationId);
+    } catch (error) {
+      if (error instanceof PlanLimitError) {
+        return c.json(
+          { error: error.message, code: error.code },
+          error.httpStatus as 402 | 403 | 404,
+        );
+      }
+      throw error;
+    }
+  }
+
   const schedule = await upsertComplianceSchedule(pool, {
     organizationId: session.organizationId,
     bundleType,

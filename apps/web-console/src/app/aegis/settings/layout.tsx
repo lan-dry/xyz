@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { ConsolePage, PageHeader, ui } from "@/components/console/console-ui";
+import { ConsolePage, PageHeader } from "@/components/console/console-ui";
 
 import styles from "./settings.module.css";
 
 const TABS = [
   { href: "/aegis/settings/profile", label: "Profile" },
   { href: "/aegis/settings/organization", label: "Organization" },
+  { href: "/aegis/settings/billing", label: "Billing" },
   { href: "/aegis/settings/integrations", label: "Integrations" },
+  { href: "/aegis/settings/governance", label: "Governance" },
   { href: "/aegis/settings/security", label: "Security" },
 ] as const;
 

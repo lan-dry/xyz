@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
@@ -14,16 +15,13 @@ type PlanUsage = {
   plan: string;
   display_name: string;
   active: boolean;
-  usage: { events_this_month: number };
+  usage: { events_this_month: number; ingest_keys?: number; members?: number };
   limits: {
     events_per_month: number | null;
     max_ingest_keys: number;
     max_members: number;
     retention_days: number;
   };
-  self_serve: boolean;
-  billing_checkout_enabled: boolean;
-  billing_portal_available: boolean;
 };
 
 export default function OrganizationSettingsPage() {
@@ -31,7 +29,7 @@ export default function OrganizationSettingsPage() {
   const [newOrgName, setNewOrgName] = useState("");
   const [editName, setEditName] = useState("");
   const [editSlug, setEditSlug] = useState("");
-  const [editSlugTouched, setEditSlugTouched] = useState(false);
+  const [, setEditSlugTouched] = useState(false);
   const [editMessage, setEditMessage] = useState<string | null>(null);
 
   const meQuery = useQuery({
@@ -42,36 +40,6 @@ export default function OrganizationSettingsPage() {
   const planQuery = useQuery({
     queryKey: ["console", "plan-usage"],
     queryFn: () => consoleApi<{ plan_usage: PlanUsage }>("/organization/plan-usage"),
-  });
-
-  const checkout = useMutation({
-    mutationFn: async (planSlug: string) => {
-      const orgId = meQuery.data?.organization.organization_id;
-      if (!orgId) throw new Error("No organization");
-      const res = await fetch("/api/billing/checkout/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ organization_id: orgId, plan_slug: planSlug }),
-      });
-      const data = (await res.json()) as { checkout_url?: string; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Checkout failed");
-      if (data.checkout_url) window.location.href = data.checkout_url;
-    },
-  });
-
-  const portal = useMutation({
-    mutationFn: async () => {
-      const orgId = meQuery.data?.organization.organization_id;
-      if (!orgId) throw new Error("No organization");
-      const res = await fetch("/api/billing/portal/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ organization_id: orgId }),
-      });
-      const data = (await res.json()) as { portal_url?: string; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Billing portal failed");
-      if (data.portal_url) window.location.href = data.portal_url;
-    },
   });
 
   const updateOrg = useMutation({
@@ -129,10 +97,6 @@ export default function OrganizationSettingsPage() {
       setEditMessage(null);
     }
   }, [org?.organization_id]);
-  const eventCap = usage?.limits.events_per_month;
-  const eventUsed = usage?.usage.events_this_month ?? 0;
-  const eventPct =
-    eventCap != null && eventCap > 0 ? Math.min(100, (eventUsed / eventCap) * 100) : null;
 
   return (
     <>
@@ -168,7 +132,7 @@ export default function OrganizationSettingsPage() {
         {isAdmin && onboardingDone ? (
           <form
             className={settings.settingsForm}
-            style={{ marginTop: "1.25rem", maxWidth: "28rem" }}
+            style={{ marginTop: "1.25rem" }}
             onSubmit={(e) => {
               e.preventDefault();
               setEditMessage(null);
@@ -189,39 +153,43 @@ export default function OrganizationSettingsPage() {
             <h3 style={{ fontSize: "0.9375rem", margin: "0 0 0.75rem" }}>Rename organization</h3>
             <p className={ui.muted} style={{ fontSize: "0.8125rem", marginBottom: "0.75rem" }}>
               Display name can change anytime. Changing the URL slug updates API paths and rebinds
-              agent DIDs (<span className="mono">did:salanor:…</span>) — coordinate with your team
+              agent DIDs (<span className="mono">did:salanor:…</span>): coordinate with your team
               before saving.
             </p>
-            <label>
-              <span className={ui.muted} style={{ fontSize: "0.75rem" }}>
+            <div className={settings.formFields}>
+              <label className={ui.field}>
                 Company name
-              </span>
-              <input
-                className="input"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                minLength={2}
-                maxLength={120}
-                required
-              />
-            </label>
-            <label>
-              <span className={ui.muted} style={{ fontSize: "0.75rem" }}>
-                Organization URL
-              </span>
-              <input
-                className="input mono"
-                value={editSlug}
-                onChange={(e) => {
-                  setEditSlugTouched(true);
-                  setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
-                }}
-                minLength={2}
-                maxLength={48}
-                pattern="[a-z0-9][a-z0-9-]*"
-                required
-              />
-            </label>
+                <input
+                  className={ui.input}
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  minLength={2}
+                  maxLength={120}
+                  required
+                />
+              </label>
+              <label className={ui.field}>
+                Organization slug
+                <input
+                  className={`${ui.input} mono`}
+                  value={editSlug}
+                  onChange={(e) => {
+                    setEditSlugTouched(true);
+                    setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+                  }}
+                  minLength={2}
+                  maxLength={48}
+                  pattern="[a-z0-9][a-z0-9-]*"
+                  required
+                  placeholder="acme"
+                />
+              </label>
+            </div>
+            <p className={ui.muted} style={{ fontSize: "0.75rem", marginTop: "0.5rem" }}>
+              Short ID used in agent DIDs and internal paths (letters, numbers, hyphens).
+              Not a website URL. Use e.g. <span className="mono">acme</span>, not{" "}
+              <span className="mono">https://acme.com</span>.
+            </p>
             {editMessage ? (
               <p
                 style={{
@@ -232,92 +200,38 @@ export default function OrganizationSettingsPage() {
                 {editMessage}
               </p>
             ) : null}
-            <button
-              type="submit"
-              className={`${ui.btn} ${ui.btnPrimary}`}
-              disabled={updateOrg.isPending}
-            >
-              {updateOrg.isPending ? "Saving…" : "Save changes"}
-            </button>
+            <div className={settings.formActions}>
+              <button
+                type="submit"
+                className={`${ui.btn} ${ui.btnPrimary}`}
+                disabled={updateOrg.isPending}
+              >
+                {updateOrg.isPending ? "Saving…" : "Save changes"}
+              </button>
+            </div>
           </form>
         ) : null}
       </section>
 
       <section className={settings.settingCard}>
-        <h2>Plan & usage</h2>
-        {planQuery.isLoading ? <p className={ui.muted}>Loading plan…</p> : null}
+        <h2>Plan</h2>
         {usage ? (
-          <>
-            <p style={{ margin: "0 0 0.75rem" }}>
-              <strong>{usage.display_name}</strong>{" "}
-              <span className="mono">({usage.plan})</span>
-              {!usage.active ? (
-                <span style={{ color: "var(--console-danger, #b91c1c)" }}> — suspended</span>
-              ) : null}
-            </p>
-            <p className={ui.muted} style={{ fontSize: "0.8125rem", margin: "0 0 0.5rem" }}>
-              Events this month: {eventUsed}
-              {eventCap != null ? ` / ${eventCap}` : " (unlimited)"}
-            </p>
-            {eventPct != null ? (
-              <div
-                style={{
-                  height: 6,
-                  borderRadius: 3,
-                  background: "var(--console-border, #e2e8f0)",
-                  marginBottom: "0.75rem",
-                  maxWidth: "20rem",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${eventPct}%`,
-                    height: "100%",
-                    borderRadius: 3,
-                    background:
-                      eventPct >= 90 ? "var(--console-danger, #b91c1c)" : "var(--console-accent, #2563eb)",
-                  }}
-                />
-              </div>
-            ) : null}
-            <ul className={ui.muted} style={{ fontSize: "0.8125rem", paddingLeft: "1.25rem" }}>
-              <li>API keys: up to {usage.limits.max_ingest_keys}</li>
-              <li>Members: up to {usage.limits.max_members}</li>
-              <li>Retention: {usage.limits.retention_days} days</li>
-            </ul>
-            {isAdmin &&
-            (usage.billing_checkout_enabled ||
-              process.env.NEXT_PUBLIC_BILLING_CHECKOUT_ENABLED === "1") ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "1rem" }}>
-                {usage.self_serve ? (
-                  <button
-                    type="button"
-                    className={`${ui.btn} ${ui.btnPrimary}`}
-                    disabled={checkout.isPending}
-                    onClick={() => checkout.mutate("team")}
-                  >
-                    Upgrade to Team (Stripe)
-                  </button>
-                ) : null}
-                {usage.billing_portal_available ? (
-                  <button
-                    type="button"
-                    className={ui.btn}
-                    disabled={portal.isPending}
-                    onClick={() => portal.mutate()}
-                  >
-                    Manage billing (invoices & payment)
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-            {!usage.billing_checkout_enabled ? (
-              <p className={ui.muted} style={{ marginTop: "0.75rem", fontSize: "0.75rem" }}>
-                Self-serve checkout is off. Salanor ops can change your plan in Platform admin.
-              </p>
-            ) : null}
-          </>
-        ) : null}
+          <p style={{ margin: "0 0 0.75rem" }}>
+            <strong>{usage.display_name}</strong>{" "}
+            <span className="mono">({usage.plan})</span>
+            {" · "}
+            {usage.usage.events_this_month}
+            {usage.limits.events_per_month != null
+              ? ` / ${usage.limits.events_per_month}`
+              : ""}{" "}
+            events this month
+          </p>
+        ) : (
+          <p className={ui.muted}>Loading plan…</p>
+        )}
+        <p style={{ margin: 0 }}>
+          <Link href="/aegis/settings/billing">Manage plan, usage and billing</Link>
+        </p>
       </section>
 
       {isAdmin ? (

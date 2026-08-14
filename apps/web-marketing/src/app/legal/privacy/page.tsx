@@ -21,14 +21,14 @@ export default function PrivacyPage() {
     >
       <LegalProse>
         <LegalMeta>
-          <strong>Effective date:</strong> 1 June 2026 · <strong>Controller:</strong> Salanor Systems,
-          Inc. · Questions:{" "}
+          <strong>Effective date:</strong> 1 June 2026 · <strong>Controller:</strong> Salanor Ltd ·
+          Questions:{" "}
           <a href="mailto:hello@salanor.com">hello@salanor.com</a>
         </LegalMeta>
 
         <LegalSection title="1. Scope">
           <p>
-            This policy describes how Salanor Systems, Inc. (&quot;Salanor,&quot; &quot;we,&quot;
+            This policy describes how Salanor Ltd (&quot;Salanor,&quot; &quot;we,&quot;
             &quot;us&quot;) processes personal data when you:
           </p>
           <ul>
@@ -83,17 +83,17 @@ export default function PrivacyPage() {
           <p>Where GDPR applies, we rely on:</p>
           <ul>
             <li>
-              <strong>Contract</strong> — providing services you request or evaluate under a pilot
+              <strong>Contract:</strong> providing services you request or evaluate under a pilot
             </li>
             <li>
-              <strong>Legitimate interests</strong> — securing our platform, preventing abuse, and
+              <strong>Legitimate interests:</strong> securing our platform, preventing abuse, and
               communicating about your account
             </li>
             <li>
-              <strong>Consent</strong> — where required (e.g. optional marketing updates you opt into)
+              <strong>Consent:</strong> where required (e.g. optional marketing updates you opt into)
             </li>
             <li>
-              <strong>Legal obligation</strong> — when law requires retention or disclosure
+              <strong>Legal obligation:</strong> when law requires retention or disclosure
             </li>
           </ul>
         </LegalSection>

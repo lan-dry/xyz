@@ -51,7 +51,7 @@ const BUNDLE_TYPES = [
 ] as const;
 
 function formatBytes(bytes: number | null): string {
-  if (bytes === null || bytes === 0) return "—";
+  if (bytes === null || bytes === 0) return "-";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -207,7 +207,7 @@ export default function ExportsPage() {
             <code className="mono" style={{ fontSize: "0.75rem" }}>
               pnpm compliance:worker
             </code>{" "}
-            from the repo root (or enable a daily cron in production — see{" "}
+            from the repo root (or enable a daily cron in production: see{" "}
             <button
               type="button"
               className={styles.linkButton}
@@ -304,7 +304,7 @@ export default function ExportsPage() {
                 <span>
                   <span className={styles.toggleLabel}>Enable monthly auto-export</span>
                   <span className={styles.toggleHint}>
-                    Requires a daily server job — see “What’s exported?”
+                    Requires a daily server job: see “What’s exported?”
                   </span>
                 </span>
               </label>
@@ -454,18 +454,18 @@ function ExportTable({
                 {new Date(row.period_start).toLocaleDateString()} –{" "}
                 {new Date(row.period_end).toLocaleDateString()}
               </td>
-              <td>{row.event_count ?? "—"}</td>
+              <td>{row.event_count ?? "-"}</td>
               <td>{formatBytes(row.byte_size)}</td>
               <td style={{ fontSize: "0.8125rem", whiteSpace: "nowrap" }}>
                 {row.generated_at
                   ? new Date(row.generated_at).toLocaleString()
-                  : "—"}
+                  : "-"}
               </td>
               <td>
                 {row.integrity_hash ? (
                   <IntegrityCell hash={row.integrity_hash} />
                 ) : (
-                  "—"
+                  "-"
                 )}
               </td>
               <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>

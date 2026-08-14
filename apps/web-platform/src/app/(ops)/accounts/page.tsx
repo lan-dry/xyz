@@ -134,7 +134,7 @@ export default function AccountsPage() {
                   </td>
                   <td style={{ color: "var(--console-fg-muted)", fontSize: "0.8125rem" }}>
                     {a.memberships.length === 0
-                      ? "—"
+                      ? "-"
                       : a.memberships.length > 2
                         ? `${a.memberships.length} orgs`
                         : a.memberships.map((m) => `${m.org_name} (${m.role})`).join(" · ")}

@@ -12,7 +12,7 @@ export function EmptyStatePanel({
   secondary,
 }: {
   icon?: LucideIcon;
-  /** Branded SVG (e.g. AegisMark) — takes precedence over icon */
+  /** Branded SVG (e.g. AegisMark): takes precedence over icon */
   mark?: ReactNode;
   title: string;
   description: ReactNode;

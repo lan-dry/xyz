@@ -14,9 +14,17 @@ export type SocialLink = {
   url: string;
 };
 
+export type ContactPhone = {
+  id: string;
+  label: string;
+  /** E.164 or display number, e.g. +1 415 555 0100 */
+  number: string;
+};
+
 export type SiteContact = {
   intro: string;
   channels: ContactChannel[];
+  phones: ContactPhone[];
   social: SocialLink[];
   address: {
     label: string;
@@ -26,7 +34,7 @@ export type SiteContact = {
 
 const DEFAULT_CONTACT: SiteContact = {
   intro:
-    "We read every message. Pick the path that fits, or use the form — we respond within two business days.",
+    "We read every message. Pick the path that fits, or use the form. We respond within two business days.",
   channels: [
     {
       id: "partnerships",
@@ -47,8 +55,9 @@ const DEFAULT_CONTACT: SiteContact = {
       email: "hello@salanor.com",
     },
   ],
+  phones: [],
   social: [],
-  address: { label: "Office", lines: [] },
+  address: { label: "Office", lines: ["1 KN 78 St", "Kigali, Rwanda"] },
 };
 
 let cached: SiteContact | null = null;
@@ -59,15 +68,25 @@ function contactFilePath(): string {
   return path.join(process.cwd(), "data", "site-contact.json");
 }
 
-/** Editable via `apps/web-marketing/data/site-contact.json` (or SITE_CONTACT_PATH). */
+/**
+ * Marketing contact copy. Edit `apps/web-marketing/data/site-contact.json`
+ * (or set SITE_CONTACT_PATH). Same pattern as Resend/Stripe: site content in
+ * repo, not product Ops admin.
+ */
 export function getSiteContact(): SiteContact {
   if (cached) return cached;
   try {
     const raw = readFileSync(contactFilePath(), "utf8");
-    const parsed = JSON.parse(raw) as SiteContact;
+    const parsed = JSON.parse(raw) as Partial<SiteContact>;
     if (!parsed.channels?.length) return DEFAULT_CONTACT;
-    cached = parsed;
-    return parsed;
+    cached = {
+      intro: parsed.intro?.trim() || DEFAULT_CONTACT.intro,
+      channels: parsed.channels,
+      phones: Array.isArray(parsed.phones) ? parsed.phones : [],
+      social: Array.isArray(parsed.social) ? parsed.social : [],
+      address: parsed.address ?? DEFAULT_CONTACT.address,
+    };
+    return cached;
   } catch {
     return DEFAULT_CONTACT;
   }

@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AegisMark } from "@/components/console/aegis-mark";
+import { PasswordField } from "@/components/auth/password-field";
 import { SalanorLogo } from "@/components/salanor-logo";
 import { IdApiError, idApi } from "@/lib/id-api";
 import type { InvitePreview, MeResponse } from "@/lib/types";
@@ -139,18 +140,15 @@ function InviteAcceptForm() {
                 placeholder="Alex Chen"
               />
             </label>
-            <label className={styles.field}>
-              Password
-              <input
-                className={styles.input}
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-                autoComplete="new-password"
-              />
-            </label>
+            <PasswordField
+              label="Password"
+              fieldClassName={styles.field}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
             {error ? <p className={styles.error}>{error}</p> : null}
             <button
               type="submit"
@@ -259,13 +257,13 @@ function InviteLayout({
     <div className={styles.shell} data-console-shell>
       <aside className={styles.brand}>
         <a href={MARKETING_URL} className={styles.logo}>
-          <SalanorLogo size={32} showWordmark surface="on-light" />
+          <SalanorLogo size={32} showWordmark />
         </a>
         <h1>
           {inv ? `Join ${inv.organization_name}` : "Organization invite"}
         </h1>
         <p>
-          Aegis console access with litigation-ready provenance — scoped to your
+          Aegis console access with signed provenance, scoped to your
           organization&apos;s ledger.
         </p>
         {inv ? (

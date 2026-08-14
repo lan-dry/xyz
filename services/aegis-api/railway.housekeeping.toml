@@ -1,0 +1,12 @@
+# Railway service: aegis-housekeeping
+# Railway Cron: 0 * * * * (hourly)
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @salanor/witness-merkle build"
+
+[deploy]
+startCommand = "pnpm --filter aegis-api maintenance:housekeeping"
+restartPolicyType = "NEVER"
+
+# Env: DATABASE_URL (required)

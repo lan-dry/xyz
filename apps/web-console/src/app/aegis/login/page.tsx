@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-/** Legacy route — platform login at /login. */
+/** Legacy route: platform login at /login. */
 export default function AegisLoginRedirect() {
   const router = useRouter();
   useEffect(() => {

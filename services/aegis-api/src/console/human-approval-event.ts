@@ -1,7 +1,9 @@
-import { signEvent, type ApsEvent } from "@salanor/aegis";
+import { type ApsEvent } from "@salanor/aegis";
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
+import { signApsEventWithKey } from "../crypto/signing-provider.js";
 import { persistSignedEvent } from "../ingest/persist.js";
+import { getSigningKeyMaterial } from "../repo/signing-keys.js";
 
 async function withClient<T>(
   client: pg.Pool | pg.PoolClient,
@@ -29,11 +31,12 @@ export async function ingestHumanApprovalEvent(
     approverEmail: string;
     approvalId: string;
     decision: "approved" | "rejected";
+    toolName?: string;
   },
 ): Promise<string> {
-  const privateKeyB64 = process.env.DEV_SIGNING_PRIVATE_KEY_B64;
-  if (!privateKeyB64) {
-    throw new Error("DEV_SIGNING_PRIVATE_KEY_B64 not configured");
+  const keyMaterial = await getSigningKeyMaterial(client, params.organizationId, params.keyId);
+  if (!keyMaterial) {
+    throw new Error(`Signing key ${params.keyId} not found`);
   }
 
   const event: ApsEvent = {
@@ -48,17 +51,21 @@ export async function ingestHumanApprovalEvent(
     actor_principal: params.approverEmail,
     action_kind: "human_approval",
     policy_decision: params.decision === "approved" ? "allow" : "deny",
+    tool_name: params.toolName ?? "aegis.approval.decision",
     parent_event_id: params.parentEventId,
     payload: {
       approval_id: params.approvalId,
       decision: params.decision,
+      tool_name: params.toolName,
+      approver_email: params.approverEmail,
+      investor_summary:
+        params.decision === "approved"
+          ? `Human approved ${params.toolName ?? "tool call"}`
+          : `Human rejected ${params.toolName ?? "tool call"}`,
     },
   };
 
-  const signed = await signEvent(event, {
-    privateKeyB64,
-    keyId: params.keyId,
-  });
+  const signed = await signApsEventWithKey(event, keyMaterial);
   return withClient(client, async (conn) => {
     const result = await persistSignedEvent(conn, signed, undefined);
     return result.eventId;

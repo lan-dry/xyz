@@ -11,7 +11,7 @@ export default function SdkGoPage() {
     <>
       <h1>Go SDK</h1>
       <p className="lead">
-        Module <code>github.com/salanor/salanor-go/aegis</code> — sign, ingest, and public
+        Module <code>github.com/salanor/salanor-go/aegis</code>: sign, ingest, and public
         transparency verification. Sources: <code>sdks/go/</code> in the Salanor monorepo.
       </p>
 

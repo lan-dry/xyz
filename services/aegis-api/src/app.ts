@@ -6,6 +6,14 @@ import { consoleRoutes } from "./routes/console/index.js";
 import { postEvent } from "./routes/events.js";
 import { getEventInclusionProof } from "./routes/inclusion-proof.js";
 import { postPolicyEvaluate } from "./routes/policy-evaluate.js";
+import {
+  getWorkflowRunLookup,
+  getWorkflowRunStatus,
+  postWorkflowRunCapture,
+  postWorkflowRunComplete,
+  postWorkflowRunStart,
+  postWorkflowRunSteps,
+} from "./routes/workflows.js";
 import { publicRoutes } from "./routes/public/index.js";
 import { pingDatabase } from "./db/pool.js";
 
@@ -32,7 +40,7 @@ export function createApp(): Hono {
 
   app.get("/health", async (c) => {
     const db = process.env.DATABASE_URL ? await pingDatabase() : null;
-    const ok = db !== false;
+    const ok = db === null || db?.ok === true;
     return c.json(
       {
         status: ok ? "ok" : "degraded",
@@ -53,6 +61,16 @@ export function createApp(): Hono {
   aegis.get("/approvals/:approvalId", getApprovalStatus);
   aegis.post("/approvals/:approvalId/complete", postApprovalComplete);
   aegis.get("/events/:eventId/inclusion-proof", getEventInclusionProof);
+  // One-shot capture must be registered before /workflows/runs/:traceId/*
+  // so "capture" is never treated as a trace id.
+  aegis.post("/workflows/runs/capture", postWorkflowRunCapture);
+  // Alias for orchestrators / docs
+  aegis.post("/workflow-bridge/record", postWorkflowRunCapture);
+  aegis.post("/workflows/runs", postWorkflowRunStart);
+  aegis.get("/workflows/runs/lookup", getWorkflowRunLookup);
+  aegis.post("/workflows/runs/:traceId/steps", postWorkflowRunSteps);
+  aegis.post("/workflows/runs/:traceId/complete", postWorkflowRunComplete);
+  aegis.get("/workflows/runs/:traceId", getWorkflowRunStatus);
   app.route("/v1/aegis", aegis);
 
   return app;

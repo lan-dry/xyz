@@ -315,7 +315,7 @@ export function ApiKeysPanel({ initialKeys, canManage }: { initialKeys: ApiKeyRo
             ) : (
               <>
                 <div className="console-alert-warning mt-3 rounded-lg px-4 py-3 text-sm">
-                  <p className="font-medium">Copy your API key now — it will not be shown again.</p>
+                  <p className="font-medium">Copy your API key now: it will not be shown again.</p>
                   <div className="mt-2 flex items-start gap-2">
                     <code className="block min-w-0 flex-1 break-all rounded bg-white/80 px-2 py-1 font-mono text-xs">
                       {newSecret}

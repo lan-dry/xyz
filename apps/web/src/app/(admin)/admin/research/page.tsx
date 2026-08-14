@@ -70,7 +70,7 @@ export default async function AdminResearchPage() {
                 <AdminTd>
                   <span className="admin-token-badge">{post.status}</span>
                 </AdminTd>
-                <AdminTd className="text-[var(--admin-fg-subtle)]">{post.publishedAt?.toISOString().slice(0, 10) ?? "—"}</AdminTd>
+                <AdminTd className="text-[var(--admin-fg-subtle)]">{post.publishedAt?.toISOString().slice(0, 10) ?? "-"}</AdminTd>
                 <AdminTd className="text-right">
                   {canWrite ? (
                     <Link

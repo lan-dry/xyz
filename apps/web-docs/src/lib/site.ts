@@ -1,7 +1,7 @@
 /**
  * Customer-facing docs URLs. Always production defaults.
  *
- * Do NOT use NEXT_PUBLIC_AEGIS_API_URL / NEXT_PUBLIC_CONSOLE_URL here — those
+ * Do NOT use NEXT_PUBLIC_AEGIS_API_URL / NEXT_PUBLIC_CONSOLE_URL here: those
  * are for web-console local dev and would leak 127.0.0.1 into customer docs.
  *
  * Salanor staff: set NEXT_PUBLIC_DOCS_API_URL / NEXT_PUBLIC_DOCS_CONSOLE_URL

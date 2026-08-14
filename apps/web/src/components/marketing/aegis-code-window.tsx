@@ -1,7 +1,7 @@
 import styles from "./aegis-code-window.module.css";
 
 /**
- * Hero terminal card — structure and colors from salanor_website.html .terminal-card
+ * Hero terminal card: structure and colors from salanor_website.html .terminal-card
  */
 export function AegisCodeWindow({ className = "" }: { className?: string }) {
   return (

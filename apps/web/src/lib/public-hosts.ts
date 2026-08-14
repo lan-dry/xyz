@@ -159,7 +159,7 @@ export function isDocsPublicHost(hostHeader: string | null | undefined): boolean
   return getDocsHosts().includes(normalizePublicHostname(hostHeader));
 }
 
-/** @deprecated Use isAppPublicHost — kept for gradual migration of imports. */
+/** @deprecated Use isAppPublicHost: kept for gradual migration of imports. */
 export function isConsolePublicHost(hostHeader: string | null | undefined): boolean {
   return isAppPublicHost(hostHeader);
 }

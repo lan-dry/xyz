@@ -88,6 +88,7 @@ export {
   listPendingInvitations,
   previewInvitation,
   revokeInvitation,
+  rotatePendingInvitation,
   updateMemberRole,
   MemberRoleError,
   provisionOrganization,
@@ -133,7 +134,9 @@ export {
 export {
   PlanLimitError,
   assertCanAddMember,
+  assertCanCreateComplianceExport,
   assertCanCreateIngestKey,
+  assertCanUseComplianceSchedule,
   assertIngestWithinLimits,
   assertOrgActiveForIngest,
   getMonthlyEventCount,
@@ -145,6 +148,7 @@ export {
   platformListAccountsPaginated,
   platformListAuditLogs,
   platformListOrganizations,
+  platformGetOrganization,
   platformOverviewStats,
   platformResetAccountPassword,
   platformSetAccountActive,
@@ -153,9 +157,21 @@ export {
   recordNewIngestedEvent,
   backfillOrganizationUsageMonthly,
   updatePlanCatalogRow,
+  listOrganizationBillingEvents,
+  listCustomerBillingHistory,
+  recordOrganizationBillingPending,
+  markOrganizationBillingPaid,
+  endOrganizationBilling,
+  applyStripeEntitlement,
   type OrgPlanContext,
   type PlanCatalogRow,
   type PlatformAccountRow,
+  type PlatformOrganizationDetail,
+  type BillingSource,
+  type BillingStatus,
+  type BillingEventType,
+  type OrganizationBillingEvent,
+  type CustomerBillingHistoryItem,
 } from "./plans.js";
 export {
   createAgentWithSigningKey,
@@ -166,3 +182,8 @@ export {
   type AgentRow,
   type SigningKeySummary,
 } from "./agent-provisioning.js";
+export {
+  platformListWorkerRuns,
+  type PlatformWorkerName,
+  type PlatformWorkerRunRow,
+} from "./platform-worker-runs.js";

@@ -11,7 +11,7 @@ export default function BlogPage() {
     <MarketingPage
       label="Blog"
       title="Research & updates"
-      lead="Notes on APS-1, agent liability, and platform releases — coming soon."
+      lead="Notes on APS-1, agent liability, and platform releases. Coming soon."
     >
       <p>Subscribe via the contact form if you want early posts on provenance and compliance engineering.</p>
     </MarketingPage>

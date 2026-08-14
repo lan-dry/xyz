@@ -47,8 +47,11 @@ export function ProductPageContent({ product }: { product: Product }) {
                 </a>
               ) : (
                 <>
-                  <Link href="/contact" className={shared.btnHero}>
-                    Request design partner access →
+                  <Link href="/pricing" className={shared.btnHero}>
+                    View pricing →
+                  </Link>
+                  <Link href="/contact" className={shared.btnHeroGhost}>
+                    Request design partner access
                   </Link>
                   <a href="https://github.com/salanor-ltd/salanor" className={shared.btnHeroGhost} target="_blank" rel="noopener noreferrer">
                     View on GitHub

@@ -4,6 +4,7 @@ import { Moon, Sun } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PasswordField } from "@/components/auth/password-field";
 import card from "@/components/ops-ui/setting-card.module.css";
 import { ErrorAlert, ui } from "@/components/ops-ui/ops-ui";
 import { idApi } from "@/lib/id-api";
@@ -11,7 +12,6 @@ import {
   applyOpsTheme,
   persistOpsTheme,
   resolveOpsTheme,
-  toggleOpsTheme,
   type OpsTheme,
 } from "@/lib/ops-theme";
 import { platformApi } from "@/lib/platform-api";
@@ -19,10 +19,11 @@ import { CONSOLE_URL } from "@/lib/urls";
 
 export default function PlatformLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("dev@salanor.local");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [theme, setTheme] = useState<OpsTheme>("light");
 
   useEffect(() => {
@@ -32,6 +33,20 @@ export default function PlatformLoginPage() {
     setTheme(resolved);
     return () => document.documentElement.removeAttribute("data-console-app");
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void platformApi("session")
+      .then(() => {
+        if (!cancelled) router.replace("/");
+      })
+      .catch(() => {
+        if (!cancelled) setCheckingSession(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   function onThemeToggle() {
     const next: OpsTheme = theme === "dark" ? "light" : "dark";
@@ -61,6 +76,24 @@ export default function PlatformLoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div
+        data-console-shell
+        style={{
+          minHeight: "100dvh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--console-bg)",
+          color: "var(--console-fg-muted)",
+        }}
+      >
+        Checking session…
+      </div>
+    );
   }
 
   return (
@@ -105,16 +138,14 @@ export default function PlatformLoginPage() {
               required
             />
           </label>
-          <label className={ui.field}>
-            Password
-            <input
-              className={ui.input}
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </label>
+          <PasswordField
+            label="Password"
+            fieldClassName={ui.field}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
           {error ? <ErrorAlert message={error} /> : null}
           <button
             type="submit"

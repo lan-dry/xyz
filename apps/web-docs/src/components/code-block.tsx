@@ -6,7 +6,7 @@ type Props = {
   title?: string;
 };
 
-/** Lightweight code block (no Shiki) — keeps docs dev stable on modest machines. */
+/** Lightweight code block (no Shiki): keeps docs dev stable on modest machines. */
 export function CodeBlock({ code, lang = "text", title }: Props) {
   const raw = code.trim();
 

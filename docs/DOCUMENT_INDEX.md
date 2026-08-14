@@ -19,6 +19,7 @@ Read in this order for execution:
 | 9b | **`DEFERRALS.md`** | Founder-facing deferred decision log with concrete pull-forward triggers post P6 |
 | 10 | **`AEGIS_PHASE_0.md` … `AEGIS_PHASE_6.md`** | Executable acceptance criteria per release slice |
 | 10b | **`AEGIS_POLICY_V1.md`** | Policy v1 contract: rules schema, editor/replay/manifest APIs, and deferred governance scope |
+| 10c | **`AEGIS_N8N_INTEGRATION.md`** | Workflow Bridge for n8n/Zapier: server-signed runs, least-effort bookends |
 
 External authoritative inputs:
 

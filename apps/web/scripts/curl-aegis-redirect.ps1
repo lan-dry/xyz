@@ -2,7 +2,7 @@
 # Run while the dev server is up: pnpm dev  (or pnpm start)
 #
 # Expected (local .env with PUBLIC_SITE_URL=http://localhost:3000):
-#   HTTP/1.1 200 OK   (internal rewrite to /aegis — no Location header)
+#   HTTP/1.1 200 OK   (internal rewrite to /aegis: no Location header)
 #   curl -sI does not follow rewrites; use the browser or curl -L for the full page.
 #
 # Production (salanor.com): 301/302 with Location: https://aegis.salanor.com/
@@ -32,7 +32,7 @@ See docs/CHROME_CACHED_REDIRECT.md
 
 if ($locationLine) {
   Write-Host ""
-  Write-Host "Note: Location present but not salanor.com — $($locationLine.Trim())"
+  Write-Host "Note: Location present but not salanor.com: $($locationLine.Trim())"
 } else {
   Write-Host ""
   Write-Host "OK: no Location header to salanor.com (rewrite or 200)."

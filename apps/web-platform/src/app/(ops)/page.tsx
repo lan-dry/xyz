@@ -14,6 +14,7 @@ const QUICK_LINKS = [
   { title: "Accounts", href: "/accounts" },
   { title: "Plan catalog", href: "/plans" },
   { title: "Marketing leads", href: "/leads" },
+  { title: "Workers", href: "/workers" },
   { title: "Audit log", href: "/audit-logs" },
   { title: "Command reference", href: "/commands" },
 ] as const;
@@ -31,6 +32,8 @@ export default function PlatformOverviewPage() {
           accounts_total: number;
           accounts_active: number;
           events_this_month: number;
+          worker_runs_24h: number;
+          worker_errors_24h: number;
         };
       }>("overview/stats"),
   });
@@ -47,20 +50,34 @@ export default function PlatformOverviewPage() {
       <div className={ui.statGrid}>
         <div className={`${ui.card} ${ui.cardPad}`}>
           <p className={ui.cardTitle}>Active organizations</p>
-          <p className={ui.cardValue}>{s?.organizations_active ?? "—"}</p>
-          <p className={ui.cardHint}>{s?.organizations_total ?? "—"} total</p>
+          <p className={ui.cardValue}>{s?.organizations_active ?? "-"}</p>
+          <p className={ui.cardHint}>{s?.organizations_total ?? "-"} total</p>
         </div>
         <div className={`${ui.card} ${ui.cardPad}`}>
           <p className={ui.cardTitle}>Active accounts</p>
-          <p className={ui.cardValue}>{s?.accounts_active ?? "—"}</p>
-          <p className={ui.cardHint}>{s?.accounts_total ?? "—"} total</p>
+          <p className={ui.cardValue}>{s?.accounts_active ?? "-"}</p>
+          <p className={ui.cardHint}>{s?.accounts_total ?? "-"} total</p>
         </div>
         <div className={`${ui.card} ${ui.cardPad}`}>
           <p className={ui.cardTitle}>Events this month</p>
           <p className={ui.cardValue}>
-            {s ? s.events_this_month.toLocaleString() : "—"}
+            {s ? s.events_this_month.toLocaleString() : "-"}
           </p>
           <p className={ui.cardHint}>All tenants</p>
+        </div>
+        <div className={`${ui.card} ${ui.cardPad}`}>
+          <p className={ui.cardTitle}>Worker runs (24h)</p>
+          <p className={ui.cardValue}>{s?.worker_runs_24h ?? "-"}</p>
+          <p className={ui.cardHint}>
+            {s && s.worker_errors_24h > 0 ? (
+              <span style={{ color: "var(--ops-danger)" }}>
+                {s.worker_errors_24h} error(s) ·{" "}
+              </span>
+            ) : null}
+            <Link href="/workers" className={ui.tableLink}>
+              View workers →
+            </Link>
+          </p>
         </div>
       </div>
 

@@ -15,6 +15,7 @@ export async function evaluatePolicyViaApi(
     organization_id: string;
     agent_id: string;
     tool_name: string;
+    payload?: Record<string, unknown>;
   },
   fetchImpl: typeof fetch = fetch,
 ): Promise<PolicyEvaluateResult> {

@@ -5,6 +5,7 @@ const SITE = "https://www.salanor.com";
 const routes: Array<{ path: string; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"]; priority: number }> = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
   { path: "/products/aegis", changeFrequency: "weekly", priority: 0.95 },
+  { path: "/pricing", changeFrequency: "monthly", priority: 0.9 },
   { path: "/products/aether", changeFrequency: "monthly", priority: 0.7 },
   { path: "/about", changeFrequency: "monthly", priority: 0.8 },
   { path: "/about/founding", changeFrequency: "yearly", priority: 0.6 },

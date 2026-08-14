@@ -105,7 +105,7 @@ export async function resolveConsoleContextWithDiagnostics(): Promise<ConsoleCon
   };
 }
 
-/** API-safe guard — throws instead of redirecting. */
+/** API-safe guard: throws instead of redirecting. */
 export async function requireConsoleContextApi(): Promise<ConsoleContext> {
   const ctx = await resolveConsoleContext();
   if (!ctx) {
@@ -114,7 +114,7 @@ export async function requireConsoleContextApi(): Promise<ConsoleContext> {
   return ctx;
 }
 
-/** Server layout guard — redirects to sign-in when unauthenticated. */
+/** Server layout guard: redirects to sign-in when unauthenticated. */
 export async function requireConsoleContext(): Promise<ConsoleContext> {
   const session = await auth();
   if (!session?.user?.id) {

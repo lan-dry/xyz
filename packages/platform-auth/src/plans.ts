@@ -26,6 +26,31 @@ export type OrgPlanContext = {
   };
 };
 
+export type BillingSource = "none" | "manual" | "stripe";
+export type BillingStatus = "none" | "pending" | "active" | "past_due" | "canceled";
+export type BillingEventType =
+  | "quote_recorded"
+  | "invoice_noted"
+  | "payment_recorded"
+  | "plan_activated"
+  | "plan_downgraded"
+  | "period_extended";
+
+export type OrganizationBillingEvent = {
+  billing_event_id: string;
+  organization_id: string;
+  event_type: BillingEventType;
+  plan_slug: string | null;
+  external_invoice_ref: string | null;
+  amount_cents: number | null;
+  currency: string | null;
+  period_start: Date | null;
+  period_end: Date | null;
+  note: string | null;
+  actor_account_id: string | null;
+  created_at: Date;
+};
+
 export class PlanLimitError extends Error {
   readonly code: string;
   readonly httpStatus: number;
@@ -287,6 +312,53 @@ export async function assertCanCreateIngestKey(
   }
 }
 
+const FREE_COMPLIANCE_EXPORTS_PER_MONTH = 2;
+
+export async function assertCanCreateComplianceExport(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+): Promise<void> {
+  const ctx = await getOrgPlanContext(client, organizationId);
+  if (!ctx?.active) {
+    throw new PlanLimitError("org_suspended", "Organization is suspended", 403);
+  }
+  if (ctx.plan !== "free") return;
+
+  const period = monthStart();
+  const count = await client.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM compliance_export
+     WHERE organization_id = $1
+       AND created_at >= $2::date
+       AND created_at < ($2::date + interval '1 month')`,
+    [organizationId, period],
+  );
+  const n = Number(count.rows[0]?.count ?? 0);
+  if (n >= FREE_COMPLIANCE_EXPORTS_PER_MONTH) {
+    throw new PlanLimitError(
+      "compliance_exports_limit",
+      `Free plan includes ${FREE_COMPLIANCE_EXPORTS_PER_MONTH} compliance exports per month. Upgrade to Team for unlimited exports.`,
+      402,
+    );
+  }
+}
+
+export async function assertCanUseComplianceSchedule(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+): Promise<void> {
+  const ctx = await getOrgPlanContext(client, organizationId);
+  if (!ctx?.active) {
+    throw new PlanLimitError("org_suspended", "Organization is suspended", 403);
+  }
+  if (ctx.plan === "free") {
+    throw new PlanLimitError(
+      "plan_feature",
+      "Scheduled compliance exports require Team plan or higher.",
+      402,
+    );
+  }
+}
+
 export async function assertCanAddMember(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
@@ -311,6 +383,15 @@ export async function assertCanAddMember(
   }
 }
 
+export type PlanUpgradeOption = {
+  plan_slug: string;
+  display_name: string;
+  events_per_month: number | null;
+  max_ingest_keys: number;
+  max_members: number;
+  checkout_ready: boolean;
+};
+
 export async function getOrgPlanUsageSummary(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
@@ -318,11 +399,23 @@ export async function getOrgPlanUsageSummary(
   plan: string;
   display_name: string;
   active: boolean;
-  usage: { events_this_month: number };
+  usage: {
+    events_this_month: number;
+    ingest_keys: number;
+    members: number;
+  };
   limits: OrgPlanContext["limits"];
   self_serve: boolean;
   billing_checkout_enabled: boolean;
   billing_portal_available: boolean;
+  billing_source: BillingSource;
+  billing_status: BillingStatus;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  /** Self-serve plans the org can upgrade to (not the current plan). */
+  upgrade_options: PlanUpgradeOption[];
+  /** Non-self-serve paid plans (e.g. Enterprise) — contact sales. */
+  contact_sales_plans: Array<{ plan_slug: string; display_name: string }>;
 } | null> {
   const ctx = await getOrgPlanContext(client, organizationId);
   if (!ctx) return null;
@@ -330,24 +423,70 @@ export async function getOrgPlanUsageSummary(
     `SELECT display_name, self_serve FROM plan_catalog WHERE plan_slug = $1`,
     [ctx.plan],
   );
-  const stripeRow = await client.query<{ stripe_customer_id: string | null }>(
-    `SELECT stripe_customer_id FROM organization WHERE organization_id = $1`,
+  const stripeRow = await client.query<{
+    stripe_customer_id: string | null;
+    billing_source: BillingSource;
+    billing_status: BillingStatus;
+    current_period_start: Date | null;
+    current_period_end: Date | null;
+  }>(
+    `SELECT stripe_customer_id, billing_source, billing_status,
+            current_period_start, current_period_end
+     FROM organization WHERE organization_id = $1`,
     [organizationId],
   );
   const events = await getMonthlyEventCount(client, organizationId);
-  const checkoutEnabled =
-    process.env.BILLING_CHECKOUT_ENABLED === "1" ||
-    process.env.BILLING_CHECKOUT_ENABLED === "true";
-  const stripeCustomerId = stripeRow.rows[0]?.stripe_customer_id?.trim() || null;
+  const keysCount = await client.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM ingest_api_key
+     WHERE organization_id = $1 AND active = true`,
+    [organizationId],
+  );
+  const membersCount = await client.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM membership
+     WHERE organization_id = $1 AND status = 'active'`,
+    [organizationId],
+  );
+  const allPlans = await getPlanCatalog(client, true);
+  const upgrade_options: PlanUpgradeOption[] = allPlans
+    .filter((p) => p.self_serve && p.plan_slug !== ctx.plan)
+    .map((p) => ({
+      plan_slug: p.plan_slug,
+      display_name: p.display_name,
+      events_per_month: p.events_per_month,
+      max_ingest_keys: p.max_ingest_keys,
+      max_members: p.max_members,
+      checkout_ready: Boolean(p.stripe_price_id?.trim()),
+    }));
+  const contact_sales_plans = allPlans
+    .filter((p) => !p.self_serve && p.plan_slug !== "free" && p.plan_slug !== ctx.plan)
+    .map((p) => ({ plan_slug: p.plan_slug, display_name: p.display_name }));
+  // On by default. Set BILLING_CHECKOUT_ENABLED=0 only as an emergency kill switch.
+  // Upgrade buttons still require a Stripe price_id on the target plan (checkout_ready).
+  const checkoutKillSwitch =
+    process.env.BILLING_CHECKOUT_ENABLED === "0" ||
+    process.env.BILLING_CHECKOUT_ENABLED === "false";
+  const checkoutEnabled = !checkoutKillSwitch;
+  const orgBilling = stripeRow.rows[0];
+  const stripeCustomerId = orgBilling?.stripe_customer_id?.trim() || null;
   return {
     plan: ctx.plan,
     display_name: catalog.rows[0]?.display_name ?? ctx.plan,
     active: ctx.active,
-    usage: { events_this_month: events },
+    usage: {
+      events_this_month: events,
+      ingest_keys: Number(keysCount.rows[0]?.count ?? 0),
+      members: Number(membersCount.rows[0]?.count ?? 0),
+    },
     limits: ctx.limits,
     self_serve: catalog.rows[0]?.self_serve ?? false,
     billing_checkout_enabled: checkoutEnabled,
-    billing_portal_available: checkoutEnabled && Boolean(stripeCustomerId),
+    billing_portal_available: Boolean(stripeCustomerId),
+    billing_source: orgBilling?.billing_source ?? "none",
+    billing_status: orgBilling?.billing_status ?? "none",
+    current_period_start: orgBilling?.current_period_start?.toISOString() ?? null,
+    current_period_end: orgBilling?.current_period_end?.toISOString() ?? null,
+    upgrade_options,
+    contact_sales_plans,
   };
 }
 
@@ -378,6 +517,10 @@ export async function platformListOrganizations(
     created_at: Date;
     member_count: number;
     events_this_month: number;
+    billing_source: BillingSource;
+    billing_status: BillingStatus;
+    current_period_start: Date | null;
+    current_period_end: Date | null;
   }>
 > {
   const period = monthStart();
@@ -391,8 +534,13 @@ export async function platformListOrganizations(
     created_at: Date;
     member_count: string;
     events_this_month: string;
+    billing_source: BillingSource;
+    billing_status: BillingStatus;
+    current_period_start: Date | null;
+    current_period_end: Date | null;
   }>(
     `SELECT o.organization_id, o.name, o.slug, o.plan, o.active, o.created_at,
+            o.billing_source, o.billing_status, o.current_period_start, o.current_period_end,
             (SELECT COUNT(*)::text FROM membership m
              WHERE m.organization_id = o.organization_id AND m.status = 'active') AS member_count,
             COALESCE(u.event_count::text, '0') AS events_this_month
@@ -414,7 +562,114 @@ export async function platformListOrganizations(
     created_at: r.created_at,
     member_count: Number(r.member_count),
     events_this_month: Number(r.events_this_month),
+    billing_source: r.billing_source ?? "none",
+    billing_status: r.billing_status ?? "none",
+    current_period_start: r.current_period_start,
+    current_period_end: r.current_period_end,
   }));
+}
+
+export type PlatformOrganizationDetail = {
+  organization_id: string;
+  name: string;
+  slug: string;
+  plan: string;
+  active: boolean;
+  created_at: Date;
+  updated_at: Date;
+  billing_source: BillingSource;
+  billing_status: BillingStatus;
+  current_period_start: Date | null;
+  current_period_end: Date | null;
+  stripe_customer_id: string | null;
+  member_count: number;
+  events_this_month: number;
+  members: Array<{
+    membership_id: string;
+    account_id: string;
+    email: string;
+    display_name: string | null;
+    role: string;
+    status: string;
+    joined_at: string;
+  }>;
+};
+
+export async function platformGetOrganization(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+): Promise<PlatformOrganizationDetail | null> {
+  const period = monthStart();
+  const org = await client.query<{
+    organization_id: string;
+    name: string;
+    slug: string;
+    plan: string;
+    active: boolean;
+    created_at: Date;
+    updated_at: Date;
+    billing_source: BillingSource;
+    billing_status: BillingStatus;
+    current_period_start: Date | null;
+    current_period_end: Date | null;
+    stripe_customer_id: string | null;
+    member_count: string;
+    events_this_month: string;
+  }>(
+    `SELECT o.organization_id, o.name, o.slug, o.plan, o.active, o.created_at, o.updated_at,
+            o.billing_source, o.billing_status, o.current_period_start, o.current_period_end,
+            o.stripe_customer_id,
+            (SELECT COUNT(*)::text FROM membership m
+             WHERE m.organization_id = o.organization_id AND m.status = 'active') AS member_count,
+            COALESCE(u.event_count::text, '0') AS events_this_month
+     FROM organization o
+     LEFT JOIN organization_usage_monthly u
+       ON u.organization_id = o.organization_id AND u.period_month = $2::date
+     WHERE o.organization_id = $1`,
+    [organizationId, period],
+  );
+  const row = org.rows[0];
+  if (!row) return null;
+
+  const members = await client.query<{
+    membership_id: string;
+    account_id: string;
+    email: string;
+    display_name: string | null;
+    role: string;
+    status: string;
+    joined_at: Date;
+  }>(
+    `SELECT m.membership_id, m.account_id, a.email, a.display_name, m.role, m.status, m.joined_at
+     FROM membership m
+     JOIN account a ON a.account_id = m.account_id
+     WHERE m.organization_id = $1
+     ORDER BY
+       CASE m.role WHEN 'admin' THEN 0 WHEN 'developer' THEN 1 ELSE 2 END,
+       a.email`,
+    [organizationId],
+  );
+
+  return {
+    organization_id: row.organization_id,
+    name: row.name,
+    slug: row.slug,
+    plan: row.plan,
+    active: row.active,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    billing_source: row.billing_source ?? "none",
+    billing_status: row.billing_status ?? "none",
+    current_period_start: row.current_period_start,
+    current_period_end: row.current_period_end,
+    stripe_customer_id: row.stripe_customer_id,
+    member_count: Number(row.member_count),
+    events_this_month: Number(row.events_this_month),
+    members: members.rows.map((m) => ({
+      ...m,
+      joined_at: m.joined_at.toISOString(),
+    })),
+  };
 }
 
 export async function platformUpdateOrganization(
@@ -449,6 +704,384 @@ export async function platformUpdateOrganization(
     values,
   );
   return (result.rowCount ?? 0) > 0;
+}
+
+async function insertBillingEvent(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    eventType: BillingEventType;
+    planSlug?: string | null;
+    externalInvoiceRef?: string | null;
+    amountCents?: number | null;
+    currency?: string | null;
+    periodStart?: Date | null;
+    periodEnd?: Date | null;
+    note?: string | null;
+    actorAccountId?: string | null;
+  },
+): Promise<void> {
+  await client.query(
+    `INSERT INTO organization_billing_event (
+       organization_id, event_type, plan_slug, external_invoice_ref,
+       amount_cents, currency, period_start, period_end, note, actor_account_id
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [
+      input.organizationId,
+      input.eventType,
+      input.planSlug ?? null,
+      input.externalInvoiceRef ?? null,
+      input.amountCents ?? null,
+      input.currency ?? null,
+      input.periodStart ?? null,
+      input.periodEnd ?? null,
+      input.note ?? null,
+      input.actorAccountId ?? null,
+    ],
+  );
+}
+
+export async function listOrganizationBillingEvents(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  limit = 50,
+): Promise<OrganizationBillingEvent[]> {
+  const result = await client.query<OrganizationBillingEvent>(
+    `SELECT billing_event_id, organization_id, event_type, plan_slug,
+            external_invoice_ref, amount_cents, currency, period_start, period_end,
+            note, actor_account_id, created_at
+     FROM organization_billing_event
+     WHERE organization_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [organizationId, Math.min(Math.max(limit, 1), 200)],
+  );
+  return result.rows;
+}
+
+export type CustomerBillingHistoryItem = {
+  id: string;
+  title: string;
+  plan_slug: string | null;
+  invoice_ref: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  recorded_at: string;
+};
+
+const CUSTOMER_VISIBLE_EVENTS = new Set<BillingEventType>([
+  "quote_recorded",
+  "invoice_noted",
+  "payment_recorded",
+  "plan_activated",
+  "period_extended",
+  "plan_downgraded",
+]);
+
+function customerBillingTitle(eventType: BillingEventType): string {
+  switch (eventType) {
+    case "quote_recorded":
+      return "Quote recorded";
+    case "invoice_noted":
+      return "Invoice issued";
+    case "payment_recorded":
+      return "Payment confirmed";
+    case "plan_activated":
+      return "Plan activated";
+    case "period_extended":
+      return "Subscription renewed";
+    case "plan_downgraded":
+      return "Plan ended";
+    default:
+      return "Billing update";
+  }
+}
+
+/** Customer-facing billing history (no staff notes). */
+export async function listCustomerBillingHistory(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  limit = 50,
+): Promise<CustomerBillingHistoryItem[]> {
+  const events = await listOrganizationBillingEvents(client, organizationId, limit);
+  return events
+    .filter((e) => CUSTOMER_VISIBLE_EVENTS.has(e.event_type))
+    .map((e) => ({
+      id: e.billing_event_id,
+      title: customerBillingTitle(e.event_type),
+      plan_slug: e.plan_slug,
+      invoice_ref: e.external_invoice_ref,
+      period_start: e.period_start?.toISOString() ?? null,
+      period_end: e.period_end?.toISOString() ?? null,
+      recorded_at: e.created_at.toISOString(),
+    }));
+}
+
+/** Record external invoice/deal; does not change plan (stays Free until mark-paid). */
+export async function recordOrganizationBillingPending(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    planSlug?: string | null;
+    externalInvoiceRef?: string | null;
+    amountCents?: number | null;
+    currency?: string | null;
+    note?: string | null;
+    actorAccountId?: string | null;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const invoiceRef = input.externalInvoiceRef?.trim() || "";
+  if (!invoiceRef) {
+    return { ok: false, error: "Invoice number is required when recording a pending invoice" };
+  }
+
+  const result = await client.query(
+    `UPDATE organization
+     SET billing_source = 'manual',
+         billing_status = 'pending',
+         updated_at = now()
+     WHERE organization_id = $1`,
+    [input.organizationId],
+  );
+  if ((result.rowCount ?? 0) === 0) {
+    return { ok: false, error: "Not found" };
+  }
+
+  await insertBillingEvent(client, {
+    organizationId: input.organizationId,
+    eventType: "invoice_noted",
+    planSlug: input.planSlug ?? null,
+    externalInvoiceRef: invoiceRef,
+    amountCents: input.amountCents ?? null,
+    currency: input.currency?.trim().toUpperCase() || null,
+    note: input.note?.trim() || null,
+    actorAccountId: input.actorAccountId ?? null,
+  });
+  return { ok: true };
+}
+
+/** Activate paid plan only after payment clears. */
+export async function markOrganizationBillingPaid(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    planSlug: string;
+    periodStart: Date;
+    periodEnd: Date;
+    externalInvoiceRef?: string | null;
+    amountCents?: number | null;
+    currency?: string | null;
+    note?: string | null;
+    actorAccountId?: string | null;
+  },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const planSlug = input.planSlug.trim().toLowerCase();
+  if (!planSlug || planSlug === "free") {
+    return { ok: false, error: "plan_slug must be a paid plan" };
+  }
+  if (!(input.periodEnd.getTime() > input.periodStart.getTime())) {
+    return { ok: false, error: "period_end must be after period_start" };
+  }
+  const planOk = await client.query(
+    `SELECT 1 FROM plan_catalog WHERE plan_slug = $1 AND active`,
+    [planSlug],
+  );
+  if (!planOk.rows[0]) {
+    return { ok: false, error: "Invalid plan" };
+  }
+
+  const prev = await client.query<{ plan: string; billing_status: BillingStatus }>(
+    `SELECT plan, billing_status FROM organization WHERE organization_id = $1`,
+    [input.organizationId],
+  );
+  if (!prev.rows[0]) {
+    return { ok: false, error: "Not found" };
+  }
+
+  const result = await client.query(
+    `UPDATE organization
+     SET plan = $2,
+         billing_source = 'manual',
+         billing_status = 'active',
+         current_period_start = $3,
+         current_period_end = $4,
+         updated_at = now()
+     WHERE organization_id = $1`,
+    [input.organizationId, planSlug, input.periodStart, input.periodEnd],
+  );
+  if ((result.rowCount ?? 0) === 0) {
+    return { ok: false, error: "Not found" };
+  }
+
+  const isRenewal =
+    prev.rows[0].billing_status === "active" && prev.rows[0].plan === planSlug;
+
+  await insertBillingEvent(client, {
+    organizationId: input.organizationId,
+    eventType: "payment_recorded",
+    planSlug,
+    externalInvoiceRef: input.externalInvoiceRef?.trim() || null,
+    amountCents: input.amountCents ?? null,
+    currency: input.currency?.trim().toUpperCase() || null,
+    periodStart: input.periodStart,
+    periodEnd: input.periodEnd,
+    note: input.note?.trim() || null,
+    actorAccountId: input.actorAccountId ?? null,
+  });
+  await insertBillingEvent(client, {
+    organizationId: input.organizationId,
+    eventType: isRenewal ? "period_extended" : "plan_activated",
+    planSlug,
+    externalInvoiceRef: input.externalInvoiceRef?.trim() || null,
+    amountCents: input.amountCents ?? null,
+    currency: input.currency?.trim().toUpperCase() || null,
+    periodStart: input.periodStart,
+    periodEnd: input.periodEnd,
+    note: input.note?.trim() || null,
+    actorAccountId: input.actorAccountId ?? null,
+  });
+  return { ok: true };
+}
+
+/** End manual entitlement: Free + canceled or past_due. */
+export async function endOrganizationBilling(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    status?: "canceled" | "past_due";
+    note?: string | null;
+    actorAccountId?: string | null;
+  },
+): Promise<boolean> {
+  const status = input.status === "past_due" ? "past_due" : "canceled";
+  const prev = await client.query<{ plan: string }>(
+    `SELECT plan FROM organization WHERE organization_id = $1`,
+    [input.organizationId],
+  );
+  if (!prev.rows[0]) return false;
+
+  const result = await client.query(
+    `UPDATE organization
+     SET plan = 'free',
+         billing_status = $2,
+         current_period_start = NULL,
+         current_period_end = NULL,
+         updated_at = now()
+     WHERE organization_id = $1`,
+    [input.organizationId, status],
+  );
+  if ((result.rowCount ?? 0) === 0) return false;
+
+  await insertBillingEvent(client, {
+    organizationId: input.organizationId,
+    eventType: "plan_downgraded",
+    planSlug: "free",
+    note:
+      input.note?.trim() ||
+      `Ended ${prev.rows[0].plan} entitlement (${status})`,
+    actorAccountId: input.actorAccountId ?? null,
+  });
+  return true;
+}
+
+/** Shared entitlement writes for Stripe webhooks. */
+export async function applyStripeEntitlement(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    planSlug: string | null;
+    billingStatus: BillingStatus;
+    periodStart?: Date | null;
+    periodEnd?: Date | null;
+    stripeCustomerId?: string | null;
+    invoiceRef?: string | null;
+  },
+): Promise<void> {
+  const prev = await client.query<{
+    plan: string;
+    billing_status: BillingStatus;
+  }>(
+    `SELECT plan, billing_status FROM organization WHERE organization_id = $1`,
+    [input.organizationId],
+  );
+  if (!prev.rows[0]) return;
+
+  const fields: string[] = [
+    `billing_source = 'stripe'`,
+    `billing_status = $2`,
+    `updated_at = now()`,
+  ];
+  const values: unknown[] = [input.organizationId, input.billingStatus];
+  let i = 3;
+  if (input.planSlug) {
+    fields.push(`plan = $${i++}`);
+    values.push(input.planSlug);
+  }
+  if (input.periodStart !== undefined) {
+    fields.push(`current_period_start = $${i++}`);
+    values.push(input.periodStart);
+  }
+  if (input.periodEnd !== undefined) {
+    fields.push(`current_period_end = $${i++}`);
+    values.push(input.periodEnd);
+  }
+  if (input.stripeCustomerId) {
+    fields.push(`stripe_customer_id = $${i++}`);
+    values.push(input.stripeCustomerId);
+  }
+  await client.query(
+    `UPDATE organization SET ${fields.join(", ")} WHERE organization_id = $1`,
+    values,
+  );
+
+  const invoiceRef = input.invoiceRef?.trim() || null;
+  const prevRow = prev.rows[0];
+
+  if (
+    (input.billingStatus === "active" || input.billingStatus === "none") &&
+    input.planSlug &&
+    input.planSlug !== "free"
+  ) {
+    const isRenewal =
+      prevRow.billing_status === "active" && prevRow.plan === input.planSlug;
+    await insertBillingEvent(client, {
+      organizationId: input.organizationId,
+      eventType: "payment_recorded",
+      planSlug: input.planSlug,
+      externalInvoiceRef: invoiceRef,
+      periodStart: input.periodStart ?? null,
+      periodEnd: input.periodEnd ?? null,
+      note: "Stripe",
+    });
+    await insertBillingEvent(client, {
+      organizationId: input.organizationId,
+      eventType: isRenewal ? "period_extended" : "plan_activated",
+      planSlug: input.planSlug,
+      externalInvoiceRef: invoiceRef,
+      periodStart: input.periodStart ?? null,
+      periodEnd: input.periodEnd ?? null,
+      note: "Stripe",
+    });
+  } else if (
+    input.billingStatus === "canceled" ||
+    input.billingStatus === "past_due" ||
+    input.planSlug === "free"
+  ) {
+    if (prevRow.plan !== "free" || prevRow.billing_status === "active") {
+      await insertBillingEvent(client, {
+        organizationId: input.organizationId,
+        eventType: "plan_downgraded",
+        planSlug: "free",
+        externalInvoiceRef: invoiceRef,
+        periodStart: input.periodStart ?? null,
+        periodEnd: input.periodEnd ?? null,
+        note:
+          input.billingStatus === "past_due"
+            ? "Stripe past due"
+            : "Stripe subscription ended",
+      });
+    }
+  }
 }
 
 export type PlatformAccountMembership = {
@@ -503,16 +1136,24 @@ async function loadMembershipsForAccounts(
 
 export async function platformListAccountsPaginated(
   client: pg.Pool | pg.PoolClient,
-  opts: { query?: string; limit?: number; offset?: number },
+  opts: {
+    query?: string;
+    limit?: number;
+    offset?: number;
+    /** When true, only accounts with a non-null platform_role. */
+    staffOnly?: boolean;
+  },
 ): Promise<{ accounts: PlatformAccountRow[]; total: number; limit: number; offset: number }> {
   const limit = Math.min(Math.max(opts.limit ?? 25, 1), 100);
   const offset = Math.max(opts.offset ?? 0, 0);
   const q = opts.query?.trim().toLowerCase() || null;
+  const staffOnly = opts.staffOnly === true;
 
   const countResult = await client.query<{ count: string }>(
     `SELECT COUNT(*)::text AS count FROM account
-     WHERE ($1::text IS NULL OR lower(email) LIKE '%' || $1 || '%')`,
-    [q],
+     WHERE ($1::text IS NULL OR lower(email) LIKE '%' || $1 || '%')
+       AND ($2::boolean = false OR platform_role IS NOT NULL)`,
+    [q, staffOnly],
   );
   const total = Number(countResult.rows[0]?.count ?? 0);
 
@@ -528,9 +1169,17 @@ export async function platformListAccountsPaginated(
     `SELECT account_id, email, display_name, active, platform_role, created_at, updated_at
      FROM account
      WHERE ($1::text IS NULL OR lower(email) LIKE '%' || $1 || '%')
-     ORDER BY created_at DESC
+       AND ($4::boolean = false OR platform_role IS NOT NULL)
+     ORDER BY
+       CASE platform_role
+         WHEN 'superadmin' THEN 0
+         WHEN 'admin' THEN 1
+         WHEN 'staff' THEN 2
+         ELSE 3
+       END,
+       created_at DESC
      LIMIT $2 OFFSET $3`,
-    [q, limit, offset],
+    [q, limit, offset, staffOnly],
   );
 
   const memMap = await loadMembershipsForAccounts(
@@ -578,6 +1227,8 @@ export async function platformOverviewStats(client: pg.Pool | pg.PoolClient): Pr
   accounts_total: number;
   accounts_active: number;
   events_this_month: number;
+  worker_runs_24h: number;
+  worker_errors_24h: number;
 }> {
   const period = monthStart();
   const result = await client.query<{
@@ -586,6 +1237,8 @@ export async function platformOverviewStats(client: pg.Pool | pg.PoolClient): Pr
     accounts_total: string;
     accounts_active: string;
     events_this_month: string;
+    worker_runs_24h: string;
+    worker_errors_24h: string;
   }>(
     `SELECT
        (SELECT COUNT(*)::text FROM organization) AS organizations_total,
@@ -593,7 +1246,11 @@ export async function platformOverviewStats(client: pg.Pool | pg.PoolClient): Pr
        (SELECT COUNT(*)::text FROM account) AS accounts_total,
        (SELECT COUNT(*)::text FROM account WHERE active) AS accounts_active,
        (SELECT COALESCE(SUM(event_count), 0)::text FROM organization_usage_monthly
-        WHERE period_month = $1::date) AS events_this_month`,
+        WHERE period_month = $1::date) AS events_this_month,
+       (SELECT COUNT(*)::text FROM worker_run
+        WHERE started_at > now() - interval '24 hours') AS worker_runs_24h,
+       (SELECT COUNT(*)::text FROM worker_run
+        WHERE status = 'error' AND started_at > now() - interval '24 hours') AS worker_errors_24h`,
     [period],
   );
   const row = result.rows[0];
@@ -603,6 +1260,8 @@ export async function platformOverviewStats(client: pg.Pool | pg.PoolClient): Pr
     accounts_total: Number(row?.accounts_total ?? 0),
     accounts_active: Number(row?.accounts_active ?? 0),
     events_this_month: Number(row?.events_this_month ?? 0),
+    worker_runs_24h: Number(row?.worker_runs_24h ?? 0),
+    worker_errors_24h: Number(row?.worker_errors_24h ?? 0),
   };
 }
 

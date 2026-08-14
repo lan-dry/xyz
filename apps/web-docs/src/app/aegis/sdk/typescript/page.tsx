@@ -22,22 +22,22 @@ export default function SdkTypescriptPage() {
       <h2>Exports</h2>
       <ul>
         <li>
-          <code>signAndIngest(event, signOptions, ingestOptions)</code> — sign with Ed25519 and POST
+          <code>signAndIngest(event, signOptions, ingestOptions)</code>: sign with Ed25519 and POST
           to ingest
         </li>
         <li>
-          <code>wrapFetch(url, init, config)</code> — evaluate policy, ingest decision, then run
+          <code>wrapFetch(url, init, config)</code>: evaluate policy, ingest decision, then run
           fetch or throw
         </li>
         <li>
-          <code>wrapFetchResume(approvalId, url, init, config)</code> — continue after human
+          <code>wrapFetchResume(approvalId, url, init, config)</code>: continue after human
           approval
         </li>
         <li>
-          <code>verifyEventSignature(event, publicKeyB64)</code> — local signature check
+          <code>verifyEventSignature(event, publicKeyB64)</code>: local signature check
         </li>
         <li>
-          <code>buildGovernanceInsights(events)</code> — derive audit narrative from event payloads
+          <code>buildGovernanceInsights(events)</code>: derive audit narrative from event payloads
         </li>
       </ul>
 
@@ -94,7 +94,7 @@ try {
   );
 } catch (e) {
   if (e instanceof PolicyDeniedError) {
-    // Policy blocked — no HTTP call was made
+    // Policy blocked: no HTTP call was made
   }
 }`}
       />
@@ -111,7 +111,7 @@ try {
           console policy rules.
         </li>
         <li>
-          On <code>allow_with_obligation</code>, SDK throws <code>ApprovalRequiredError</code> — poll
+          On <code>allow_with_obligation</code>, SDK throws <code>ApprovalRequiredError</code>: poll
           approval API or use console.
         </li>
       </ol>

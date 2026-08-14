@@ -1,4 +1,4 @@
-/** @deprecated Import from `@/lib/public-hosts` — re-exports for backward compatibility. */
+/** @deprecated Import from `@/lib/public-hosts`: re-exports for backward compatibility. */
 export {
   getAegisDocsPublicHost,
   getAegisPublicHost,

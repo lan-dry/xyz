@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { ErrorAlert, LoadingBlock, ui } from "@/components/console/console-ui";
+import { PasswordField } from "@/components/auth/password-field";
 import { idApi } from "@/lib/id-api";
 import { formatRelativeTime } from "@/lib/relative-time";
 
@@ -112,8 +113,8 @@ export default function SecuritySettingsPage() {
                         </span>
                       )}
                     </td>
-                    <td className="mono">{e.ip_address ?? "—"}</td>
-                    <td>{e.device ?? "—"}</td>
+                    <td className="mono">{e.ip_address ?? "-"}</td>
+                    <td>{e.device ?? "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -137,54 +138,49 @@ export default function SecuritySettingsPage() {
             changePassword.mutate();
           }}
         >
-          <label className={ui.field}>
-            <span>Current password</span>
-            <input
-              className={ui.input}
-              type="password"
+          <div className={`${settings.formFields} ${settings.formFieldsThree}`}>
+            <PasswordField
+              label="Current password"
+              fieldClassName={ui.field}
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
               required
               autoComplete="current-password"
             />
-          </label>
-          <label className={ui.field}>
-            <span>New password</span>
-            <input
-              className={ui.input}
-              type="password"
+            <PasswordField
+              label="New password"
+              fieldClassName={ui.field}
               value={next}
               onChange={(e) => setNext(e.target.value)}
               required
               minLength={10}
               autoComplete="new-password"
             />
-          </label>
-          <label className={ui.field}>
-            <span>Confirm new password</span>
-            <input
-              className={ui.input}
-              type="password"
+            <PasswordField
+              label="Confirm new password"
+              fieldClassName={ui.field}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
               minLength={10}
               autoComplete="new-password"
             />
-          </label>
+          </div>
           {changePassword.isError ? (
             <ErrorAlert message={(changePassword.error as Error).message} />
           ) : null}
           {message && changePassword.isSuccess ? (
             <p className={ui.muted}>{message}</p>
           ) : null}
-          <button
-            type="submit"
-            className={`${ui.btn} ${ui.btnPrimary}`}
-            disabled={changePassword.isPending}
-          >
-            {changePassword.isPending ? "Updating…" : "Update password"}
-          </button>
+          <div className={settings.formActions}>
+            <button
+              type="submit"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              disabled={changePassword.isPending}
+            >
+              {changePassword.isPending ? "Updating…" : "Update password"}
+            </button>
+          </div>
         </form>
       </section>
     </>

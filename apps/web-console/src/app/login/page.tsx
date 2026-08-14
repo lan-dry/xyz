@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { PasswordField } from "@/components/auth/password-field";
 import { PlatformAuthAside } from "@/components/auth/platform-auth-aside";
 import { IdApiError, idApi } from "../../lib/id-api";
 import type { MeResponse } from "../../lib/types";
@@ -40,7 +41,7 @@ function PlatformLoginForm() {
   const emailParam = searchParams.get("email");
   const oauthError = searchParams.get("oauth_error");
 
-  const [email, setEmail] = useState(emailParam ?? "dev@salanor.local");
+  const [email, setEmail] = useState(emailParam ?? "");
   const [password, setPassword] = useState("");
   const [ssoOrg, setSsoOrg] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -137,7 +138,7 @@ function PlatformLoginForm() {
     <div className={styles.shell}>
       <PlatformAuthAside
         title="Console for Aegis operators"
-        description="Review signed events, manage policies, approve obligations, and export compliance bundles — one identity across Salanor products."
+        description="Review signed events, manage policies, approve obligations, and export compliance bundles. One identity across Salanor products."
       />
 
       <div className={styles.formPanel}>
@@ -181,17 +182,14 @@ function PlatformLoginForm() {
                 autoComplete="email"
               />
             </label>
-            <label className={styles.field}>
-              <span>Password</span>
-              <input
-                className={styles.input}
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </label>
+            <PasswordField
+              label="Password"
+              fieldClassName={styles.field}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
             {error ? <p className={styles.error}>{error}</p> : null}
             <p className={styles.forgotRow}>
               <Link href="/forgot-password">Forgot password?</Link>
@@ -230,7 +228,7 @@ function PlatformLoginForm() {
               </>
             ) : (
               <>
-                No public registration yet — console accounts are provisioned after design partner
+                No public registration yet. Console accounts are provisioned after design partner
                 onboarding.{" "}
                 <a href={`${MARKETING_URL}/contact`}>Request access</a>
               </>

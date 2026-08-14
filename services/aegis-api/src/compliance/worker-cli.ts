@@ -1,10 +1,11 @@
 /**
- * Process pending compliance_export jobs (local file storage).
+ * Process pending compliance_export jobs and due schedules (run via Railway cron daily).
  */
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import "../db/load-env.js";
 import { getPool } from "../db/pool.js";
+import { recordWorkerRunResult } from "../workers/record-run.js";
 import { processPendingComplianceExports } from "./worker.js";
 import { runDueComplianceSchedules } from "./schedule-runner.js";
 
@@ -29,12 +30,36 @@ loadEnvFile();
 
 const organizationId = process.env.DEMO_ORGANIZATION_ID;
 const pool = getPool();
-const scheduled = await runDueComplianceSchedules(pool);
-const processed = await processPendingComplianceExports(
-  pool,
-  organizationId ?? undefined,
-);
-console.log(
-  JSON.stringify({ ok: true, scheduled: scheduled.length, processed, scheduled_results: scheduled }, null, 2),
-);
-await pool.end();
+const startedAt = new Date();
+
+try {
+  const scheduled = await runDueComplianceSchedules(pool);
+  const processed = await processPendingComplianceExports(
+    pool,
+    organizationId ?? undefined,
+  );
+  const summary = {
+    scheduled_count: scheduled.length,
+    processed_exports: processed,
+    scheduled_results: scheduled,
+  };
+  await recordWorkerRunResult(pool, {
+    workerName: "compliance",
+    status: scheduled.length > 0 || processed > 0 ? "ok" : "skipped",
+    startedAt,
+    summary,
+  });
+  console.log(JSON.stringify({ ok: true, ...summary }, null, 2));
+} catch (err) {
+  const message = err instanceof Error ? err.message : String(err);
+  await recordWorkerRunResult(pool, {
+    workerName: "compliance",
+    status: "error",
+    startedAt,
+    summary: {},
+    errorMessage: message,
+  });
+  throw err;
+} finally {
+  await pool.end();
+}

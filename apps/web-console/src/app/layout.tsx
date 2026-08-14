@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     default: "Salanor Console",
     template: "%s · Salanor Console",
   },
-  description: "Aegis operator console — traces, approvals, policies, compliance exports",
+  description: "Aegis operator console: traces, approvals, policies, compliance exports",
 };
 
 export default function RootLayout({

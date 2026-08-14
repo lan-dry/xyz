@@ -18,7 +18,7 @@ export default function SdkOverviewPage() {
         <strong>Pilot / MVP:</strong> TypeScript is the full-featured SDK (ingest + policy proxy +
         approvals). Python ships <strong>record helpers + policy enforce</strong>; Go ships sign +
         ingest. Rust and Java are on the
-        blueprint roadmap — use HTTP until then.
+        blueprint roadmap: use HTTP until then.
       </div>
 
       <h2>Language matrix</h2>
@@ -80,8 +80,8 @@ export default function SdkOverviewPage() {
             <td>
               <code>salanor-aegis</code> (planned)
             </td>
-            <td>—</td>
-            <td>—</td>
+            <td>-</td>
+            <td>-</td>
             <td>Roadmap</td>
           </tr>
           <tr>
@@ -89,8 +89,8 @@ export default function SdkOverviewPage() {
             <td>
               <code>com.salanor:aegis</code> (planned)
             </td>
-            <td>—</td>
-            <td>—</td>
+            <td>-</td>
+            <td>-</td>
             <td>Roadmap</td>
           </tr>
         </tbody>
@@ -100,14 +100,14 @@ export default function SdkOverviewPage() {
       <h2>Environment variables (all languages)</h2>
       <ul>
         <li>
-          <code>AEGIS_API_URL</code> — API base, e.g. <code>{DOCS.apiBaseUrl}</code>
+          <code>AEGIS_API_URL</code>: API base, e.g. <code>{DOCS.apiBaseUrl}</code>
         </li>
         <li>
-          <code>AEGIS_INGEST_API_KEY</code> — from console → API keys
+          <code>AEGIS_INGEST_API_KEY</code>: from console → API keys
         </li>
         <li>
           <code>ORGANIZATION_ID</code>, <code>AGENT_ID</code>, <code>KEY_ID</code>,{" "}
-          <code>SIGNING_PRIVATE_KEY_B64</code> — from console → Agents
+          <code>SIGNING_PRIVATE_KEY_B64</code>: from console → Agents
         </li>
       </ul>
 

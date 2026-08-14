@@ -38,9 +38,12 @@ export type EventRowForVerify = {
 };
 
 export type VerifyEventResult = {
+  /** True only when chain and inclusion are both verified. Prefer `status` in UI. */
   ok: boolean;
+  status: "valid" | "pending_inclusion" | "invalid";
   chain_ok: boolean;
   inclusion_ok: boolean;
+  inclusion_status: "ok" | "pending" | "fail";
   signature_ok: boolean;
   hash_ok: boolean;
   prev_ok: boolean;
@@ -136,23 +139,40 @@ export async function verifyEventFull(
   );
 
   let inclusion_ok = false;
+  let inclusion_status: "ok" | "pending" | "fail" = "pending";
   if (proof) {
     inclusion_ok = verifyMerkleProof(
       row.event_hash,
       proof.root_hash,
       proof.merkle_path,
     );
-    if (!inclusion_ok) errors.push("inclusion_proof_invalid");
+    if (!inclusion_ok) {
+      errors.push("inclusion_proof_invalid");
+      inclusion_status = "fail";
+    } else {
+      inclusion_status = "ok";
+    }
   } else {
-    errors.push("no_inclusion_proof");
+    // Batch witness job has not run yet — not tampering.
+    inclusion_status = "pending";
   }
 
-  const ok = chain_ok && inclusion_ok;
+  const fully_verified = chain_ok && inclusion_ok;
+  const status: "valid" | "pending_inclusion" | "invalid" = !chain_ok
+    ? "invalid"
+    : inclusion_ok
+      ? "valid"
+      : inclusion_status === "fail"
+        ? "invalid"
+        : "pending_inclusion";
 
   return {
-    ok,
+    /** Fully verified (chain + inclusion). Prefer `status` for UI. */
+    ok: fully_verified,
+    status,
     chain_ok,
     inclusion_ok,
+    inclusion_status,
     signature_ok,
     hash_ok,
     prev_ok,

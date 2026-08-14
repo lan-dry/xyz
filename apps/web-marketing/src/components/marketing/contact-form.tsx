@@ -59,6 +59,7 @@ export function ContactForm() {
         if (organization.trim()) payload.organization = organization.trim();
         if (senderRole.trim()) payload.role = senderRole.trim();
 
+        // Runtime proxy (do not rely on next.config rewrite alone — ID path must exist).
         const res = await fetch("/api/contact", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -69,7 +70,7 @@ export function ContactForm() {
 
         if (res.status === 201 && data.id) {
           setStatus("success");
-          setFeedback("Thank you — we received your message and will respond within two business days.");
+          setFeedback("Thank you. We received your message and will respond within two business days.");
           setName("");
           setEmail("");
           setOrganization("");

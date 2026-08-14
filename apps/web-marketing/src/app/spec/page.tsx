@@ -10,7 +10,7 @@ import styles from "./spec.module.css";
 export const metadata: Metadata = {
   title: "Open specifications",
   description:
-    "APS-1 (Agent Provenance Standard) and did:agent — Salanor open specifications for verifiable agent actions.",
+    "APS-1 (Agent Provenance Standard) and did:agent: Salanor open specifications for verifiable agent actions.",
 };
 
 export default function SpecPage() {
@@ -33,19 +33,19 @@ export default function SpecPage() {
         </p>
         <ul className={styles.list}>
           <li>
-            <strong>Wire format</strong> — stable field names (<code>schema_version</code>,{" "}
+            <strong>Wire format:</strong> stable field names (<code>schema_version</code>,{" "}
             <code>trace_id</code>, <code>action_kind</code>, …) independent of product branding.
           </li>
           <li>
-            <strong>Signing</strong> — digest over canonical JSON; <code>sig_alg</code> +{" "}
+            <strong>Signing:</strong> digest over canonical JSON; <code>sig_alg</code> +{" "}
             <code>sig_value_b64</code> on the event.
           </li>
           <li>
-            <strong>Policy surface</strong> — <code>policy_decision</code> and optional{" "}
+            <strong>Policy surface:</strong> <code>policy_decision</code> and optional{" "}
             <code>policy_id</code> for allow / deny / obligation semantics.
           </li>
           <li>
-            <strong>Interop</strong> — TypeScript reference SDK, JSON Schema, and conformance
+            <strong>Interop:</strong> TypeScript reference SDK, JSON Schema, and conformance
             vectors; publishable as a standalone open-source package.
           </li>
         </ul>
@@ -75,14 +75,14 @@ export default function SpecPage() {
         </p>
         <ul className={styles.list}>
           <li>
-            <strong>Format</strong> — <code>did:agent:&lt;org&gt;:&lt;agent-slug&gt;</code>
+            <strong>Format:</strong> <code>did:agent:&lt;org&gt;:&lt;agent-slug&gt;</code>
           </li>
           <li>
-            <strong>Binding</strong> — APS-1 events reference <code>agent_id</code> and{" "}
+            <strong>Binding:</strong> APS-1 events reference <code>agent_id</code> and{" "}
             <code>key_id</code> tied to the DID document.
           </li>
           <li>
-            <strong>Rotation</strong> — new Ed25519 keys without changing the logical agent DID.
+            <strong>Rotation:</strong> new Ed25519 keys without changing the logical agent DID.
           </li>
         </ul>
         <div className={styles.actions}>

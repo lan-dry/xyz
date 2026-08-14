@@ -56,21 +56,50 @@ export default function SecurityPage() {
         <LegalSection title="What we protect">
           <ul>
             <li>
-              <strong>Integrity of APS-1 events</strong> — Ed25519 signatures, per-agent hash chains,
-              and optional Merkle transparency proofs
+              <strong>Integrity of APS-1 events:</strong> Ed25519 signatures, per-agent hash chains,
+              and Merkle transparency proofs (60s witness worker)
             </li>
             <li>
-              <strong>Tenant isolation</strong> — organization-scoped data paths in API and console
+              <strong>BYOK signing:</strong> Customer registers public keys; private keys stay in
+              your KMS, HSM, or agent runtime. Optional AWS/GCP KMS Sign for server-side paths.
             </li>
             <li>
-              <strong>Authentication</strong> — password hashing, session cookies, OAuth and
+              <strong>Tenant isolation:</strong> organization-scoped data paths in API and console
+            </li>
+            <li>
+              <strong>Authentication:</strong> password hashing, session cookies, OAuth and
               enterprise SSO where enabled
             </li>
             <li>
-              <strong>Operational access</strong> — Platform Ops actions audited; production access
+              <strong>Operational access:</strong> Platform Ops actions audited; production access
               on a least-privilege basis
             </li>
+            <li>
+              <strong>SIEM forwarding:</strong> OTLP log export to Splunk, Datadog, Microsoft Sentinel
+            </li>
           </ul>
+        </LegalSection>
+
+        <LegalSection title="Architecture summary (whitepaper)">
+          <p>
+            <strong>Data flow:</strong> Agent or workflow bridge signs APS-1 events client-side (BYOK).
+            API verifies signature against registered public key, persists hash-chained rows, evaluates
+            policy, and optionally notifies approvers. Witness worker batches Merkle roots every 60
+            seconds. Compliance exports package events + control mapping + witness proofs as ZIP.
+          </p>
+          <p>
+            <strong>What Salanor cannot do:</strong> For customer-held BYOK keys, we cannot forge
+            events or rewrite history without your private key. We can deny ingest for invalid
+            signatures or policy violations.
+          </p>
+          <p>
+            <strong>Subprocessors:</strong> Hosting (Railway, Vercel), Postgres (Neon), email
+            (Postmark/Resend). See privacy policy for current list.
+          </p>
+          <p>
+            <Link href="/trust">Live platform status matrix</Link> ·{" "}
+            <Link href="/legal/fedramp">FedRAMP path</Link>
+          </p>
         </LegalSection>
 
         <LegalSection title="Out of scope">

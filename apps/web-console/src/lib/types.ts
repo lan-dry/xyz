@@ -19,7 +19,7 @@ export type ConsoleAccount = {
   account_id: string;
   email: string;
   display_name: string | null;
-  /** Salanor employee — may open Platform Ops app (ops.salanor.com). */
+  /** Salanor employee: may open Platform Ops app (ops.salanor.com). */
   platform_role?: PlatformRole | null;
   /** @deprecated use platform_role != null */
   platform_staff?: boolean;
@@ -79,6 +79,7 @@ export type AgentSigningKeySummary = {
   public_key_b64: string;
   kms_provider: string | null;
   revoked: boolean;
+  bridge_enabled?: boolean;
   valid_from: string;
   created_at: string;
 };
@@ -90,6 +91,8 @@ export type AgentSummary = {
   did: string;
   active: boolean;
   created_at: string;
+  /** True when a non-revoked Workflow Bridge signing key exists for this agent. */
+  workflow_bridge_enabled?: boolean;
   signing_keys: AgentSigningKeySummary[];
 };
 
@@ -110,6 +113,7 @@ export type TraceSummary = {
   ended_at: string | null;
   total_events: number;
   denied_events: number;
+  pending_approval?: boolean;
   root_event_id?: string | null;
   root_event_hash?: string | null;
   chain_root_hash?: string;

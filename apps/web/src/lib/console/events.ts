@@ -32,7 +32,7 @@ export function orgEventsQueryArgs(organizationId: string, limit: number) {
   };
 }
 
-/** Tenant-scoped event listing — always filters by organizationId. */
+/** Tenant-scoped event listing: always filters by organizationId. */
 export async function listOrgEvents(
   organizationId: string,
   limit = 50,
@@ -46,7 +46,7 @@ export async function listOrgEvents(
   }));
 }
 
-/** Cross-tenant guard for API routes — returns null when user cannot access org. */
+/** Cross-tenant guard for API routes: returns null when user cannot access org. */
 export async function assertOrgMembershipForUser(
   identityLinkId: string,
   organizationId: string,

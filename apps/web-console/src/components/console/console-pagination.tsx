@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  TRACE_PAGE_SIZES,
-  type TracePageSize,
-} from "@/hooks/use-trace-list-params";
+import { TRACE_PAGE_SIZES } from "@/hooks/use-trace-list-params";
 import { ui } from "@/components/console/console-ui";
 
 function pageItems(current: number, pageCount: number): Array<number | "…"> {

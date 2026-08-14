@@ -1,0 +1,188 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  margin: 2rem 0 2.5rem;
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.cardHighlight {
+  border-color: var(--border-bright);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--teal) 25%, transparent);
+}
+
+.cardHead {
+  margin-bottom: 1rem;
+}
+
+.planName {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.tagline {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: 1rem 0 0.25rem;
+}
+
+.price {
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.priceDetail {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+
+.billingNote {
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+}
+
+.limits {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.limits strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.includes {
+  flex: 1;
+  margin: 0 0 1.25rem;
+  padding-left: 1.1rem;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+.includes li {
+  margin-bottom: 0.35rem;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid var(--border-bright);
+  background: transparent;
+  color: var(--text);
+  transition: background 0.15s ease;
+}
+
+.cta:hover {
+  background: var(--surface2);
+}
+
+.ctaPrimary {
+  background: var(--teal-dim);
+  border-color: var(--teal);
+  color: var(--text);
+}
+
+.ctaPrimary:hover {
+  background: var(--teal);
+}
+
+.compareWrap {
+  overflow-x: auto;
+  margin: 2rem 0;
+}
+
+.compare {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.compare th,
+.compare td {
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.compare th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.check {
+  color: var(--teal-bright);
+}
+
+.faq {
+  margin-top: 2.5rem;
+}
+
+.faq h2 {
+  font-size: 1.25rem;
+  margin: 0 0 1rem;
+}
+
+.faqItem {
+  margin-bottom: 1.25rem;
+}
+
+.faqItem h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.faqItem p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.note {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+}

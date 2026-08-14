@@ -2,8 +2,8 @@
   --console-bg: #f4f6f5;
   --console-surface: #ffffff;
   --console-surface-hover: #f0f4f3;
-  --console-border: #e2e8e6;
-  --console-border-strong: #c5d4d0;
+  --console-border: #cfd8d4;
+  --console-border-strong: #8a9b96;
   --console-fg: #0a0c0b;
   --console-fg-muted: #5c6e6a;
   --console-fg-subtle: #7a8c88;
@@ -20,7 +20,7 @@
   --console-radius-lg: 12px;
   --console-sidebar-w: 15rem;
   --console-sidebar-collapsed: 4rem;
-  /* Sidebar nav — match Resend row height (~36px) and looser vertical rhythm */
+  /* Sidebar nav: match Resend row height (~36px) and looser vertical rhythm */
   --console-nav-font-size: 0.875rem;
   --console-nav-line-height: 1.25rem;
   --console-nav-gap: 4px;
@@ -49,7 +49,7 @@
   font-size: 0.8125rem;
 }
 
-/* Dark theme — aligned with marketing (#0a0c0b / teal) */
+/* Dark theme: aligned with marketing (#0a0c0b / teal) */
 html.dark [data-console-shell] {
   --console-bg: #0a0c0b;
   --console-surface: #141917;

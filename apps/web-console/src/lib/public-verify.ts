@@ -1,4 +1,4 @@
-/** Public verifier page — shareable without console login. */
+/** Public verifier page: shareable without console login. */
 export function publicVerifyBaseUrl(): string {
   if (typeof window !== "undefined") {
     return window.location.origin;

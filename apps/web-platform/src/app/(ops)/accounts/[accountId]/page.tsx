@@ -217,7 +217,7 @@ export default function AccountProfilePage() {
           <section className={card.settingCard}>
             <h2>Organization memberships</h2>
             <p style={{ margin: "0 0 1rem", fontSize: "0.8125rem", color: "var(--console-fg-muted)" }}>
-              Separate from platform role — a user can be platform staff and org admin in different
+              Separate from platform role: a user can be platform staff and org admin in different
               contexts. One platform role per account; one org role per membership.
             </p>
             {account.memberships.length === 0 ? (

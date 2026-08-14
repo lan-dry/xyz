@@ -21,8 +21,8 @@ export default function TermsPage() {
     >
       <LegalProse>
         <LegalMeta>
-          <strong>Effective date:</strong> 1 June 2026 · <strong>Entity:</strong> Salanor Systems,
-          Inc. · <strong>Contact:</strong>{" "}
+          <strong>Effective date:</strong> 1 June 2026 · <strong>Entity:</strong> Salanor Ltd ·{" "}
+          <strong>Contact:</strong>{" "}
           <a href="mailto:hello@salanor.com">hello@salanor.com</a>
         </LegalMeta>
 

@@ -71,11 +71,13 @@ export default function IntegrationsSettingsPage() {
     <section className={settings.settingCard}>
       <h2>
         <Radio size={18} style={{ verticalAlign: "-3px", marginRight: "0.35rem" }} />
-        SIEM forwarding (OTel)
+        SIEM forwarding
       </h2>
       <p>
-        Each ingested APS event is forwarded as OTLP logs to active destinations. Use your vendor’s
-        OTLP HTTP intake URL (we append <code>/v1/logs</code> when needed).
+        Send Aegis events into your security tools (Datadog, Splunk, Microsoft Sentinel) via
+        OpenTelemetry (OTel). Your SOC can alert on denies and audit agent actions alongside the
+        rest of your stack. Use your vendor’s OTLP HTTP intake URL (we append{" "}
+        <code>/v1/logs</code> when needed).
       </p>
 
       {listQuery.error ? (
@@ -84,48 +86,51 @@ export default function IntegrationsSettingsPage() {
 
       <form
         className={settings.settingsForm}
-        style={{ maxWidth: "28rem" }}
         onSubmit={(e) => {
           e.preventDefault();
           createDest.mutate();
         }}
       >
-        <label className={ui.field}>
-          Provider
-          <select
-            className={ui.select}
-            value={provider}
-            onChange={(e) =>
-              setProvider(e.target.value as (typeof PROVIDERS)[number]["value"])
-            }
-          >
-            {PROVIDERS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className={ui.field}>
-          OTLP endpoint
-          <input
-            className={ui.input}
-            placeholder="https://http-intake.logs.datadoghq.com"
-            value={endpoint}
-            onChange={(e) => setEndpoint(e.target.value)}
-            required
-          />
-        </label>
+        <div className={settings.formFields}>
+          <label className={ui.field}>
+            Provider
+            <select
+              className={ui.select}
+              value={provider}
+              onChange={(e) =>
+                setProvider(e.target.value as (typeof PROVIDERS)[number]["value"])
+              }
+            >
+              {PROVIDERS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={ui.field}>
+            OTLP endpoint
+            <input
+              className={ui.input}
+              placeholder="https://http-intake.logs.datadoghq.com"
+              value={endpoint}
+              onChange={(e) => setEndpoint(e.target.value)}
+              required
+            />
+          </label>
+        </div>
         {createDest.error ? (
           <ErrorAlert message={(createDest.error as Error).message} />
         ) : null}
-        <button
-          type="submit"
-          className={`${ui.btn} ${ui.btnPrimary}`}
-          disabled={createDest.isPending || !endpoint.trim()}
-        >
-          {createDest.isPending ? "Adding…" : "Add destination"}
-        </button>
+        <div className={settings.formActions}>
+          <button
+            type="submit"
+            className={`${ui.btn} ${ui.btnPrimary}`}
+            disabled={createDest.isPending || !endpoint.trim()}
+          >
+            {createDest.isPending ? "Adding…" : "Add destination"}
+          </button>
+        </div>
       </form>
 
       <h3 style={{ margin: "1.5rem 0 0.75rem", fontSize: "0.9375rem", fontWeight: 600 }}>
@@ -163,13 +168,13 @@ export default function IntegrationsSettingsPage() {
                     className="mono"
                     style={{ fontSize: "0.75rem", maxWidth: "14rem", wordBreak: "break-all" }}
                   >
-                    {d.otel_endpoint ?? "—"}
+                    {d.otel_endpoint ?? "-"}
                   </td>
                   <td>{d.status}</td>
                   <td style={{ fontSize: "0.8125rem", whiteSpace: "nowrap" }}>
                     {d.last_flushed_at
                       ? new Date(d.last_flushed_at).toLocaleString()
-                      : "—"}
+                      : "-"}
                   </td>
                   <td>
                     <button
