@@ -1,6 +1,6 @@
 # Go-live checklist (prospecting)
 
-See also: `PRODUCTION_READY.md` (Tier 1–3), `BILLING_AND_PLANS.md`, `RAILWAY_AEGIS_DEPLOY.md`, `SOC2_READINESS.md`, `ROADMAP.md`.
+See also: `PRODUCTION_READY.md` (Tier 1–3), `BILLING_AND_PLANS.md`, `RAILWAY_AEGIS_DEPLOY.md`, `COMPLIANCE_AND_ROADMAP.md`.
 
 ## Product demo path
 

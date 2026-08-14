@@ -92,6 +92,5 @@ Keep deck and LinkedIn aligned with `/trust` status badges.
 
 ## Further reading
 
-- `docs/ROADMAP.md` — live vs in-product vs external programs
-- `docs/SOC2_READINESS.md` — auditor checklist mapped to Aegis exports
+- `docs/COMPLIANCE_AND_ROADMAP.md` — live vs roadmap, SOC 2 readiness, FedRAMP, Stripe
 - `docs/BILLING_AND_PLANS.md` — tiers, invoice billing, non-Stripe regions
