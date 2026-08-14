@@ -403,6 +403,27 @@ return [{
   };
 }
 
+/** Production trigger for error-workflow testing (Manual Trigger does not count as production). */
+function addProductionWebhookTrigger(wf) {
+  wf.nodes.push({
+    parameters: {
+      httpMethod: "POST",
+      path: "jmts-content-sync-run",
+      responseMode: "onReceived",
+      options: {},
+    },
+    id: "sync-gov-webhook",
+    name: "Webhook (production run)",
+    type: "n8n-nodes-base.webhook",
+    typeVersion: 2,
+    position: [0, 480],
+    webhookId: "jmts-content-sync-run",
+  });
+  wf.connections["Webhook (production run)"] = {
+    main: [[{ node: "0. Config", type: "main", index: 0 }]],
+  };
+}
+
 function buildVariant(mode) {
   const wf = loadBase();
   stripAutoPublishFromConfig(wf);
@@ -413,6 +434,7 @@ function buildVariant(mode) {
 
   if (governed) {
     addPublishGateNodes(wf);
+    addProductionWebhookTrigger(wf);
   } else {
     stripPublishPath(wf);
   }

@@ -312,6 +312,53 @@ export async function assertCanCreateIngestKey(
   }
 }
 
+const FREE_COMPLIANCE_EXPORTS_PER_MONTH = 2;
+
+export async function assertCanCreateComplianceExport(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+): Promise<void> {
+  const ctx = await getOrgPlanContext(client, organizationId);
+  if (!ctx?.active) {
+    throw new PlanLimitError("org_suspended", "Organization is suspended", 403);
+  }
+  if (ctx.plan !== "free") return;
+
+  const period = monthStart();
+  const count = await client.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM compliance_export
+     WHERE organization_id = $1
+       AND created_at >= $2::date
+       AND created_at < ($2::date + interval '1 month')`,
+    [organizationId, period],
+  );
+  const n = Number(count.rows[0]?.count ?? 0);
+  if (n >= FREE_COMPLIANCE_EXPORTS_PER_MONTH) {
+    throw new PlanLimitError(
+      "compliance_exports_limit",
+      `Free plan includes ${FREE_COMPLIANCE_EXPORTS_PER_MONTH} compliance exports per month. Upgrade to Team for unlimited exports.`,
+      402,
+    );
+  }
+}
+
+export async function assertCanUseComplianceSchedule(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+): Promise<void> {
+  const ctx = await getOrgPlanContext(client, organizationId);
+  if (!ctx?.active) {
+    throw new PlanLimitError("org_suspended", "Organization is suspended", 403);
+  }
+  if (ctx.plan === "free") {
+    throw new PlanLimitError(
+      "plan_feature",
+      "Scheduled compliance exports require Team plan or higher.",
+      402,
+    );
+  }
+}
+
 export async function assertCanAddMember(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,

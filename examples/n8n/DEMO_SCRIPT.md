@@ -16,6 +16,20 @@ Use the **governed** JMT-S workflow and a fresh manual run.
 
 ---
 
+## Failure path (optional, 30s)
+
+Use the **production webhook** (`POST /webhook/jmts-content-sync-run`), not Manual Trigger. n8n Error Workflow only runs on published production executions.
+
+| Step | Show |
+|------|------|
+| Trigger webhook run → approve | Obligation clears, publish node fails (e.g. auth) |
+| Error handler workflow | Separate canvas — lookup trace → record failure |
+| Console trace | **FAILED** with provenance on the failing step |
+
+Say: "Success and failure both land as signed traces. Auditors get a complete picture."
+
+---
+
 ## Extended demo (10 minutes)
 
 1. **Dashboard** — Ledger witness OK, verification batches (trust signal)

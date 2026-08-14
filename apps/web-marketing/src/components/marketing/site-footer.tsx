@@ -10,7 +10,7 @@ const PRODUCT_LINKS = [
   { href: "/products/aegis", label: "Aegis" },
   { href: "/products/aether", label: "Aether" },
   { href: "/spec", label: "APS-1 & did:agent" },
-  { href: "/contact", label: "Pricing" },
+  { href: "/pricing", label: "Pricing" },
 ] as const;
 
 const DEVELOPER_LINKS = [

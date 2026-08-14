@@ -10,7 +10,7 @@ export const PLATFORM_PRODUCTS = [
   {
     slug: "insurance",
     name: "Insurance",
-    description: "Risk metrics and reinsurance bridge (scaffold)",
+    description: "Risk metrics and reinsurance bridge (preview — not GA)",
     href: "/insurance",
     status: "preview" as const,
   },

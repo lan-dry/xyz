@@ -134,6 +134,11 @@ const MIGRATIONS = [
     up: "026_worker_runs.up.sql",
     down: "026_worker_runs.down.sql",
   },
+  {
+    version: "027_trace_executing_status",
+    up: "027_trace_executing_status.up.sql",
+    down: "027_trace_executing_status.down.sql",
+  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {

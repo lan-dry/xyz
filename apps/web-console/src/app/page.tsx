@@ -53,7 +53,7 @@ export default function HomePage() {
       >
         <h1 style={{ margin: "0 0 0.5rem", fontSize: "1.5rem" }}>Salanor Console</h1>
         <p style={{ margin: "0 0 1.5rem", color: "#5c6e6a", fontSize: "0.875rem" }}>
-          Sign in to operate Aegis and preview Insurance.
+          Sign in to operate Aegis. Insurance is preview-only.
         </p>
         <Link
           href="/login"

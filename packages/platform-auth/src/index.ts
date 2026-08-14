@@ -134,7 +134,9 @@ export {
 export {
   PlanLimitError,
   assertCanAddMember,
+  assertCanCreateComplianceExport,
   assertCanCreateIngestKey,
+  assertCanUseComplianceSchedule,
   assertIngestWithinLimits,
   assertOrgActiveForIngest,
   getMonthlyEventCount,

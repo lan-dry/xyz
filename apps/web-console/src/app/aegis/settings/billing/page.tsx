@@ -208,7 +208,8 @@ function BillingSettingsInner() {
       <section className={settings.settingCard}>
         <h2>Plan and billing</h2>
         <p>
-          Free is enough to try Aegis. Move to a paid plan when you need higher limits.
+          Free covers evaluation. Team is $299/month for production volume. See{" "}
+          <a href={`${MARKETING_URL}/pricing`}>full plan comparison</a>.
         </p>
         {banner ? (
           <p
