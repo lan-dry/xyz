@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
       // Legacy URLs indexed by Google (pre–marketing IA)
       { source: "/product", destination: "/products/aegis", permanent: true },
       { source: "/demo", destination: "/contact", permanent: true },
+      { source: "/about-us", destination: "/about", permanent: true },
+      { source: "/contact-us", destination: "/contact", permanent: true },
+      { source: "/news", destination: "/blog", permanent: true },
+      { source: "/market-impact", destination: "/products/aegis", permanent: true },
       { source: "/auth/login", destination: `${consoleUrl}/login`, permanent: true },
       { source: "/auth/signup", destination: `${consoleUrl}/signup`, permanent: true },
       { source: "/auth/:path*", destination: `${consoleUrl}/:path*`, permanent: true },
