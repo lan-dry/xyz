@@ -24,6 +24,10 @@
   margin-bottom: 0.875rem;
 }
 
+.logoRow svg {
+  color: var(--teal);
+}
+
 .logoMark {
   font-family: var(--font-sans);
   font-size: 1.375rem;

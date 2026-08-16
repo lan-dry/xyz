@@ -20,9 +20,6 @@ export default function ContactPage() {
             <p className="section-label">Contact</p>
             <h1 className={page.title}>Talk to us</h1>
             <ContactAside />
-            <Link href="/" className={page.back}>
-              ← Back to home
-            </Link>
           </div>
         </ScrollReveal>
         <ScrollReveal delay={80}>
