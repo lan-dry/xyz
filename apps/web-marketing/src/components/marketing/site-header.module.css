@@ -29,10 +29,6 @@
   color: var(--text);
 }
 
-.logoLink svg {
-  color: var(--teal);
-}
-
 .logoLink :global(.logo-wordmark) {
   font-family: var(--font-sans);
   font-size: 1.125rem;
