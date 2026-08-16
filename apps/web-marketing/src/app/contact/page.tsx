@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { ContactAside } from "@/components/marketing/contact-aside";
 import { ContactForm } from "@/components/marketing/contact-form";

@@ -33,6 +33,9 @@ export function MarketingPage({
           <h1 className={styles.title}>{title}</h1>
           {lead ? <p className={styles.lead}>{lead}</p> : null}
           <div className={styles.body}>{children}</div>
+          <Link href={backHref} className={styles.back}>
+            ← Back to home
+          </Link>
         </div>
       </ScrollReveal>
     </section>
