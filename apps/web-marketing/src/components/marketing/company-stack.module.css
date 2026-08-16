@@ -18,7 +18,7 @@
 
 .layerActive {
   border-color: var(--border-bright);
-  box-shadow: 0 0 0 1px rgba(42, 157, 138, 0.12);
+  box-shadow: 0 0 0 1px rgba(67, 194, 169, 0.12);
 }
 
 .layerLink,

@@ -2,24 +2,28 @@ import Image from "next/image";
 
 import styles from "./salanor-logo.module.css";
 
-const LOGO_SRC = "/salanor-logo.png";
-
 export function SalanorLogo({
   size = 28,
   className,
   showWordmark = false,
   wordmark = "Salanor",
   sublabel,
+  variant = "primary",
 }: {
   size?: number;
   className?: string;
   showWordmark?: boolean;
   wordmark?: string;
   sublabel?: string;
+  /** Primary teal on light sidebar; white mark in dark theme. */
+  variant?: "primary" | "white";
 }) {
+  const src =
+    variant === "white" ? "/salanor-mark-white.png" : "/salanor-mark-primary.png";
+
   const mark = (
     <Image
-      src={LOGO_SRC}
+      src={src}
       alt=""
       width={size}
       height={size}

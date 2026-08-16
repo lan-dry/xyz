@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import { PLAN_DISPLAY_LIST } from "@salanor/plan-display";
@@ -21,7 +22,23 @@ export default function LeaveBehindPage() {
 
       <article className={styles.sheet}>
         <header className={styles.header}>
-          <p className={styles.eyebrow}>Salanor</p>
+          <div className={styles.brandRow}>
+            <Image
+              src="/salanor-mark-white.png"
+              alt=""
+              width={28}
+              height={28}
+              className={styles.brandMarkScreen}
+            />
+            <Image
+              src="/salanor-mark-primary.png"
+              alt=""
+              width={28}
+              height={28}
+              className={styles.brandMarkPrint}
+            />
+            <span className={styles.brandWordmark}>Salanor</span>
+          </div>
           <h1>Aegis: signed provenance for agent actions</h1>
           <p className={styles.tagline}>{BRAND.taglineFull}</p>
         </header>

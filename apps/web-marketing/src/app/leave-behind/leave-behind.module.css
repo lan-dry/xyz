@@ -21,6 +21,18 @@
     color: #111;
     text-decoration: none;
   }
+
+  .brandMarkScreen {
+    display: none !important;
+  }
+
+  .brandMarkPrint {
+    display: block !important;
+  }
+
+  .brandWordmark {
+    color: #0d3535;
+  }
 }
 
 .page {
@@ -62,20 +74,30 @@
   border-radius: 8px;
 }
 
+.brandRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+
+.brandMarkPrint {
+  display: none;
+}
+
+.brandWordmark {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
 .header {
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--border);
 }
 
-.eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--teal-bright);
-}
 
 .header h1 {
   margin: 0 0 0.5rem;

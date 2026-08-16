@@ -51,7 +51,7 @@
   border: 1px solid var(--border-bright);
   border-radius: 4px;
   padding: 0.25rem 0.5rem;
-  background: rgba(42, 157, 138, 0.08);
+  background: rgba(67, 194, 169, 0.08);
 }
 
 .brandLine {
@@ -163,7 +163,7 @@
 }
 
 .sdkTag {
-  background: rgba(42, 157, 138, 0.08);
+  background: rgba(67, 194, 169, 0.08);
   border: 1px solid var(--border-bright);
   border-radius: 4px;
   padding: 0.25rem 0.625rem;

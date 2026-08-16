@@ -10,7 +10,7 @@
   inset: -20% -10%;
   background: radial-gradient(
     600px circle at var(--cursor-x) var(--cursor-y),
-    rgba(42, 157, 138, 0.14),
+    rgba(67, 194, 169, 0.14),
     transparent 55%
   );
   pointer-events: none;

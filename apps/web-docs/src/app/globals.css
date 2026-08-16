@@ -1,11 +1,11 @@
 :root {
-  --teal: #2a9d8a;
-  --teal-bright: #3dbfaa;
-  --teal-soft: rgba(42, 157, 138, 0.12);
+  --teal: #0d3535;
+  --teal-bright: #43c2a9;
+  --teal-soft: rgba(67, 194, 169, 0.12);
   --bg: #0a0c0b;
   --surface: #121816;
   --surface-2: #171e1c;
-  --border: rgba(42, 157, 138, 0.18);
+  --border: rgba(67, 194, 169, 0.18);
   --text: #e8ede9;
   --text-muted: #8a9a96;
   --code-bg: #0d1210;
@@ -610,7 +610,7 @@ code {
 }
 
 .method-post {
-  background: rgba(42, 157, 138, 0.2);
+  background: rgba(67, 194, 169, 0.2);
   color: var(--teal-bright);
 }
 
