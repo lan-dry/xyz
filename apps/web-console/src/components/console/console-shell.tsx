@@ -138,11 +138,15 @@ export function ConsoleShell({
                 size={28}
                 showWordmark
                 sublabel={`${productTitle} console`}
+                variant={theme === "dark" ? "white" : "primary"}
               />
             </Link>
           ) : (
             <Link href="/aegis" className={shell.brandLink} title="Salanor">
-              <SalanorLogo size={28} />
+              <SalanorLogo
+                size={28}
+                variant={theme === "dark" ? "white" : "primary"}
+              />
             </Link>
           )}
           <button

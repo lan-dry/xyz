@@ -60,7 +60,7 @@ export default function HomePage() {
           style={{
             display: "inline-block",
             padding: "0.625rem 1.25rem",
-            background: "#2a9d8a",
+            background: "#0d3535",
             color: "#fff",
             borderRadius: "6px",
             fontWeight: 500,

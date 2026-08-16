@@ -58,16 +58,16 @@ export const metadata: Metadata = {
     description,
     images: [
       {
-        url: "/salanor-logo.png",
+        url: "/salanor-og.png",
         alt: "Salanor",
       },
     ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: titleDefault,
     description,
-    images: ["/salanor-logo.png"],
+    images: ["/salanor-og.png"],
   },
   robots: {
     index: true,

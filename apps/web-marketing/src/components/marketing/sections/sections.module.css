@@ -59,7 +59,7 @@
   right: 0;
   width: 55%;
   height: 70%;
-  background: radial-gradient(ellipse at 70% 40%, rgba(42, 157, 138, 0.07) 0%, transparent 65%);
+  background: radial-gradient(ellipse at 70% 40%, rgba(67, 194, 169, 0.07) 0%, transparent 65%);
   pointer-events: none;
 }
 
@@ -82,7 +82,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(42, 157, 138, 0.08);
+  background: rgba(67, 194, 169, 0.08);
   border: 1px solid var(--border-bright);
   border-radius: 100px;
   padding: 0.3125rem 0.875rem 0.3125rem 0.375rem;
@@ -330,7 +330,7 @@
   border: 1px solid var(--border-bright);
   border-radius: 4px;
   padding: 0.1875rem 0.5rem;
-  background: rgba(42, 157, 138, 0.08);
+  background: rgba(67, 194, 169, 0.08);
 }
 
 /* How it works */
@@ -431,7 +431,7 @@
   padding: 2rem 2.25rem;
   border-radius: 12px;
   border: 1px solid var(--border-bright);
-  background: linear-gradient(135deg, rgba(42, 157, 138, 0.06) 0%, var(--surface) 55%);
+  background: linear-gradient(135deg, rgba(67, 194, 169, 0.06) 0%, var(--surface) 55%);
 }
 
 .foundingPull p {

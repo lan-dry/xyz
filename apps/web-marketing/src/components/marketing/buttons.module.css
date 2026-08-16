@@ -28,15 +28,15 @@
 }
 
 .btnPrimary {
-  background: var(--teal);
-  border: 1px solid var(--teal);
-  color: #fff;
+  background: var(--teal-bright);
+  border: 1px solid var(--teal-bright);
+  color: #0a0c0b;
 }
 
 .btnPrimary:hover {
-  background: var(--teal-bright);
-  border-color: var(--teal-bright);
-  color: #fff;
+  background: #5dd4bb;
+  border-color: #5dd4bb;
+  color: #0a0c0b;
 }
 
 @media (max-width: 899px) {

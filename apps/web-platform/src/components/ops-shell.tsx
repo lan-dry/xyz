@@ -112,7 +112,11 @@ export function OpsShell({
         <div className={shell.brand}>
           <div className={shell.brandRow}>
             <NextImage
-              src="/salanor-logo.png"
+              src={
+                theme === "dark"
+                  ? "/salanor-mark-white.png"
+                  : "/salanor-mark-primary.png"
+              }
               alt=""
               width={28}
               height={28}

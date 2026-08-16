@@ -30,7 +30,7 @@ export function MarketingJsonLd() {
     url: SITE_ORIGIN,
     logo: {
       "@type": "ImageObject",
-      url: `${SITE_ORIGIN}/salanor-logo.png`,
+      url: `${SITE_ORIGIN}/salanor-og.png`,
     },
     email,
     address: postalAddressFromLines(contact.address.lines),

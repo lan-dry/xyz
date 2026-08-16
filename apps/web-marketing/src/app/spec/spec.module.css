@@ -23,7 +23,7 @@
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--teal-bright, #3dd6c3);
+  color: var(--teal-bright, #43c2a9);
   margin: 0 0 0.75rem;
 }
 
@@ -66,7 +66,7 @@
 }
 
 .primary {
-  background: var(--teal-bright, #3dd6c3);
+  background: var(--teal-bright, #43c2a9);
   color: #041018;
 }
 
@@ -109,5 +109,5 @@
 }
 
 .note a {
-  color: var(--teal-bright, #3dd6c3);
+  color: var(--teal-bright, #43c2a9);
 }

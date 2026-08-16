@@ -1,15 +1,17 @@
 :root {
-  --teal: #2a9d8a;
-  --teal-bright: #3dbfaa;
-  --teal-dim: #1a6e62;
-  --teal-glow: rgba(42, 157, 138, 0.15);
+  --brand-primary: #0d3535;
+  --brand-accent: #43c2a9;
+  --teal: #0d3535;
+  --teal-bright: #43c2a9;
+  --teal-dim: #0a2828;
+  --teal-glow: rgba(67, 194, 169, 0.15);
   --bg: #0a0c0b;
   --bg2: #0f1210;
   --bg3: #141917;
   --surface: #171e1c;
   --surface2: #1d2522;
-  --border: rgba(42, 157, 138, 0.12);
-  --border-bright: rgba(42, 157, 138, 0.3);
+  --border: rgba(67, 194, 169, 0.12);
+  --border-bright: rgba(67, 194, 169, 0.3);
   --text: #e8ede9;
   --text-muted: #7a8c88;
   --text-dim: #4a5c58;
