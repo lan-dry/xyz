@@ -9,6 +9,18 @@ const consoleUrl =
     : "http://localhost:3000");
 
 const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        source: "/.well-known/security.txt",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        source: "/security.txt",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+    ];
+  },
   async redirects() {
     return [
       // Legacy URLs indexed by Google (pre–marketing IA)

@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /.well-known/security.txt
+Disallow: /security.txt
 
 Sitemap: https://www.salanor.com/sitemap.xml
