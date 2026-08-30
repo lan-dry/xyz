@@ -222,17 +222,7 @@ function PlatformLoginForm() {
           ) : null}
 
           <p className={styles.footer}>
-            {process.env.NEXT_PUBLIC_SELF_SERVE_SIGNUP_ENABLED === "1" ? (
-              <>
-                New company? <Link href="/signup">Create account</Link>
-              </>
-            ) : (
-              <>
-                No public registration yet. Console accounts are provisioned after design partner
-                onboarding.{" "}
-                <a href={`${MARKETING_URL}/contact`}>Request access</a>
-              </>
-            )}
+            New company? <Link href="/signup">Create account</Link>
           </p>
         </div>
       </div>

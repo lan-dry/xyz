@@ -81,22 +81,7 @@ function requireAdmin(session: ConsoleSession, organizationId: string): boolean 
 
 export const identityRoutes = new Hono();
 
-function selfServeSignupEnabled(): boolean {
-  const v = process.env.SELF_SERVE_SIGNUP_ENABLED?.trim();
-  return v === "1" || v?.toLowerCase() === "true";
-}
-
 identityRoutes.post("/auth/register", async (c) => {
-  if (!selfServeSignupEnabled()) {
-    return c.json(
-      {
-        error:
-          "Self-serve signup is disabled. Request access via salanor.com/contact or use an invitation.",
-      },
-      403,
-    );
-  }
-
   let body: {
     email?: string;
     password?: string;
