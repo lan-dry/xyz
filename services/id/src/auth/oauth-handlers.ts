@@ -304,7 +304,7 @@ export function registerOAuthRoutes(app: import("hono").Hono): void {
               email: profile.email,
               displayName: profile.name,
             },
-            { allowSignup: selfServeSignupEnabled() },
+            { allowSignup: true },
           );
           if (!auth) {
             return redirectLogin(c, "no_account", verified.returnTo, {
