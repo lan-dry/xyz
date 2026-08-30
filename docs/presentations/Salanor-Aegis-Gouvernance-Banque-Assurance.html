@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Salanor Aegis · Contrôle des opérations sensibles</title>
+    <style>
+      :root {
+        --primary: #0d3535;
+        --accent: #43c2a9;
+        --bg: #0a0c0b;
+        --surface: #141917;
+        --text: #e8ede9;
+        --muted: #9eb0ac;
+        --border: rgba(67, 194, 169, 0.22);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .deck {
+        width: 100%;
+      }
+
+      .slide {
+        min-height: 100vh;
+        padding: 3.5rem 4.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        page-break-after: always;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(160deg, var(--bg) 0%, var(--surface) 100%);
+      }
+
+      .slide.compact {
+        justify-content: flex-start;
+        padding-top: 2.75rem;
+      }
+
+      .eyebrow {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin: 0 0 1rem;
+      }
+
+      h1 {
+        font-size: clamp(2rem, 4vw, 3rem);
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+        margin: 0 0 1rem;
+        max-width: 20ch;
+      }
+
+      h2 {
+        font-size: clamp(1.6rem, 3vw, 2.25rem);
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+        margin: 0 0 1.25rem;
+        max-width: 26ch;
+      }
+
+      .subtitle {
+        font-size: 1.25rem;
+        line-height: 1.55;
+        color: var(--muted);
+        max-width: 42rem;
+        margin: 0;
+      }
+
+      .lead {
+        font-size: 1.125rem;
+        line-height: 1.65;
+        color: var(--muted);
+        max-width: 42rem;
+        margin: 0 0 1.5rem;
+      }
+
+      ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      li {
+        position: relative;
+        padding-left: 1.35rem;
+        margin: 0.65rem 0;
+        font-size: 1.05rem;
+        line-height: 1.55;
+        color: var(--text);
+        max-width: 46rem;
+      }
+
+      li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.65rem;
+        width: 0.45rem;
+        height: 0.45rem;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      .cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        max-width: 54rem;
+      }
+
+      .panel {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem 1.35rem;
+        background: rgba(13, 53, 53, 0.35);
+      }
+
+      .panel h3 {
+        margin: 0 0 0.65rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .panel ul {
+        margin: 0;
+      }
+
+      .panel li {
+        font-size: 0.92rem;
+        margin: 0.45rem 0;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        max-width: 56rem;
+      }
+
+      .step {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem;
+        background: rgba(10, 12, 11, 0.55);
+      }
+
+      .step-num {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: var(--accent);
+        margin-bottom: 0.35rem;
+      }
+
+      .step-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+      }
+
+      .step-desc {
+        font-size: 0.85rem;
+        line-height: 1.45;
+        color: var(--muted);
+      }
+
+      .demo-box {
+        margin-top: 1rem;
+        padding: 1.25rem 1.5rem;
+        border-left: 3px solid var(--accent);
+        background: rgba(67, 194, 169, 0.08);
+        max-width: 46rem;
+      }
+
+      .demo-box p {
+        margin: 0 0 0.75rem;
+        font-size: 1rem;
+        line-height: 1.6;
+        color: var(--text);
+      }
+
+      .demo-box p:last-child {
+        margin-bottom: 0;
+      }
+
+      .footer {
+        margin-top: auto;
+        padding-top: 2rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .contact {
+        font-size: 1.05rem;
+        line-height: 1.7;
+      }
+
+      .contact strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      @media print {
+        .slide {
+          min-height: 100vh;
+          break-after: page;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .slide {
+          padding: 2rem 1.5rem;
+        }
+
+        .cols,
+        .steps {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="deck">
+      <section class="slide">
+        <p class="eyebrow">Salanor · Présentation confidentielle · 2026</p>
+        <h1>Aegis : preuve et contrôle sur les opérations sensibles</h1>
+        <p class="subtitle">
+          Virements, sinistres, dossiers KYC, changements de limites : qui a
+          autorisé l’action, avec quelle règle, et comment le prouver à l’audit.
+        </p>
+        <p class="footer">Landry Bougang Fotso · Fondateur, Salanor Ltd · Kigali</p>
+      </section>
+
+      <section class="slide compact">
+        <p class="eyebrow">Le problème</p>
+        <h2>Les opérations sensibles s’accélèrent. La preuve, non.</h2>
+        <p class="lead">
+          En banque et en assurance, des chaînes automatisées touchent déjà
+          l’argent, les dossiers clients et les engagements réglementaires.
+        </p>
+        <div class="cols">
+          <div class="panel">
+            <h3>Banque (exemples)</h3>
+            <ul>
+              <li>Virement sortant au-dessus d’un plafond</li>
+              <li>Modification de limite ou de statut de compte</li>
+              <li>Validation ou blocage KYC / LBC-FT</li>
+              <li>Ordre vers un système de paiement ou de compensation</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Assurance (exemples)</h3>
+            <ul>
+              <li>Décaissement ou règlement de sinistre</li>
+              <li>Changement de garanties ou de prime en production</li>
+              <li>Ouverture ou clôture de dossier à enjeu</li>
+              <li>Transmission de données vers un régulateur ou un partenaire</li>
+            </ul>
+          </div>
+        </div>
+        <p class="lead" style="margin-top: 1.25rem; margin-bottom: 0">
+          Quand l’audit ou le comité risque demande qui a validé quoi, les logs
+          applicatifs et les tickets ne suffisent pas. Il manque une chaîne
+          unique : règle, décision humaine si requise, exécution, horodatage
+          vérifiable.
+        </p>
+      </section>
+
+      <section class="slide compact">
+        <p class="eyebrow">Positionnement</p>
+        <h2>Où Aegis s’insère dans votre paysage</h2>
+        <p class="lead">
+          Aegis se place <strong>avant</strong> l’exécution d’une action sensible.
+          Il applique vos règles, exige une approbation nommée si besoin, et
+          enregistre chaque étape dans un registre signé que vous pouvez rejouer
+          et exporter.
+        </p>
+        <ul>
+          <li>
+            Ce n’est pas un core banking, un moteur AML, ni un SIEM. Vous
+            gardez vos systèmes métier.
+          </li>
+          <li>
+            C’est une couche de gouvernance et de preuve autour de vos flux
+            (API, orchestration, scripts internes).
+          </li>
+          <li>
+            Les clés de signature restent chez vous. Chaque organisation a son
+            registre isolé.
+          </li>
+        </ul>
+      </section>
+
+      <section class="slide compact">
+        <p class="eyebrow">Fonctionnement</p>
+        <h2>Quatre étapes, une chaîne de preuve</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">01</div>
+            <div class="step-title">Raccorder le flux</div>
+            <div class="step-desc">
+              Orchestrateur (n8n), SDK développeur, ou ingestion directe du
+              format ouvert APS-1.
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">02</div>
+            <div class="step-title">Appliquer la règle</div>
+            <div class="step-desc">
+              Autoriser, refuser, ou bloquer jusqu’à approbation humaine.
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">03</div>
+            <div class="step-title">Enregistrer et signer</div>
+            <div class="step-desc">
+              Registre append-only, chaîne de hachage, lots de témoin
+              périodiques.
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">04</div>
+            <div class="step-title">Rejouer et exporter</div>
+            <div class="step-desc">
+              Console, vérification cryptographique, bundles pour l’audit.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide compact">
+        <p class="eyebrow">Démonstration live</p>
+        <h2>Scénario banque : virement sortant au-dessus du plafond</h2>
+        <div class="demo-box">
+          <p>
+            <strong>Cas métier :</strong> un workflow tente d’exécuter un
+            virement de 25&nbsp;000 EUR vers un bénéficiaire tiers. La règle
+            active exige une approbation humaine au-delà de 10&nbsp;000 EUR.
+          </p>
+          <p>
+            Le flux s’arrête. Le responsable opérationnel ou conformité voit le
+            montant, le compte, le bénéficiaire. Il approuve ou refuse dans la
+            console. Sans approbation, le virement ne part pas.
+          </p>
+          <p>
+            Chaque étape (évaluation de règle, décision, exécution) est
+            enregistrée et signée. On peut rejouer la trace et produire un
+            export pour l’audit.
+          </p>
+        </div>
+        <p class="lead" style="margin-top: 1.25rem; margin-bottom: 0">
+          Démo en direct sur <strong>app.salanor.com</strong> (politique
+          paiement + approbation). Même mécanique pour un sinistre ou un
+          changement de dossier KYC.
+        </p>
+      </section>
+
+      <section class="slide compact">
+        <p class="eyebrow">Approbation humaine</p>
+        <h2>Qui a signé, pas seulement ce qui s’est passé</h2>
+        <ul>
+          <li>Alerte par e-mail, Slack, PagerDuty ou SMS selon votre setup.</li>
+          <li>Approbateur identifié, horodaté, rattaché à une trace unique.</li>
+          <li>Refus ou expiration : l’opération ne s’exécute pas.</li>
+          <li>
+            Historique : approuvé, refusé, expiré, avec la règle qui s’appliquait.
+          </li>
+        </ul>
+      </section>
+
+      <section class="slide compact">
+        <p class="eyebrow">Audit et conformité</p>
+        <h2>Matériel de preuve pour vos revues</h2>
+        <ul>
+          <li>
+            Exports par période, avec hash d’intégrité vérifiable.
+          </li>
+          <li>
+            Correspondances de contrôles (SOC 2, EU AI Act) : aide documentaire
+            pour vos équipes. Salanor n’est pas certifié SOC 2 aujourd’hui.
+          </li>
+          <li>Relecture pas à pas d’une opération dans la console.</li>
+          <li>
+            Journal des actions admin : politiques, clés, connexions, exports.
+          </li>
+        </ul>
+      </section>
+
+      <section class="slide compact">
+        <p class="eyebrow">Intégration</p>
+        <h2>Sur votre stack, sans tout remplacer</h2>
+        <ul>
+          <li>
+            Pont pour n8n et workflows HTTP : une clé API, règles actives,
+            approbations synchrones.
+          </li>
+          <li>
+            SDK TypeScript, Python, Go pour vos services internes (paiement,
+            sinistres, dossier client).
+          </li>
+          <li>API : api.salanor.com · Console : app.salanor.com</li>
+          <li>
+            Un pilote commence sur <strong>un seul flux</strong> : virement,
+            sinistre, ou validation KYC.
+          </li>
+        </ul>
+      </section>
+
+      <section class="slide compact">
+        <p class="eyebrow">Statut</p>
+        <h2>Produit en production, phase partenaire</h2>
+        <ul>
+          <li>
+            Plateforme opérationnelle : règles, approbations, registre, exports.
+          </li>
+          <li>
+            Démos et pilotes sur flux réels (orchestration + validation humaine).
+          </li>
+          <li>
+            Feuille de route SOC 2 (cible fin 2026). Pas de sur-promesse
+            aujourd’hui.
+          </li>
+          <li>
+            Nous cherchons 1 à 2 institutions pour un pilote cadré sur un
+            processus précis.
+          </li>
+        </ul>
+      </section>
+
+      <section class="slide compact">
+        <p class="eyebrow">Offre pilote</p>
+        <h2>30 jours, un flux, une preuve mesurable</h2>
+        <ul>
+          <li>
+            <strong>Périmètre :</strong> un processus (virement, sinistre,
+            dossier KYC, etc.).
+          </li>
+          <li>
+            <strong>Livré :</strong> règles, approbations, registre, formation,
+            un export audit.
+          </li>
+          <li>
+            <strong>Formule Team :</strong> à partir de 299 USD / mois (devis ou
+            facture).
+          </li>
+          <li>
+            <strong>Setup :</strong> forfait selon complexité d’intégration.
+          </li>
+          <li>
+            <strong>Succès :</strong> une opération sensible, approuvée par un
+            humain, vérifiable par votre équipe risque ou audit.
+          </li>
+        </ul>
+      </section>
+
+      <section class="slide compact">
+        <p class="eyebrow">Discussion</p>
+        <h2>Pour avancer ensemble</h2>
+        <ul>
+          <li>
+            Quels flux sensibles vous posent problème en audit aujourd’hui ?
+          </li>
+          <li>
+            Où exigez-vous une double validation, et comment la documentez-vous ?
+          </li>
+          <li>
+            Un pilote sur un flux en Q4 2026 est-il réaliste ?
+          </li>
+          <li>
+            Qui côté risque, conformité ou IT doit voir la démo technique ?
+          </li>
+        </ul>
+      </section>
+
+      <section class="slide">
+        <p class="eyebrow">Contact</p>
+        <h2>Salanor Ltd</h2>
+        <p class="contact">
+          <strong>Landry Bougang Fotso</strong><br />
+          Fondateur · Kigali, Rwanda<br />
+          Site : www.salanor.com<br />
+          Produit : www.salanor.com/products/aegis<br />
+          Console : app.salanor.com<br />
+          E-mail : hello@salanor.com · partners@salanor.com
+        </p>
+        <p class="footer" style="margin-top: 2rem">
+          Présentation governance banque et assurance · Usage confidentiel
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

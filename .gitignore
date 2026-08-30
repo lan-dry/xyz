@@ -39,3 +39,4 @@ coverage/
 
 # go (future services)
 bin/
+.neon
