@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { PlatformAuthAside } from "@/components/auth/platform-auth-aside";
-import { IdApiError, idApi } from "@/lib/id-api";
+import { idApi } from "@/lib/id-api";
 import type { MeResponse } from "@/lib/types";
 
 import styles from "../login/login.module.css";

@@ -44,7 +44,7 @@ export default function OrganizationSettingsPage() {
 
   const updateOrg = useMutation({
     mutationFn: async (input: { organization_name?: string; organization_slug?: string }) => {
-      const orgId = meQuery.data?.organization.organization_id;
+      const orgId = meQuery.data?.organization?.organization_id;
       if (!orgId) throw new Error("No organization");
       return idApi<{
         ok: boolean;
@@ -86,7 +86,7 @@ export default function OrganizationSettingsPage() {
 
   const org = meQuery.data?.organization;
   const usage = planQuery.data?.plan_usage;
-  const isAdmin = meQuery.data?.user.role === "admin";
+  const isAdmin = meQuery.data?.user?.role === "admin";
   const onboardingDone = org && !org.needs_onboarding;
 
   useEffect(() => {

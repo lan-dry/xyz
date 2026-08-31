@@ -1,6 +1,7 @@
 "use client";
 
 import { Mail, Plus, Users } from "lucide-react";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -59,9 +60,9 @@ export default function MembersPage() {
     queryFn: () => idApi<MeResponse>("/auth/me"),
   });
 
-  const orgId = meQuery.data?.organization.organization_id;
-  const myMembershipId = meQuery.data?.user.user_id;
-  const isAdmin = meQuery.data?.user.role === "admin";
+  const orgId = meQuery.data?.organization?.organization_id;
+  const myMembershipId = meQuery.data?.user?.user_id;
+  const isAdmin = meQuery.data?.user?.role === "admin";
 
   const membersQuery = useQuery({
     queryKey: ["id", "members", orgId, page, limit],
@@ -579,7 +580,9 @@ export default function MembersPage() {
             </button>
           </>
         }
-      />
+      >
+        {null}
+      </Modal>
     </ConsolePage>
   );
 }

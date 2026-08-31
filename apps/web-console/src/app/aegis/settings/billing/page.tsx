@@ -156,7 +156,7 @@ function BillingSettingsInner() {
 
   const checkout = useMutation({
     mutationFn: async (planSlug: string) => {
-      const orgId = meQuery.data?.organization.organization_id;
+      const orgId = meQuery.data?.organization?.organization_id;
       if (!orgId) throw new Error("No organization");
       const res = await fetch("/api/billing/checkout/session", {
         method: "POST",
@@ -172,7 +172,7 @@ function BillingSettingsInner() {
 
   const portal = useMutation({
     mutationFn: async () => {
-      const orgId = meQuery.data?.organization.organization_id;
+      const orgId = meQuery.data?.organization?.organization_id;
       if (!orgId) throw new Error("No organization");
       const res = await fetch("/api/billing/portal/session", {
         method: "POST",
@@ -191,7 +191,7 @@ function BillingSettingsInner() {
   }
 
   const usage = planQuery.data?.plan_usage;
-  const isAdmin = meQuery.data?.user.role === "admin";
+  const isAdmin = meQuery.data?.user?.role === "admin";
   const checkoutEnabled = usage?.billing_checkout_enabled !== false;
   const readyUpgrades =
     usage?.upgrade_options.filter((o) => o.checkout_ready) ?? [];
