@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, KeyRound, Shield, UserCheck } from "lucide-react";
+import { Activity, FileCheck, KeyRound, Shield, UserCheck } from "lucide-react";
 
 import {
   ConsolePage,
@@ -15,9 +15,58 @@ import {
 } from "@/components/console/console-ui";
 import { DemoGuidePanel } from "@/components/console/demo-guide";
 import { GovernanceInsightsPanel } from "@/components/console/governance-insights-panel";
+import { MetricSparkline, MetricTrend } from "@/components/console/metric-visuals";
 import { SystemStatusStrip } from "@/components/console/system-status-strip";
 import { consoleApi } from "@/lib/api";
+import { seriesFromTimestamps, sumSeriesFromTimestamps, trendPercent } from "@/lib/metric-series";
 import type { TraceSummary } from "@/lib/types";
+
+function DashboardStat({
+  title,
+  value,
+  hint,
+  icon: Icon,
+  sparkline,
+  trendPct,
+  accent,
+}: {
+  title: string;
+  value: number;
+  hint: React.ReactNode;
+  icon: typeof Activity;
+  sparkline?: number[];
+  trendPct?: number | null;
+  accent?: string;
+}) {
+  return (
+    <div className={`${ui.card} ${ui.cardPad}`} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", alignItems: "flex-start" }}>
+        <p className={ui.cardTitle} style={{ margin: 0 }}>
+          {title}
+        </p>
+        <Icon size={18} aria-hidden style={{ opacity: 0.45, flexShrink: 0 }} />
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "0.75rem" }}>
+        <div>
+          <p className={ui.cardValue} style={{ margin: 0 }}>
+            {value}
+          </p>
+          <p className={ui.cardHint} style={{ margin: "0.35rem 0 0" }}>
+            {hint}
+          </p>
+          {trendPct !== undefined ? (
+            <div style={{ marginTop: "0.35rem" }}>
+              <MetricTrend percent={trendPct ?? null} />
+            </div>
+          ) : null}
+        </div>
+        {sparkline ? (
+          <MetricSparkline values={sparkline} color={accent} width={96} height={32} />
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export default function AegisDashboardPage() {
   const tracesQuery = useQuery({
@@ -78,6 +127,16 @@ export default function AegisDashboardPage() {
     )
     .slice(0, 5);
 
+  const traceSparkline = seriesFromTimestamps(traces.map((t) => t.started_at));
+  const traceTrend = trendPercent(traceSparkline);
+  const eventSparkline = sumSeriesFromTimestamps(
+    traces.map((t) => ({ at: t.started_at, amount: t.total_events })),
+  );
+  const eventTrend = trendPercent(eventSparkline);
+  const blockedSparkline = seriesFromTimestamps(
+    traces.filter((t) => t.status === "blocked").map((t) => t.started_at),
+  );
+
   const loading = tracesQuery.isPending || approvalsQuery.isPending;
   const error = tracesQuery.error || approvalsQuery.error;
 
@@ -107,43 +166,61 @@ export default function AegisDashboardPage() {
       {!loading && !error ? (
         <>
           <div className={ui.statGrid}>
-            <div className={`${ui.card} ${ui.cardPad}`}>
-              <p className={ui.cardTitle}>Pending approvals</p>
-              <p className={ui.cardValue}>{pending}</p>
-              <p className={ui.cardHint}>
-                {pending > 0 ? (
+            <DashboardStat
+              title="Pending approvals"
+              value={pending}
+              icon={UserCheck}
+              hint={
+                pending > 0 ? (
                   <Link href="/aegis/approvals" className={ui.tableLink}>
                     Review queue
                   </Link>
                 ) : (
                   "No obligations waiting"
-                )}
-              </p>
-            </div>
-            <div className={`${ui.card} ${ui.cardPad}`}>
-              <p className={ui.cardTitle}>Blocked traces</p>
-              <p className={ui.cardValue}>{blocked}</p>
-              <p className={ui.cardHint}>Awaiting human decision</p>
-            </div>
-            <div className={`${ui.card} ${ui.cardPad}`}>
-              <p className={ui.cardTitle}>Executing</p>
-              <p className={ui.cardValue}>{executing}</p>
-              <p className={ui.cardHint}>Approved, workflow side effects in progress</p>
-            </div>
-            <div className={`${ui.card} ${ui.cardPad}`}>
-              <p className={ui.cardTitle}>Traces</p>
-              <p className={ui.cardValue}>{traces.length}</p>
-              <p className={ui.cardHint}>Recorded agent workflows</p>
-            </div>
-            <div className={`${ui.card} ${ui.cardPad}`}>
-              <p className={ui.cardTitle}>Active policies</p>
-              <p className={ui.cardValue}>{activePolicies}</p>
-              <p className={ui.cardHint}>
+                )
+              }
+            />
+            <DashboardStat
+              title="Blocked traces"
+              value={blocked}
+              icon={Shield}
+              hint="Awaiting human decision"
+              sparkline={blockedSparkline}
+              accent="#c24141"
+            />
+            <DashboardStat
+              title="Executing"
+              value={executing}
+              icon={Activity}
+              hint="Approved, workflow side effects in progress"
+            />
+            <DashboardStat
+              title="Traces"
+              value={traces.length}
+              icon={Activity}
+              hint="Recorded agent workflows · 7-day trend"
+              sparkline={traceSparkline}
+              trendPct={traceTrend}
+            />
+            <DashboardStat
+              title="Signed events"
+              value={traces.reduce((n, t) => n + t.total_events, 0)}
+              icon={FileCheck}
+              hint="Across all traces · 7-day volume"
+              sparkline={eventSparkline}
+              trendPct={eventTrend}
+              accent="var(--console-accent)"
+            />
+            <DashboardStat
+              title="Active policies"
+              value={activePolicies}
+              icon={KeyRound}
+              hint={
                 <Link href="/aegis/policies" className={ui.tableLink}>
                   Manage policies
                 </Link>
-              </p>
-            </div>
+              }
+            />
           </div>
 
           {pending > 0 ? (
