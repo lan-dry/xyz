@@ -5,15 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { AegisMark } from "@/components/console/aegis-mark";
 import { PasswordField } from "@/components/auth/password-field";
-import { SalanorLogo } from "@/components/salanor-logo";
+import { PlatformAuthAside } from "@/components/auth/platform-auth-aside";
 import { IdApiError, idApi } from "@/lib/id-api";
 import type { InvitePreview, MeResponse } from "@/lib/types";
 
-import styles from "./invite.module.css";
-
-const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL ?? "http://localhost:3001";
+import styles from "../login/login.module.css";
 
 type PreviewResponse = {
   invitation: InvitePreview;
@@ -22,9 +19,19 @@ type PreviewResponse = {
 
 export default function InvitePage() {
   return (
-    <Suspense fallback={<p style={{ padding: "2rem" }}>Loading invitation…</p>}>
+    <Suspense fallback={<InviteFallback />}>
       <InviteAcceptForm />
     </Suspense>
+  );
+}
+
+function InviteFallback() {
+  return (
+    <div className={styles.shell}>
+      <div className={styles.formPanel}>
+        <p style={{ color: "var(--text-muted)" }}>Loading invitation…</p>
+      </div>
+    </div>
   );
 }
 
@@ -99,11 +106,15 @@ function InviteAcceptForm() {
     meQuery.data?.account.email.toLowerCase() === inv.email.toLowerCase();
 
   if (!token) {
-    return <InviteLayout inv={null}>{invalidInvite("Missing invitation token.")}</InviteLayout>;
+    return (
+      <InviteLayout inv={null}>
+        {invalidInvite("Missing invitation token.")}
+      </InviteLayout>
+    );
   }
 
   if (previewQuery.isPending) {
-    return <InviteLayout inv={null}>Loading invitation…</InviteLayout>;
+    return <InviteFallback />;
   }
 
   if (previewQuery.isError || !inv) {
@@ -119,7 +130,7 @@ function InviteAcceptForm() {
       {!hasAccount ? (
         <>
           <h2>Create your account</h2>
-          <p className={styles.sub}>
+          <p className={styles.cardSub}>
             No Salanor account exists for <strong>{inv.email}</strong> yet. Set a
             password to join as <strong>{inv.role}</strong>.
           </p>
@@ -131,7 +142,7 @@ function InviteAcceptForm() {
             }}
           >
             <label className={styles.field}>
-              Your name (optional)
+              <span>Your name (optional)</span>
               <input
                 className={styles.input}
                 type="text"
@@ -168,7 +179,7 @@ function InviteAcceptForm() {
       ) : !signedIn ? (
         <>
           <h2>Sign in to accept</h2>
-          <p className={styles.sub}>
+          <p className={styles.cardSub}>
             An account already exists for <strong>{inv.email}</strong>. Sign in with
             that email to join <strong>{inv.organization_name}</strong>.
           </p>
@@ -201,7 +212,7 @@ function InviteAcceptForm() {
       ) : (
         <>
           <h2>Ready to join</h2>
-          <p className={styles.sub}>
+          <p className={styles.cardSub}>
             Signed in as <strong>{inv.email}</strong>. Accept to access{" "}
             <strong>{inv.organization_name}</strong> as <strong>{inv.role}</strong>.
           </p>
@@ -238,7 +249,7 @@ function invalidInvite(message: string) {
   return (
     <>
       <h2>Invitation unavailable</h2>
-      <p className={styles.sub}>{message}</p>
+      <p className={styles.cardSub}>{message}</p>
       <Link href="/login" className={styles.submit}>
         Go to sign in
       </Link>
@@ -254,35 +265,25 @@ function InviteLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className={styles.shell} data-console-shell>
-      <aside className={styles.brand}>
-        <a href={MARKETING_URL} className={styles.logo}>
-          <SalanorLogo size={32} showWordmark />
-        </a>
-        <h1>
-          {inv ? `Join ${inv.organization_name}` : "Organization invite"}
-        </h1>
-        <p>
-          Aegis console access with signed provenance, scoped to your
-          organization&apos;s ledger.
-        </p>
-        {inv ? (
-          <div className={styles.meta}>
-            <div style={{ marginBottom: "0.75rem" }}>
-              <AegisMark />
-            </div>
-            <p style={{ margin: 0 }}>
+    <div className={styles.shell}>
+      <PlatformAuthAside
+        title={inv ? `Join ${inv.organization_name}` : "Organization invite"}
+        description="Aegis console access with signed provenance, scoped to your organization's ledger."
+      />
+
+      <div className={styles.formPanel}>
+        <div className={styles.card}>
+          {inv ? (
+            <div className={styles.inviteMeta}>
               Invited as <strong>{inv.role}</strong>
               <br />
               Email <strong>{inv.email}</strong>
               <br />
               Expires {new Date(inv.expires_at).toLocaleDateString()}
-            </p>
-          </div>
-        ) : null}
-      </aside>
-      <div className={styles.panel}>
-        <div className={styles.card}>{children}</div>
+            </div>
+          ) : null}
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -307,6 +307,22 @@
   text-decoration: underline;
 }
 
+.inviteMeta {
+  padding: 0.875rem 1rem;
+  margin-bottom: 1.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-bright);
+  background: var(--surface2);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.inviteMeta strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
 @media (max-width: 800px) {
   .shell {
     grid-template-columns: 1fr;
