@@ -17,9 +17,17 @@ export {
 } from "./session.js";
 export {
   authenticateDevUser,
+  verifyAccountPassword,
+  pickDefaultOrganizationId,
   setAccountPassword,
   type DevLoginResult,
+  type VerifiedAccount,
 } from "./dev-login.js";
+export {
+  ACCOUNT_BOOTSTRAP_COOKIE,
+  createAccountBootstrapToken,
+  verifyAccountBootstrapToken,
+} from "./account-bootstrap.js";
 export {
   findAccountIdByOAuth,
   linkOAuthIdentity,
@@ -90,7 +98,9 @@ export {
   revokeInvitation,
   rotatePendingInvitation,
   updateMemberRole,
+  setMemberStatus,
   MemberRoleError,
+  MemberStatusError,
   provisionOrganization,
   registerSelfServeOrganization,
   createOrganizationForAccount,

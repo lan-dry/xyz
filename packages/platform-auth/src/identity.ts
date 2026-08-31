@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { createAgentWithSigningKey, type AgentCredentials } from "./agent-provisioning.js";
 import { hashInviteToken } from "./invite-token.js";
+import { assertCanAddMember, deleteSessionsForMembership } from "./plans.js";
 import { hashPassword } from "./password.js";
 
 export type OrgRole = "admin" | "engineer" | "auditor" | "viewer";
@@ -65,6 +66,41 @@ export class MemberRoleError extends Error {
   }
 }
 
+export class MemberStatusError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MemberStatusError";
+  }
+}
+
+async function getMembershipInOrg(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  membershipId: string,
+): Promise<MembershipRow | null> {
+  const result = await client.query<MembershipRow>(
+    `SELECT m.membership_id, m.account_id, m.organization_id, m.role, m.status,
+            a.email, a.display_name
+     FROM membership m
+     JOIN account a ON a.account_id = m.account_id
+     WHERE m.membership_id = $1 AND m.organization_id = $2 AND a.active = true`,
+    [membershipId, organizationId],
+  );
+  return result.rows[0] ?? null;
+}
+
+async function countActiveAdmins(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+): Promise<number> {
+  const admins = await client.query<{ n: string }>(
+    `SELECT COUNT(*)::text AS n FROM membership
+     WHERE organization_id = $1 AND role = 'admin' AND status = 'active'`,
+    [organizationId],
+  );
+  return Number(admins.rows[0]?.n ?? 0);
+}
+
 export async function updateMemberRole(
   client: pg.Pool | pg.PoolClient,
   input: {
@@ -86,12 +122,7 @@ export async function updateMemberRole(
   }
 
   if (member.role === "admin" && input.role !== "admin") {
-    const admins = await client.query<{ n: string }>(
-      `SELECT COUNT(*)::text AS n FROM membership
-       WHERE organization_id = $1 AND role = 'admin' AND status = 'active'`,
-      [input.organizationId],
-    );
-    if (Number(admins.rows[0]?.n ?? 0) <= 1) {
+    if ((await countActiveAdmins(client, input.organizationId)) <= 1) {
       throw new MemberRoleError("Cannot change role of the only admin");
     }
   }
@@ -118,6 +149,95 @@ export async function updateMemberRole(
   const updated = await getMembershipById(client, input.membershipId);
   if (!updated) {
     throw new MemberRoleError("Member not found after update");
+  }
+  return updated;
+}
+
+/** Suspend or reactivate org membership. Suspension revokes console access but keeps audit history. */
+export async function setMemberStatus(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    membershipId: string;
+    status: "active" | "suspended";
+    actorMembershipId: string;
+    actorAccountId: string;
+  },
+): Promise<MembershipRow> {
+  if (input.status !== "active" && input.status !== "suspended") {
+    throw new MemberStatusError("Invalid status");
+  }
+
+  const member = await getMembershipInOrg(
+    client,
+    input.organizationId,
+    input.membershipId,
+  );
+  if (!member) {
+    throw new MemberStatusError("Member not found");
+  }
+  if (member.status === input.status) {
+    return member;
+  }
+
+  if (input.status === "suspended") {
+    if (input.membershipId === input.actorMembershipId) {
+      throw new MemberStatusError(
+        "You cannot remove yourself. Ask another admin to suspend your access.",
+      );
+    }
+    if (member.role === "admin" && member.status === "active") {
+      if ((await countActiveAdmins(client, input.organizationId)) <= 1) {
+        throw new MemberStatusError("Cannot remove the only admin");
+      }
+    }
+
+    await client.query(
+      `UPDATE membership SET status = 'suspended' WHERE membership_id = $1`,
+      [input.membershipId],
+    );
+    await deleteSessionsForMembership(client, input.membershipId);
+
+    await writeAuditEvent(client, {
+      organizationId: input.organizationId,
+      membershipId: input.actorMembershipId,
+      action: "membership.suspended",
+      resourceType: "membership",
+      resourceId: input.membershipId,
+      metadata: {
+        email: member.email,
+        role: member.role,
+        actor_account_id: input.actorAccountId,
+      },
+    });
+  } else {
+    await assertCanAddMember(client, input.organizationId);
+    await client.query(
+      `UPDATE membership SET status = 'active' WHERE membership_id = $1`,
+      [input.membershipId],
+    );
+
+    await writeAuditEvent(client, {
+      organizationId: input.organizationId,
+      membershipId: input.actorMembershipId,
+      action: "membership.reactivated",
+      resourceType: "membership",
+      resourceId: input.membershipId,
+      metadata: {
+        email: member.email,
+        role: member.role,
+        actor_account_id: input.actorAccountId,
+      },
+    });
+  }
+
+  const updated = await getMembershipInOrg(
+    client,
+    input.organizationId,
+    input.membershipId,
+  );
+  if (!updated) {
+    throw new MemberStatusError("Member not found after update");
   }
   return updated;
 }

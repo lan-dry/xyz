@@ -17,8 +17,13 @@ export type BrandedEmailContent = {
   footerNote: string;
 };
 
+const EMAIL_LOGO_URL =
+  process.env.EMAIL_LOGO_URL?.trim() ??
+  "https://www.salanor.com/salanor-mark-white.png";
+
 export function buildBrandedEmailHtml(content: BrandedEmailContent): string {
   const url = escapeHtml(content.ctaUrl);
+  const logoUrl = escapeHtml(EMAIL_LOGO_URL);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,11 +37,13 @@ export function buildBrandedEmailHtml(content: BrandedEmailContent): string {
       <td align="center">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;background:#ffffff;border:1px solid #e2e8e4;border-radius:12px;overflow:hidden;">
           <tr>
-            <td style="padding:28px 32px 20px;background:linear-gradient(135deg,#0f766e 0%,#0d5c56 100%);">
+            <td style="padding:24px 32px 20px;background:linear-gradient(135deg,#0f766e 0%,#0d5c56 100%);">
               <table role="presentation" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,0.15);text-align:center;vertical-align:middle;font-size:18px;font-weight:700;color:#fff;">S</td>
-                  <td style="padding-left:12px;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.85);">Salanor · Aegis</td>
+                  <td style="vertical-align:middle;">
+                    <img src="${logoUrl}" width="40" height="40" alt="Salanor" style="display:block;border:0;border-radius:10px;" />
+                  </td>
+                  <td style="padding-left:12px;vertical-align:middle;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.92);">Salanor · Aegis</td>
                 </tr>
               </table>
             </td>

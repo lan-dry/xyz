@@ -401,12 +401,12 @@ export default function AgentsPage() {
               <option value="customer">Customer-held (you sign locally)</option>
               <option value="aws">AWS KMS (server calls kms:Sign)</option>
               <option value="gcp">GCP Cloud KMS (server asymmetricSign)</option>
-              <option value="vault">Vault bridge (encrypted key in Salanor)</option>
+              <option value="vault">HashiCorp Vault Transit (server calls /transit/sign)</option>
             </select>
           </label>
-          {byokKmsProvider === "aws" || byokKmsProvider === "gcp" ? (
+          {byokKmsProvider === "aws" || byokKmsProvider === "gcp" || byokKmsProvider === "vault" ? (
             <label className={ui.field}>
-              KMS key ARN / resource name
+              {byokKmsProvider === "vault" ? "Transit key name" : "KMS key ARN / resource name"}
               <input
                 className={ui.input}
                 value={byokKmsKeyArn}
@@ -414,7 +414,9 @@ export default function AgentsPage() {
                 placeholder={
                   byokKmsProvider === "aws"
                     ? "arn:aws:kms:region:account:key/…"
-                    : "projects/…/locations/…/keyRings/…/cryptoKeys/…/cryptoKeyVersions/…"
+                    : byokKmsProvider === "gcp"
+                      ? "projects/…/locations/…/keyRings/…/cryptoKeys/…/cryptoKeyVersions/…"
+                      : "aegis-agent-signing"
                 }
                 required
               />

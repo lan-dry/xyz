@@ -69,7 +69,7 @@ function PlatformLoginForm() {
         pending_email_verification:
           "You already signed up with this email. Open the verification link we sent, then sign in with Google or GitHub.",
         no_membership:
-          "Your account is not a member of that organization, or SSO is not enabled for the slug you entered.",
+          "No active organization on this account. Sign in with email and password to create a new company workspace, or open an invite link.",
         sso_not_configured: "Enterprise SSO is not configured on this environment.",
         invalid_state: "Sign-in session expired or was invalid. Try Google, GitHub, or SSO again.",
         oauth_failed: "Sign-in with your provider failed. Try again or use email and password.",
@@ -110,10 +110,14 @@ function PlatformLoginForm() {
     setError(null);
     setLoading(true);
     try {
-      await idApi<MeResponse>("/auth/login", {
+      const data = await idApi<MeResponse>("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
+      if (data.needs_organization) {
+        router.replace("/create-organization");
+        return;
+      }
       router.replace(returnTo);
     } catch (err) {
       if (err instanceof IdApiError && err.code === "email_unverified") {

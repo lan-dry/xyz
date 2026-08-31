@@ -19,6 +19,29 @@ import { SystemStatusStrip } from "@/components/console/system-status-strip";
 import { consoleApi } from "@/lib/api";
 import type { TraceSummary } from "@/lib/types";
 
+function DashboardStat({
+  title,
+  value,
+  hint,
+  icon: Icon,
+}: {
+  title: string;
+  value: number;
+  hint: React.ReactNode;
+  icon: typeof Activity;
+}) {
+  return (
+    <div className={`${ui.card} ${ui.cardPad}`}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem" }}>
+        <p className={ui.cardTitle}>{title}</p>
+        <Icon size={18} aria-hidden style={{ opacity: 0.45, flexShrink: 0 }} />
+      </div>
+      <p className={ui.cardValue}>{value}</p>
+      <p className={ui.cardHint}>{hint}</p>
+    </div>
+  );
+}
+
 export default function AegisDashboardPage() {
   const tracesQuery = useQuery({
     queryKey: ["console", "traces"],
@@ -107,43 +130,48 @@ export default function AegisDashboardPage() {
       {!loading && !error ? (
         <>
           <div className={ui.statGrid}>
-            <div className={`${ui.card} ${ui.cardPad}`}>
-              <p className={ui.cardTitle}>Pending approvals</p>
-              <p className={ui.cardValue}>{pending}</p>
-              <p className={ui.cardHint}>
-                {pending > 0 ? (
+            <DashboardStat
+              title="Pending approvals"
+              value={pending}
+              icon={UserCheck}
+              hint={
+                pending > 0 ? (
                   <Link href="/aegis/approvals" className={ui.tableLink}>
                     Review queue
                   </Link>
                 ) : (
                   "No obligations waiting"
-                )}
-              </p>
-            </div>
-            <div className={`${ui.card} ${ui.cardPad}`}>
-              <p className={ui.cardTitle}>Blocked traces</p>
-              <p className={ui.cardValue}>{blocked}</p>
-              <p className={ui.cardHint}>Awaiting human decision</p>
-            </div>
-            <div className={`${ui.card} ${ui.cardPad}`}>
-              <p className={ui.cardTitle}>Executing</p>
-              <p className={ui.cardValue}>{executing}</p>
-              <p className={ui.cardHint}>Approved, workflow side effects in progress</p>
-            </div>
-            <div className={`${ui.card} ${ui.cardPad}`}>
-              <p className={ui.cardTitle}>Traces</p>
-              <p className={ui.cardValue}>{traces.length}</p>
-              <p className={ui.cardHint}>Recorded agent workflows</p>
-            </div>
-            <div className={`${ui.card} ${ui.cardPad}`}>
-              <p className={ui.cardTitle}>Active policies</p>
-              <p className={ui.cardValue}>{activePolicies}</p>
-              <p className={ui.cardHint}>
+                )
+              }
+            />
+            <DashboardStat
+              title="Blocked traces"
+              value={blocked}
+              icon={Shield}
+              hint="Awaiting human decision"
+            />
+            <DashboardStat
+              title="Executing"
+              value={executing}
+              icon={Activity}
+              hint="Approved, workflow side effects in progress"
+            />
+            <DashboardStat
+              title="Traces"
+              value={traces.length}
+              icon={Activity}
+              hint="Recorded agent workflows"
+            />
+            <DashboardStat
+              title="Active policies"
+              value={activePolicies}
+              icon={KeyRound}
+              hint={
                 <Link href="/aegis/policies" className={ui.tableLink}>
                   Manage policies
                 </Link>
-              </p>
-            </div>
+              }
+            />
           </div>
 
           {pending > 0 ? (

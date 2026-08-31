@@ -12,21 +12,30 @@ export type DevLoginResult = {
   organizationId: string;
 };
 
+export type VerifiedAccount = {
+  accountId: string;
+  email: string;
+  displayName: string | null;
+};
+
 function devEnvPasswordMatches(password: string): boolean {
   return password === DEV_PASSWORD || password === DEV_PASSWORD_B;
 }
 
-export async function authenticateDevUser(
+/** Verify email + password without requiring an active org membership. */
+export async function verifyAccountPassword(
   client: pg.Pool | pg.PoolClient,
   email: string,
   password: string,
-): Promise<DevLoginResult | null> {
+): Promise<VerifiedAccount | null> {
   const normalized = email.trim().toLowerCase();
   const accountRow = await client.query<{
     account_id: string;
     password_hash: string | null;
+    email: string;
+    display_name: string | null;
   }>(
-    `SELECT account_id, password_hash FROM account
+    `SELECT account_id, password_hash, email, display_name FROM account
      WHERE lower(email) = $1 AND active = true`,
     [normalized],
   );
@@ -51,25 +60,57 @@ export async function authenticateDevUser(
     return null;
   }
 
-  const memberships = await client.query<{
-    organization_id: string;
-    last_active_at: Date | null;
-    joined_at: Date;
-  }>(
-    `SELECT organization_id, last_active_at, joined_at
+  return {
+    accountId: account.account_id,
+    email: account.email,
+    displayName: account.display_name,
+  };
+}
+
+export async function pickDefaultOrganizationId(
+  client: pg.Pool | pg.PoolClient,
+  accountId: string,
+  preferredOrganizationId?: string,
+): Promise<string | null> {
+  if (preferredOrganizationId) {
+    const preferred = await client.query<{ organization_id: string }>(
+      `SELECT organization_id FROM membership
+       WHERE account_id = $1 AND organization_id = $2 AND status = 'active'`,
+      [accountId, preferredOrganizationId],
+    );
+    if (preferred.rows[0]) {
+      return preferred.rows[0].organization_id;
+    }
+  }
+
+  const memberships = await client.query<{ organization_id: string }>(
+    `SELECT organization_id
      FROM membership
      WHERE account_id = $1 AND status = 'active'
      ORDER BY last_active_at DESC NULLS LAST, joined_at ASC`,
-    [account.account_id],
+    [accountId],
   );
-  const membership = memberships.rows[0];
-  if (!membership) {
+  return memberships.rows[0]?.organization_id ?? null;
+}
+
+export async function authenticateDevUser(
+  client: pg.Pool | pg.PoolClient,
+  email: string,
+  password: string,
+): Promise<DevLoginResult | null> {
+  const verified = await verifyAccountPassword(client, email, password);
+  if (!verified) {
+    return null;
+  }
+
+  const organizationId = await pickDefaultOrganizationId(client, verified.accountId);
+  if (!organizationId) {
     return null;
   }
 
   return {
-    accountId: account.account_id,
-    organizationId: membership.organization_id,
+    accountId: verified.accountId,
+    organizationId,
   };
 }
 

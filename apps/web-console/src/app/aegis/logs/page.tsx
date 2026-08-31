@@ -1,6 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -32,6 +33,14 @@ type AuditLogsResponse = {
   page: number;
   limit: number;
 };
+
+const AUDIT_PRESETS = [
+  { label: "Member removed", action: "membership.suspended" },
+  { label: "Member reactivated", action: "membership.reactivated" },
+  { label: "Role changed", action: "membership.role_changed" },
+  { label: "Invite sent", action: "invitation.created" },
+  { label: "Invite accepted", action: "invitation.accepted" },
+] as const;
 
 export default function AuditLogsPage() {
   const { q, action, page, limit, queryString, setQuery, setAction, setPage, setLimit } =
@@ -104,6 +113,37 @@ export default function AuditLogsPage() {
             ))}
           </select>
         </label>
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.25rem" }}>
+        {AUDIT_PRESETS.map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            className={`${ui.btn} ${ui.btnSecondary}`}
+            style={{
+              fontSize: "0.8125rem",
+              padding: "0.35rem 0.75rem",
+              ...(action === preset.action ? { borderColor: "var(--console-accent)" } : {}),
+            }}
+            onClick={() => setAction(preset.action)}
+          >
+            {preset.label}
+          </button>
+        ))}
+        {action ? (
+          <button
+            type="button"
+            className={`${ui.btn} ${ui.btnSecondary}`}
+            style={{ fontSize: "0.8125rem", padding: "0.35rem 0.75rem" }}
+            onClick={() => setAction("")}
+          >
+            Clear filter
+          </button>
+        ) : null}
+        <Link href="/aegis/members" className={ui.tableLink} style={{ alignSelf: "center", fontSize: "0.8125rem" }}>
+          Manage members →
+        </Link>
       </div>
 
       {logsQuery.isPending && !logsQuery.data ? <LoadingBlock /> : null}
