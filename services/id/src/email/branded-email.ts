@@ -59,7 +59,7 @@ export function buildBrandedEmailHtml(content: BrandedEmailContent): string {
           </tr>
           <tr>
             <td style="padding:16px 32px 24px;border-top:1px solid #e2e8e4;font-size:11px;color:#8a9490;line-height:1.5;">
-              Salanor AB · Norrsken House Kigali<br />
+              Salanor Ltd · 1 KN 78 St, Kigali<br />
               Litigation-ready provenance for autonomous systems.<br />
               <a href="https://www.salanor.com" style="color:#0f766e;text-decoration:none;">salanor.com</a>
               ·
