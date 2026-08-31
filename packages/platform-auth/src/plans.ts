@@ -1229,6 +1229,10 @@ export async function platformOverviewStats(client: pg.Pool | pg.PoolClient): Pr
   events_this_month: number;
   worker_runs_24h: number;
   worker_errors_24h: number;
+  events_daily_7d: number[];
+  worker_runs_daily_7d: number[];
+  events_trend_pct: number | null;
+  worker_runs_trend_pct: number | null;
 }> {
   const period = monthStart();
   const result = await client.query<{
@@ -1254,6 +1258,25 @@ export async function platformOverviewStats(client: pg.Pool | pg.PoolClient): Pr
     [period],
   );
   const row = result.rows[0];
+
+  const eventDaily = await client.query<{ day: Date; count: string }>(
+    `SELECT date_trunc('day', emitted_at)::date AS day, COUNT(*)::text AS count
+     FROM event
+     WHERE emitted_at >= date_trunc('day', now()) - interval '6 days'
+     GROUP BY 1
+     ORDER BY 1`,
+  );
+  const workerDaily = await client.query<{ day: Date; count: string }>(
+    `SELECT date_trunc('day', started_at)::date AS day, COUNT(*)::text AS count
+     FROM worker_run
+     WHERE started_at >= date_trunc('day', now()) - interval '6 days'
+     GROUP BY 1
+     ORDER BY 1`,
+  );
+
+  const events_daily_7d = fillDailySeries(eventDaily.rows);
+  const worker_runs_daily_7d = fillDailySeries(workerDaily.rows);
+
   return {
     organizations_total: Number(row?.organizations_total ?? 0),
     organizations_active: Number(row?.organizations_active ?? 0),
@@ -1262,7 +1285,38 @@ export async function platformOverviewStats(client: pg.Pool | pg.PoolClient): Pr
     events_this_month: Number(row?.events_this_month ?? 0),
     worker_runs_24h: Number(row?.worker_runs_24h ?? 0),
     worker_errors_24h: Number(row?.worker_errors_24h ?? 0),
+    events_daily_7d,
+    worker_runs_daily_7d,
+    events_trend_pct: trendFromDailySeries(events_daily_7d),
+    worker_runs_trend_pct: trendFromDailySeries(worker_runs_daily_7d),
   };
+}
+
+function fillDailySeries(rows: Array<{ day: Date; count: string }>): number[] {
+  const out = Array.from({ length: 7 }, () => 0);
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - 6);
+  for (const row of rows) {
+    const dayStart = new Date(row.day);
+    dayStart.setHours(0, 0, 0, 0);
+    const index = Math.floor(
+      (dayStart.getTime() - start.getTime()) / (24 * 60 * 60 * 1000),
+    );
+    if (index >= 0 && index < 7) {
+      out[index] = Number(row.count);
+    }
+  }
+  return out;
+}
+
+function trendFromDailySeries(series: number[]): number | null {
+  if (series.length < 2) return null;
+  const mid = Math.floor(series.length / 2);
+  const earlier = series.slice(0, mid).reduce((a, b) => a + b, 0);
+  const recent = series.slice(mid).reduce((a, b) => a + b, 0);
+  if (earlier === 0) return recent > 0 ? 100 : 0;
+  return Math.round(((recent - earlier) / earlier) * 100);
 }
 
 export async function platformListAuditLogs(
