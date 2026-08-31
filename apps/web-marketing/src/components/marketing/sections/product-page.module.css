@@ -219,6 +219,21 @@
   background: var(--border);
   border-radius: 12px;
   overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.complianceGroupLabel {
+  margin: 0 0 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.complianceBadgeMuted {
+  opacity: 0.75;
 }
 
 .complianceBadge {

@@ -24,6 +24,7 @@ export default function AboutPage() {
         lead="We build what enterprises need before autonomous agents run in regulated environments. Not another agent framework."
         layout="wide"
         backHref="/"
+        showBackLink={false}
         prefix={<AboutSubnav current="about" />}
       >
         <>
@@ -41,11 +42,11 @@ export default function AboutPage() {
               <strong style={{ color: "var(--text)", fontWeight: 500 }}>The founding note:</strong> why we
               started, and what we owe the people downstream of every agent decision.
             </p>
-            <Link href="/about/founding">Read the founding note →</Link>
+            <Link href="/about/founding">Read the founding note</Link>
           </div>
           <p>
             <a href={contactUrl()} style={{ color: "var(--teal-bright)", textDecoration: "none" }}>
-              Get access →
+              Get access
             </a>{" "}
             for design partners and investors. Console accounts are provisioned after onboarding.
           </p>

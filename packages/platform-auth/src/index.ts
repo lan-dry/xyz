@@ -153,6 +153,7 @@ export {
   getOrgPlanContext,
   getOrgPlanUsageSummary,
   getPlanCatalog,
+  getPublicPlanOffers,
   platformGetAccount,
   platformListAccounts,
   platformListAccountsPaginated,

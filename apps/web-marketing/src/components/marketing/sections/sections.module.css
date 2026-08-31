@@ -524,6 +524,26 @@
   flex-wrap: wrap;
   gap: 0.75rem;
   justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.complianceGroupLabel {
+  margin: 1.25rem 0 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.complianceGroupLabel:first-of-type {
+  margin-top: 0;
+}
+
+.complianceChipMuted {
+  opacity: 0.72;
+  border-style: dashed;
 }
 
 .complianceChip {

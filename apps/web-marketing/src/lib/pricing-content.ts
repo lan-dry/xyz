@@ -34,7 +34,7 @@ export const PRICING_FAQ = [
   },
 ] as const;
 
-/** Marketing cards — sourced from @salanor/plan-display (same as Platform Ops list price). */
+/** Marketing cards — limits/prices from plan_catalog via /v1/id/public/plans; static bullets as fallback. */
 export const AEGIS_PLANS: PricingPlan[] = PLAN_DISPLAY_LIST.map((p) => ({
   ...p,
   priceLabel: p.listPrice,

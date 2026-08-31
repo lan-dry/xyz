@@ -68,14 +68,19 @@ export default function SpecPage() {
         <p className={styles.badge}>Identity · version 0.1</p>
         <h2><code>did:agent</code></h2>
         <p>
-          <code>did:agent</code> identifies autonomous software actors in a tenant namespace.
-          Salanor resolves DIDs to signing keys, policy scope, and console metadata. Each
-          organization owns a namespace; each deployed agent receives a stable DID and rotatable
-          keys.
+          <code>did:agent</code> is Salanor&apos;s proposed DID method for autonomous software
+          actors. Production Console agents today use{" "}
+          <code>did:salanor:&lt;org-slug&gt;:&lt;agent-id&gt;</code> with the same DID document
+          shape (signing keys, verify endpoint). The method name may converge to{" "}
+          <code>did:agent</code> as the spec matures.
         </p>
         <ul className={styles.list}>
           <li>
-            <strong>Format:</strong> <code>did:agent:&lt;org&gt;:&lt;agent-slug&gt;</code>
+            <strong>Live format:</strong>{" "}
+            <code>did:salanor:&lt;org-slug&gt;:&lt;agent-id&gt;</code>
+          </li>
+          <li>
+            <strong>Spec target:</strong> <code>did:agent:&lt;org&gt;:&lt;agent-slug&gt;</code>
           </li>
           <li>
             <strong>Binding:</strong> APS-1 events reference <code>agent_id</code> and{" "}

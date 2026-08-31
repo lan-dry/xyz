@@ -44,10 +44,10 @@ export const PLATFORM_DATA_POINTS = [
   },
   {
     id: "regulatory",
-    value: "6+",
-    label: "Regulatory export mappings",
+    value: "2",
+    label: "Export mappings live",
     detail:
-      "SOC 2, EU AI Act, NIST AI RMF, HIPAA paths, FedRAMP target. Control mapping in exports, not certification claims.",
+      "SOC 2 and EU AI Act control mapping ship in compliance ZIPs today. NIST, HIPAA, and FedRAMP paths are on the roadmap — evidence mapping, not certification claims.",
   },
   {
     id: "verify",
@@ -65,9 +65,9 @@ export const PLATFORM_DATA_POINTS = [
   },
   {
     id: "insurance",
-    value: "2027",
+    value: "Preview",
     label: "Liability bridge (Aether)",
-    detail: "Future: differentially-private telemetry for underwriters on top of Aegis ledger.",
+    detail: "Research program: risk telemetry for underwriters, built on the same Aegis ledger.",
   },
 ] as const;
 
@@ -110,7 +110,7 @@ export const PRODUCTS = {
     slug: "aegis",
     name: "Aegis",
     tag: "Provenance & Audit",
-    status: "Design partner · 2026",
+    status: "Live · design partners",
     brandLine: BRAND.taglineFull,
     headline: "Signed provenance for every agent action",
     subhead:
@@ -171,19 +171,19 @@ if (decision.decision === "allow_with_obligation") {
   // Pause until human approves in Console
 }`,
     compliance: [
-      { name: "SOC 2 Type II", note: "Export mapping · audit target Q4 2026" },
-      { name: "EU AI Act", note: "Art. 12, 14, 19, 26 mapping" },
-      { name: "NIST AI RMF", note: "Govern · Map · Manage exports" },
-      { name: "HIPAA", note: "BYOC path · roadmap" },
-      { name: "FedRAMP Mod.", note: "Architecture path · Q2 2027" },
-      { name: "ISO 42001", note: "AI management mapping" },
+      { name: "SOC 2 Type II", note: "Export mapping · live in ZIP bundles", available: true },
+      { name: "EU AI Act", note: "Art. 12+ mapping · live in exports", available: true },
+      { name: "NIST AI RMF", note: "Govern · Map · Manage · roadmap", available: false },
+      { name: "HIPAA", note: "BYOC path · roadmap", available: false },
+      { name: "FedRAMP Mod.", note: "Architecture path · roadmap", available: false },
+      { name: "ISO 42001", note: "AI management mapping · roadmap", available: false },
     ],
   },
   aether: {
     slug: "aether",
     name: "Aether",
     tag: "Intelligence & Orchestration",
-    status: "Coming 2027",
+    status: "Research program",
     headline: "Risk intelligence on your provenance ledger",
     subhead:
       "Anomaly detection, agent risk scoring, and insurer-ready telemetry from Aegis data you already own. Raw events never leave your boundary.",
@@ -227,12 +227,20 @@ if (decision.decision === "allow_with_obligation") {
   },
 } as const;
 
-export const COMPLIANCE_STRIP = [
-  { name: "SOC 2", note: "Export mapping" },
-  { name: "EU AI Act", note: "Art. 12+ mapping" },
-  { name: "NIST AI RMF", note: "Bundle exports" },
-  { name: "HIPAA", note: "BYOC path" },
+export const COMPLIANCE_AVAILABLE = [
+  { name: "SOC 2", note: "Control mapping in export ZIPs" },
+  { name: "EU AI Act", note: "Art. 12+ mapping in exports" },
 ] as const;
+
+export const COMPLIANCE_ROADMAP = [
+  { name: "NIST AI RMF", note: "Roadmap" },
+  { name: "HIPAA", note: "BYOC path" },
+  { name: "FedRAMP", note: "Architecture path" },
+  { name: "ISO 42001", note: "Roadmap" },
+] as const;
+
+/** @deprecated Use COMPLIANCE_AVAILABLE + COMPLIANCE_ROADMAP */
+export const COMPLIANCE_STRIP = COMPLIANCE_AVAILABLE;
 
 /** Pull quote for homepage + metadata */
 export const FOUNDING_PULL_QUOTE =
@@ -250,7 +258,7 @@ export const SALANOR_STACK = [
     name: "Aegis",
     slug: "aegis",
     role: "Provenance & audit",
-    status: "Design partner · 2026",
+    status: "Live · design partners",
     description: "Signed APS-1 ledger, policy engine, human approvals, compliance exports.",
     href: "/products/aegis",
   },
@@ -258,7 +266,7 @@ export const SALANOR_STACK = [
     name: "Aether",
     slug: "aether",
     role: "Intelligence & risk",
-    status: "Research · 2027",
+    status: "Research program",
     description:
       "Anomaly detection, risk scoring, and insurer-ready telemetry on the same ledger.",
     href: "/products/aether",

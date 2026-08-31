@@ -1,4 +1,5 @@
 import type pg from "pg";
+import { buildPublicPlansFromCatalog, type PlanDisplayInfo } from "@salanor/plan-display";
 
 export type PlanCatalogRow = {
   plan_slug: string;
@@ -11,6 +12,11 @@ export type PlanCatalogRow = {
   active: boolean;
   stripe_price_id: string | null;
   sort_order: number;
+  list_price: string;
+  list_price_detail: string;
+  tagline: string;
+  billing_note: string;
+  marketing_highlighted: boolean;
 };
 
 export type OrgPlanContext = {
@@ -92,7 +98,8 @@ export async function getPlanCatalog(
 ): Promise<PlanCatalogRow[]> {
   const result = await client.query<PlanCatalogRow>(
     `SELECT plan_slug, display_name, events_per_month, max_ingest_keys, max_members,
-            retention_days, self_serve, active, stripe_price_id, sort_order
+            retention_days, self_serve, active, stripe_price_id, sort_order,
+            list_price, list_price_detail, tagline, billing_note, marketing_highlighted
      FROM plan_catalog
      ${activeOnly ? "WHERE active = true" : ""}
      ORDER BY sort_order, plan_slug`,
@@ -112,6 +119,11 @@ export async function updatePlanCatalogRow(
     self_serve: boolean;
     active: boolean;
     stripe_price_id: string | null;
+    list_price: string;
+    list_price_detail: string;
+    tagline: string;
+    billing_note: string;
+    marketing_highlighted: boolean;
   }>,
 ): Promise<PlanCatalogRow | null> {
   const fields: string[] = [];
@@ -125,7 +137,8 @@ export async function updatePlanCatalogRow(
   if (fields.length === 0) {
     const rows = await client.query<PlanCatalogRow>(
       `SELECT plan_slug, display_name, events_per_month, max_ingest_keys, max_members,
-              retention_days, self_serve, active, stripe_price_id, sort_order
+              retention_days, self_serve, active, stripe_price_id, sort_order,
+              list_price, list_price_detail, tagline, billing_note, marketing_highlighted
        FROM plan_catalog WHERE plan_slug = $1`,
       [planSlug],
     );
@@ -137,10 +150,18 @@ export async function updatePlanCatalogRow(
     `UPDATE plan_catalog SET ${fields.join(", ")}
      WHERE plan_slug = $${i}
      RETURNING plan_slug, display_name, events_per_month, max_ingest_keys, max_members,
-               retention_days, self_serve, active, stripe_price_id, sort_order`,
+               retention_days, self_serve, active, stripe_price_id, sort_order,
+               list_price, list_price_detail, tagline, billing_note, marketing_highlighted`,
     values,
   );
   return result.rows[0] ?? null;
+}
+
+export async function getPublicPlanOffers(
+  client: pg.Pool | pg.PoolClient,
+): Promise<PlanDisplayInfo[]> {
+  const rows = await getPlanCatalog(client, true);
+  return buildPublicPlansFromCatalog(rows);
 }
 
 export async function getOrgPlanContext(
