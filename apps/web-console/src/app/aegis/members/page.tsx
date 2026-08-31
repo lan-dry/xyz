@@ -547,7 +547,7 @@ export default function MembersPage() {
         title="Remove member"
         description={
           removeTarget
-            ? `Remove ${removeTarget.email} from this organization? They will lose console access immediately. Their account is not deleted — you can reactivate them later.`
+            ? `Remove ${removeTarget.email} from this organization? They will lose console access immediately. Their account is not deleted. You can reactivate them later.`
             : undefined
         }
         closeOnOverlayClick={false}

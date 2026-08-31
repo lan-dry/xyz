@@ -40,6 +40,8 @@ Companion docs: [`BILLING_AND_PLANS.md`](BILLING_AND_PLANS.md) (pricing & invoic
 - Marketing: `/pricing`, `/trust`, `/leave-behind`, product pages
 - Sign-in history with IP + cloud/VPN-aware location label
 
+**Marketing site lists:** edit `COMPLIANCE_AVAILABLE` and `COMPLIANCE_ROADMAP` in `apps/web-marketing/src/lib/marketing-content.ts`. Move a framework from roadmap → available when its export mapping ships; homepage stat and product page update automatically.
+
 ---
 
 ## In product (we can build or improve)

@@ -145,8 +145,8 @@ export function ProductPageContent({ product }: { product: Product }) {
               <p className={`section-label ${shared.centerLabel}`}>Compliance coverage</p>
               <h2>Evidence mapping in exports</h2>
               <p style={{ color: "var(--text-muted)", maxWidth: "36rem", margin: "0 auto" }}>
-                Live mappings ship in ZIP bundles. Roadmap items are labeled — not certification
-                claims.
+                Live mappings ship in ZIP bundles. Roadmap items are labeled clearly: mapping
+                support, not certification claims.
               </p>
             </ScrollReveal>
             <ScrollReveal delay={80}>

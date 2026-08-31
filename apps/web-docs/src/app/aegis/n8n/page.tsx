@@ -13,7 +13,7 @@ export default function N8nOrchestratorsPage() {
     <>
       <h1>n8n &amp; orchestrators</h1>
       <p className="lead">
-        Signed APS-1 traces and live policy checks in n8n — without Ed25519 private keys in the
+        Signed APS-1 traces and live policy checks in n8n, without Ed25519 private keys in the
         orchestrator.
       </p>
 
@@ -64,15 +64,15 @@ export default function N8nOrchestratorsPage() {
       <h3>One trace per run</h3>
       <ul>
         <li>
-          <strong>Allow</strong> — Check Policy returns the decision only; Record Run writes one{" "}
+          <strong>Allow:</strong> Check Policy returns the decision only; Record Run writes one{" "}
           <strong>COMPLETED</strong> trace (policy gate embedded in that trace).
         </li>
         <li>
-          <strong>Deny</strong> — Check Policy writes one <strong>FAILED</strong> trace and stops
+          <strong>Deny:</strong> Check Policy writes one <strong>FAILED</strong> trace and stops
           the workflow.
         </li>
         <li>
-          <strong>Require approval</strong> — Check Policy opens a blocked trace and approval in
+          <strong>Require approval:</strong> Check Policy opens a blocked trace and approval in
           Console; after approval, Record Run completes that same trace.
         </li>
       </ul>
