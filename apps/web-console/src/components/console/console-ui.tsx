@@ -46,7 +46,7 @@ export function StatusBadge({
     className = ui.badgeWarning;
   } else if (s === "executing" || s === "running") {
     className = ui.badgeDefault;
-  } else if (s === "deny" || s === "revoked" || s === "failed" || s === "rejected" || s === "expired") {
+  } else if (s === "deny" || s === "revoked" || s === "failed" || s === "rejected" || s === "expired" || s === "suspended") {
     className = ui.badgeDanger;
   } else if (s === "approved") {
     className = ui.badgeSuccess;

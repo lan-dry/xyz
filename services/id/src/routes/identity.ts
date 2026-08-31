@@ -1,9 +1,10 @@
 import { Hono } from "hono";
-import { getCookie, setCookie } from "hono/cookie";
+import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import {
   acceptInvitation,
   acceptInvitationWithNewAccount,
   accountExistsForEmail,
+  ACCOUNT_BOOTSTRAP_COOKIE,
   createOrganizationInvitation,
   createOrganizationForAccount,
   createSession,
@@ -16,6 +17,7 @@ import {
   listPendingInvitations,
   previewInvitation,
   verifyPassword,
+  verifyAccountBootstrapToken,
   endImpersonation,
   ImpersonationError,
   resolveSession,
@@ -23,7 +25,9 @@ import {
   revokeInvitation,
   rotatePendingInvitation,
   updateMemberRole,
+  setMemberStatus,
   MemberRoleError,
+  MemberStatusError,
   SALANOR_SESSION_COOKIE,
   sessionCookieOptions,
   switchSessionOrganization,
@@ -81,22 +85,7 @@ function requireAdmin(session: ConsoleSession, organizationId: string): boolean 
 
 export const identityRoutes = new Hono();
 
-function selfServeSignupEnabled(): boolean {
-  const v = process.env.SELF_SERVE_SIGNUP_ENABLED?.trim();
-  return v === "1" || v?.toLowerCase() === "true";
-}
-
 identityRoutes.post("/auth/register", async (c) => {
-  if (!selfServeSignupEnabled()) {
-    return c.json(
-      {
-        error:
-          "Self-serve signup is disabled. Request access via salanor.com/contact or use an invitation.",
-      },
-      403,
-    );
-  }
-
   let body: {
     email?: string;
     password?: string;
@@ -397,8 +386,26 @@ identityRoutes.patch("/orgs/:orgId", async (c) => {
 });
 
 identityRoutes.post("/orgs/create", async (c) => {
-  const session = await requireSession(c);
-  if (!session) {
+  let accountId: string | null = null;
+  let actorEmail: string | null = null;
+
+  const sessionToken = getCookie(c, SALANOR_SESSION_COOKIE);
+  if (sessionToken) {
+    const session = await resolveSession(getPool(), sessionToken);
+    if (session) {
+      accountId = session.accountId;
+      actorEmail = session.email;
+    }
+  }
+
+  if (!accountId) {
+    const bootstrap = getCookie(c, ACCOUNT_BOOTSTRAP_COOKIE);
+    if (bootstrap) {
+      accountId = verifyAccountBootstrapToken(bootstrap);
+    }
+  }
+
+  if (!accountId) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
@@ -414,17 +421,25 @@ identityRoutes.post("/orgs/create", async (c) => {
 
   const client = await getPool().connect();
   try {
-    const created = await createOrganizationForAccount(client, session.accountId, {
+    const created = await createOrganizationForAccount(client, accountId, {
       organizationName: body.organization_name,
       organizationSlug: body.organization_slug,
     });
+
+    if (!actorEmail) {
+      const acct = await client.query<{ email: string }>(
+        `SELECT email FROM account WHERE account_id = $1`,
+        [accountId],
+      );
+      actorEmail = acct.rows[0]?.email ?? "";
+    }
 
     await auditConsoleEvent(
       client,
       {
         organizationId: created.organization_id,
         membershipId: created.membership_id,
-        email: session.email,
+        email: actorEmail,
       },
       {
         action: "organization.created",
@@ -434,16 +449,15 @@ identityRoutes.post("/orgs/create", async (c) => {
       },
     );
 
-    const switched = await switchSessionOrganization(
-      getPool(),
-      getCookie(c, SALANOR_SESSION_COOKIE)!,
+    const { token, session } = await createSession(
+      client,
+      accountId,
       created.organization_id,
     );
-    if (!switched) {
-      return c.json({ error: "Organization created but failed to switch" }, 500);
-    }
+    setCookie(c, SALANOR_SESSION_COOKIE, token, sessionCookieOptions(60 * 60 * 24 * 7));
+    deleteCookie(c, ACCOUNT_BOOTSTRAP_COOKIE, sessionCookieOptions(0));
 
-    return c.json(await buildMePayload(switched), 201);
+    return c.json(await buildMePayload(session), 201);
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === "23505") {
@@ -489,26 +503,39 @@ identityRoutes.patch("/orgs/:orgId/members/:membershipId", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  let body: { role?: string };
+  let body: { role?: string; status?: "active" | "suspended" };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ error: "Invalid JSON" }, 422);
   }
+
   const role = body.role as OrgRole | undefined;
-  if (!role) {
-    return c.json({ error: "role required" }, 422);
+  const status = body.status;
+  if (!role && !status) {
+    return c.json({ error: "role or status required" }, 422);
+  }
+  if (role && status) {
+    return c.json({ error: "Provide role or status, not both" }, 422);
   }
 
   const client = await getPool().connect();
   try {
-    const updated = await updateMemberRole(client, {
-      organizationId: orgId,
-      membershipId,
-      role,
-      actorMembershipId: session.userId,
-      actorAccountId: session.accountId,
-    });
+    const updated = status
+      ? await setMemberStatus(client, {
+          organizationId: orgId,
+          membershipId,
+          status,
+          actorMembershipId: session.userId,
+          actorAccountId: session.accountId,
+        })
+      : await updateMemberRole(client, {
+          organizationId: orgId,
+          membershipId,
+          role: role!,
+          actorMembershipId: session.userId,
+          actorAccountId: session.accountId,
+        });
     return c.json({
       member: {
         membership_id: updated.membership_id,
@@ -519,8 +546,11 @@ identityRoutes.patch("/orgs/:orgId/members/:membershipId", async (c) => {
       },
     });
   } catch (err) {
-    if (err instanceof MemberRoleError) {
+    if (err instanceof MemberRoleError || err instanceof MemberStatusError) {
       return c.json({ error: err.message }, 422);
+    }
+    if (err instanceof PlanLimitError) {
+      return c.json({ error: err.message, code: err.code }, err.httpStatus as 402);
     }
     throw err;
   } finally {
@@ -1072,6 +1102,44 @@ identityRoutes.get("/account/memberships", async (c) => {
     organizations: orgs,
   });
 });
+
+export async function buildAccountBootstrapPayload(accountId: string) {
+  const pool = getPool();
+  const accountRow = await pool.query<{
+    account_id: string;
+    email: string;
+    display_name: string | null;
+    email_verified_at: Date | null;
+  }>(
+    `SELECT account_id, email, display_name, email_verified_at
+     FROM account WHERE account_id = $1 AND active = true`,
+    [accountId],
+  );
+  const account = accountRow.rows[0];
+  if (!account) {
+    throw new Error("Account not found");
+  }
+  const platformRole = await getAccountPlatformRole(pool, accountId);
+  const organizations = await listOrganizationsForAccount(pool, accountId);
+
+  return {
+    code: "no_membership" as const,
+    needs_organization: true,
+    account: {
+      account_id: account.account_id,
+      email: account.email,
+      display_name: account.display_name,
+      platform_role: platformRole,
+      platform_staff: platformRole != null,
+      email_verified: account.email_verified_at != null,
+    },
+    organizations,
+    user: null,
+    organization: null,
+    needs_onboarding: false,
+    impersonation: null,
+  };
+}
 
 export async function buildMePayload(session: ConsoleSession) {
   const organizations = await listOrganizationsForAccount(

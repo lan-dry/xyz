@@ -63,7 +63,15 @@ export default function AegisLayout({ children }: { children: React.ReactNode })
       return;
     }
     if (
+      meQuery.data?.needs_organization &&
+      !meQuery.data.impersonation?.active
+    ) {
+      router.replace("/create-organization");
+      return;
+    }
+    if (
       meQuery.data &&
+      meQuery.data.organization &&
       (meQuery.data.needs_onboarding || meQuery.data.organization.needs_onboarding) &&
       !meQuery.data.impersonation?.active
     ) {
@@ -75,7 +83,7 @@ export default function AegisLayout({ children }: { children: React.ReactNode })
     return <>{children}</>;
   }
 
-  if (meQuery.isPending || !meQuery.data) {
+  if (meQuery.isPending || !meQuery.data || !meQuery.data.user || !meQuery.data.organization) {
     return (
       <div data-console-shell style={{ minHeight: "100vh", padding: "2rem" }}>
         <LoadingBlock />

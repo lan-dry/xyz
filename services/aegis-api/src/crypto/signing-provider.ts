@@ -94,10 +94,50 @@ async function signWithGcpKms(
   };
 }
 
+async function signWithHashicorpVault(
+  event: ApsEvent,
+  transitKey: string,
+  keyId: string,
+): Promise<ApsEvent> {
+  const vaultAddr = process.env.VAULT_ADDR?.trim()?.replace(/\/$/, "");
+  const vaultToken = process.env.VAULT_TOKEN?.trim();
+  if (!vaultAddr || !vaultToken) {
+    throw new Error("VAULT_ADDR and VAULT_TOKEN required for vault kms_provider signing");
+  }
+
+  const keyName = transitKey.replace(/^transit\//, "").replace(/^keys\//, "");
+  const digest = signingDigest(event as Record<string, unknown>, keyId);
+  const response = await fetch(`${vaultAddr}/v1/transit/sign/${encodeURIComponent(keyName)}`, {
+    method: "POST",
+    headers: {
+      "X-Vault-Token": vaultToken,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      input: Buffer.from(digest).toString("base64"),
+    }),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Vault transit sign failed (${response.status}): ${body}`);
+  }
+  const json = (await response.json()) as { data?: { signature?: string } };
+  const vaultSig = json.data?.signature;
+  if (!vaultSig) {
+    throw new Error("Vault transit sign returned no signature");
+  }
+  const raw = vaultSig.includes(":") ? vaultSig.split(":").pop()! : vaultSig;
+  return {
+    ...event,
+    sig_alg: "ed25519",
+    sig_value_b64: raw,
+  };
+}
+
 /**
  * Server-side APS-1 signing using customer-controlled material (BYOK).
  * - customer: client-held only (no server sign)
- * - aws/gcp: KMS Sign on customer ARN
+ * - aws/gcp/vault: KMS Sign on customer ARN or Vault transit key name
  * - vault/dev + ciphertext: bridge vault decrypt
  * - dev: env AEGIS_SIGNING_KEY_FILE / DEV_SIGNING_PRIVATE_KEY_B64
  */
@@ -119,6 +159,10 @@ export async function signApsEventWithKey(
 
   if (provider === "gcp" && key.kms_key_arn) {
     return signWithGcpKms(event, key.kms_key_arn, key.key_id);
+  }
+
+  if (provider === "vault" && key.kms_key_arn) {
+    return signWithHashicorpVault(event, key.kms_key_arn, key.key_id);
   }
 
   if (key.private_key_ciphertext) {

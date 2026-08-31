@@ -39,10 +39,12 @@ export type ConsoleImpersonation = {
 
 export type MeResponse = {
   account: ConsoleAccount;
-  user: ConsoleUser;
-  organization: ConsoleOrganization;
+  user: ConsoleUser | null;
+  organization: ConsoleOrganization | null;
   organizations: ConsoleOrganization[];
   needs_onboarding?: boolean;
+  needs_organization?: boolean;
+  code?: string;
   impersonation?: ConsoleImpersonation | null;
 };
 

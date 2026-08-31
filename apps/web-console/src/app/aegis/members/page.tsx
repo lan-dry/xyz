@@ -49,6 +49,10 @@ export default function MembersPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<(typeof ROLES)[number]>("engineer");
   const [lastInvite, setLastInvite] = useState<InviteLinkResult | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{
+    membershipId: string;
+    email: string;
+  } | null>(null);
 
   const meQuery = useQuery({
     queryKey: ["id", "me"],
@@ -99,6 +103,21 @@ export default function MembersPage() {
         },
       ),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["id", "members", orgId] });
+    },
+  });
+
+  const setMemberStatus = useMutation({
+    mutationFn: (input: { membershipId: string; status: "active" | "suspended" }) =>
+      idApi<{ member: OrgMember }>(
+        `/orgs/${orgId}/members/${input.membershipId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status: input.status }),
+        },
+      ),
+    onSuccess: () => {
+      setRemoveTarget(null);
       void queryClient.invalidateQueries({ queryKey: ["id", "members", orgId] });
     },
   });
@@ -177,6 +196,9 @@ export default function MembersPage() {
       {updateRole.isError ? (
         <ErrorAlert message={(updateRole.error as Error).message} />
       ) : null}
+      {setMemberStatus.isError ? (
+        <ErrorAlert message={(setMemberStatus.error as Error).message} />
+      ) : null}
       {resendInvite.isError ? (
         <ErrorAlert message={(resendInvite.error as Error).message} />
       ) : null}
@@ -231,7 +253,15 @@ export default function MembersPage() {
       ) : null}
 
       <section className={ui.panel}>
-        <h2 className={ui.panelTitle}>Active members</h2>
+        <h2 className={ui.panelTitle}>Members</h2>
+        <p className={ui.muted} style={{ marginTop: 0, marginBottom: "1rem" }}>
+          Removing someone suspends console access for this org; their Salanor account remains and
+          they can create a new organization or accept another invite. Suspensions are logged in{" "}
+          <Link href="/aegis/logs?action=membership.suspended" className={ui.tableLink}>
+            Logs
+          </Link>
+          .
+        </p>
         {membersQuery.isPending ? (
           <LoadingBlock />
         ) : membersQuery.isError ? (
@@ -262,10 +292,14 @@ export default function MembersPage() {
                   <th>Role</th>
                   <th>Status</th>
                   <th>Joined</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
-                {members.map((m) => (
+                {members.map((m) => {
+                  const isSelf = m.membership_id === myMembershipId;
+                  const isActive = m.status === "active";
+                  return (
                   <tr key={m.membership_id}>
                     <td>{m.email}</td>
                     <td>{m.display_name ?? "-"}</td>
@@ -276,12 +310,15 @@ export default function MembersPage() {
                         value={m.role}
                         disabled={
                           updateRole.isPending ||
-                          m.membership_id === myMembershipId
+                          isSelf ||
+                          !isActive
                         }
                         title={
-                          m.membership_id === myMembershipId
+                          isSelf
                             ? "Ask another admin to change your role"
-                            : undefined
+                            : !isActive
+                              ? "Reactivate this member to change their role"
+                              : undefined
                         }
                         onChange={(e) =>
                           updateRole.mutate({
@@ -303,8 +340,43 @@ export default function MembersPage() {
                     <td className={ui.muted}>
                       {new Date(m.joined_at).toLocaleDateString()}
                     </td>
+                    <td style={{ textAlign: "right" }}>
+                      {isSelf ? null : isActive ? (
+                        <button
+                          type="button"
+                          className={`${ui.btn} ${ui.btnSecondary}`}
+                          disabled={setMemberStatus.isPending}
+                          onClick={() =>
+                            setRemoveTarget({
+                              membershipId: m.membership_id,
+                              email: m.email,
+                            })
+                          }
+                        >
+                          Remove
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={`${ui.btn} ${ui.btnSecondary}`}
+                          disabled={setMemberStatus.isPending}
+                          onClick={() =>
+                            setMemberStatus.mutate({
+                              membershipId: m.membership_id,
+                              status: "active",
+                            })
+                          }
+                        >
+                          {setMemberStatus.isPending &&
+                          setMemberStatus.variables?.membershipId === m.membership_id
+                            ? "Reactivating…"
+                            : "Reactivate"}
+                        </button>
+                      )}
+                    </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             <ConsolePagination
@@ -468,6 +540,46 @@ export default function MembersPage() {
           <ErrorAlert message={(inviteMember.error as Error).message} />
         ) : null}
       </Modal>
+
+      <Modal
+        open={Boolean(removeTarget)}
+        title="Remove member"
+        description={
+          removeTarget
+            ? `Remove ${removeTarget.email} from this organization? They will lose console access immediately. Their account is not deleted — you can reactivate them later.`
+            : undefined
+        }
+        closeOnOverlayClick={false}
+        onClose={() => {
+          if (!setMemberStatus.isPending) setRemoveTarget(null);
+        }}
+        footer={
+          <>
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnSecondary}`}
+              onClick={() => setRemoveTarget(null)}
+              disabled={setMemberStatus.isPending}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              disabled={!removeTarget || setMemberStatus.isPending}
+              onClick={() => {
+                if (!removeTarget) return;
+                setMemberStatus.mutate({
+                  membershipId: removeTarget.membershipId,
+                  status: "suspended",
+                });
+              }}
+            >
+              {setMemberStatus.isPending ? "Removing…" : "Remove from organization"}
+            </button>
+          </>
+        }
+      />
     </ConsolePage>
   );
 }

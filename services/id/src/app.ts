@@ -6,23 +6,27 @@ import {
   auditAuthLoginFailed,
   auditAuthLoginSuccess,
   auditConsoleEvent,
-  authenticateDevUser,
-  cleanupAbandonedPendingOrganizations,
+  ACCOUNT_BOOTSTRAP_COOKIE,
+  createAccountBootstrapToken,
   createPasswordResetToken,
   createSession,
   deleteSession,
   getClientIp,
   isEmailVerified,
+  pickDefaultOrganizationId,
   recordAccountLoginEvent,
   resetPasswordWithToken,
   resolveAuditContextForAccount,
   resolveSession,
   SALANOR_SESSION_COOKIE,
   sessionCookieOptions,
+  verifyAccountBootstrapToken,
+  verifyAccountPassword,
+  cleanupAbandonedPendingOrganizations,
   type ConsoleSession,
 } from "@salanor/platform-auth";
 import { pingDatabase, getPool } from "./db/pool.js";
-import { buildMePayload, identityRoutes } from "./routes/identity.js";
+import { buildAccountBootstrapPayload, buildMePayload, identityRoutes } from "./routes/identity.js";
 import { platformRoutes } from "./routes/platform.js";
 import {
   handlePublicContact,
@@ -124,8 +128,8 @@ app.post("/v1/id/auth/login", async (c) => {
   let client;
   try {
     client = await getPool().connect();
-    const auth = await authenticateDevUser(client, email, body.password);
-    if (!auth) {
+    const verified = await verifyAccountPassword(client, email, body.password);
+    if (!verified) {
       await auditAuthLoginFailed(client, { email, reason: "invalid_credentials", ip });
       const failedAccount = await client.query<{ account_id: string }>(
         `SELECT account_id FROM account WHERE lower(email) = $1 AND active = true`,
@@ -144,18 +148,16 @@ app.post("/v1/id/auth/login", async (c) => {
       return c.json({ error: "Invalid credentials" }, 401);
     }
 
-    const verified = await isEmailVerified(client, auth.accountId);
-    if (!verified) {
+    const emailVerified = await isEmailVerified(client, verified.accountId);
+    if (!emailVerified) {
       await auditAuthLoginDenied(client, {
         email,
         reason: "email_unverified",
         code: "email_unverified",
-        organizationId: auth.organizationId,
         ip,
       });
       await recordAccountLoginEvent(client, {
-        accountId: auth.accountId,
-        organizationId: auth.organizationId,
+        accountId: verified.accountId,
         method: "password",
         success: false,
         failureReason: "email_unverified",
@@ -171,12 +173,37 @@ app.post("/v1/id/auth/login", async (c) => {
       );
     }
 
-    const organizationId = body.organization_id ?? auth.organizationId;
+    const organizationId = await pickDefaultOrganizationId(
+      client,
+      verified.accountId,
+      body.organization_id,
+    );
+
+    if (!organizationId) {
+      const bootstrap = createAccountBootstrapToken(verified.accountId);
+      setCookie(
+        c,
+        ACCOUNT_BOOTSTRAP_COOKIE,
+        bootstrap,
+        sessionCookieOptions(30 * 60),
+      );
+      deleteCookie(c, SALANOR_SESSION_COOKIE, sessionCookieOptions(0));
+      await recordAccountLoginEvent(client, {
+        accountId: verified.accountId,
+        method: "password",
+        success: true,
+        ipAddress: ip,
+        userAgent,
+      });
+      return c.json(await buildAccountBootstrapPayload(verified.accountId));
+    }
+
     const { token, session } = await createSession(
       client,
-      auth.accountId,
+      verified.accountId,
       organizationId,
     );
+    deleteCookie(c, ACCOUNT_BOOTSTRAP_COOKIE, sessionCookieOptions(0));
     await auditAuthLoginSuccess(client, {
       organizationId: session.organizationId,
       membershipId: session.userId,
@@ -185,7 +212,7 @@ app.post("/v1/id/auth/login", async (c) => {
       ip,
     });
     await recordAccountLoginEvent(client, {
-      accountId: auth.accountId,
+      accountId: verified.accountId,
       organizationId: session.organizationId,
       method: "password",
       success: true,
@@ -309,19 +336,32 @@ app.post("/v1/id/auth/logout", async (c) => {
 
 app.get("/v1/id/auth/me", async (c) => {
   const token = getCookie(c, SALANOR_SESSION_COOKIE);
-  if (!token) {
-    return c.json({ error: "Unauthorized" }, 401);
+  if (token) {
+    const session = await resolveSession(getPool(), token);
+    if (session) {
+      try {
+        return c.json(await buildMePayload(session));
+      } catch (err) {
+        console.error("[id] auth/me", err);
+        return c.json({ error: "Failed to load session" }, 500);
+      }
+    }
   }
-  const session = await resolveSession(getPool(), token);
-  if (!session) {
-    return c.json({ error: "Unauthorized" }, 401);
+
+  const bootstrap = getCookie(c, ACCOUNT_BOOTSTRAP_COOKIE);
+  if (bootstrap) {
+    const accountId = verifyAccountBootstrapToken(bootstrap);
+    if (accountId) {
+      try {
+        return c.json(await buildAccountBootstrapPayload(accountId));
+      } catch (err) {
+        console.error("[id] auth/me bootstrap", err);
+        return c.json({ error: "Failed to load account" }, 500);
+      }
+    }
   }
-  try {
-    return c.json(await buildMePayload(session));
-  } catch (err) {
-    console.error("[id] auth/me", err);
-    return c.json({ error: "Failed to load session" }, 500);
-  }
+
+  return c.json({ error: "Unauthorized" }, 401);
 });
 
 app.post("/v1/id/auth/validate", async (c) => {

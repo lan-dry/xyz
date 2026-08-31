@@ -167,8 +167,8 @@ agentRoutes.post("/agents/:agentId/keys/byok", requireConsoleSession, async (c) 
   }
 
   const kmsProvider = body.kms_provider ?? "customer";
-  if ((kmsProvider === "aws" || kmsProvider === "gcp") && !body.kms_key_arn?.trim()) {
-    return c.json({ error: "kms_key_arn required for aws/gcp providers" }, 422);
+  if ((kmsProvider === "aws" || kmsProvider === "gcp" || kmsProvider === "vault") && !body.kms_key_arn?.trim()) {
+    return c.json({ error: "kms_key_arn required for aws/gcp/vault providers" }, 422);
   }
 
   const client = await getPool().connect();
