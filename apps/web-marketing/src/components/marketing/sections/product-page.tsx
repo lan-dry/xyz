@@ -143,16 +143,34 @@ export function ProductPageContent({ product }: { product: Product }) {
           <div className="section-inner">
             <ScrollReveal className={`${shared.header} ${shared.centerHeader}`}>
               <p className={`section-label ${shared.centerLabel}`}>Compliance coverage</p>
-              <h2>Every regulation. One export.</h2>
+              <h2>Evidence mapping in exports</h2>
+              <p style={{ color: "var(--text-muted)", maxWidth: "36rem", margin: "0 auto" }}>
+                Live mappings ship in ZIP bundles. Roadmap items are labeled — not certification
+                claims.
+              </p>
             </ScrollReveal>
             <ScrollReveal delay={80}>
+              <p className={s.complianceGroupLabel}>Available today</p>
               <div className={s.complianceGrid}>
-                {product.compliance.map((c) => (
-                  <div key={c.name} className={s.complianceBadge}>
-                    <strong>{c.name}</strong>
-                    <span>{c.note}</span>
-                  </div>
-                ))}
+                {product.compliance
+                  .filter((c) => "available" in c && c.available)
+                  .map((c) => (
+                    <div key={c.name} className={s.complianceBadge}>
+                      <strong>{c.name}</strong>
+                      <span>{c.note}</span>
+                    </div>
+                  ))}
+              </div>
+              <p className={s.complianceGroupLabel}>Roadmap</p>
+              <div className={s.complianceGrid}>
+                {product.compliance
+                  .filter((c) => !("available" in c) || !c.available)
+                  .map((c) => (
+                    <div key={c.name} className={`${s.complianceBadge} ${s.complianceBadgeMuted}`}>
+                      <strong>{c.name}</strong>
+                      <span>{c.note}</span>
+                    </div>
+                  ))}
               </div>
             </ScrollReveal>
           </div>

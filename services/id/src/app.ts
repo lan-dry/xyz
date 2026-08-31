@@ -33,6 +33,7 @@ import {
   handlePublicContactHealth,
   publicContactRoutes,
 } from "./routes/public-contact.js";
+import { handlePublicPlans } from "./routes/public-plans.js";
 import { sendEmailVerificationEmail } from "./email/send-email-verification.js";
 import { registerOAuthRoutes } from "./auth/oauth-handlers.js";
 import { registerSsoRoutes } from "./auth/sso-workos.js";
@@ -93,6 +94,7 @@ app.get("/health", async (c) => {
 // Contact first (explicit + nested) so marketing proxies never 404 behind /v1/id mounts.
 app.get("/v1/id/public/contact", handlePublicContactHealth);
 app.post("/v1/id/public/contact", handlePublicContact);
+app.get("/v1/id/public/plans", handlePublicPlans);
 app.get("/v1/id/leads/contact", handlePublicContactHealth);
 app.post("/v1/id/leads/contact", handlePublicContact);
 app.route("/v1/id/public", publicContactRoutes);

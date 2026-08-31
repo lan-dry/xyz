@@ -12,9 +12,9 @@ Use this alongside `GO_LIVE_CHECKLIST.md` before prospecting, LinkedIn, and live
 | Export monthly cap schema | Done | Migration **028** (`compliance_export.created_at`) |
 | Governed n8n demo (success path) | Verify | Manual or **production webhook** → approve → COMPLETED |
 | Governed n8n demo (failure path) | Verify | Production webhook only (not Manual Trigger) → error workflow → FAILED |
-| Railway: `aegis-api` on latest `main` | Deploy | Redeploy if stuck on old commit — see `RAILWAY_AEGIS_DEPLOY.md` |
-| Railway: witness worker | Deploy | `pnpm --filter aegis-api witness:worker`, `WITNESS_INTERVAL_MS=60000` |
-| Railway: Hobby plan | Upgrade | Free tier blocks extra cron services |
+| Fly.io: `aegis-api` on latest `main` | Deploy | `fly deploy --config deploy/fly/aegis-api/fly.toml` |
+| Fly.io: witness worker | Deploy | App `salanor-aegis-witness`, `WITNESS_INTERVAL_MS=60000` |
+| Neon Postgres (EU) | Provision | See `PRODUCTION_DEPLOY.md` |
 | Marketing `/pricing` live | Deploy | Vercel `web-marketing` |
 | Trust page honest claims | Live | `/trust` — no SOC 2 cert oversell |
 
@@ -73,9 +73,12 @@ Keep deck and LinkedIn aligned with `/trust` status badges.
 
 ## Deploy map
 
+Full runbook: **`PRODUCTION_DEPLOY.md`**. Config files: `deploy/fly/*/fly.toml`.
+
 | Surface | Repo / host |
 |---------|-------------|
-| API + workers | `lan-dry/xyz` → Railway |
+| Postgres | Neon (EU Frankfurt) |
+| API + workers | `salanor-ltd/salanor` → Fly.io |
 | Console | Vercel → `app.salanor.com` |
 | Marketing | Vercel → `www.salanor.com` |
 | Platform Ops | Vercel → `ops.salanor.com` |

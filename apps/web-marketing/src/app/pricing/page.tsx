@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { MarketingPage } from "@/components/marketing/marketing-page";
+import { fetchPublicPlans, toPricingPlan } from "@/lib/public-plans";
 import {
-  AEGIS_PLANS,
   PRICING_COMPARISON_ROWS,
   PRICING_FAQ,
 } from "@/lib/pricing-content";
@@ -13,15 +13,17 @@ import styles from "./pricing.module.css";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Aegis pricing: Free for evaluation, Team at $299/mo for production governance, Enterprise for regulated scale. Per-organization, not per-seat.",
+    "Aegis pricing: Free for evaluation, Team for production governance, Enterprise for regulated scale. Per-organization, not per-seat.",
   alternates: { canonical: "/pricing" },
   openGraph: {
     title: "Aegis pricing · Salanor",
     description:
-      "Three tiers for agent provenance: Free, Team ($299/mo), Enterprise (custom). Events, retention, and compliance exports scale with your program.",
+      "Three tiers for agent provenance: Free, Team, Enterprise. Events, retention, and compliance exports scale with your program.",
     url: "/pricing",
   },
 };
+
+export const revalidate = 60;
 
 function CellValue({ value }: { value: string | boolean }) {
   if (value === true) {
@@ -33,7 +35,10 @@ function CellValue({ value }: { value: string | boolean }) {
   return <>{value}</>;
 }
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const { plans, live } = await fetchPublicPlans();
+  const pricingPlans = plans.map(toPricingPlan);
+
   return (
     <MarketingPage
       layout="wide"
@@ -41,8 +46,14 @@ export default function PricingPage() {
       title="Plans that match how teams adopt governance"
       lead="Per organization, not per seat. Start free, upgrade when you need production volume, scheduled exports, or enterprise SSO."
     >
+      {live ? (
+        <p className={styles.liveNote}>
+          List prices and limits sync from Platform Ops (refreshed every minute).
+        </p>
+      ) : null}
+
       <div className={styles.grid}>
-        {AEGIS_PLANS.map((plan) => (
+        {pricingPlans.map((plan) => (
           <article
             key={plan.slug}
             className={`${styles.card} ${plan.highlighted ? styles.cardHighlight : ""}`}
@@ -123,10 +134,9 @@ export default function PricingPage() {
       </section>
 
       <p className={styles.note}>
-        Team checkout uses Stripe when configured in production. Until then,{" "}
-        <Link href="/contact">contact us</Link> for invoice billing. Platform Ops can
-        assign Enterprise limits and record payment without changing your contract
-        workflow. See also our{" "}
+        Team checkout uses Stripe when configured in production. Change list prices in{" "}
+        <strong>Platform Ops → Plans</strong>; charges follow the Stripe Price ID on each plan.
+        Enterprise limits and invoice billing stay in Ops. See also our{" "}
         <Link href="/trust">trust center</Link> for what is live vs roadmap.
       </p>
     </MarketingPage>

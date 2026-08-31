@@ -11,6 +11,7 @@ export function MarketingPage({
   children,
   layout = "narrow",
   backHref = "/",
+  showBackLink = false,
   prefix,
 }: {
   label: string;
@@ -19,6 +20,7 @@ export function MarketingPage({
   children: ReactNode;
   layout?: "narrow" | "wide";
   backHref?: string;
+  showBackLink?: boolean;
   prefix?: ReactNode;
 }) {
   const innerClass =
@@ -33,9 +35,11 @@ export function MarketingPage({
           <h1 className={styles.title}>{title}</h1>
           {lead ? <p className={styles.lead}>{lead}</p> : null}
           <div className={styles.body}>{children}</div>
-          <Link href={backHref} className={styles.back}>
-            ← Back to home
-          </Link>
+          {showBackLink ? (
+            <Link href={backHref} className={styles.back}>
+              ← Back to home
+            </Link>
+          ) : null}
         </div>
       </ScrollReveal>
     </section>

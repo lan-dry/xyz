@@ -6,11 +6,11 @@ import { AEGIS_API_DEPLOY_MARKER } from "./deploy-marker.js";
 
 initObservability("aegis-api");
 
-const port = Number(process.env.AEGIS_API_PORT ?? process.env.PORT ?? 8080);
+const port = Number(process.env.PORT ?? process.env.AEGIS_API_PORT ?? 8080);
 const app = createApp();
 
-serve({ fetch: app.fetch, port }, (info) => {
+serve({ fetch: app.fetch, port, hostname: "::" }, (info) => {
   console.log(
-    `aegis-api listening on http://localhost:${info.port} (${AEGIS_API_DEPLOY_MARKER})`,
+    `aegis-api listening on http://[::]:${info.port} (${AEGIS_API_DEPLOY_MARKER})`,
   );
 });

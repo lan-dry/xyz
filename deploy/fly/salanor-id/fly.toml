@@ -1,0 +1,27 @@
+# Salanor ID (auth, provisioning, contact) — production (Fly.io)
+# Deploy: fly deploy --config deploy/fly/salanor-id/fly.toml
+
+app = "salanor-id"
+primary_region = "fra"
+
+[build]
+dockerfile = "../../docker/Dockerfile.backend"
+[build.args]
+SERVICE_FILTER = "id"
+START_COMMAND = "pnpm --filter id start"
+WITNESS_BUILD = "0"
+
+[env]
+NODE_ENV = "production"
+SALANOR_ID_PORT = "8091"
+
+[http_service]
+internal_port = 8091
+force_https = true
+auto_stop_machines = "off"
+auto_start_machines = true
+min_machines_running = 1
+
+[[vm]]
+size = "shared-cpu-1x"
+memory = "512mb"

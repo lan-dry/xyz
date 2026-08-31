@@ -1,6 +1,7 @@
 /**
- * Canonical public plan copy and list prices.
- * Limits: Postgres plan_catalog (Platform Ops). Charges: Stripe Price ID.
+ * Public plan copy: marketing fields + limits live in Postgres plan_catalog (Platform Ops).
+ * Feature bullets and CTAs stay here as stable defaults until moved to CMS.
+ * Charges: Stripe Price ID on plan_catalog.
  */
 export type PlanSlug = "free" | "team" | "enterprise";
 
@@ -8,7 +9,6 @@ export type PlanDisplayInfo = {
   slug: PlanSlug;
   name: string;
   tagline: string;
-  /** Shown on marketing and Ops (read-only). */
   listPrice: string;
   listPriceDetail: string;
   billingNote: string;
@@ -22,6 +22,21 @@ export type PlanDisplayInfo = {
   includes: string[];
   notIncluded?: string[];
   cta: { label: string; href: string; external?: boolean };
+};
+
+/** Row shape from plan_catalog (platform-auth). */
+export type PlanCatalogMarketingRow = {
+  plan_slug: string;
+  display_name: string;
+  events_per_month: number | null;
+  max_ingest_keys: number;
+  max_members: number;
+  retention_days: number;
+  list_price: string;
+  list_price_detail: string;
+  tagline: string;
+  billing_note: string;
+  marketing_highlighted: boolean;
 };
 
 export const PLAN_DISPLAY: Record<PlanSlug, PlanDisplayInfo> = {
@@ -122,10 +137,60 @@ export const PLAN_DISPLAY_LIST: PlanDisplayInfo[] = [
   PLAN_DISPLAY.enterprise,
 ];
 
-export function planListPrice(slug: string): string | null {
-  const row = PLAN_DISPLAY[slug as PlanSlug];
-  if (!row) return null;
-  return row.listPriceDetail
-    ? `${row.listPrice} ${row.listPriceDetail}`.trim()
-    : row.listPrice;
+export function formatEventsPerMonthLimit(value: number | null): string {
+  if (value === null) return "Unlimited";
+  return value.toLocaleString("en-US");
+}
+
+export function formatRetentionDays(days: number): string {
+  if (days >= 365 * 6) return "Up to 7 years";
+  if (days >= 365) return days === 365 ? "1 year" : `${Math.round(days / 365)} years`;
+  return `${days} days`;
+}
+
+export function planListPrice(
+  slug: string,
+  row?: Pick<PlanCatalogMarketingRow, "list_price" | "list_price_detail"> | null,
+): string | null {
+  const listPrice = row?.list_price?.trim();
+  const listPriceDetail = row?.list_price_detail?.trim();
+  if (listPrice) {
+    return listPriceDetail ? `${listPrice} ${listPriceDetail}`.trim() : listPrice;
+  }
+  const fallback = PLAN_DISPLAY[slug as PlanSlug];
+  if (!fallback) return null;
+  return fallback.listPriceDetail
+    ? `${fallback.listPrice} ${fallback.listPriceDetail}`.trim()
+    : fallback.listPrice;
+}
+
+/** Merge DB catalog row with static marketing defaults (Resend-style: price from Ops, copy from repo). */
+export function buildPublicPlanFromCatalog(row: PlanCatalogMarketingRow): PlanDisplayInfo | null {
+  const slug = row.plan_slug as PlanSlug;
+  const defaults = PLAN_DISPLAY[slug];
+  if (!defaults) return null;
+
+  return {
+    ...defaults,
+    name: row.display_name?.trim() || defaults.name,
+    tagline: row.tagline?.trim() || defaults.tagline,
+    listPrice: row.list_price?.trim() || defaults.listPrice,
+    listPriceDetail: row.list_price_detail?.trim() || defaults.listPriceDetail,
+    billingNote: row.billing_note?.trim() || defaults.billingNote,
+    highlighted: row.marketing_highlighted,
+    limits: {
+      eventsPerMonth: formatEventsPerMonthLimit(row.events_per_month),
+      apiKeys: row.max_ingest_keys,
+      members: row.max_members,
+      retention: formatRetentionDays(row.retention_days),
+    },
+  };
+}
+
+export function buildPublicPlansFromCatalog(
+  rows: PlanCatalogMarketingRow[],
+): PlanDisplayInfo[] {
+  return rows
+    .map((row) => buildPublicPlanFromCatalog(row))
+    .filter((p): p is PlanDisplayInfo => p !== null);
 }

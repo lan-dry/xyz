@@ -8,6 +8,8 @@ Read in this order for execution:
 |---|----------|--------|
 | 1 | **`PROJECT.md`** | Constitution: vision, repos, toolchain, Definition of Done, links to authoritative specs |
 | 2 | **`INFRASTRUCTURE_DECISIONS.md`** | Locked hosting: Neon + Auth.js (`@salanor/auth`) + Vercel + Aegis backends; portability rules |
+| 2a | **`PRODUCTION_DEPLOY.md`** | **Production runbook:** Neon + Fly.io + Vercel, env vars, deploy order, handoff guide |
+| 2b | **`NEON_SETUP.md`** | Neon project link, CLI, MCP, env vars, migrations for Salanor Production |
 | 2b | **`AUTH_ROADMAP.md`** | Auth stages A1–A5 (magic link → OAuth → 2FA → RBAC → SAML); committed, sequenced |
 | 3 | **`DIGITAL_ARCHITECTURE.md`** | URLs, IA alignment with Website Specification, marketing vs console vs docs |
 | 4 | **`DATA_MODEL_WEB.md`** | Postgres/Prisma CMS-light schema (`Salanor_Website_Specification.pdf`) |

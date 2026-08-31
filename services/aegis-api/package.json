@@ -13,6 +13,7 @@
     "db:migrate": "tsx src/db/migrate-cli.ts up",
     "db:migrate:down": "tsx src/db/migrate-cli.ts down",
     "db:seed": "tsx src/db/seed-cli.ts",
+    "db:seed:bootstrap": "tsx src/db/bootstrap-superadmin-cli.ts",
     "compliance:worker": "tsx src/compliance/worker-cli.ts",
     "compliance:schedule": "tsx src/compliance/schedule-cli.ts",
     "maintenance:housekeeping": "tsx src/maintenance/housekeeping-cli.ts",

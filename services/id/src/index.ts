@@ -4,8 +4,8 @@ import { app } from "./app.js";
 
 initObservability("salanor-id");
 
-const port = Number(process.env.SALANOR_ID_PORT ?? process.env.PORT ?? 8091);
+const port = Number(process.env.PORT ?? process.env.SALANOR_ID_PORT ?? 8091);
 
-serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`salanor-id listening on http://localhost:${info.port}`);
+serve({ fetch: app.fetch, port, hostname: "::" }, (info) => {
+  console.log(`salanor-id listening on http://[::]:${info.port}`);
 });

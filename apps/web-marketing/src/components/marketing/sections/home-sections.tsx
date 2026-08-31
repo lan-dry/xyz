@@ -7,7 +7,8 @@ import { HeroDataVisual } from "@/components/marketing/hero-data-visual";
 import { contactUrl, publicVerifyUrl } from "@/lib/site-urls";
 import {
   BRAND,
-  COMPLIANCE_STRIP,
+  COMPLIANCE_AVAILABLE,
+  COMPLIANCE_ROADMAP,
   FOUNDING_PULL_QUOTE,
   HOW_IT_WORKS,
   INVESTOR_QUOTES,
@@ -25,7 +26,7 @@ export function HeroSection() {
         <div className={s.heroCopy}>
           <div className={s.badge}>
             <span className={s.badgeDot} />
-            <span>Salanor · design partners 2026</span>
+            <span>Aegis live for design partners</span>
           </div>
           <h1>
             Provenance you can
@@ -42,7 +43,7 @@ export function HeroSection() {
             <Link href="/products/aether" style={{ color: "var(--text-muted)", textDecoration: "none" }}>
               Aether
             </Link>{" "}
-            adds risk intelligence on that ledger in 2027.
+            is our research program for risk intelligence on that ledger.
           </p>
           <div className={s.heroActions}>
             <a href={contactUrl()} className={s.btnHero}>
@@ -58,9 +59,7 @@ export function HeroSection() {
         </div>
         <div>
           <HeroDataVisual />
-          <p className={s.heroVisualCaption}>
-            Aegis provenance pipeline · shipping 2026
-          </p>
+          <p className={s.heroVisualCaption}>Aegis provenance pipeline</p>
         </div>
       </div>
     </section>
@@ -98,10 +97,10 @@ export function ProductsTeaserSection() {
       <div className="section-inner">
         <ScrollReveal className={s.header}>
           <p className="section-label">Products</p>
-          <h2>Aegis now. Aether next.</h2>
+          <h2>Aegis now. Aether in research.</h2>
           <p>
-            {BRAND.taglineShort} ships in 2026. Aether follows in 2027 for intelligence and risk.
-            Same company, same ledger.
+            {BRAND.taglineShort} is live for design partners. Aether is a separate research program
+            on the same ledger — not the focus of this quarter.
           </p>
         </ScrollReveal>
         <ScrollReveal delay={100}>
@@ -112,7 +111,7 @@ export function ProductsTeaserSection() {
                 <p className={s.teaserTag}>{p.tag}</p>
                 <h3 className={s.teaserName}>{p.name}</h3>
                 <p className={s.teaserDesc}>{p.subhead}</p>
-                <span className={s.teaserLink}>Explore {p.name} →</span>
+                <span className={s.teaserLink}>Explore {p.name}</span>
               </Link>
             ))}
           </div>
@@ -188,14 +187,25 @@ export function ComplianceStripSection() {
           <p className={`section-label ${s.centerLabel}`}>Compliance</p>
           <h2>Regulatory outputs, not slide decks</h2>
           <p>
-            Export bundles include control mapping for common frameworks. Formal certification is
-            on the roadmap. See <Link href="/trust">platform status</Link>.
+            Export bundles include control mapping for frameworks we support today. Additional
+            frameworks are on the roadmap. Formal certification is separate — see{" "}
+            <Link href="/trust">platform status</Link>.
           </p>
         </ScrollReveal>
         <ScrollReveal delay={60}>
+          <p className={s.complianceGroupLabel}>Available in exports today</p>
           <div className={s.complianceRow}>
-            {COMPLIANCE_STRIP.map((c) => (
+            {COMPLIANCE_AVAILABLE.map((c) => (
               <div key={c.name} className={s.complianceChip}>
+                <strong>{c.name}</strong>
+                <span>{c.note}</span>
+              </div>
+            ))}
+          </div>
+          <p className={s.complianceGroupLabel}>Roadmap</p>
+          <div className={s.complianceRow}>
+            {COMPLIANCE_ROADMAP.map((c) => (
+              <div key={c.name} className={`${s.complianceChip} ${s.complianceChipMuted}`}>
                 <strong>{c.name}</strong>
                 <span>{c.note}</span>
               </div>

@@ -6,13 +6,5 @@
     "rootDir": "src",
     "module": "NodeNext",
     "moduleResolution": "NodeNext"
-  },
-  "references": [
-    {
-      "path": "../../packages/platform-auth"
-    },
-    {
-      "path": "../../packages/observability"
-    }
-  ]
+  }
 }

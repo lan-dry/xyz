@@ -1,0 +1,20 @@
+# Housekeeping (expire approvals, stale traces) — production (Fly.io)
+# Schedule hourly via: fly machine update --schedule "0 * * * *"
+# Deploy: fly deploy --config deploy/fly/aegis-housekeeping/fly.toml
+
+app = "salanor-aegis-housekeeping"
+primary_region = "fra"
+
+[build]
+dockerfile = "../../docker/Dockerfile.backend"
+[build.args]
+SERVICE_FILTER = "aegis-api"
+START_COMMAND = "pnpm --filter aegis-api maintenance:housekeeping"
+WITNESS_BUILD = "1"
+
+[env]
+NODE_ENV = "production"
+
+[[vm]]
+size = "shared-cpu-1x"
+memory = "256mb"

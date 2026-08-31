@@ -603,6 +603,11 @@ platformRoutes.patch("/plan-catalog/:planSlug", async (c) => {
     self_serve?: boolean;
     active?: boolean;
     stripe_price_id?: string | null;
+    list_price?: string;
+    list_price_detail?: string;
+    tagline?: string;
+    billing_note?: string;
+    marketing_highlighted?: boolean;
   };
   try {
     body = await c.req.json();

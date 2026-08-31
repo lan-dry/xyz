@@ -220,9 +220,15 @@ export default function AgentsPage() {
                         {agent.signing_keys.map((k) => (
                           <li key={k.key_id} className="mono" style={{ fontSize: "0.75rem" }}>
                             {k.key_id}
-                            {k.kms_provider && k.kms_provider !== "platform"
-                              ? ` · BYOK (${k.kms_provider})`
-                              : ""}
+                            {k.kms_provider === "customer"
+                              ? " · BYOK (customer-held)"
+                              : k.kms_provider === "aws" || k.kms_provider === "gcp"
+                                ? ` · BYOK (${k.kms_provider} KMS)`
+                                : k.kms_provider === "vault"
+                                  ? " · Vault Transit"
+                                  : k.kms_provider === "dev"
+                                    ? " · Salanor-generated (copy private key at create)"
+                                    : ""}
                             {k.bridge_enabled && !k.revoked ? " · bridge" : ""}
                             {k.revoked ? " (revoked)" : ""}
                           </li>

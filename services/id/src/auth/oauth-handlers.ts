@@ -183,11 +183,6 @@ async function exchangeGithubCode(
   };
 }
 
-function selfServeSignupEnabled(): boolean {
-  const v = process.env.SELF_SERVE_SIGNUP_ENABLED?.trim();
-  return v === "1" || v?.toLowerCase() === "true";
-}
-
 function redirectLogin(
   c: Context,
   error: string,
@@ -199,7 +194,7 @@ function redirectLogin(
   const base = consoleOrigin();
   const oauthEmail = opts?.oauthEmail?.trim();
   const useSignup =
-    safeError === "no_account" && selfServeSignupEnabled() && Boolean(oauthEmail?.includes("@"));
+    safeError === "no_account" && Boolean(oauthEmail?.includes("@"));
   const url = new URL(useSignup ? "/signup" : "/login", base);
   if (!useSignup) {
     url.searchParams.set("oauth_error", safeError);
@@ -309,7 +304,7 @@ export function registerOAuthRoutes(app: import("hono").Hono): void {
               email: profile.email,
               displayName: profile.name,
             },
-            { allowSignup: selfServeSignupEnabled() },
+            { allowSignup: true },
           );
           if (!auth) {
             return redirectLogin(c, "no_account", verified.returnTo, {

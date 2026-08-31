@@ -115,6 +115,11 @@ const MIGRATIONS = [
     down: "021_account_login_events.down.sql",
   },
   {
+    version: "022_organization_sso_jit",
+    up: "022_organization_sso_jit.up.sql",
+    down: "022_organization_sso_jit.down.sql",
+  },
+  {
     version: "023_workflow_bridge",
     up: "023_workflow_bridge.up.sql",
     down: "023_workflow_bridge.down.sql",
@@ -148,6 +153,11 @@ const MIGRATIONS = [
     version: "029_account_login_geo",
     up: "029_account_login_geo.up.sql",
     down: "029_account_login_geo.down.sql",
+  },
+  {
+    version: "030_plan_catalog_marketing",
+    up: "030_plan_catalog_marketing.up.sql",
+    down: "030_plan_catalog_marketing.down.sql",
   },
 ] as const;
 

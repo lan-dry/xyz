@@ -1,6 +1,6 @@
 # Go-live checklist (prospecting)
 
-See also: `PRODUCTION_READY.md` (Tier 1–3), `BILLING_AND_PLANS.md`, `RAILWAY_AEGIS_DEPLOY.md`, `COMPLIANCE_AND_ROADMAP.md`.
+See also: `PRODUCTION_DEPLOY.md` (full runbook), `PRODUCTION_READY.md` (Tier 1–3), `BILLING_AND_PLANS.md`, `COMPLIANCE_AND_ROADMAP.md`.
 
 ## Product demo path
 
@@ -13,18 +13,18 @@ See also: `PRODUCTION_READY.md` (Tier 1–3), `BILLING_AND_PLANS.md`, `RAILWAY_A
 - [ ] Failure: same webhook with auth failure path → error handler → trace **FAILED** (not Manual Trigger)
 - [ ] Replay + Verify chain + inclusion on publish event
 
-## Railway (move to Hobby)
+## Fly.io + Neon (production)
 
-- [ ] Upgrade plan (Free limit blocks extra cron services)
-- [ ] `aegis-api` redeployed from latest `main` (lookup + migration 027 + 028)
-- [ ] `aegis-witness-worker` running
+- [ ] Neon Postgres provisioned (EU Frankfurt), migrations applied
+- [ ] `salanor-aegis-api` deployed from latest `main` (lookup + migration 027 + 028)
+- [ ] `salanor-aegis-witness` running
 - [ ] `WITNESS_INTERVAL_MS=60000` for demos (3600000 OK for cost, slower inclusion verify)
-- [ ] Optional: compliance + housekeeping cron services (see `docs/RAILWAY_AEGIS_DEPLOY.md`)
+- [ ] Compliance + housekeeping scheduled on Fly (see `PRODUCTION_DEPLOY.md`)
 - [ ] Migration **026** applied (worker run history in Platform Ops)
 
 ## Deploy
 
-- [ ] Push `lan-dry/xyz` main → Railway + Vercel auto-deploy
+- [ ] Push `salanor-ltd/salanor` main → Fly.io + Vercel auto-deploy
 - [ ] Console: `app.salanor.com` — dashboard strip shows Merkle roots + service status
 - [ ] Marketing: `www.salanor.com/trust`, **`/pricing`**, and **`/leave-behind`** live
 - [ ] Docs: integration guides (n8n, LangGraph, CrewAI)

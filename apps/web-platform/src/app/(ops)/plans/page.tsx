@@ -19,8 +19,14 @@ type PlanRow = {
   events_per_month: number | null;
   max_ingest_keys: number;
   max_members: number;
+  retention_days: number;
   self_serve: boolean;
   stripe_price_id: string | null;
+  list_price: string;
+  list_price_detail: string;
+  tagline: string;
+  billing_note: string;
+  marketing_highlighted: boolean;
 };
 
 function PlanEditorCard({
@@ -33,9 +39,15 @@ function PlanEditorCard({
   readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState({
+    list_price: plan.list_price ?? "",
+    list_price_detail: plan.list_price_detail ?? "",
+    tagline: plan.tagline ?? "",
+    billing_note: plan.billing_note ?? "",
+    marketing_highlighted: plan.marketing_highlighted ?? false,
     events_per_month: plan.events_per_month === null ? "" : String(plan.events_per_month),
     max_ingest_keys: String(plan.max_ingest_keys),
     max_members: String(plan.max_members),
+    retention_days: String(plan.retention_days ?? 90),
     self_serve: plan.self_serve,
     stripe_price_id: plan.stripe_price_id ?? "",
   });
@@ -46,10 +58,16 @@ function PlanEditorCard({
       platformApi(`/plan-catalog/${encodeURIComponent(plan.plan_slug)}`, {
         method: "PATCH",
         body: JSON.stringify({
+          list_price: draft.list_price.trim(),
+          list_price_detail: draft.list_price_detail.trim(),
+          tagline: draft.tagline.trim(),
+          billing_note: draft.billing_note.trim(),
+          marketing_highlighted: draft.marketing_highlighted,
           events_per_month:
             draft.events_per_month.trim() === "" ? null : Number(draft.events_per_month),
           max_ingest_keys: Number(draft.max_ingest_keys),
           max_members: Number(draft.max_members),
+          retention_days: Number(draft.retention_days),
           self_serve: draft.self_serve,
           stripe_price_id: draft.stripe_price_id.trim() || null,
         }),
@@ -61,7 +79,10 @@ function PlanEditorCard({
     },
   });
 
-  const listPrice = planListPrice(plan.plan_slug);
+  const listPricePreview = planListPrice(plan.plan_slug, {
+    list_price: draft.list_price,
+    list_price_detail: draft.list_price_detail,
+  });
 
   return (
     <section className={card.settingCard}>
@@ -79,14 +100,64 @@ function PlanEditorCard({
       </h2>
       <div className={styles.fields}>
         <div className={`${ui.field} ${styles.listPriceField}`}>
-          <span>List price (marketing)</span>
-          <output className={styles.listPriceValue}>
-            {listPrice ?? "Not configured"}
-          </output>
+          <span>Marketing preview</span>
+          <output className={styles.listPriceValue}>{listPricePreview ?? "Not configured"}</output>
           <span className={styles.listPriceHint}>
-            Read-only · edit in <code>packages/plan-display</code> and Stripe
+            Shown on www.salanor.com/pricing within ~60 seconds after save
           </span>
         </div>
+        <label className={ui.field}>
+          List price label
+          <input
+            className={ui.input}
+            value={draft.list_price}
+            placeholder="$299"
+            onChange={(e) => setDraft((d) => ({ ...d, list_price: e.target.value }))}
+            disabled={readOnly}
+          />
+        </label>
+        <label className={ui.field}>
+          Price detail
+          <input
+            className={ui.input}
+            value={draft.list_price_detail}
+            placeholder="/ month"
+            onChange={(e) => setDraft((d) => ({ ...d, list_price_detail: e.target.value }))}
+            disabled={readOnly}
+          />
+        </label>
+        <label className={`${ui.field} ${styles.spanFull}`}>
+          Tagline
+          <input
+            className={ui.input}
+            value={draft.tagline}
+            onChange={(e) => setDraft((d) => ({ ...d, tagline: e.target.value }))}
+            disabled={readOnly}
+          />
+        </label>
+        <label className={`${ui.field} ${styles.spanFull}`}>
+          Billing note
+          <input
+            className={ui.input}
+            value={draft.billing_note}
+            onChange={(e) => setDraft((d) => ({ ...d, billing_note: e.target.value }))}
+            disabled={readOnly}
+          />
+        </label>
+        <label className={ui.field}>
+          Highlight on pricing page
+          <select
+            className={ui.select}
+            value={draft.marketing_highlighted ? "yes" : "no"}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, marketing_highlighted: e.target.value === "yes" }))
+            }
+            disabled={readOnly}
+          >
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </label>
         <label className={ui.field}>
           Events / month
           <input
@@ -120,6 +191,17 @@ function PlanEditorCard({
           />
         </label>
         <label className={ui.field}>
+          Retention (days)
+          <input
+            className={ui.input}
+            type="number"
+            min={1}
+            value={draft.retention_days}
+            onChange={(e) => setDraft((d) => ({ ...d, retention_days: e.target.value }))}
+            disabled={readOnly}
+          />
+        </label>
+        <label className={ui.field}>
           Self-serve checkout
           <select
             className={ui.select}
@@ -140,6 +222,9 @@ function PlanEditorCard({
             onChange={(e) => setDraft((d) => ({ ...d, stripe_price_id: e.target.value }))}
             disabled={readOnly}
           />
+          <span className={styles.listPriceHint}>
+            Stripe Dashboard sets what cards are charged; list price above is what prospects see
+          </span>
         </label>
       </div>
       {!readOnly ? (
@@ -174,7 +259,7 @@ export default function PlansPage() {
   return (
     <OpsShell
       title="Plan catalog"
-      subtitle="Limits for ingest, API keys, and members. List prices match www.salanor.com/pricing (packages/plan-display). Paste Stripe Price IDs (price_…) for Team checkout. Dollar amount is set in Stripe Dashboard."
+      subtitle="Single source for www.salanor.com/pricing: list prices, limits, and Stripe Price IDs. Marketing refreshes within ~60s. Update Stripe when you change what cards are charged."
       staffEmail={email}
       onLogout={logout}
     >

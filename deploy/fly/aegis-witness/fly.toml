@@ -1,0 +1,21 @@
+# Aegis Merkle witness worker (always-on loop) — production (Fly.io)
+# Deploy: fly deploy --config deploy/fly/aegis-witness/fly.toml
+
+app = "salanor-aegis-witness"
+primary_region = "fra"
+
+[build]
+dockerfile = "../../docker/Dockerfile.backend"
+[build.args]
+SERVICE_FILTER = "aegis-api"
+START_COMMAND = "pnpm --filter aegis-api witness:worker"
+WITNESS_BUILD = "1"
+
+[env]
+NODE_ENV = "production"
+WITNESS_INTERVAL_MS = "60000"
+
+# No public HTTP service. One always-on machine (CMD from Dockerfile).
+[[vm]]
+size = "shared-cpu-1x"
+memory = "256mb"

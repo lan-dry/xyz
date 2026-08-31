@@ -1,0 +1,25 @@
+# Compliance export worker (runs once per invocation) — production (Fly.io)
+# Schedule daily via: fly machine update --schedule "0 6 * * *"
+# Deploy: fly deploy --config deploy/fly/aegis-compliance/fly.toml
+
+app = "salanor-aegis-compliance"
+primary_region = "fra"
+
+[build]
+dockerfile = "../../docker/Dockerfile.backend"
+[build.args]
+SERVICE_FILTER = "aegis-api"
+START_COMMAND = "pnpm --filter aegis-api compliance:worker"
+WITNESS_BUILD = "1"
+
+[env]
+NODE_ENV = "production"
+COMPLIANCE_EXPORT_DIR = "/data/compliance-exports"
+
+[[vm]]
+size = "shared-cpu-1x"
+memory = "256mb"
+
+[mounts]
+source = "compliance_exports"
+destination = "/data"
