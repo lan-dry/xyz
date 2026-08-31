@@ -45,7 +45,7 @@ const transferFunds = wrapLangGraphTool(bridge, {
   },
 });
 
-// Use transferFunds inside your LangGraph node — policy + signed events run automatically.`}
+// Use transferFunds inside your LangGraph node. Policy checks and signed events run automatically.`}
       />
 
       <CodeBlock

@@ -28,6 +28,51 @@ export const HOME_METRICS = [
   { value: "Live", label: "Design partner pilot", detail: "n8n, approvals, exports. See /trust" },
 ] as const;
 
+/**
+ * MARKETING COMPLIANCE (single source of truth for homepage + Aegis product page)
+ *
+ * When a framework ships in export ZIPs:
+ * 1. Move the row from COMPLIANCE_ROADMAP → COMPLIANCE_AVAILABLE (below)
+ * 2. Add mapping in services/aegis-api/src/compliance/control-mapping.ts
+ * 3. Tick it in docs/COMPLIANCE_AND_ROADMAP.md § Live today
+ *
+ * The homepage "2+4" stat and compliance sections update automatically from these arrays.
+ */
+export const COMPLIANCE_AVAILABLE = [
+  { name: "SOC 2", note: "Control mapping in export ZIPs" },
+  { name: "EU AI Act", note: "Art. 12+ mapping in exports" },
+] as const;
+
+export const COMPLIANCE_ROADMAP = [
+  { name: "NIST AI RMF", note: "Roadmap" },
+  { name: "HIPAA", note: "BYOC path" },
+  { name: "FedRAMP", note: "Architecture path" },
+  { name: "ISO 42001", note: "Roadmap" },
+] as const;
+
+function complianceFrameworkStat(): string {
+  return `${COMPLIANCE_AVAILABLE.length}+${COMPLIANCE_ROADMAP.length}`;
+}
+
+function complianceFrameworkDetail(): string {
+  const live = COMPLIANCE_AVAILABLE.map((c) => c.name).join(" and ");
+  const roadmap = COMPLIANCE_ROADMAP.map((c) => c.name).join(", ");
+  return `${live} mapping ship in export ZIPs today. ${roadmap} are on the roadmap. Evidence mapping only, not certification claims.`;
+}
+
+export const AEGIS_COMPLIANCE = [
+  ...COMPLIANCE_AVAILABLE.map((c) => ({
+    name: c.name,
+    note: c.note,
+    available: true as const,
+  })),
+  ...COMPLIANCE_ROADMAP.map((c) => ({
+    name: c.name,
+    note: c.note,
+    available: false as const,
+  })),
+];
+
 export const PLATFORM_DATA_POINTS = [
   {
     id: "non-repudiation",
@@ -44,10 +89,9 @@ export const PLATFORM_DATA_POINTS = [
   },
   {
     id: "regulatory",
-    value: "2",
-    label: "Export mappings live",
-    detail:
-      "SOC 2 and EU AI Act control mapping ship in compliance ZIPs today. NIST, HIPAA, and FedRAMP paths are on the roadmap — evidence mapping, not certification claims.",
+    value: complianceFrameworkStat(),
+    label: "Compliance frameworks",
+    detail: complianceFrameworkDetail(),
   },
   {
     id: "verify",
@@ -155,7 +199,7 @@ export const PRODUCTS = {
     ],
     code: `import { evaluatePolicyViaApi, signAndIngest } from "@salanor/aegis";
 
-// BYOK: private key stays in your runtime — register public key in Console
+// BYOK: private key stays in your runtime. Register public key in Console.
 const decision = await evaluatePolicyViaApi(
   "https://api.salanor.com/v1/aegis",
   process.env.AEGIS_INGEST_TOKEN!,
@@ -170,14 +214,7 @@ const decision = await evaluatePolicyViaApi(
 if (decision.decision === "allow_with_obligation") {
   // Pause until human approves in Console
 }`,
-    compliance: [
-      { name: "SOC 2 Type II", note: "Export mapping · live in ZIP bundles", available: true },
-      { name: "EU AI Act", note: "Art. 12+ mapping · live in exports", available: true },
-      { name: "NIST AI RMF", note: "Govern · Map · Manage · roadmap", available: false },
-      { name: "HIPAA", note: "BYOC path · roadmap", available: false },
-      { name: "FedRAMP Mod.", note: "Architecture path · roadmap", available: false },
-      { name: "ISO 42001", note: "AI management mapping · roadmap", available: false },
-    ],
+    compliance: AEGIS_COMPLIANCE,
   },
   aether: {
     slug: "aether",
@@ -226,18 +263,6 @@ if (decision.decision === "allow_with_obligation") {
     compliance: [] as { name: string; note: string }[],
   },
 } as const;
-
-export const COMPLIANCE_AVAILABLE = [
-  { name: "SOC 2", note: "Control mapping in export ZIPs" },
-  { name: "EU AI Act", note: "Art. 12+ mapping in exports" },
-] as const;
-
-export const COMPLIANCE_ROADMAP = [
-  { name: "NIST AI RMF", note: "Roadmap" },
-  { name: "HIPAA", note: "BYOC path" },
-  { name: "FedRAMP", note: "Architecture path" },
-  { name: "ISO 42001", note: "Roadmap" },
-] as const;
 
 /** @deprecated Use COMPLIANCE_AVAILABLE + COMPLIANCE_ROADMAP */
 export const COMPLIANCE_STRIP = COMPLIANCE_AVAILABLE;

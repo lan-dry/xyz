@@ -47,7 +47,7 @@ export default function InsuranceLayout({
     }
   }, [meQuery.isError, pathname, router]);
 
-  if (meQuery.isPending || !meQuery.data) {
+  if (meQuery.isPending || !meQuery.data || !meQuery.data.user || !meQuery.data.organization) {
     return (
       <div data-console-shell style={{ minHeight: "100vh", padding: "2rem" }}>
         <LoadingBlock />

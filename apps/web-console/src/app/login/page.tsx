@@ -12,8 +12,6 @@ import type { MeResponse } from "../../lib/types";
 
 import styles from "./login.module.css";
 
-const MARKETING_URL = process.env.NEXT_PUBLIC_MARKETING_URL ?? "http://localhost:3001";
-
 type OAuthProviders = { google: boolean; github: boolean; sso: boolean };
 
 export default function PlatformLoginPage() {

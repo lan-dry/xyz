@@ -40,7 +40,7 @@ export default function GettingStartedPage() {
           <ul>
             <li>
               <strong>For n8n / Zapier / Make:</strong> click{" "}
-              <em>Enable Workflow Bridge</em> — Salanor signs server-side. See{" "}
+              <em>Enable Workflow Bridge</em>. Salanor signs server-side. See{" "}
               <Link href="/aegis/n8n">n8n &amp; orchestrators</Link> (recommended if you do not want
               to install an SDK).
             </li>
@@ -59,7 +59,7 @@ export default function GettingStartedPage() {
 
       <h2>2. Install the SDK in your project</h2>
       <p>
-        Skip this section if you only use n8n — go to{" "}
+        Skip this section if you only use n8n. Go to{" "}
         <Link href="/aegis/n8n">n8n &amp; orchestrators</Link>.
       </p>
       <p>

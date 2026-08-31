@@ -70,7 +70,7 @@ function OnboardingForm() {
       return;
     }
     if (meQuery.isSuccess && meQuery.data) {
-      if (!meQuery.data.needs_onboarding && !meQuery.data.organization.needs_onboarding) {
+      if (!meQuery.data.needs_onboarding && !meQuery.data.organization?.needs_onboarding) {
         router.replace(returnTo);
       }
     }

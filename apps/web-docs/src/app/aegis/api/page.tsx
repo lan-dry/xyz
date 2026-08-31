@@ -28,7 +28,7 @@ export default function ApiOverviewPage() {
         </li>
         <li>
           <a href="/aegis/n8n">Workflow Bridge</a>:{" "}
-          <code>POST /workflows/runs</code> start / steps / complete (n8n, Zapier — server-signed)
+          <code>POST /workflows/runs</code> start / steps / complete (n8n, Zapier; server-signed)
         </li>
       </ul>
 

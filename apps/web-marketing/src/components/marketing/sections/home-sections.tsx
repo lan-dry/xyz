@@ -100,7 +100,7 @@ export function ProductsTeaserSection() {
           <h2>Aegis now. Aether in research.</h2>
           <p>
             {BRAND.taglineShort} is live for design partners. Aether is a separate research program
-            on the same ledger — not the focus of this quarter.
+            on the same ledger, not the focus of this quarter.
           </p>
         </ScrollReveal>
         <ScrollReveal delay={100}>
@@ -188,7 +188,7 @@ export function ComplianceStripSection() {
           <h2>Regulatory outputs, not slide decks</h2>
           <p>
             Export bundles include control mapping for frameworks we support today. Additional
-            frameworks are on the roadmap. Formal certification is separate — see{" "}
+            frameworks are on the roadmap. Formal certification is separate. See{" "}
             <Link href="/trust">platform status</Link>.
           </p>
         </ScrollReveal>
