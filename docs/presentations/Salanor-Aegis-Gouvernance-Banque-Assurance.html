@@ -304,8 +304,9 @@
             (API, orchestration, scripts internes).
           </li>
           <li>
-            Les clés de signature restent chez vous. Chaque organisation a son
-            registre isolé.
+            Clés de signature : en production, modèle BYOK (clé privée chez
+            vous). En orchestrateur (n8n), pont Workflow Bridge sans clé privée
+            dans l’outil.
           </li>
         </ul>
       </section>
@@ -353,8 +354,8 @@
         <div class="demo-box">
           <p>
             <strong>Cas métier :</strong> un workflow tente d’exécuter un
-            virement de 25&nbsp;000 EUR vers un bénéficiaire tiers. La règle
-            active exige une approbation humaine au-delà de 10&nbsp;000 EUR.
+            virement de <strong>2&nbsp;500&nbsp;USD</strong> vers un bénéficiaire tiers. La règle
+            active exige une approbation humaine au-delà de <strong>1&nbsp;000&nbsp;USD</strong>.
           </p>
           <p>
             Le flux s’arrête. Le responsable opérationnel ou conformité voit le
@@ -395,8 +396,9 @@
             Exports par période, avec hash d’intégrité vérifiable.
           </li>
           <li>
-            Correspondances de contrôles (SOC 2, EU AI Act) : aide documentaire
-            pour vos équipes. Salanor n’est pas certifié SOC 2 aujourd’hui.
+            Correspondances de contrôles dans les exports : <strong>SOC 2</strong>
+            et <strong>EU AI Act</strong> aujourd’hui (NIST, HIPAA, FedRAMP :
+            feuille de route). Aide documentaire, pas certification Salanor.
           </li>
           <li>Relecture pas à pas d’une opération dans la console.</li>
           <li>
@@ -427,21 +429,22 @@
 
       <section class="slide compact">
         <p class="eyebrow">Statut</p>
-        <h2>Produit en production, phase partenaire</h2>
+        <h2>En production · partenaires de conception</h2>
         <ul>
           <li>
             Plateforme opérationnelle : règles, approbations, registre, exports.
           </li>
           <li>
-            Démos et pilotes sur flux réels (orchestration + validation humaine).
+            Pilotes sur flux réels (orchestration + validation humaine), pas une
+            maquette.
           </li>
           <li>
             Feuille de route SOC 2 (cible fin 2026). Pas de sur-promesse
             aujourd’hui.
           </li>
           <li>
-            Nous cherchons 1 à 2 institutions pour un pilote cadré sur un
-            processus précis.
+            Nous cherchons 1 à 2 institutions finance ou assurance pour un pilote
+            cadré : vous façonnez le produit sur un cas métier réel.
           </li>
         </ul>
       </section>
@@ -483,10 +486,11 @@
             Où exigez-vous une double validation, et comment la documentez-vous ?
           </li>
           <li>
-            Un pilote sur un flux en Q4 2026 est-il réaliste ?
+            Si dans 30 jours vous aviez une trace signée + un export sur un flux,
+            est-ce que cela débloquerait un projet chez vous ?
           </li>
           <li>
-            Qui côté risque, conformité ou IT doit voir la démo technique ?
+            Qui côté risque, conformité ou IT doit valider un pilote avec nous ?
           </li>
         </ul>
       </section>

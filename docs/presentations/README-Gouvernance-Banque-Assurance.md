@@ -1,6 +1,7 @@
 # Présentation · Gouvernance banque & assurance
 
-**Fichier :** `Salanor-Aegis-Gouvernance-Banque-Assurance.html`  
+**Fichier HTML :** `Salanor-Aegis-Gouvernance-Banque-Assurance.html`  
+**Fichier PowerPoint :** `Salanor-Aegis-Gouvernance-Banque-Assurance.pptx`  
 **Durée visée :** 25 à 30 min (dont ~12 min démo live)
 
 ## Ouvrir et présenter

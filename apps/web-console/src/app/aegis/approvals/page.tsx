@@ -381,7 +381,19 @@ export default function ApprovalsPage() {
       setActingId(approvalId);
       setDecidedIds((prev) => new Set(prev).add(approvalId));
     },
-    onSuccess: () => {
+    onSuccess: (_data, approvalId) => {
+      queryClient.setQueryData<{
+        approvals: ApprovalSummary[];
+        blocked_traces?: number;
+      }>(["console", "approvals", "pending"], (old) => {
+        if (!old) return old;
+        const next = old.approvals.filter((a) => a.approval_id !== approvalId);
+        return {
+          ...old,
+          approvals: next,
+          blocked_traces: next.length,
+        };
+      });
       void queryClient.invalidateQueries({ queryKey: ["console", "approvals"] });
       void queryClient.invalidateQueries({ queryKey: ["console", "traces"] });
     },
@@ -407,7 +419,19 @@ export default function ApprovalsPage() {
       setActingId(approvalId);
       setDecidedIds((prev) => new Set(prev).add(approvalId));
     },
-    onSuccess: () => {
+    onSuccess: (_data, approvalId) => {
+      queryClient.setQueryData<{
+        approvals: ApprovalSummary[];
+        blocked_traces?: number;
+      }>(["console", "approvals", "pending"], (old) => {
+        if (!old) return old;
+        const next = old.approvals.filter((a) => a.approval_id !== approvalId);
+        return {
+          ...old,
+          approvals: next,
+          blocked_traces: next.length,
+        };
+      });
       void queryClient.invalidateQueries({ queryKey: ["console", "approvals"] });
       void queryClient.invalidateQueries({ queryKey: ["console", "traces"] });
     },
