@@ -190,5 +190,10 @@ export async function evaluateRulesWithConditions(
     };
   }
 
-  return evaluateRules(policyId, matching, ctx.toolName);
+  // Amount / beneficiary rules only apply on breach; fall back to plain tool rules.
+  const toolOnly = matching.filter((r) => {
+    const conditions = parseConditions(r.conditions);
+    return !conditions?.rule_type || conditions.rule_type === "tool";
+  });
+  return evaluateRules(policyId, toolOnly, ctx.toolName);
 }
