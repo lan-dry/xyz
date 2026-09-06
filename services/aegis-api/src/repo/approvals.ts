@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type pg from "pg";
+import { patchSignedEventPayload } from "../crypto/event-resign.js";
 import { getGovernanceSettings } from "./governance-settings.js";
 
 export type ApprovalRow = {
@@ -72,18 +73,23 @@ export async function createApprovalRequest(
     [approvalId, params.eventId, params.organizationId, tokenHash, String(ttlHours)],
   );
 
-  await client.query(
-    `UPDATE event
-     SET payload = COALESCE(payload, '{}'::jsonb) || $1::jsonb
-     WHERE event_id = $2`,
-    [
-      JSON.stringify({
-        deferred_request: params.deferred,
-        obligation_tool: params.toolName,
-      }),
-      params.eventId,
-    ],
-  );
+  const patch = {
+    deferred_request: params.deferred,
+    obligation_tool: params.toolName,
+  };
+  const resigned = await patchSignedEventPayload(client, {
+    organizationId: params.organizationId,
+    eventId: params.eventId,
+    patch,
+  });
+  if (!resigned) {
+    await client.query(
+      `UPDATE event
+       SET payload = COALESCE(payload, '{}'::jsonb) || $1::jsonb
+       WHERE event_id = $2`,
+      [JSON.stringify(patch), params.eventId],
+    );
+  }
 
   await client.query(
     `UPDATE trace SET status = 'blocked'

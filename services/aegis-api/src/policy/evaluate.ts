@@ -23,10 +23,26 @@ export type EvaluateOutput = {
 function rulesNeedConditionEngine(rules: PolicyRuleInput[]): boolean {
   return rules.some((r) => {
     const c = parseConditions(r.conditions);
-    return (
-      c?.rule_type === "max_per_tx" ||
-      c?.rule_type === "min_per_tx" ||
-      c?.rule_type === "max_daily_total"
+    if (!c?.rule_type) {
+      return false;
+    }
+    if (
+      c.rule_type === "max_per_tx" ||
+      c.rule_type === "min_per_tx" ||
+      c.rule_type === "max_daily_total" ||
+      c.rule_type === "blocked_beneficiary"
+    ) {
+      return true;
+    }
+    const when = c.when;
+    return Boolean(
+      when &&
+        (when.segment ||
+          when.segments?.length ||
+          when.account_type ||
+          when.account_types?.length ||
+          when.beneficiary ||
+          when.beneficiaries?.length),
     );
   });
 }

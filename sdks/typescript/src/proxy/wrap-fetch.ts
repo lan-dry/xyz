@@ -125,6 +125,47 @@ export async function wrapFetch(
   const evaluation = await resolveDecision(config);
   const decision = evaluation.decision as PolicyDecision;
 
+  if (decision === "allow_with_obligation") {
+    const deferred = deferredFromInput(input, init);
+    const decisionEvent = buildPolicyDecisionEvent({
+      organizationId: context.organizationId,
+      traceId: context.traceId,
+      agentId: context.agentId,
+      keyId: context.keyId,
+      toolName: context.toolName,
+      decision,
+      actorPrincipal,
+      policyId: evaluation.policy_id,
+      ruleId: evaluation.rule_id,
+      reason: evaluation.reason,
+      payloadExtras: {
+        ...context.auditPayload,
+        deferred_request: deferred,
+        obligation_tool: context.toolName,
+      },
+    });
+
+    const decisionResult = await ingestFn(decisionEvent, sign, ingest);
+
+    const { approval_id } = await requestApproval(
+      ingest.apiBaseUrl,
+      ingest.ingestApiKey,
+      {
+        organization_id: context.organizationId,
+        event_id: decisionResult.event_id,
+        trace_id: context.traceId,
+        tool_name: context.toolName,
+        deferred,
+      },
+      fetchImpl,
+    );
+    throw new ApprovalRequiredError(
+      context.toolName,
+      approval_id,
+      decisionResult.event_id,
+    );
+  }
+
   const decisionEvent = buildPolicyDecisionEvent({
     organizationId: context.organizationId,
     traceId: context.traceId,
@@ -143,27 +184,6 @@ export async function wrapFetch(
 
   if (decision === "deny") {
     throw new PolicyDeniedError(context.toolName);
-  }
-
-  if (decision === "allow_with_obligation") {
-    const deferred = deferredFromInput(input, init);
-    const { approval_id } = await requestApproval(
-      ingest.apiBaseUrl,
-      ingest.ingestApiKey,
-      {
-        organization_id: context.organizationId,
-        event_id: decisionResult.event_id,
-        trace_id: context.traceId,
-        tool_name: context.toolName,
-        deferred,
-      },
-      fetchImpl,
-    );
-    throw new ApprovalRequiredError(
-      context.toolName,
-      approval_id,
-      decisionResult.event_id,
-    );
   }
 
   return runAllowPath(input, init, config, decisionResult.event_id);

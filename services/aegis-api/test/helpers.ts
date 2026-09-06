@@ -1,4 +1,106 @@
 import type pg from "pg";
+import * as ed from "@noble/ed25519";
+import { encryptBridgePrivateKey } from "../src/crypto/bridge-key-vault.js";
+import { hashIngestKey } from "../src/repo/ingest-keys.js";
+import type { EventRowForVerify } from "../src/witness/verify-event.js";
+
+export const DEV_ORG_ID = "11111111-1111-4111-8111-111111111111";
+export const DEV_INGEST_KEY_ID = "33333333-3333-4333-8333-333333333333";
+
+/** Align Neon/local DB with the ingest secret used in this test run (.env or dev default). */
+export async function ensureDevIngestKey(
+  client: pg.Pool | pg.PoolClient,
+  rawKey: string,
+  organizationId: string = DEV_ORG_ID,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO ingest_api_key (
+       key_id, organization_id, name, key_prefix, key_hash, active
+     ) VALUES ($1, $2, 'Test Ingest', $3, $4, true)
+     ON CONFLICT (key_id) DO UPDATE SET
+       key_hash = EXCLUDED.key_hash,
+       key_prefix = EXCLUDED.key_prefix,
+       active = true,
+       revoked_at = NULL`,
+    [
+      DEV_INGEST_KEY_ID,
+      organizationId,
+      rawKey.slice(0, 8),
+      hashIngestKey(rawKey),
+    ],
+  );
+}
+
+/** Keep dev signing key public material aligned with the private key used in tests. */
+export async function ensureDevSigningKey(
+  client: pg.Pool | pg.PoolClient,
+  privateKeyB64: string,
+  keyId: string,
+  agentId: string,
+  organizationId: string = DEV_ORG_ID,
+): Promise<void> {
+  const privateKey = Buffer.from(privateKeyB64, "base64");
+  if (privateKey.length !== 32) {
+    throw new Error("Dev signing private key must be 32 bytes (base64)");
+  }
+  const publicKey = await ed.getPublicKeyAsync(privateKey);
+  await client.query(
+    `UPDATE signing_key
+     SET public_key_b64 = $1, revoked = false
+     WHERE key_id = $2 AND organization_id = $3 AND agent_id = $4`,
+    [Buffer.from(publicKey).toString("base64"), keyId, organizationId, agentId],
+  );
+}
+
+/** Enable Workflow Bridge re-sign on the dev agent key used in integration tests. */
+export async function ensureDevBridgeKey(
+  client: pg.Pool | pg.PoolClient,
+  privateKeyB64: string,
+  keyId: string,
+  agentId: string,
+  organizationId: string = DEV_ORG_ID,
+): Promise<void> {
+  if (!process.env.AEGIS_BRIDGE_MASTER_KEY?.trim()) {
+    process.env.AEGIS_BRIDGE_MASTER_KEY = Buffer.from(
+      "test-bridge-master-key-32-bytes!!",
+      "utf8",
+    ).toString("base64");
+  }
+  const ciphertext = encryptBridgePrivateKey(privateKeyB64);
+  await client.query(
+    `UPDATE signing_key
+     SET bridge_enabled = true,
+         private_key_ciphertext = $1,
+         revoked = false
+     WHERE key_id = $2 AND organization_id = $3 AND agent_id = $4`,
+    [ciphertext, keyId, organizationId, agentId],
+  );
+}
+
+export async function loadEventRowForVerify(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  eventId: string,
+): Promise<EventRowForVerify> {
+  const result = await client.query<EventRowForVerify>(
+    `SELECT
+       e.schema_version, e.event_id, e.organization_id, e.trace_id, e.parent_event_id,
+       e.agent_id, e.key_id, e.policy_id, e.sequence_num, e.prev_event_hash, e.event_hash,
+       e.actor_type, e.actor_principal, e.action_kind, e.tool_name, e.args_hash,
+       e.args_redacted, e.policy_decision, e.policy_obligations, e.result_status,
+       e.output_hash, e.sig_alg, e.sig_value_b64, e.chain_valid, e.payload, e.emitted_at,
+       sk.public_key_b64
+     FROM event e
+     JOIN signing_key sk ON sk.key_id = e.key_id AND sk.organization_id = e.organization_id
+     WHERE e.organization_id = $1 AND e.event_id = $2`,
+    [organizationId, eventId],
+  );
+  const row = result.rows[0];
+  if (!row) {
+    throw new Error(`event not found: ${eventId}`);
+  }
+  return row;
+}
 
 export const ORG_A_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 export const ORG_B_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";

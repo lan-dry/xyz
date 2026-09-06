@@ -2,12 +2,15 @@ import type pg from "pg";
 import {
   amountUsdFromPayload,
   parseConditions,
-  type PolicyConditions,
 } from "./amount.js";
 import { toolMatches } from "./match.js";
 import type { PolicyRuleInput } from "./evaluate-rules.js";
 import type { PolicyEvaluation } from "./evaluate-rules.js";
 import { evaluateRules } from "./evaluate-rules.js";
+import {
+  matchesPolicyWhen,
+  payloadContextFromPayload,
+} from "./payload-context.js";
 
 export type PolicyEvalContext = {
   toolName: string;
@@ -50,6 +53,27 @@ async function conditionBreachReason(
 ): Promise<string | null> {
   const conditions = parseConditions(rule.conditions);
   if (!conditions?.rule_type || conditions.rule_type === "tool") {
+    return null;
+  }
+
+  const payloadContext = payloadContextFromPayload(ctx.payload);
+  if (!matchesPolicyWhen(conditions.when, payloadContext)) {
+    return null;
+  }
+
+  if (conditions.rule_type === "blocked_beneficiary") {
+    const list =
+      conditions.blocked_beneficiaries ??
+      (conditions as { beneficiaries?: string[] }).beneficiaries ??
+      [];
+    const ben = payloadContext.beneficiary?.toLowerCase();
+    if (!ben || list.length === 0) {
+      return null;
+    }
+    const hit = list.find((b) => b.toLowerCase() === ben);
+    if (hit) {
+      return `beneficiary ${payloadContext.beneficiary} is blocked`;
+    }
     return null;
   }
 
@@ -108,13 +132,40 @@ async function conditionBreachReason(
   return null;
 }
 
+function ruleAppliesInContext(rule: PolicyRuleInput, ctx: PolicyEvalContext): boolean {
+  const conditions = parseConditions(rule.conditions);
+  if (!conditions?.rule_type || conditions.rule_type === "tool") {
+    return true;
+  }
+  const payloadContext = payloadContextFromPayload(ctx.payload);
+  if (!matchesPolicyWhen(conditions.when, payloadContext)) {
+    return false;
+  }
+  if (conditions.rule_type === "blocked_beneficiary") {
+    const list = conditions.blocked_beneficiaries ?? [];
+    const ben = payloadContext.beneficiary?.toLowerCase();
+    if (!ben || list.length === 0) return false;
+    return list.some((b) => b.toLowerCase() === ben);
+  }
+  if (
+    conditions.rule_type === "max_per_tx" ||
+    conditions.rule_type === "min_per_tx" ||
+    conditions.rule_type === "max_daily_total"
+  ) {
+    return amountUsdFromPayload(ctx.payload) !== undefined;
+  }
+  return true;
+}
+
 export async function evaluateRulesWithConditions(
   client: pg.Pool | pg.PoolClient,
   policyId: string,
   rules: PolicyRuleInput[],
   ctx: PolicyEvalContext,
 ): Promise<PolicyEvaluation> {
-  const matching = rules.filter((r) => toolMatches(r.tool_pattern, ctx.toolName));
+  const matching = rules.filter(
+    (r) => toolMatches(r.tool_pattern, ctx.toolName) && ruleAppliesInContext(r, ctx),
+  );
 
   const breaches: Array<{ rule: PolicyRuleInput; reason: string }> = [];
   for (const rule of matching) {
@@ -139,5 +190,5 @@ export async function evaluateRulesWithConditions(
     };
   }
 
-  return evaluateRules(policyId, rules, ctx.toolName);
+  return evaluateRules(policyId, matching, ctx.toolName);
 }

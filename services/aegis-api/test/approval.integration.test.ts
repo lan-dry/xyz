@@ -28,6 +28,8 @@ import {
   postApprovalComplete,
   postApprovalRequest,
 } from "../src/routes/approvals.js";
+import { ensureDevBridgeKey, ensureDevIngestKey, ensureDevSigningKey, loadEventRowForVerify } from "./helpers.js";
+import { verifyEventFull } from "../src/witness/verify-event.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const privateKeyB64 =
@@ -89,9 +91,20 @@ async function evaluateInProcess(input: {
       Authorization: `Bearer ${INGEST_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(input),
+    body: JSON.stringify({ ...input, record: false }),
   });
-  return res.json() as Promise<{ decision: string }>;
+  const body = (await res.json()) as { decision?: string; error?: string };
+  if (!res.ok) {
+    throw new Error(`Policy evaluate failed (${res.status}): ${body.error ?? "unknown"}`);
+  }
+  if (
+    body.decision !== "allow" &&
+    body.decision !== "deny" &&
+    body.decision !== "allow_with_obligation"
+  ) {
+    throw new Error(`Invalid policy decision: ${JSON.stringify(body)}`);
+  }
+  return body as { decision: string; policy_id: string; rule_id: string | null; reason: string };
 }
 
 async function requestApprovalInProcess(
@@ -192,6 +205,21 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
       "../../../tools/seed/dev.sql",
     );
     await getPool().query(readFileSync(seedPath, "utf8"));
+    await ensureDevIngestKey(getPool(), INGEST_KEY, DEV_ORG);
+    await ensureDevSigningKey(
+      getPool(),
+      privateKeyB64!,
+      DEV_KEY,
+      DEV_AGENT,
+      DEV_ORG,
+    );
+    await ensureDevBridgeKey(
+      getPool(),
+      privateKeyB64!,
+      DEV_KEY,
+      DEV_AGENT,
+      DEV_ORG,
+    );
   });
 
   afterAll(async () => {
@@ -244,6 +272,23 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
       }
       expect(caught).toBeInstanceOf(ApprovalRequiredError);
       expect(mock.getRequestCount()).toBe(0);
+
+      const obligationEvent = await loadEventRowForVerify(
+        pool,
+        DEV_ORG,
+        caught!.eventId,
+      );
+      const verify = await verifyEventFull(pool, obligationEvent);
+      expect(verify.signature_ok).toBe(true);
+      expect(verify.hash_ok).toBe(true);
+      expect(verify.errors).not.toContain("signature_invalid");
+      expect(verify.errors).not.toContain("event_hash_mismatch");
+      const payload = obligationEvent.payload as Record<string, unknown>;
+      expect(payload.deferred_request).toMatchObject({
+        url: mock.url,
+        method: "GET",
+      });
+      expect(payload.obligation_tool).toBe(OBLIGATION_TOOL);
 
       let traceStatus = await getTraceStatus(pool, DEV_ORG, traceId);
       expect(traceStatus).toBe("blocked");

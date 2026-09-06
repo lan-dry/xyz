@@ -66,6 +66,7 @@ export type PolicyGateCapture = {
 function policyGateStep(
   gate: PolicyGateCapture,
   requestPayload?: Record<string, unknown>,
+  obligationMeta?: { deferred: { url: string; method: string }; toolName: string },
 ): WorkflowStepInput {
   const denied = gate.decision === "deny";
   return {
@@ -87,6 +88,12 @@ function policyGateStep(
           : `Allowed ${gate.tool_name}`,
       ...(requestPayload && Object.keys(requestPayload).length > 0
         ? { request_payload: requestPayload }
+        : {}),
+      ...(obligationMeta
+        ? {
+            deferred_request: obligationMeta.deferred,
+            obligation_tool: obligationMeta.toolName,
+          }
         : {}),
     },
   };
@@ -826,6 +833,13 @@ export async function recordPolicyObligationGate(
           engine: input.engine,
         },
         input.requestPayload,
+        {
+          deferred: {
+            url: input.approvalFocusUrl ?? "aegis://approvals/pending",
+            method: "GET",
+          },
+          toolName: input.toolName,
+        },
       ),
     ],
     actorPrincipal: input.actorPrincipal ?? "workflow:n8n",
