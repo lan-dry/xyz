@@ -38,12 +38,33 @@ type PolicyRule = {
   conditions: Record<string, unknown> | null;
 };
 
+type PolicyRuleType =
+  | "tool"
+  | "max_per_tx"
+  | "min_per_tx"
+  | "max_daily_total"
+  | "blocked_beneficiary";
+
+type PolicyWhenForm = {
+  segment: string;
+  accountType: string;
+  beneficiary: string;
+};
+
 type PolicyFormState = {
   name: string;
   toolPattern: string;
   decision: "allow" | "deny" | "allow_with_obligation";
-  ruleType: "tool" | "max_per_tx" | "min_per_tx" | "max_daily_total";
+  ruleType: PolicyRuleType;
   maxAmountUsd: string;
+  blockedBeneficiaries: string;
+  when: PolicyWhenForm;
+};
+
+const EMPTY_WHEN: PolicyWhenForm = {
+  segment: "",
+  accountType: "",
+  beneficiary: "",
 };
 
 const DEFAULT_FORM: PolicyFormState = {
@@ -52,23 +73,69 @@ const DEFAULT_FORM: PolicyFormState = {
   decision: "deny",
   ruleType: "tool",
   maxAmountUsd: "10000",
+  blockedBeneficiaries: "",
+  when: EMPTY_WHEN,
 };
 
+function parseListInput(raw: string): string[] {
+  return raw
+    .split(/[,\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function buildWhenPayload(when: PolicyWhenForm): Record<string, string> | undefined {
+  const payload: Record<string, string> = {};
+  if (when.segment.trim()) payload.segment = when.segment.trim();
+  if (when.accountType.trim()) payload.account_type = when.accountType.trim();
+  if (when.beneficiary.trim()) payload.beneficiary = when.beneficiary.trim();
+  return Object.keys(payload).length > 0 ? payload : undefined;
+}
+
+function whenFromConditions(
+  when: Record<string, unknown> | undefined,
+): PolicyWhenForm {
+  if (!when) return EMPTY_WHEN;
+  return {
+    segment: typeof when.segment === "string" ? when.segment : "",
+    accountType: typeof when.account_type === "string" ? when.account_type : "",
+    beneficiary: typeof when.beneficiary === "string" ? when.beneficiary : "",
+  };
+}
+
+function whenSummary(when: Record<string, unknown> | undefined): string | null {
+  const form = whenFromConditions(when);
+  const parts: string[] = [];
+  if (form.segment) parts.push(`segment=${form.segment}`);
+  if (form.accountType) parts.push(`account=${form.accountType}`);
+  if (form.beneficiary) parts.push(`beneficiary=${form.beneficiary}`);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 function buildRulesPayload(form: PolicyFormState) {
+  const when = buildWhenPayload(form.when);
   const conditions =
     form.ruleType === "tool"
       ? { rule_type: "tool" }
-      : form.ruleType === "min_per_tx"
+      : form.ruleType === "blocked_beneficiary"
         ? {
-            rule_type: "min_per_tx",
-            min_amount_usd: Number.parseFloat(form.maxAmountUsd),
-            window_hours: 24,
+            rule_type: "blocked_beneficiary",
+            blocked_beneficiaries: parseListInput(form.blockedBeneficiaries),
+            ...(when ? { when } : {}),
           }
-        : {
-            rule_type: form.ruleType,
-            max_amount_usd: Number.parseFloat(form.maxAmountUsd),
-            window_hours: 24,
-          };
+        : form.ruleType === "min_per_tx"
+          ? {
+              rule_type: "min_per_tx",
+              min_amount_usd: Number.parseFloat(form.maxAmountUsd),
+              window_hours: 24,
+              ...(when ? { when } : {}),
+            }
+          : {
+              rule_type: form.ruleType,
+              max_amount_usd: Number.parseFloat(form.maxAmountUsd),
+              window_hours: 24,
+              ...(when ? { when } : {}),
+            };
   const ruleDecision = form.decision;
   return [
     {
@@ -85,17 +152,25 @@ function ruleSummary(rule: PolicyRule): string {
     rule_type?: string;
     max_amount_usd?: number;
     min_amount_usd?: number;
+    blocked_beneficiaries?: string[];
+    when?: Record<string, unknown>;
   } | null;
   const decisionLabel =
     rule.decision === "allow_with_obligation" ? "require approval" : rule.decision;
+  const whenLabel = whenSummary(cond?.when);
+  const whenSuffix = whenLabel ? ` (${whenLabel})` : "";
   if (cond?.rule_type === "max_per_tx") {
-    return `Max $${cond.max_amount_usd ?? "?"} per transaction, then ${decisionLabel}`;
+    return `Max $${cond.max_amount_usd ?? "?"} per transaction, then ${decisionLabel}${whenSuffix}`;
   }
   if (cond?.rule_type === "min_per_tx") {
-    return `Min $${cond.min_amount_usd ?? "?"} per transaction, then ${decisionLabel}`;
+    return `Min $${cond.min_amount_usd ?? "?"} per transaction, then ${decisionLabel}${whenSuffix}`;
   }
   if (cond?.rule_type === "max_daily_total") {
-    return `Max $${cond.max_amount_usd ?? "?"} daily, then ${decisionLabel}`;
+    return `Max $${cond.max_amount_usd ?? "?"} daily, then ${decisionLabel}${whenSuffix}`;
+  }
+  if (cond?.rule_type === "blocked_beneficiary") {
+    const list = cond.blocked_beneficiaries?.join(", ") ?? "?";
+    return `Block beneficiary: ${list}, then ${decisionLabel}${whenSuffix}`;
   }
   return `${rule.tool_pattern}, then ${decisionLabel}`;
 }
@@ -241,15 +316,19 @@ export default function PoliciesPage() {
       rule_type?: string;
       max_amount_usd?: number;
       min_amount_usd?: number;
+      blocked_beneficiaries?: string[];
+      when?: Record<string, unknown>;
     } | null;
-    const ruleType =
+    const ruleType: PolicyRuleType =
       cond?.rule_type === "max_per_tx"
         ? "max_per_tx"
         : cond?.rule_type === "min_per_tx"
           ? "min_per_tx"
           : cond?.rule_type === "max_daily_total"
             ? "max_daily_total"
-            : "tool";
+            : cond?.rule_type === "blocked_beneficiary"
+              ? "blocked_beneficiary"
+              : "tool";
     setForm({
       name: detail.policy.name,
       toolPattern: rule.tool_pattern,
@@ -263,6 +342,8 @@ export default function PoliciesPage() {
       maxAmountUsd: String(
         cond?.max_amount_usd ?? cond?.min_amount_usd ?? "10000",
       ),
+      blockedBeneficiaries: (cond?.blocked_beneficiaries ?? []).join(", "),
+      when: whenFromConditions(cond?.when),
     });
   }, [detailQuery.data, editPolicyId]);
 
@@ -309,6 +390,7 @@ export default function PoliciesPage() {
             <option value="max_per_tx">When amount exceeds per-transaction limit</option>
             <option value="min_per_tx">When amount is below minimum per transaction</option>
             <option value="max_daily_total">When daily total exceeds limit</option>
+            <option value="blocked_beneficiary">When beneficiary is blocked</option>
           </select>
         </label>
         {form.ruleType === "tool" ? (
@@ -343,6 +425,51 @@ export default function PoliciesPage() {
               Matches when the tool name equals your pattern (e.g.{" "}
               <code className="mono">app.payments.transfer</code>). No amount check. Use
               the amount rule types below for USD limits.
+            </p>
+          </>
+        ) : form.ruleType === "blocked_beneficiary" ? (
+          <>
+            <label className={ui.field} style={{ marginTop: "1rem" }}>
+              Blocked beneficiaries
+              <textarea
+                className={ui.input}
+                rows={3}
+                value={form.blockedBeneficiaries}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, blockedBeneficiaries: e.target.value }))
+                }
+                placeholder="ACME Corp, BLOCKED_CO"
+              />
+            </label>
+            <label className={ui.field} style={{ marginTop: "1rem" }}>
+              When beneficiary matches
+              <select
+                className={ui.select}
+                value={form.decision === "allow_with_obligation" ? "allow_with_obligation" : "deny"}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    decision: e.target.value as PolicyFormState["decision"],
+                  }))
+                }
+              >
+                <option value="deny">Deny (block and record FAILED trace)</option>
+                <option value="allow_with_obligation">
+                  Require approval (pause for human review)
+                </option>
+              </select>
+            </label>
+            <p
+              style={{
+                margin: "0.5rem 0 0",
+                fontSize: "0.8125rem",
+                color: "var(--console-fg-muted)",
+                lineHeight: 1.5,
+              }}
+            >
+              Matches <code className="mono">beneficiary</code> or{" "}
+              <code className="mono">recipient</code> in the workflow payload (case
+              insensitive).
             </p>
           </>
         ) : (
@@ -392,6 +519,81 @@ export default function PoliciesPage() {
             </p>
           </>
         )}
+        {form.ruleType !== "tool" ? (
+          <fieldset
+            style={{
+              marginTop: "1rem",
+              border: "1px solid var(--console-border)",
+              borderRadius: "0.5rem",
+              padding: "0.75rem 1rem",
+            }}
+          >
+            <legend
+              style={{
+                fontSize: "0.8125rem",
+                fontWeight: 600,
+                padding: "0 0.25rem",
+              }}
+            >
+              Apply only when (optional)
+            </legend>
+            <label className={ui.field} style={{ marginTop: "0.5rem" }}>
+              Client segment
+              <input
+                className={ui.input}
+                value={form.when.segment}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    when: { ...f.when, segment: e.target.value },
+                  }))
+                }
+                placeholder="VIP, retail"
+              />
+            </label>
+            <label className={ui.field} style={{ marginTop: "0.75rem" }}>
+              Account type
+              <input
+                className={ui.input}
+                value={form.when.accountType}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    when: { ...f.when, accountType: e.target.value },
+                  }))
+                }
+                placeholder="corporate, retail"
+              />
+            </label>
+            <label className={ui.field} style={{ marginTop: "0.75rem" }}>
+              Beneficiary (context filter)
+              <input
+                className={ui.input}
+                value={form.when.beneficiary}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    when: { ...f.when, beneficiary: e.target.value },
+                  }))
+                }
+                placeholder="Only for this payee context"
+              />
+            </label>
+            <p
+              style={{
+                margin: "0.5rem 0 0",
+                fontSize: "0.8125rem",
+                color: "var(--console-fg-muted)",
+                lineHeight: 1.5,
+              }}
+            >
+              Send matching fields from your workflow Set node (
+              <code className="mono">segment</code>,{" "}
+              <code className="mono">account_type</code>,{" "}
+              <code className="mono">beneficiary</code>).
+            </p>
+          </fieldset>
+        ) : null}
         <p
           style={{
             marginTop: "1rem",
