@@ -4,10 +4,6 @@
   color: var(--console-fg-muted);
 }
 
-.searchInput {
-  padding-left: 2.75rem !important;
-}
-
 .nameBtn {
   border: none;
   background: none;

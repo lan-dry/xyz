@@ -130,7 +130,6 @@
 
 .searchInput {
   width: 100%;
-  padding-left: 2.25rem;
 }
 
 .tokenPill {
@@ -402,6 +401,11 @@
   outline: none;
   border-color: var(--console-accent);
   box-shadow: 0 0 0 3px var(--console-accent-soft);
+}
+
+/* After .input so shorthand padding does not swallow left inset for the search icon */
+.searchWrap .input {
+  padding-left: 2.75rem;
 }
 
 .formGrid {
