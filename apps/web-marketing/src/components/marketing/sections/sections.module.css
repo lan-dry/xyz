@@ -333,6 +333,40 @@
   background: rgba(67, 194, 169, 0.08);
 }
 
+/* Implementation offer */
+.serviceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.serviceCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2.25rem 2rem;
+}
+
+.serviceFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+
+.serviceFoot p {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  font-weight: 300;
+  line-height: 1.65;
+  margin: 0;
+  max-width: 36rem;
+}
+
 /* How it works */
 .steps {
   display: grid;
@@ -602,6 +636,10 @@
   }
 
   .teaserGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .serviceGrid {
     grid-template-columns: 1fr;
   }
 

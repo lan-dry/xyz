@@ -115,6 +115,45 @@ export const PLATFORM_DATA_POINTS = [
   },
 ] as const;
 
+/** Homepage hero + implementation offer (sales-aligned, light touch). */
+export const IMPLEMENTATION_OFFER = {
+  badge: "Implementation + Aegis platform",
+  headline: "Automate the workflow.",
+  headlineAccent: "Keep the proof.",
+  subhead:
+    "We implement one critical workflow on your stack (n8n, APIs, or custom agents) with Aegis governance built in from day one.",
+  detail:
+    "Before money moves or sensitive data leaves, Aegis enforces your rules, routes human approval, and records a signed trace your audit team can export.",
+  primaryCta: "Book a scoping call",
+  secondaryCta: "How it works",
+  section: {
+    label: "What we deliver",
+    title: "One governed workflow in production",
+    intro:
+      "You bring the process and systems. We automate it, wire in policy and approvals, and leave evidence that stands up to diligence.",
+    deliverables: [
+      {
+        step: "01",
+        title: "Scoping",
+        desc: "Pick one high-risk action: payment, refund, payout, export, or admin change. Map tools, owners, and approval paths.",
+      },
+      {
+        step: "02",
+        title: "Build",
+        desc: "Implement the workflow on your stack. Connect Aegis via n8n Workflow Bridge or SDK. Configure rules in Console.",
+      },
+      {
+        step: "03",
+        title: "Proof",
+        desc: "Live traces, approval records, and compliance export ZIPs. Success = your risk or audit team can verify the run.",
+      },
+    ],
+    footnote:
+      "Typical delivery: 4 to 8 weeks. Aegis platform from USD 299/mo; implementation scoped after the call.",
+    cta: "Book a scoping call",
+  },
+} as const;
+
 export const HOW_IT_WORKS = [
   {
     step: "01",

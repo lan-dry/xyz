@@ -11,6 +11,7 @@ import {
   COMPLIANCE_ROADMAP,
   FOUNDING_PULL_QUOTE,
   HOW_IT_WORKS,
+  IMPLEMENTATION_OFFER,
   INVESTOR_QUOTES,
   PLATFORM_DATA_POINTS,
   PRODUCTS,
@@ -19,6 +20,7 @@ import {
 import s from "./sections.module.css";
 
 export function HeroSection() {
+  const offer = IMPLEMENTATION_OFFER;
   return (
     <section className={s.hero}>
       <div className={s.heroGlow} aria-hidden />
@@ -26,31 +28,27 @@ export function HeroSection() {
         <div className={s.heroCopy}>
           <div className={s.badge}>
             <span className={s.badgeDot} />
-            <span>Aegis live for design partners</span>
+            <span>{offer.badge}</span>
           </div>
           <h1>
-            Provenance you can
+            {offer.headline}
             <br />
-            <span className={s.heroAccent}>take to audit</span>
+            <span className={s.heroAccent}>{offer.headlineAccent}</span>
           </h1>
-          <p className={s.heroTagline}>{BRAND.taglineFull}</p>
-          <p className={s.heroSub}>
-            When enterprises put agents into regulated workflows, someone has to keep the receipts.{" "}
+          <p className={s.heroSub}>{offer.subhead}</p>
+          <p className={s.heroTagline}>
+            {offer.detail}{" "}
             <Link href="/products/aegis" style={{ color: "var(--teal-bright)", textDecoration: "none" }}>
               Aegis
             </Link>{" "}
-            signs every action to an APS-1 ledger with policy and compliance exports.{" "}
-            <Link href="/products/aether" style={{ color: "var(--text-muted)", textDecoration: "none" }}>
-              Aether
-            </Link>{" "}
-            is our research program for risk intelligence on that ledger.
+            is the platform behind it: policy, approvals, signed APS-1 ledger, and compliance exports.
           </p>
           <div className={s.heroActions}>
             <a href={contactUrl()} className={s.btnHero}>
-              Get access
+              {offer.primaryCta}
             </a>
             <Link href="/#how" className={s.btnHeroGhost}>
-              How it works
+              {offer.secondaryCta}
             </Link>
           </div>
           <p className={s.heroNote}>
@@ -61,6 +59,40 @@ export function HeroSection() {
           <HeroDataVisual />
           <p className={s.heroVisualCaption}>Aegis provenance pipeline</p>
         </div>
+      </div>
+    </section>
+  );
+}
+
+export function ImplementationSection() {
+  const { section } = IMPLEMENTATION_OFFER;
+  return (
+    <section className={s.sectionAlt} id="implementation">
+      <div className="section-inner">
+        <ScrollReveal className={s.header}>
+          <p className="section-label">{section.label}</p>
+          <h2>{section.title}</h2>
+          <p>{section.intro}</p>
+        </ScrollReveal>
+        <ScrollReveal delay={80}>
+          <div className={s.serviceGrid}>
+            {section.deliverables.map((item) => (
+              <article key={item.step} className={s.serviceCard}>
+                <div className={s.stepNum}>{item.step}</div>
+                <h3 className={s.stepTitle}>{item.title}</h3>
+                <p className={s.stepDesc}>{item.desc}</p>
+              </article>
+            ))}
+          </div>
+        </ScrollReveal>
+        <ScrollReveal delay={120}>
+          <div className={s.serviceFoot}>
+            <p>{section.footnote}</p>
+            <Link href="/contact" className={s.inlineLink}>
+              {section.cta}
+            </Link>
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );
@@ -247,6 +279,7 @@ export function HomePageContent() {
   return (
     <>
       <HeroSection />
+      <ImplementationSection />
       <PlatformSection />
       <ProductsTeaserSection />
       <HowItWorksSection />

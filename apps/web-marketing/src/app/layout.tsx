@@ -22,9 +22,9 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-const titleDefault = "Salanor · Provenance for agent systems";
+const titleDefault = "Salanor · Governed automation with audit proof";
 const description =
-  "Aegis by Salanor: provenance and liability coverage for AI agents. Signed APS-1 events, policy enforcement, and compliance exports.";
+  "Salanor implements critical workflows on your stack with Aegis built in: rules, human approvals, signed traces, and compliance exports.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),
