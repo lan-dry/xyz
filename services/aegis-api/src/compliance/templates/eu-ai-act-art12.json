@@ -1,0 +1,23 @@
+{
+  "bundle": "eu_ai_act",
+  "version": "2026-05-p1.5",
+  "title": "EU AI Act Article 12 — automatic logging (template)",
+  "article": "12",
+  "requirements": [
+    "Logging of each agent action with timestamp and trace correlation",
+    "Policy decision recorded per event",
+    "Human approval records for high-risk obligations",
+    "Integrity hash over export bundle for tamper detection",
+    "Witness Merkle roots and inclusion proofs for third-party verification"
+  ],
+  "artifacts": [
+    "README.md",
+    "events.ndjson",
+    "policies.json",
+    "approvals.ndjson",
+    "audit-log.ndjson",
+    "witness-roots.json",
+    "inclusion-proofs.ndjson",
+    "manifest.json"
+  ]
+}

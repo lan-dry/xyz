@@ -1,0 +1,14 @@
+# Railway service: aegis-compliance-worker
+# Use Railway Cron: 0 6 * * * (daily 06:00 UTC) OR long-running with external cron trigger.
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @salanor/witness-merkle build"
+
+[deploy]
+startCommand = "pnpm --filter aegis-api compliance:worker"
+restartPolicyType = "NEVER"
+
+# Env:
+#   DATABASE_URL (required)
+#   COMPLIANCE_EXPORT_DIR=/data/compliance-exports (Railway volume mount path)

@@ -1,0 +1,121 @@
+{
+  "name": "Aegis — policy gate + record (community shape)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { action: 'demo.apply', amount: 10, note: 'Replace with real work; put Check Policy before risky tools.' } }];"
+      },
+      "id": "a2",
+      "name": "Your workflow work",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/policy/evaluate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"organization_id\": \"{{ $env.AEGIS_ORGANIZATION_ID }}\",\n  \"agent_id\": \"{{ $env.AEGIS_AGENT_ID }}\",\n  \"tool_name\": \"{{ $json.action || 'demo.apply' }}\",\n  \"payload\": {{ JSON.stringify($json) }}\n}",
+        "options": {}
+      },
+      "id": "a3",
+      "name": "Check Policy (before risk)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_AEGIS_INGEST",
+          "name": "Aegis Ingest API — Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.decision }}",
+              "operation": "notEqual",
+              "value2": "deny"
+            }
+          ]
+        }
+      },
+      "id": "a4",
+      "name": "Allowed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [780, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Risky side effect only runs if policy allowed\nreturn [{ json: { applied: true, from: $('Your workflow work').first().json } }];"
+      },
+      "id": "a5",
+      "name": "Risky tool (only if allow)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/workflows/runs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ one_shot: true, business_context: $workflow.name, external_system: 'n8n', external_execution_id: String($execution.id), status: 'completed', summary: 'Policy-gated run', execution: { workflow_name: $workflow.name, execution_id: String($execution.id), nodes: [ { name: 'Work', kind: 'tool', tool_name: 'demo.apply', status: 'success', output_preview: JSON.stringify($('Your workflow work').first().json).slice(0,400) }, { name: 'Policy', kind: 'decision', status: $('Check Policy (before risk)').first().json.decision, output_preview: $('Check Policy (before risk)').first().json.reason || '' } ] } }) }}",
+        "options": {}
+      },
+      "id": "a6",
+      "name": "Record in Aegis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1300, 220],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_AEGIS_INGEST",
+          "name": "Aegis Ingest API — Header Auth"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{ "node": "Your workflow work", "type": "main", "index": 0 }]]
+    },
+    "Your workflow work": {
+      "main": [[{ "node": "Check Policy (before risk)", "type": "main", "index": 0 }]]
+    },
+    "Check Policy (before risk)": {
+      "main": [[{ "node": "Allowed?", "type": "main", "index": 0 }]]
+    },
+    "Allowed?": {
+      "main": [
+        [{ "node": "Risky tool (only if allow)", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Risky tool (only if allow)": {
+      "main": [[{ "node": "Record in Aegis", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Long-term shape: Check Policy before risk + one Record at end. Requires aegis-api one-shot deploy + AEGIS_ORGANIZATION_ID + AEGIS_AGENT_ID env."
+  }
+}

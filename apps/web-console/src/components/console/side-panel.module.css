@@ -1,0 +1,89 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(15, 23, 42, 0.45);
+  cursor: pointer;
+}
+
+.panel {
+  position: relative;
+  width: min(28rem, 100vw);
+  max-width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--console-surface);
+  border-left: 1px solid var(--console-border);
+  box-shadow: -8px 0 32px rgba(15, 23, 42, 0.12);
+  animation: slideIn 0.22s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--console-border);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--console-fg-muted);
+  line-height: 1.5;
+}
+
+.close {
+  flex-shrink: 0;
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.25rem 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--console-fg);
+}
+
+.body p {
+  margin: 0 0 0.75rem;
+}
+
+.body ul {
+  margin: 0 0 1rem;
+  padding-left: 1.25rem;
+}
+
+.body li {
+  margin-bottom: 0.35rem;
+}
+
+.body code {
+  font-size: 0.8125rem;
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@salanor/platform-auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared Salanor console session and dev login (Stage 11)",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^3.1.0",
+    "@salanor/plan-display": "workspace:*",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@salanor/config": "workspace:*",
+    "@types/node": "^22.15.21",
+    "@types/pg": "^8.15.4",
+    "typescript": "^5.8.3"
+  },
+  "nx": {
+    "tags": ["type:lib", "scope:platform"]
+  }
+}

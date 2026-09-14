@@ -1,0 +1,30 @@
+{
+  "aps_version": "0.1",
+  "event_id": "550e8400-e29b-41d4-a716-446655440000",
+  "recorded_at": "2026-05-16T12:00:00.000Z",
+  "tenant_id": "local-demo",
+  "actor": {
+    "id": "agent:rules-engine",
+    "type": "software_agent"
+  },
+  "action": "decision.record",
+  "subject": {
+    "type": "workflow_step",
+    "id": "credit-approval"
+  },
+  "context": {
+    "inputs": { "amount_usd": 12000, "credit_score": 710 },
+    "model": { "id": "rules-v1", "version": "1.0.0" },
+    "policy": { "id": "credit-policy", "version": "2026-01" },
+    "evidence": [{ "ref": "bureau:pull-abc", "hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }],
+    "outcome": { "decision": "approve", "confidence": 0.92 }
+  },
+  "signature": {
+    "alg": "local-placeholder",
+    "value": "placeholder:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "chain": {
+    "prev_event_hash": null,
+    "event_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

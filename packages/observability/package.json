@@ -1,0 +1,30 @@
+{
+  "name": "@salanor/observability",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Optional Sentry and structured error reporting for Salanor services",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@sentry/node": "^9.30.0"
+  },
+  "devDependencies": {
+    "@salanor/config": "workspace:*",
+    "@types/node": "^22.15.21",
+    "typescript": "^5.8.3"
+  },
+  "nx": {
+    "tags": ["type:lib", "scope:platform"]
+  }
+}

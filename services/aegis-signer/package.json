@@ -1,0 +1,33 @@
+{
+  "name": "aegis-signer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Witness batch signer — builds merkle_root rows from event hashes (Stage 8)",
+  "bin": {
+    "aegis-signer-batch": "./dist/batch.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "batch": "tsx src/batch.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@salanor/witness-merkle": "workspace:*",
+    "dotenv": "^16.4.7",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@salanor/config": "workspace:*",
+    "@types/node": "^22.15.21",
+    "@types/pg": "^8.15.4",
+    "eslint": "^9.28.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.0"
+  },
+  "nx": {
+    "tags": ["type:service", "scope:witness"]
+  }
+}

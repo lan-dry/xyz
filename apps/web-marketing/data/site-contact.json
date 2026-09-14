@@ -1,0 +1,50 @@
+{
+  "intro": "We read every message. Pick the path that fits, or use the form. We respond within two business days.",
+  "channels": [
+    {
+      "id": "partnerships",
+      "label": "Partnerships",
+      "description": "Design partners, pilots, integrations, and procurement.",
+      "email": "partners@salanor.com"
+    },
+    {
+      "id": "press",
+      "label": "Press",
+      "description": "Interview requests and media briefings.",
+      "email": "press@salanor.com"
+    },
+    {
+      "id": "general",
+      "label": "General",
+      "description": "Everything else, including responsible disclosure coordination.",
+      "email": "contact@salanor.com"
+    }
+  ],
+  "phones": [],
+  "social": [
+    {
+      "id": "linkedin",
+      "label": "LinkedIn",
+      "url": "https://www.linkedin.com/company/salanor"
+    },
+    {
+      "id": "facebook",
+      "label": "Facebook",
+      "url": "https://web.facebook.com/profile.php?id=61575869666247"
+    },
+    {
+      "id": "instagram",
+      "label": "Instagram",
+      "url": "https://www.instagram.com/salanor"
+    },
+    {
+      "id": "f6s",
+      "label": "F6S",
+      "url": "https://www.f6s.com/company/salanor"
+    }
+  ],
+  "address": {
+    "label": "Office",
+    "lines": ["1 KN 78 St", "Kigali, Rwanda"]
+  }
+}

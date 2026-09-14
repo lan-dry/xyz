@@ -1,0 +1,13 @@
+# Railway service: aegis-witness-worker
+# Root Directory = repo root. Same DATABASE_URL as aegis-api.
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @salanor/witness-merkle build"
+
+[deploy]
+startCommand = "pnpm --filter aegis-api witness:worker"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Env: DATABASE_URL, optional WITNESS_INTERVAL_MS=60000

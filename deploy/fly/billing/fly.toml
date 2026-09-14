@@ -1,0 +1,27 @@
+# Salanor Billing API — production (Fly.io)
+# Deploy: fly deploy --config deploy/fly/billing/fly.toml
+
+app = "salanor-billing"
+primary_region = "fra"
+
+[build]
+dockerfile = "../../docker/Dockerfile.backend"
+[build.args]
+SERVICE_FILTER = "billing"
+START_COMMAND = "pnpm --filter billing start"
+WITNESS_BUILD = "0"
+
+[env]
+NODE_ENV = "production"
+BILLING_API_PORT = "8093"
+
+[http_service]
+internal_port = 8093
+force_https = true
+auto_stop_machines = "off"
+auto_start_machines = true
+min_machines_running = 1
+
+[[vm]]
+size = "shared-cpu-1x"
+memory = "256mb"

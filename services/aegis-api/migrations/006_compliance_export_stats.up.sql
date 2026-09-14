@@ -1,0 +1,7 @@
+BEGIN;
+
+ALTER TABLE compliance_export
+  ADD COLUMN IF NOT EXISTS event_count INT,
+  ADD COLUMN IF NOT EXISTS byte_size BIGINT;
+
+COMMIT;

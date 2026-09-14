@@ -1,0 +1,23 @@
+{
+  "name": "aegis-ledger-sdk",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "packages/aegis-ledger-sdk/src",
+  "tags": ["type:lib", "scope:aegis"],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec vitest run",
+        "cwd": "packages/aegis-ledger-sdk"
+      }
+    },
+    "bench": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec tsx src/bench.ts",
+        "cwd": "packages/aegis-ledger-sdk"
+      }
+    }
+  }
+}

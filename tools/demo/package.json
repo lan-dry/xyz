@@ -1,0 +1,24 @@
+{
+  "name": "@salanor/demo-tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ingest-one-event": "tsx ingest-one-event.mts",
+    "verify-chain": "tsx verify-chain.mts",
+    "verify-inclusion": "tsx verify-inclusion.mts",
+    "proxy-fetch": "tsx proxy-fetch.mts",
+    "full-system": "tsx full-system.mts",
+    "verify-plan-limit": "tsx verify-plan-limit-402.mts",
+    "ensure-pilot-policy": "tsx ensure-pilot-policy.mts",
+    "dev-delete-accounts": "tsx dev-delete-accounts.mts"
+  },
+  "dependencies": {
+    "@salanor/aegis": "workspace:*",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

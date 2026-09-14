@@ -1,0 +1,63 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@prisma/client": [
+        "../../node_modules/.prisma/client"
+      ],
+      "@prisma/client/*": [
+        "../../node_modules/.prisma/client/*"
+      ],
+      "@/*": [
+        "src/*"
+      ],
+      "@salanor/auth": [
+        "../../packages/auth/src/index.ts"
+      ],
+      "@salanor/auth/server": [
+        "../../packages/auth/src/server.ts"
+      ],
+      "@salanor/auth/auth-config": [
+        "../../packages/auth/src/auth-config.ts"
+      ],
+      "@salanor/aegis-ledger-sdk": [
+        "../../packages/aegis-ledger-sdk/src/index.ts"
+      ],
+      "@salanor/aegis-ledger-sdk/ingest-handler": [
+        "../../packages/aegis-ledger-sdk/src/ingest-handler.ts"
+      ],
+      "@salanor/aegis-bus": [
+        "../../packages/aegis-bus/src/index.ts"
+      ],
+      "@salanor/aegis-storage": [
+        "../../packages/aegis-storage/src/index.ts"
+      ]
+    },
+    "jsx": "preserve",
+    "allowJs": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.ts",
+    "**/*.tsx",
+    "next-env.d.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

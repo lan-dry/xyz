@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Salanor · Automation &amp; governance for finance &amp; insurance</title>
+    <style>
+      :root {
+        --primary: #0d3535;
+        --accent: #43c2a9;
+        --bg: #0a0c0b;
+        --surface: #141917;
+        --text: #e8ede9;
+        --muted: #9eb0ac;
+        --border: rgba(67, 194, 169, 0.22);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .deck {
+        width: 100%;
+      }
+
+      .slide {
+        min-height: 100vh;
+        padding: 3.5rem 4.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        page-break-after: always;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(160deg, var(--bg) 0%, var(--surface) 100%);
+      }
+
+      .slide.compact {
+        justify-content: flex-start;
+        padding-top: 2.75rem;
+      }
+
+      .act {
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 0.35rem;
+      }
+
+      .eyebrow {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin: 0 0 1rem;
+      }
+
+      h1 {
+        font-size: clamp(2rem, 4vw, 3rem);
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+        margin: 0 0 1rem;
+        max-width: 22ch;
+      }
+
+      h2 {
+        font-size: clamp(1.6rem, 3vw, 2.25rem);
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+        margin: 0 0 1.25rem;
+        max-width: 28ch;
+      }
+
+      .subtitle {
+        font-size: 1.25rem;
+        line-height: 1.55;
+        color: var(--muted);
+        max-width: 42rem;
+        margin: 0;
+      }
+
+      .lead {
+        font-size: 1.125rem;
+        line-height: 1.65;
+        color: var(--muted);
+        max-width: 42rem;
+        margin: 0 0 1.5rem;
+      }
+
+      ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      li {
+        position: relative;
+        padding-left: 1.35rem;
+        margin: 0.65rem 0;
+        font-size: 1.05rem;
+        line-height: 1.55;
+        color: var(--text);
+        max-width: 46rem;
+      }
+
+      li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0.65rem;
+        width: 0.45rem;
+        height: 0.45rem;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      .cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        max-width: 54rem;
+      }
+
+      .cols-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        max-width: 56rem;
+      }
+
+      .panel {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem 1.35rem;
+        background: rgba(13, 53, 53, 0.35);
+      }
+
+      .panel h3 {
+        margin: 0 0 0.65rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .panel ul {
+        margin: 0;
+      }
+
+      .panel li {
+        font-size: 0.92rem;
+        margin: 0.45rem 0;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        max-width: 56rem;
+      }
+
+      .step {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem;
+        background: rgba(10, 12, 11, 0.55);
+      }
+
+      .step-num {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: var(--accent);
+        margin-bottom: 0.35rem;
+      }
+
+      .step-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+      }
+
+      .step-desc {
+        font-size: 0.85rem;
+        line-height: 1.45;
+        color: var(--muted);
+      }
+
+      .demo-box {
+        margin-top: 1rem;
+        padding: 1.25rem 1.5rem;
+        border-left: 3px solid var(--accent);
+        background: rgba(67, 194, 169, 0.08);
+        max-width: 46rem;
+      }
+
+      .demo-box p {
+        margin: 0 0 0.75rem;
+        font-size: 1rem;
+        line-height: 1.6;
+        color: var(--text);
+      }
+
+      .demo-box p:last-child {
+        margin-bottom: 0;
+      }
+
+      .highlight {
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 1.15rem;
+        margin-top: 1rem;
+      }
+
+      .footer {
+        margin-top: auto;
+        padding-top: 2rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .contact {
+        font-size: 1.05rem;
+        line-height: 1.7;
+      }
+
+      .contact strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      @media print {
+        .slide {
+          min-height: 100vh;
+          break-after: page;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .slide {
+          padding: 2rem 1.5rem;
+        }
+
+        .cols,
+        .cols-3,
+        .steps {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="deck">
+      <!-- 1 Title -->
+      <section class="slide">
+        <p class="eyebrow">Salanor · Confidential · 2026</p>
+        <h1>Automation &amp; governance for finance &amp; insurance</h1>
+        <p class="subtitle">
+          Operational impact, controlled risk, and proof you can show — payments,
+          claims, KYC, and sensitive workflows.
+        </p>
+        <p class="footer">Landry Bougang Fotso · Founder, Salanor Ltd · Kigali</p>
+      </section>
+
+      <!-- 2 Reality -->
+      <section class="slide compact">
+        <p class="act">Act 1 · The opportunity</p>
+        <p class="eyebrow">The reality today</p>
+        <h2>Many institutions still run critical work manually</h2>
+        <ul>
+          <li>Email chains, spreadsheets, paper handoffs, duplicate data entry</li>
+          <li>Slow turnaround — clients wait; staff chase approvals</li>
+          <li>Inconsistent decisions depending on who is on shift</li>
+          <li>Errors that hurt more as volume grows</li>
+          <li>Process knowledge walks out the door when people leave</li>
+        </ul>
+        <p class="lead" style="margin-top: 1rem; margin-bottom: 0">
+          Digital expectations are rising globally. Manual back-office processes
+          become the bottleneck.
+        </p>
+      </section>
+
+      <!-- 3 Benefits -->
+      <section class="slide compact">
+        <p class="eyebrow">What automation brings</p>
+        <h2>Structured workflow automation — not “replace everyone with AI”</h2>
+        <div class="cols">
+          <div class="panel">
+            <h3>Speed</h3>
+            <p class="lead" style="margin: 0; font-size: 0.95rem">
+              Routine steps in minutes, not hours or days
+            </p>
+          </div>
+          <div class="panel">
+            <h3>Consistency</h3>
+            <p class="lead" style="margin: 0; font-size: 0.95rem">
+              Same rule, same path, every time
+            </p>
+          </div>
+          <div class="panel">
+            <h3>Scale</h3>
+            <p class="lead" style="margin: 0; font-size: 0.95rem">
+              More volume without linear headcount growth
+            </p>
+          </div>
+          <div class="panel">
+            <h3>Focus</h3>
+            <p class="lead" style="margin: 0; font-size: 0.95rem">
+              Staff on judgment, not copy-paste
+            </p>
+          </div>
+        </div>
+        <p class="lead" style="margin-top: 1.25rem; margin-bottom: 0">
+          Automation removes friction around sensitive decisions — it does not
+          remove humans from them.
+        </p>
+      </section>
+
+      <!-- 4 Banking -->
+      <section class="slide compact">
+        <p class="eyebrow">Banking</p>
+        <h2>High-value starting points — pick one for a pilot</h2>
+        <ul>
+          <li>Outbound payments above threshold → approval before execution</li>
+          <li>KYC / AML document checks → route exceptions, flag incomplete files</li>
+          <li>Limit or account status changes → dual control before core update</li>
+          <li>Reconciliation alerts → surface mismatches with context to the right team</li>
+        </ul>
+      </section>
+
+      <!-- 5 Insurance -->
+      <section class="slide compact">
+        <p class="eyebrow">Insurance</p>
+        <h2>Same logic — one workflow, measurable outcome</h2>
+        <ul>
+          <li>Claims intake and routing — by type, amount, or fraud score</li>
+          <li>Claim settlement or disbursement — block above threshold until sign-off</li>
+          <li>Policy changes in production — premium, coverage, beneficiary updates</li>
+          <li>Regulatory or partner reporting — gather, validate, transmit with record</li>
+        </ul>
+      </section>
+
+      <!-- 6 Impact -->
+      <section class="slide compact">
+        <p class="eyebrow">Business impact</p>
+        <h2>When automation has clear ownership</h2>
+        <ul>
+          <li>Faster customer response — onboarding, claims, payments</li>
+          <li>Lower cost per transaction — less manual rework and chasing</li>
+          <li>Fewer operational errors — rules do not forget steps on a Friday</li>
+          <li>Room to grow — same team handles more without burning out</li>
+        </ul>
+        <p class="highlight">Caveat: automation built only for speed, without control, can increase risk.</p>
+      </section>
+
+      <!-- 7 Start smart -->
+      <section class="slide compact">
+        <p class="eyebrow">Start smart</p>
+        <h2>No five-year transformation required</h2>
+        <div class="steps" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="step">
+            <div class="step-num">01</div>
+            <div class="step-title">One critical workflow</div>
+            <div class="step-desc">Payment, claim, KYC, or similar</div>
+          </div>
+          <div class="step">
+            <div class="step-num">02</div>
+            <div class="step-title">4–8 week pilot</div>
+            <div class="step-desc">Rules, integration, approvals, measurable success</div>
+          </div>
+          <div class="step">
+            <div class="step-num">03</div>
+            <div class="step-title">Prove ROI</div>
+            <div class="step-desc">Then expand to the next workflow</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8 When wrong -->
+      <section class="slide compact">
+        <p class="act">Act 2 · The gap</p>
+        <p class="eyebrow">When automation goes wrong</p>
+        <h2>Speed without proof is liability</h2>
+        <ul>
+          <li>Wrong payment executes instantly — no natural pause to catch it</li>
+          <li>Claim settled without the checks your policy requires</li>
+          <li>Limit change applies before anyone with authority has seen it</li>
+          <li>
+            “Who authorized this Tuesday at 2 p.m.?” → scattered logs, tickets,
+            chat
+          </li>
+        </ul>
+      </section>
+
+      <!-- 9 Accountability -->
+      <section class="slide compact">
+        <p class="eyebrow">The accountability gap</p>
+        <h2>Three hidden costs</h2>
+        <div class="cols-3">
+          <div class="panel">
+            <h3>Audit drag</h3>
+            <ul>
+              <li>Weeks reconstructing events from incomplete records</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Committee paralysis</h3>
+            <ul>
+              <li>Risk boards block the next project — no trail from the last one</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Regulatory exposure</h3>
+            <ul>
+              <li>Money and client data move automatically without proof</li>
+            </ul>
+          </div>
+        </div>
+        <p class="lead" style="margin-top: 1.25rem; margin-bottom: 0">
+          Logs say something happened. They rarely answer: which rule applied,
+          which person approved, and whether the record can be verified later.
+        </p>
+      </section>
+
+      <!-- 10 Regulatory -->
+      <section class="slide compact">
+        <p class="eyebrow">Regulatory &amp; trust</p>
+        <h2>Accountability applies whether you automate or not</h2>
+        <div class="cols">
+          <ul>
+            <li>POPIA (South Africa) — lawful processing &amp; accountability</li>
+            <li>AML / KYC — who approved exceptions</li>
+            <li>Internal audit &amp; SOC-style controls — evidence controls operated</li>
+            <li>EU AI Act, SOC 2 — relevant for international groups</li>
+          </ul>
+          <div class="panel">
+            <h3>The question regulators ask</h3>
+            <p class="lead" style="margin: 0; font-size: 1rem; color: var(--accent)">
+              Not “Did the robot run?” — but “Who was responsible, and can you
+              prove it?”
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 11 Both -->
+      <section class="slide compact">
+        <p class="eyebrow">You need both</p>
+        <h2>Fast operations and provable control</h2>
+        <div class="cols-3">
+          <div class="panel">
+            <h3>Manual only</h3>
+            <ul>
+              <li>Slow, inconsistent, hard to scale</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Automation, no governance</h3>
+            <ul>
+              <li>Fast — but blind and risky</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>Salanor model</h3>
+            <ul>
+              <li>Implement workflow + Aegis: fast and provable</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 12 Salanor -->
+      <section class="slide compact">
+        <p class="act">Act 3 · Salanor</p>
+        <p class="eyebrow">What we deliver</p>
+        <h2>Implementation with governance built in</h2>
+        <ul>
+          <li>Design the priority workflow with ops, risk, and IT</li>
+          <li>Implement automation on your existing stack — no core replacement</li>
+          <li>
+            Include Aegis from day one: rules, approvals, signed traces, audit
+            exports
+          </li>
+        </ul>
+        <p class="highlight">
+          We build the automation you need. Aegis is the layer that makes it safe
+          to scale.
+        </p>
+      </section>
+
+      <!-- 13 Aegis -->
+      <section class="slide compact">
+        <p class="eyebrow">What Aegis is</p>
+        <h2>Control and proof before a sensitive action executes</h2>
+        <div class="cols">
+          <ul>
+            <li>Rule evaluates → allow, deny, or require approval</li>
+            <li>Named human approves or refuses when required</li>
+            <li>Action proceeds only after the gate clears</li>
+            <li>Every step in a signed, append-only register</li>
+          </ul>
+          <div class="panel">
+            <h3>Aegis is not</h3>
+            <ul>
+              <li>Core banking or claims platform</li>
+              <li>SIEM or log aggregator</li>
+              <li>Replacement for compliance</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 14 Four steps -->
+      <section class="slide compact">
+        <p class="eyebrow">How it works</p>
+        <h2>Four steps, one chain of proof</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">01</div>
+            <div class="step-title">Connect</div>
+            <div class="step-desc">n8n, SDK, or open APS-1 format</div>
+          </div>
+          <div class="step">
+            <div class="step-num">02</div>
+            <div class="step-title">Apply rules</div>
+            <div class="step-desc">Allow, block, or pause for approval</div>
+          </div>
+          <div class="step">
+            <div class="step-num">03</div>
+            <div class="step-title">Record &amp; sign</div>
+            <div class="step-desc">Append-only ledger, witness batches</div>
+          </div>
+          <div class="step">
+            <div class="step-num">04</div>
+            <div class="step-title">Replay &amp; export</div>
+            <div class="step-desc">Console, verification, audit bundles</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 15 Demo -->
+      <section class="slide compact">
+        <p class="eyebrow">Live demo</p>
+        <h2>Bank scenario: outbound transfer above limit</h2>
+        <div class="demo-box">
+          <p>
+            <strong>Case:</strong> workflow attempts a transfer of
+            <strong>USD 2,500</strong>. Rule: above <strong>USD 1,000</strong>
+            requires human approval.
+          </p>
+          <p>
+            Without governance → payment goes when the workflow runs. With Aegis
+            → workflow stops; approver sees amount, beneficiary, context.
+            <strong>No approval → no payment.</strong>
+          </p>
+          <p>
+            Every step recorded and signed. Same pattern for claims, KYC, limit
+            changes. Demo on <strong>app.salanor.com</strong>.
+          </p>
+        </div>
+      </section>
+
+      <!-- 16 Approval -->
+      <section class="slide compact">
+        <p class="eyebrow">Human approval</p>
+        <h2>“Proposed by the system” vs “authorized by a person”</h2>
+        <ul>
+          <li>Alerts via email, Slack, PagerDuty, or SMS</li>
+          <li>Named approver, timestamp, one trace</li>
+          <li>Refusal or timeout → action does not execute</li>
+          <li>Full history: approved, refused, expired — with rule applied</li>
+        </ul>
+      </section>
+
+      <!-- 17 Audit -->
+      <section class="slide compact">
+        <p class="eyebrow">Audit &amp; compliance</p>
+        <h2>Evidence for your reviews</h2>
+        <ul>
+          <li>Exports by period with verifiable integrity hash</li>
+          <li>
+            Control mappings: SOC 2 &amp; EU AI Act in exports today (documentation
+            aid, not certification)
+          </li>
+          <li>Step-by-step replay in the console</li>
+          <li>Admin audit log: policies, keys, connections, exports</li>
+        </ul>
+      </section>
+
+      <!-- 18 Pilot -->
+      <section class="slide compact">
+        <p class="eyebrow">Pilot offer</p>
+        <h2>30 days · one workflow · measurable proof</h2>
+        <ul>
+          <li><strong>Scope:</strong> one process — payment, claim, KYC, etc.</li>
+          <li>
+            <strong>Delivered:</strong> rules, approvals, register, training, one
+            audit export
+          </li>
+          <li><strong>Platform:</strong> Team tier from USD 299 / month</li>
+          <li><strong>Setup:</strong> fixed fee by integration complexity</li>
+          <li>
+            <strong>Success:</strong> one sensitive operation, human-approved,
+            verifiable by risk or audit
+          </li>
+        </ul>
+        <p class="footer">api.salanor.com · app.salanor.com · n8n, TypeScript, Python, Go SDKs</p>
+      </section>
+
+      <!-- 19 Discussion -->
+      <section class="slide compact">
+        <p class="eyebrow">Discussion</p>
+        <h2>Questions to move forward</h2>
+        <ul>
+          <li>Which sensitive workflows still run manually — and hurt most in audit?</li>
+          <li>Where do you require dual control — and how do you document it today?</li>
+          <li>
+            Would one automated workflow with signed trace + export unblock a
+            project in 30 days?
+          </li>
+          <li>Who from risk, compliance, or IT must validate a pilot?</li>
+        </ul>
+      </section>
+
+      <!-- 20 Contact -->
+      <section class="slide">
+        <p class="eyebrow">Contact</p>
+        <h2>Salanor Ltd</h2>
+        <p class="contact">
+          <strong>Landry Bougang Fotso</strong><br />
+          Founder · Kigali, Rwanda<br />
+          Site: www.salanor.com<br />
+          Product: www.salanor.com/products/aegis<br />
+          Console: app.salanor.com<br />
+          E-mail: hello@salanor.com · partners@salanor.com
+        </p>
+        <p class="footer" style="margin-top: 2rem">
+          Automation &amp; governance · Finance &amp; insurance · Confidential
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

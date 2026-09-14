@@ -1,0 +1,113 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(10, 12, 11, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.dialog {
+  width: 100%;
+  max-width: 28rem;
+  max-height: calc(100vh - 3rem);
+  overflow: auto;
+  border: 1px solid var(--console-border-strong);
+  border-radius: var(--console-radius-lg);
+  background: var(--console-surface);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18);
+}
+
+.dialogWide {
+  max-width: 32rem;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--console-fg);
+}
+
+.description {
+  margin: 0.375rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--console-fg-muted);
+}
+
+.close {
+  flex-shrink: 0;
+  padding: 0.375rem;
+}
+
+.body {
+  padding: 1.25rem 1.5rem;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0 1.5rem 1.25rem;
+}
+
+.optionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.option {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius);
+  cursor: pointer;
+  text-align: left;
+  background: var(--console-surface);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.option:hover {
+  border-color: var(--console-border-strong);
+  background: var(--console-surface-raised, var(--console-bg-subtle));
+}
+
+.optionActive {
+  border-color: var(--console-accent);
+  background: var(--console-accent-soft);
+}
+
+.option input {
+  margin-top: 0.2rem;
+  accent-color: var(--console-accent);
+}
+
+.optionTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--console-fg);
+}
+
+.optionDesc {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--console-fg-muted);
+  line-height: 1.45;
+}

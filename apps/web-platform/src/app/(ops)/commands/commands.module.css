@@ -1,0 +1,210 @@
+.layout {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.toc {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tocTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--console-fg-subtle);
+}
+
+.tocLink {
+  font-size: 0.75rem;
+  color: var(--console-fg-muted);
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+.tocLink:hover {
+  color: var(--console-accent-bright);
+}
+
+.main {
+  min-width: 0;
+}
+
+.searchWrap {
+  display: block;
+  margin-bottom: 1.5rem;
+}
+
+.search {
+  width: 100%;
+  max-width: 24rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--console-border);
+  border-radius: var(--console-radius);
+  background: var(--console-surface);
+  color: var(--console-fg);
+  font-size: 0.875rem;
+}
+
+.section {
+  margin-bottom: 2.5rem;
+  scroll-margin-top: 1rem;
+}
+
+.sectionTitle {
+  margin: 0 0 0.375rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--console-fg);
+}
+
+.sectionDesc {
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  color: var(--console-fg-muted);
+  max-width: 42rem;
+  line-height: 1.55;
+}
+
+.roleGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .roleGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.roleCard {
+  height: 100%;
+}
+
+.roleTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.roleBody,
+.roleMeta {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--console-fg-muted);
+}
+
+.roleMeta:last-child {
+  margin-bottom: 0;
+}
+
+.commandList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.commandCard {
+  padding: 1rem 1.25rem;
+}
+
+.commandHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.commandCode {
+  font-family: var(--console-font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--console-accent-bright);
+  word-break: break-all;
+}
+
+.badgeDestructive {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.commandSummary {
+  margin: 0 0 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--console-fg);
+}
+
+.commandDetails {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--console-fg-muted);
+}
+
+.meta {
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+}
+
+.meta dt {
+  font-weight: 600;
+  color: var(--console-fg-subtle);
+  display: inline;
+}
+
+.meta dt::after {
+  content: ": ";
+}
+
+.meta dd {
+  margin: 0;
+  display: inline;
+  color: var(--console-fg-muted);
+}
+
+.meta div {
+  line-height: 1.5;
+}
+
+.inlineCode {
+  font-family: var(--console-font-mono);
+  font-size: 0.75rem;
+  word-break: break-word;
+}
+
+.footerNote {
+  margin: 2rem 0 0;
+  font-size: 0.75rem;
+  color: var(--console-fg-subtle);
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .toc {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+}
