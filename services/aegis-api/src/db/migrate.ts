@@ -159,6 +159,11 @@ const MIGRATIONS = [
     up: "030_plan_catalog_marketing.up.sql",
     down: "030_plan_catalog_marketing.down.sql",
   },
+  {
+    version: "031_marketing_blog_posts",
+    up: "031_marketing_blog_posts.up.sql",
+    down: "031_marketing_blog_posts.down.sql",
+  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {

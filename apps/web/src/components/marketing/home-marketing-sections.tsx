@@ -548,7 +548,7 @@ export function HomeMarketingSections() {
                 Become a design partner
               </a>
               <a
-                href="mailto:hello@salanor.com"
+                href="mailto:contact@salanor.com"
                 className="inline-flex items-center justify-center rounded-sm border border-white/30 px-7 py-3 font-mono text-[0.8125rem] tracking-wide text-white/90 no-underline transition-colors hover:border-white hover:text-white"
               >
                 General enquiry

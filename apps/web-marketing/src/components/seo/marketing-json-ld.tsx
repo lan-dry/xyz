@@ -19,7 +19,7 @@ export function MarketingJsonLd() {
   const contact = getSiteContact();
   const sameAs = contact.social.map((s) => s.url).filter(Boolean);
   const email =
-    contact.channels.find((c) => c.id === "general")?.email ?? "hello@salanor.com";
+    contact.channels.find((c) => c.id === "general")?.email ?? "contact@salanor.com";
 
   const organization = {
     "@context": "https://schema.org",

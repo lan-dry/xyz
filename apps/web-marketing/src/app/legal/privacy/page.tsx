@@ -23,7 +23,7 @@ export default function PrivacyPage() {
         <LegalMeta>
           <strong>Effective date:</strong> 1 June 2026 · <strong>Controller:</strong> Salanor Ltd ·
           Questions:{" "}
-          <a href="mailto:hello@salanor.com">hello@salanor.com</a>
+          <a href="mailto:contact@salanor.com">contact@salanor.com</a>
         </LegalMeta>
 
         <LegalSection title="1. Scope">
@@ -131,7 +131,7 @@ export default function PrivacyPage() {
           <p>
             Depending on your location, you may request access, correction, deletion, restriction,
             or portability of personal data we control. Contact{" "}
-            <a href="mailto:hello@salanor.com">hello@salanor.com</a>. We will verify your request
+            <a href="mailto:contact@salanor.com">contact@salanor.com</a>. We will verify your request
             before acting. You may lodge a complaint with your local supervisory authority.
           </p>
         </LegalSection>

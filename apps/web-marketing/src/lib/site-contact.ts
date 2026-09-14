@@ -52,7 +52,7 @@ const DEFAULT_CONTACT: SiteContact = {
       id: "general",
       label: "General",
       description: "Everything else, including responsible disclosure coordination.",
-      email: "hello@salanor.com",
+      email: "contact@salanor.com",
     },
   ],
   phones: [],
@@ -98,7 +98,7 @@ export function contactEmailForReason(reason: string): string {
     case "press":
       return channels.find((c) => c.id === "press")?.email ?? "press@salanor.com";
     case "security":
-      return channels.find((c) => c.id === "general")?.email ?? "hello@salanor.com";
+      return channels.find((c) => c.id === "general")?.email ?? "contact@salanor.com";
     case "investor":
     case "design_partner":
     case "enterprise":
