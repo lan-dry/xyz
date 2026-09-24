@@ -52,6 +52,6 @@ export function salanorDevAuthCookies(): NextAuthConfig["cookies"] | undefined {
     pkceCodeVerifier: { options },
     state: { options },
     nonce: { options },
-    webAuthnChallenge: { options },
+    webauthnChallenge: { options },
   };
 }

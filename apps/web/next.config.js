@@ -16,6 +16,7 @@ const nextConfig = withNx({
     "@salanor/aegis-ledger-sdk",
     "@salanor/aegis-bus",
     "@salanor/aegis-storage",
+    "@salanor/marketing-blog",
   ],
 });
 

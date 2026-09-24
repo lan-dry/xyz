@@ -5,6 +5,7 @@ Run: python docs/presentations/build-automation-governance-deck.py
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from pptx import Presentation
@@ -16,6 +17,8 @@ from pptx.util import Inches, Pt
 ROOT = Path(__file__).resolve().parents[2]
 LOGO = ROOT / "apps" / "web-marketing" / "public" / "salanor-logo.png"
 OUT = Path(__file__).resolve().parent / "Salanor-Automation-Governance-Finance.pptx"
+OUT_SA = Path("e:/salanor/Presentation/South-Africa/Salanor-Automation-Governance-Finance.pptx")
+OUT_YASSINE_EN = Path("e:/salanor/Presentation/Yassine/Salanor-Automation-Governance-Finance.pptx")
 
 BG = RGBColor(0x0A, 0x0C, 0x0B)
 SURFACE = RGBColor(0x14, 0x19, 0x17)
@@ -147,7 +150,7 @@ def slide_title(prs: Presentation) -> None:
         Inches(2.75),
         Inches(8.2),
         Inches(1.0),
-        "Operational impact, controlled risk, and proof you can show — payments, claims, KYC, and sensitive workflows.",
+        "We automate your critical workflows and build in Aegis from day one: speed, control, and proof for payments, claims, and KYC.",
         size=15,
         color=MUTED,
     )
@@ -166,7 +169,7 @@ def slide_reality(prs: Presentation) -> None:
         Inches(3.5),
         [
             "Email chains, spreadsheets, paper handoffs, duplicate data entry",
-            "Slow turnaround — clients wait; staff chase approvals",
+            "Slow turnaround: clients wait, staff chase approvals",
             "Inconsistent decisions depending on who is on shift",
             "Errors that hurt more as volume grows",
             "Process knowledge walks out the door when people leave",
@@ -215,7 +218,7 @@ def slide_benefits(prs: Presentation) -> None:
         Inches(5.0),
         CONTENT_W,
         Inches(0.5),
-        "Automation removes friction around sensitive decisions — it does not remove humans from them.",
+        "Automation removes friction around sensitive decisions. It does not remove humans from them.",
         size=12,
         color=MUTED,
     )
@@ -224,7 +227,7 @@ def slide_benefits(prs: Presentation) -> None:
 
 def slide_banking(prs: Presentation) -> None:
     slide = blank(prs)
-    slide_header(slide, "Banking", "High-value starting points — pick one for a pilot")
+    slide_header(slide, "Banking", "High-value starting points. Pick one workflow.")
     write_bullets(
         slide,
         MARGIN_L,
@@ -232,10 +235,10 @@ def slide_banking(prs: Presentation) -> None:
         CONTENT_W,
         Inches(3.2),
         [
-            "Outbound payments above threshold → approval before execution",
-            "KYC / AML document checks → route exceptions, flag incomplete files",
-            "Limit or account status changes → dual control before core update",
-            "Reconciliation alerts → surface mismatches with context to the right team",
+            "Outbound payments above threshold: approval before execution",
+            "KYC / AML document checks: route exceptions, flag incomplete files",
+            "Limit or account status changes: dual control before core update",
+            "Reconciliation alerts: surface mismatches with context to the right team",
         ],
         size=13,
     )
@@ -244,7 +247,7 @@ def slide_banking(prs: Presentation) -> None:
 
 def slide_insurance(prs: Presentation) -> None:
     slide = blank(prs)
-    slide_header(slide, "Insurance", "Same logic — one workflow, measurable outcome")
+    slide_header(slide, "Insurance", "Same logic. One workflow, measurable outcome.")
     write_bullets(
         slide,
         MARGIN_L,
@@ -252,10 +255,10 @@ def slide_insurance(prs: Presentation) -> None:
         CONTENT_W,
         Inches(3.2),
         [
-            "Claims intake and routing — by type, amount, or fraud score",
-            "Claim settlement or disbursement — block above threshold until sign-off",
-            "Policy changes in production — premium, coverage, beneficiary updates",
-            "Regulatory or partner reporting — gather, validate, transmit with record",
+            "Claims intake and routing by type, amount, or fraud score",
+            "Claim settlement or disbursement: block above threshold until sign-off",
+            "Policy changes in production: premium, coverage, beneficiary updates",
+            "Regulatory or partner reporting: gather, validate, transmit with record",
         ],
         size=13,
     )
@@ -318,10 +321,10 @@ def slide_when_wrong(prs: Presentation) -> None:
         CONTENT_W,
         Inches(3.0),
         [
-            "Wrong payment executes instantly — no natural pause to catch it",
+            "Wrong payment executes instantly. No natural pause to catch it.",
             "Claim settled without the checks your policy requires",
             "Limit change applies before anyone with authority has seen it",
-            "“Who authorized this Tuesday at 2 p.m.?” → scattered logs, tickets, chat",
+            "Who authorized this Tuesday at 2 p.m.? Scattered logs, tickets, chat.",
         ],
         size=13,
     )
@@ -334,7 +337,7 @@ def slide_accountability(prs: Presentation) -> None:
     slide_header(slide, "The accountability gap", "Three hidden costs")
     cards = [
         ("Audit drag", "Weeks reconstructing events from incomplete records"),
-        ("Committee paralysis", "Risk boards block the next project — no trail from the last one"),
+        ("Committee paralysis", "Risk boards block the next project. No trail from the last one."),
         ("Regulatory exposure", "When money and client data move automatically without proof"),
     ]
     w = Inches(2.75)
@@ -358,6 +361,83 @@ def slide_accountability(prs: Presentation) -> None:
     add_notes(slide, "Gap Aegis closes.")
 
 
+def slide_systems_ok(prs: Presentation) -> None:
+    slide = blank(prs)
+    slide_header(
+        slide,
+        "Your systems work",
+        "This is not a fix for outages. It unlocks the next automation project.",
+    )
+    write_bullets(
+        slide,
+        MARGIN_L,
+        Inches(2.35),
+        CONTENT_W,
+        Inches(3.5),
+        [
+            "If core systems run well today, good. The question is what you automate next",
+            "Many teams want AI, scripts, or orchestration. Risk blocks because nobody can prove who authorized what",
+            "Without a signed approval register, audit reconstruction takes weeks, not hours",
+            "Governed automation lets you say yes to the next project because proof exists from day one",
+        ],
+        size=13,
+    )
+    write_text(
+        slide,
+        MARGIN_L,
+        Inches(5.85),
+        CONTENT_W,
+        Inches(0.55),
+        "Stable systems are an advantage. Salanor helps you add automation without betting the institution.",
+        size=12,
+        color=TEAL,
+        bold=True,
+    )
+    add_notes(slide, "Answer to: our systems have no issues. Never say their stack is broken.")
+
+
+def slide_client_limits(prs: Presentation) -> None:
+    slide = blank(prs)
+    slide_header(
+        slide,
+        "Limits and rules per client",
+        "Honest path: amount rules today, your data model in deployment",
+    )
+    phases = [
+        ("Today (shipped)", [
+            "Thresholds by amount and action type",
+            "Full client context for the approver: account, beneficiary, segment",
+            "Multiple active policies in parallel",
+        ]),
+        ("Phase 2 (with you)", [
+            "Rules by client segment, account type, beneficiary lists",
+            "Your core banking fields inside the rule condition",
+        ]),
+        ("Phase 3 (optional)", [
+            "Risk model on your data to recommend limit per client",
+            "Scoring stays with you or is built with your risk team in scoping",
+        ]),
+    ]
+    w = Inches(2.75)
+    y = Inches(2.35)
+    h = Inches(3.15)
+    for i, (head, bullets) in enumerate(phases):
+        x = MARGIN_L + i * (w + Inches(0.22))
+        add_round_card(slide, x, y, w, h)
+        write_text(slide, x + Inches(0.15), y + Inches(0.15), w - Inches(0.25), Inches(0.45), head, size=11, bold=True, color=TEAL)
+        write_bullets(slide, x + Inches(0.15), y + Inches(0.62), w - Inches(0.25), Inches(2.35), bullets, size=10, color=MUTED)
+    write_text(
+        slide,
+        MARGIN_L,
+        Inches(5.75),
+        CONTENT_W,
+        Inches(0.75),
+        "We provide execution and proof. Per-client limits from your risk model are mapped during deployment with payment and risk teams.",
+        size=11,
+        color=MUTED,
+    )
+
+
 def slide_regulatory(prs: Presentation) -> None:
     slide = blank(prs)
     slide_header(
@@ -372,10 +452,10 @@ def slide_regulatory(prs: Presentation) -> None:
         Inches(4.3),
         Inches(3.5),
         [
-            "POPIA (South Africa) — lawful processing & accountability",
-            "AML / KYC — who approved exceptions",
-            "Internal audit & SOC-style controls — evidence controls operated",
-            "EU AI Act, SOC 2 — relevant for international groups",
+            "POPIA (South Africa): lawful processing and accountability",
+            "AML / KYC: who approved exceptions",
+            "Internal audit and SOC-style controls: evidence controls operated",
+            "EU AI Act, SOC 2: relevant for international groups",
         ],
         size=12,
     )
@@ -399,7 +479,7 @@ def slide_both(prs: Presentation) -> None:
     slide_header(slide, "You need both", "Fast operations and provable control")
     cols = [
         ("Manual only", "Slow, inconsistent, hard to scale"),
-        ("Automation, no governance", "Fast — but blind and risky"),
+        ("Automation, no governance", "Fast, but blind and risky"),
         ("Salanor model", "Implement workflow + Aegis: fast and provable"),
     ]
     w = Inches(2.75)
@@ -436,7 +516,7 @@ def slide_salanor(prs: Presentation) -> None:
         Inches(5.15),
         CONTENT_W,
         Inches(0.55),
-        "We build the automation you need. Aegis is the layer that makes it safe to scale.",
+        "We automate the workflow. Aegis is built in so risk and audit can trust it.",
         size=14,
         bold=True,
         color=TEAL,
@@ -573,44 +653,68 @@ def slide_audit(prs: Presentation) -> None:
     add_notes(slide, "POPIA: accountability easier with complete verifiable record vs email trails.")
 
 
-def slide_pilot(prs: Presentation) -> None:
+def slide_offer(prs: Presentation) -> None:
     slide = blank(prs)
-    slide_header(slide, "Pilot offer", "30 days · one workflow · measurable proof")
+    slide_header(slide, "What we deliver", "4 to 8 weeks · one workflow · automation + Aegis")
     rows = [
-        ("Scope", "One process — payment, claim, KYC, etc."),
-        ("Delivered", "Rules, approvals, register, training, one audit export"),
-        ("Platform", "Team tier from USD 299 / month"),
-        ("Setup", "Fixed fee by integration complexity"),
-        ("Success", "One sensitive operation, human-approved, verifiable by risk or audit"),
+        ("Scope", "One process we automate for you: payment, claim, KYC, or similar"),
+        ("Built", "Workflow on your stack (n8n, API, scripts) with Aegis rules, approvals, signed trace"),
+        ("Platform", "Aegis Team tier from USD 299 / month"),
+        ("Implementation", "Fixed fee by complexity: orchestrator only vs core API + BYOK"),
+        ("Success", "Workflow runs faster. Your audit team validates the proof without Salanor in the room."),
     ]
     y = 2.35
     for head, body in rows:
         add_round_card(slide, MARGIN_L, Inches(y), CONTENT_W, Inches(0.72))
-        write_text(slide, MARGIN_L + Inches(0.2), Inches(y + 0.12), Inches(1.4), Inches(0.28), head, size=11, bold=True, color=TEAL)
-        write_text(slide, MARGIN_L + Inches(1.75), Inches(y + 0.14), Inches(6.5), Inches(0.45), body, size=12, color=MUTED)
+        write_text(slide, MARGIN_L + Inches(0.2), Inches(y + 0.12), Inches(1.55), Inches(0.28), head, size=11, bold=True, color=TEAL)
+        write_text(slide, MARGIN_L + Inches(1.85), Inches(y + 0.14), Inches(6.5), Inches(0.45), body, size=12, color=MUTED)
         y += 0.82
     write_text(slide, MARGIN_L, Inches(6.35), CONTENT_W, Inches(0.3), "api.salanor.com · app.salanor.com · n8n, TypeScript, Python, Go SDKs", size=10, color=DIM)
-    add_notes(slide, "Do not over-promise custom scope beyond pilot without discovery.")
+    add_notes(slide, "You sell implementation + Aegis. Not SaaS alone. Not design partner.")
 
 
-def slide_discussion(prs: Presentation) -> None:
+def slide_next_step(prs: Presentation) -> None:
     slide = blank(prs)
-    slide_header(slide, "Discussion", "Questions to move forward")
-    write_bullets(
+    slide_header(
+        slide,
+        "Next step",
+        "Questions, a use case, or want to see more? Book a call.",
+    )
+    options = [
+        ("15 minutes", "Short intro, Q&A, console preview or live demo"),
+        ("45 minutes", "Scoping with ops, risk, or IT: pick one workflow and define success"),
+        ("On request", "Sample audit export, one-pager, or demo on your scenario"),
+    ]
+    w = Inches(2.75)
+    y = Inches(2.45)
+    h = Inches(2.35)
+    for i, (head, body) in enumerate(options):
+        x = MARGIN_L + i * (w + Inches(0.22))
+        add_round_card(slide, x, y, w, h)
+        write_text(slide, x + Inches(0.18), y + Inches(0.22), w - Inches(0.3), Inches(0.45), head, size=13, bold=True, color=TEAL)
+        write_text(slide, x + Inches(0.18), y + Inches(0.72), w - Inches(0.3), Inches(1.45), body, size=11, color=MUTED)
+    write_text(
         slide,
         MARGIN_L,
-        Inches(2.35),
+        Inches(5.15),
         CONTENT_W,
-        Inches(3.5),
-        [
-            "Which sensitive workflows still run manually — and hurt most in audit?",
-            "Where do you require dual control — and how do you document it today?",
-            "Would one automated workflow with signed trace + export unblock a project in 30 days?",
-            "Who from risk, compliance, or IT must validate a pilot?",
-        ],
-        size=13,
+        Inches(0.55),
+        "Email me directly. If someone introduced you, they can help set up the call.",
+        size=12,
+        color=MUTED,
     )
-    add_notes(slide, "Listen more than talk.")
+    write_text(
+        slide,
+        MARGIN_L,
+        Inches(5.85),
+        CONTENT_W,
+        Inches(0.45),
+        "contact@salanor.com · partners@salanor.com · app.salanor.com",
+        size=13,
+        color=WHITE,
+        bold=True,
+    )
+    add_notes(slide, "Shared deck CTA. In person: book the 45 min scoping before leaving the room.")
 
 
 def slide_contact(prs: Presentation) -> None:
@@ -625,7 +729,7 @@ def slide_contact(prs: Presentation) -> None:
         "www.salanor.com/products/aegis",
         "app.salanor.com",
         "",
-        "hello@salanor.com · partners@salanor.com",
+        "contact@salanor.com · partners@salanor.com",
     ]
     y = 1.85
     for line in write_lines:
@@ -650,22 +754,32 @@ def build() -> Path:
     slide_start_smart(prs)
     slide_when_wrong(prs)
     slide_accountability(prs)
+    slide_systems_ok(prs)
     slide_regulatory(prs)
     slide_both(prs)
     slide_salanor(prs)
     slide_aegis(prs)
+    slide_client_limits(prs)
     slide_four_steps(prs)
     slide_demo(prs)
     slide_approval(prs)
     slide_audit(prs)
-    slide_pilot(prs)
-    slide_discussion(prs)
+    slide_offer(prs)
+    slide_next_step(prs)
     slide_contact(prs)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(OUT))
+
+    for dest in (OUT_SA, OUT_YASSINE_EN):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(OUT, dest)
+
     return OUT
 
 
 if __name__ == "__main__":
-    print(f"Wrote {build()}")
+    path = build()
+    print(f"Wrote {path}")
+    print(f"Copied to {OUT_SA}")
+    print(f"Copied to {OUT_YASSINE_EN}")

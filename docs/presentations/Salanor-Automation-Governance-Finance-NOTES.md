@@ -354,7 +354,7 @@ Founder · Kigali, Rwanda
 - Website: www.salanor.com  
 - Product: www.salanor.com/products/aegis  
 - Console: app.salanor.com  
-- Email: hello@salanor.com · partners@salanor.com  
+- Email: contact@salanor.com · partners@salanor.com  
 
 Thank you. I am happy to schedule a discovery call or a technical deep-dive with your team.
 

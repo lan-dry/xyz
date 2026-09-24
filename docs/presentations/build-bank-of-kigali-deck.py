@@ -367,7 +367,7 @@ def slide_contact(prs) -> None:
         slide, base.MARGIN_L, base.Inches(2.35), base.CONTENT_W, base.Inches(2.5),
         "Landry Bougang Fotso\nFounder\n\n"
         "www.salanor.com\nwww.salanor.com/products/aegis\napp.salanor.com\n\n"
-        "hello@salanor.com · partners@salanor.com",
+        "contact@salanor.com · partners@salanor.com",
         size=14,
     )
     base.write_text(

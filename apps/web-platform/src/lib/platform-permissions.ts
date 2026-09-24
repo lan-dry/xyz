@@ -9,7 +9,9 @@ export type PlatformPermission =
   | "platform:accounts.write"
   | "platform:plans.write"
   | "platform:roles.write"
-  | "platform:impersonate";
+  | "platform:impersonate"
+  | "platform:content.read"
+  | "platform:content.write";
 
 const ROLE_PERMISSIONS: Record<PlatformRole, PlatformPermission[]> = {
   superadmin: [
@@ -20,6 +22,8 @@ const ROLE_PERMISSIONS: Record<PlatformRole, PlatformPermission[]> = {
     "platform:plans.write",
     "platform:roles.write",
     "platform:impersonate",
+    "platform:content.read",
+    "platform:content.write",
   ],
   admin: [
     "platform:read",
@@ -29,8 +33,10 @@ const ROLE_PERMISSIONS: Record<PlatformRole, PlatformPermission[]> = {
     "platform:plans.write",
     "platform:roles.write",
     "platform:impersonate",
+    "platform:content.read",
+    "platform:content.write",
   ],
-  staff: ["platform:read"],
+  staff: ["platform:read", "platform:content.read"],
 };
 
 export function canPlatform(role: PlatformRole | null | undefined, permission: PlatformPermission) {

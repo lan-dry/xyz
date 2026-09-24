@@ -2,7 +2,8 @@
   "extends": "@salanor/config/typescript/nextjs",
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@prisma/client": ["../../node_modules/.prisma/client"]
     },
     "plugins": [{ "name": "next" }]
   },

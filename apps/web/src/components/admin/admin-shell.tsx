@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
   Briefcase,
+  FileText,
   Building2,
   Inbox,
   LayoutDashboard,
@@ -29,6 +30,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/admin/contacts": Inbox,
   "/admin/research": BookOpen,
   "/admin/careers": Briefcase,
+  "/admin/blog": FileText,
   "/admin/organizations": Building2,
   "/admin/users": Users,
   "/admin/internal-users": Shield,
@@ -112,12 +114,14 @@ export function AdminShell({
               ) : null}
               <div className="space-y-1">
                 {group.items.map((item) => {
-                  const active = isActivePath(pathname, item.href);
-                  const Icon = NAV_ICONS[item.href] ?? LayoutDashboard;
+                  const active = !item.external && isActivePath(pathname, item.href);
+                  const Icon = NAV_ICONS[item.href.split("?")[0] ?? item.href] ?? LayoutDashboard;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
+                      target={item.external ? "_blank" : undefined}
+                      rel={item.external ? "noopener noreferrer" : undefined}
                       className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium no-underline transition-colors duration-150 ${
                         active
                           ? "bg-[var(--admin-nav-active-bg)] !text-[var(--admin-nav-active-fg)]"

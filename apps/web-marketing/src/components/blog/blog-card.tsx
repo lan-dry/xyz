@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { resolveBlogCoverUrl } from "@/lib/blog/default-cover";
 import type { BlogPostListItem } from "@/lib/blog/types";
 import { formatBlogDate } from "@/lib/blog/utils";
 
@@ -9,12 +10,8 @@ export function BlogCard({ post }: { post: BlogPostListItem }) {
   return (
     <Link href={`/blog/${post.slug}`} className={styles.card}>
       <div className={styles.cardCover}>
-        {post.coverImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={post.coverImageUrl} alt="" />
-        ) : (
-          <div className={styles.cardCoverPlaceholder} />
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={resolveBlogCoverUrl(post.coverImageUrl)} alt="" />
       </div>
       <div className={styles.cardBody}>
         <div className={styles.cardMeta}>

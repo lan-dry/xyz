@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Salanor · Business card · Print</title>
+    <style>
+      :root {
+        --bg: #0a0c0b;
+        --text: #ffffff;
+        --soft: #d2deda;
+        --label: #b0c4bf;
+        --accent: #43c2a9;
+        --accent-dim: rgba(67, 194, 169, 0.35);
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      @page {
+        size: 85mm 55mm;
+        margin: 0;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #888;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .sheet {
+        width: 85mm;
+        margin: 12mm auto;
+      }
+
+      .card {
+        width: 85mm;
+        height: 55mm;
+        position: relative;
+        overflow: hidden;
+        page-break-after: always;
+        background-color: #0a0c0b;
+      }
+
+      .card-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1.2mm;
+        background-color: #43c2a9;
+        z-index: 2;
+      }
+
+      .inner {
+        position: relative;
+        z-index: 1;
+        height: 100%;
+        padding: 4.8mm 6mm 4.5mm;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .front .top {
+        display: flex;
+        align-items: center;
+        gap: 2.8mm;
+        margin-bottom: 2.8mm;
+      }
+
+      .mark {
+        width: 8.5mm;
+        height: 8.5mm;
+        flex-shrink: 0;
+      }
+
+      .brand {
+        font-size: 4mm;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: #ffffff;
+        line-height: 1.1;
+      }
+
+      .brand-sub {
+        font-size: 2.2mm;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #b0c4bf;
+        margin-top: 0.6mm;
+      }
+
+      .name {
+        font-size: 5.4mm;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: #ffffff;
+        line-height: 1.1;
+        margin: 0 0 0.8mm;
+      }
+
+      .role {
+        font-size: 2.7mm;
+        color: #43c2a9;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        margin: 0 0 2.6mm;
+      }
+
+      .rule {
+        width: 12mm;
+        height: 0.4mm;
+        background-color: #43c2a9;
+        margin-bottom: 2.4mm;
+      }
+
+      .hook {
+        font-size: 2.9mm;
+        line-height: 1.4;
+        color: #d2deda;
+        margin: 0;
+        flex: 1;
+      }
+
+      .hook-line {
+        display: block;
+        margin: 0;
+      }
+
+      .hook-line + .hook-line {
+        margin-top: 1.6mm;
+      }
+
+      .hook-line-bright {
+        color: #ffffff;
+      }
+
+      .hook strong {
+        color: #ffffff;
+        font-weight: 600;
+      }
+
+      .back .inner {
+        justify-content: space-between;
+      }
+
+      .back-label {
+        font-size: 2.1mm;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #b0c4bf;
+        margin-bottom: 1.2mm;
+      }
+
+      .email {
+        font-size: 4mm;
+        font-weight: 600;
+        color: #43c2a9;
+        letter-spacing: -0.01em;
+        line-height: 1.15;
+      }
+
+      .contact-grid {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 3.5mm;
+        align-items: start;
+        margin-top: 1.8mm;
+      }
+
+      .contact-lines {
+        display: flex;
+        flex-direction: column;
+        gap: 2mm;
+      }
+
+      .line {
+        font-size: 2.9mm;
+        color: #ffffff;
+        line-height: 1.25;
+      }
+
+      .line .lbl {
+        color: #b0c4bf;
+        font-size: 2.2mm;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        display: block;
+        margin-bottom: 0.3mm;
+      }
+
+      .qr-wrap {
+        text-align: center;
+      }
+
+      .qr {
+        width: 15mm;
+        height: 15mm;
+        display: block;
+        border-radius: 1mm;
+        background-color: #ffffff;
+        padding: 1mm;
+      }
+
+      .qr-cap {
+        font-size: 1.9mm;
+        color: #b0c4bf;
+        margin-top: 0.8mm;
+        letter-spacing: 0.04em;
+      }
+
+      .back-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 3mm;
+        border-top: 0.25mm solid rgba(67, 194, 169, 0.22);
+        padding-top: 2mm;
+        margin-top: auto;
+      }
+
+      .product-line {
+        font-size: 2.45mm;
+        color: #d2deda;
+        line-height: 1.35;
+        max-width: 52mm;
+        margin: 0;
+      }
+
+      .product-line em {
+        font-style: normal;
+        color: #43c2a9;
+        font-weight: 600;
+      }
+
+      .product-rest {
+        color: #ffffff;
+      }
+
+      .site {
+        font-size: 2.9mm;
+        font-weight: 600;
+        color: #ffffff;
+        white-space: nowrap;
+      }
+
+      @media print {
+        html,
+        body {
+          background: #0a0c0b !important;
+        }
+
+        .sheet {
+          margin: 0;
+        }
+
+        .card {
+          break-after: page;
+          background-color: #0a0c0b !important;
+        }
+
+        .card-bar {
+          background-color: #43c2a9 !important;
+        }
+
+        .rule {
+          background-color: #43c2a9 !important;
+        }
+
+        .hint {
+          display: none !important;
+        }
+      }
+
+      .hint {
+        text-align: center;
+        font-size: 3.2mm;
+        color: #eee;
+        margin: 4mm 8mm 8mm;
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+      }
+
+      .hint strong {
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="hint">
+      Print in Chrome: Ctrl+P · paper <strong>85 x 55 mm</strong> ·
+      <strong>Background graphics ON</strong> (required for dark card) · Save as PDF · give PDF to printer
+    </p>
+
+    <div class="sheet">
+      <div class="card front">
+        <div class="card-bar"></div>
+        <div class="inner">
+          <div class="top">
+            <img class="mark" src="salanor-mark-teal.svg" alt="" />
+            <div>
+              <div class="brand">Salanor Ltd</div>
+              <div class="brand-sub">Kigali, Rwanda</div>
+            </div>
+          </div>
+
+          <h1 class="name">Landry Bougang Fotso</h1>
+          <p class="role">Founder</p>
+          <div class="rule"></div>
+          <p class="hook">
+            <span class="hook-line">
+              <strong>Payments, claims &amp; onboarding</strong> for finance
+              and insurance.
+            </span>
+            <span class="hook-line hook-line-bright">
+              Automated with rules, approvals, and audit-ready records.
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <div class="card back">
+        <div class="card-bar"></div>
+        <div class="inner">
+          <div>
+            <div class="back-label">Email</div>
+            <div class="email">landry@salanor.com</div>
+
+            <div class="contact-grid">
+              <div class="contact-lines">
+                <div class="line">
+                  <span class="lbl">Mobile · WhatsApp</span>
+                  +250 781 443 826
+                </div>
+                <div class="line">
+                  <span class="lbl">Web</span>
+                  salanor.com
+                </div>
+              </div>
+              <div class="qr-wrap">
+                <img class="qr" src="business-card-qr.png" alt="QR code" />
+                <div class="qr-cap">Get in touch</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="back-foot">
+            <p class="product-line">
+              <em>We implement.</em>
+              <span class="product-rest">Aegis: rules, approvals, audit trails built in.</span>
+            </p>
+            <span class="site">salanor.com</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

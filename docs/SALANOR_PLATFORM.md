@@ -207,7 +207,7 @@ Future lines get a **name, subsite, and status** (R&D / Pilot / Active)—not au
 **Local dev (implemented):** `aegis.localhost` and `docs.aegis.localhost` → same rewrites as production hosts (`/aegis/*`). See `docs/LOCAL_DEV.md`.
 
 **Email (recommended)**  
-- `hello@salanor.com` — general  
+- `contact@salanor.com` — general  
 - `security@salanor.com` — security disclosures  
 - Product-specific addresses later (e.g. `aegis@salanor.com`)
 

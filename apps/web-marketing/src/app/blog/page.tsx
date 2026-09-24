@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     "Insights on governed automation, audit proof, and operational AI control for regulated finance.",
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 type Props = {
   searchParams: Promise<{ tag?: string }>;

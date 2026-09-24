@@ -1,11 +1,13 @@
 import { createTransport } from "nodemailer";
 
+type SmtpServerConfig = Parameters<typeof createTransport>[0] | string;
+
 type SendMagicLinkParams = {
   identifier: string;
   url: string;
   provider: {
     from?: string;
-    server?: Parameters<typeof createTransport>[0];
+    server?: SmtpServerConfig | string;
   };
 };
 
@@ -14,7 +16,7 @@ const AUTH_JS_NODEMAILER_PLACEHOLDER_HOST = "localhost";
 /** Prefer EMAIL_SERVER — Auth.js Nodemailer defaults leave provider.server on localhost:25. */
 export function resolveSmtpServer(
   provider: SendMagicLinkParams["provider"],
-): NonNullable<Parameters<typeof createTransport>[0]> {
+): SmtpServerConfig {
   const fromEnv = process.env.EMAIL_SERVER?.trim();
   const fromProvider = provider.server;
 
