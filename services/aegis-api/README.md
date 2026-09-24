@@ -4,10 +4,10 @@ P0 HTTP API for Aegis ingest and console reads.
 
 ## Stage 2
 
-- SQL migrations from `docs-internal/schema/v1/001_initial.sql` (`migrations/001_initial.up.sql`)
-- `pnpm db:migrate` / `pnpm db:migrate:down` — rollback and re-apply
+- Forward-only SQL in `migrations/*.sql` (baseline: `001_baseline.sql`)
+- `pnpm db:migrate` — apply pending versions; reset via `DROP SCHEMA` (see `docs/DATABASE_SAFETY.md`)
 - Org-scoped repo: `src/repo/events.ts` (all reads filter `organization_id`)
-- Integration tests: `TestOrgIsolation`, migration up/down/up
+- Integration tests: `TestOrgIsolation`, migration up + re-apply after schema drop
 
 ## Stage 1
 

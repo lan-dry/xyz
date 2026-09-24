@@ -11,7 +11,6 @@ import { BlogToc } from "@/components/blog/blog-toc";
 import styles from "@/components/blog/blog.module.css";
 import { getBlogPostBySlug, listBlogPosts } from "@/lib/blog/store";
 import { extractTableOfContents, formatBlogDate } from "@/lib/blog/utils";
-import { resolveBlogCoverUrl } from "@/lib/blog/default-cover";
 import { absoluteBlogOgImage } from "@/lib/blog/og-image";
 import { SITE_ORIGIN } from "@/lib/site-origin";
 

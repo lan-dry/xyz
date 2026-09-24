@@ -1,3 +1,0 @@
-BEGIN;
-DROP TABLE IF EXISTS password_reset_token;
-COMMIT;

@@ -166,11 +166,11 @@ export const COMMAND_SECTIONS: CommandSection[] = [
         when: "Deploy pipeline or after git pull with new migrations",
       },
       {
-        command: "pnpm db:migrate:down",
-        summary: "Roll back one migration generation",
-        details: "Development only. Can drop columns/tables.",
-        when: "Local migration debugging",
-        destructive: true,
+        command: "pnpm db:seed:bootstrap",
+        summary: "Production: one Platform Ops superadmin",
+        details:
+          "Requires BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD. No dev seed data.",
+        when: "Fresh Neon after db:migrate",
       },
       {
         command: "pnpm db:seed",

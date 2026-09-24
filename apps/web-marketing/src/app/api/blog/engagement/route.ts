@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         ok: true,
         stored: false,
-        hint: "Run pnpm db:migrate (032_blog_engagement_events) and set DATABASE_URL on web-marketing.",
+        hint: "Run pnpm db:migrate (001_baseline) and set DATABASE_URL on web-marketing.",
       });
     }
     console.error("[blog/engagement]", message);

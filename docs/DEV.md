@@ -73,8 +73,8 @@ docker compose down -v && docker compose up -d
 | Postgres | 5432 |
 | Redis    | 6379 |
 
-Schema source of truth: `docs-internal/schema/v1/001_initial.sql`  
-Applied via: `services/aegis-api/migrations/001_initial.up.sql`
+Schema: forward-only SQL in `services/aegis-api/migrations/` (baseline `001_baseline.sql`).  
+Historical reference: `docs-internal/schema/v1/001_initial.sql`
 
 ---
 
@@ -85,12 +85,13 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-Rollback and re-apply (Stage 2 exit test):
+Re-apply from scratch (local only — drops all tables):
 
-```bash
-pnpm db:migrate:down
-pnpm db:migrate
+```sql
+DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO PUBLIC;
 ```
+
+Then `pnpm db:migrate` and `pnpm db:seed`.
 
 Dev seed (`tools/seed/dev.sql`): org A (demo data) + org B (empty isolation test), users, agent, ingest key.  
 Local ingest secret: `aegis_dev_local_change_me` (see `.env.example`).
@@ -131,8 +132,7 @@ Integration test `TestOrgIsolation` verifies org A cannot read org B events.
 ```bash
 docker compose up -d
 pnpm db:migrate
-pnpm db:migrate:down
-pnpm db:migrate
+# optional: DROP SCHEMA public CASCADE; CREATE SCHEMA public; then db:migrate again
 pnpm db:seed
 pnpm --filter aegis-api test
 curl -f http://localhost:8080/health   # database: "up" when DATABASE_URL set
