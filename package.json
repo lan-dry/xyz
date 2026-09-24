@@ -16,7 +16,6 @@
     "typecheck": "nx run-many -t typecheck --all",
     "test": "nx run-many -t test --all",
     "db:migrate": "pnpm --filter aegis-api db:migrate",
-    "db:migrate:down": "pnpm --filter aegis-api db:migrate:down",
     "db:seed": "pnpm --filter aegis-api db:seed",
     "db:seed:bootstrap": "pnpm --filter aegis-api db:seed:bootstrap",
     "db:generate": "prisma generate",

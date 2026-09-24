@@ -671,7 +671,7 @@ Run **before** or **during** deploy when migrations exist:
 DATABASE_URL="<neon-direct-url>" pnpm db:migrate
 ```
 
-Never run `db:migrate:down` in production.
+Migrations are forward-only (no `down` scripts). To undo prod schema mistakes, use Neon point-in-time restore — not rollback SQL.
 
 ---
 
@@ -774,7 +774,7 @@ List them in your vendor inventory (`COMPLIANCE_AND_ROADMAP.md`).
 ### Do not do in production
 
 - `pnpm db:seed`
-- `pnpm db:migrate:down`
+- `DROP SCHEMA` / ad-hoc DDL on prod (use Neon restore instead)
 - Commit secrets to git
 - Run Prisma `db:push` against the Aegis database (destroys Aegis tables)
 

@@ -51,7 +51,7 @@ Custom events (also sent to GA when gtag loads):
 
 ### First-party (your database)
 
-After `pnpm db:migrate` (includes **033**) and `DATABASE_URL` on **web-marketing**:
+After `pnpm db:migrate` (includes **032_blog_engagement_events**) and `DATABASE_URL` on **web-marketing**:
 
 Events are stored in **`blog_engagement_events`**.
 

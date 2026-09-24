@@ -51,7 +51,7 @@ curl http://127.0.0.1:8092/health    # insurance-api
 | Command | What it does | When |
 |---------|----------------|------|
 | `pnpm db:migrate` | Apply pending SQL migrations | After pull, fresh DB |
-| `pnpm db:migrate:down` | Roll back one migration generation | Dev only — **destructive** |
+| *(reset)* | `DROP SCHEMA public CASCADE` + `CREATE SCHEMA public` | Dev only when re-applying baseline — see `DATABASE_SAFETY.md` |
 | `pnpm db:seed` | Run `tools/seed/dev.sql` (idempotent) | Reset dev data |
 
 **Warning:** Integration tests that run `migrate down` against your `DATABASE_URL` will **wipe data**. Use a separate DB for tests in production-like environments.
