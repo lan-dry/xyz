@@ -7,7 +7,7 @@ import forms from "@/components/content/content-forms.module.css";
 import { ui } from "@/components/ops-ui/ops-ui";
 import { getPlatformSessionServer, requirePlatformSession } from "@/lib/platform-server-session";
 import { canPlatform } from "@/lib/platform-permissions";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 export default async function OpsContentCareerEditPage({
   params,
@@ -19,7 +19,8 @@ export default async function OpsContentCareerEditPage({
   const canWrite = session ? canPlatform(session.platform_role, "platform:content.write") : false;
 
   const { id } = await params;
-  const role = await prisma.openRole.findUnique({ where: { id } });
+  const prisma = getPrisma();
+  const role = prisma ? await prisma.openRole.findUnique({ where: { id } }) : null;
   if (!role) notFound();
 
   return (

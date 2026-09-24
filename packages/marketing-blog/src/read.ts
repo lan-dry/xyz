@@ -53,6 +53,7 @@ async function listRemotePosts(): Promise<BlogMarkdownPost[]> {
 
 export async function listMarketingBlogPosts(): Promise<BlogMarkdownPost[]> {
   if (localContentAvailable()) return listLocalPosts();
+  if (!process.env.BLOG_GITHUB_TOKEN?.trim()) return [];
   return listRemotePosts();
 }
 
@@ -63,6 +64,8 @@ export async function getMarketingBlogPostBySlug(slug: string): Promise<BlogMark
     if (!existsSync(filePath)) return null;
     return parseLocalFile(filePath);
   }
+
+  if (!process.env.BLOG_GITHUB_TOKEN?.trim()) return null;
 
   const repoPath = blogContentRepoPath(normalized);
   const file = await githubGetTextFile(repoPath);

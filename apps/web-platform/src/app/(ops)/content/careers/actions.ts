@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 
 import { assertPlatformSessionAction } from "@/lib/platform-server-session";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
+
+function requirePrisma() {
+  const prisma = getPrisma();
+  if (!prisma) throw new Error("DATABASE_URL is not configured");
+  return prisma;
+}
 
 function toDate(input: FormDataEntryValue | null): Date | null {
   if (typeof input !== "string" || !input.trim()) return null;
@@ -13,7 +19,7 @@ function toDate(input: FormDataEntryValue | null): Date | null {
 
 export async function createRole(formData: FormData) {
   await assertPlatformSessionAction("platform:content.write");
-  await prisma.openRole.create({
+  await requirePrisma().openRole.create({
     data: {
       title: String(formData.get("title") ?? "").trim(),
       slug: String(formData.get("slug") ?? "").trim(),
@@ -34,7 +40,7 @@ export async function createRole(formData: FormData) {
 
 export async function updateRole(id: string, formData: FormData) {
   await assertPlatformSessionAction("platform:content.write");
-  await prisma.openRole.update({
+  await requirePrisma().openRole.update({
     where: { id },
     data: {
       title: String(formData.get("title") ?? "").trim(),

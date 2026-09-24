@@ -7,7 +7,7 @@ import { EmptyStatePanel, ui } from "@/components/ops-ui/ops-ui";
 import { getPlatformSessionServer, requirePlatformSession } from "@/lib/platform-server-session";
 import { canPlatform } from "@/lib/platform-permissions";
 import { cmsSetupHint, getCmsDbStatus } from "@/lib/cms-db";
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 export default async function OpsContentResearchPage() {
   await requirePlatformSession("platform:content.read");
@@ -15,12 +15,14 @@ export default async function OpsContentResearchPage() {
   const canWrite = session ? canPlatform(session.platform_role, "platform:content.write") : false;
 
   const db = await getCmsDbStatus();
-  const posts = db.research
-    ? await prisma.researchPost.findMany({
-        orderBy: { updatedAt: "desc" },
-        take: 200,
-      })
-    : [];
+  const prisma = getPrisma();
+  const posts =
+    db.research && prisma
+      ? await prisma.researchPost.findMany({
+          orderBy: { updatedAt: "desc" },
+          take: 200,
+        })
+      : [];
 
   return (
     <ContentPageShell

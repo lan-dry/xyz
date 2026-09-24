@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 export type BlogSlugStats = {
   views: number;
@@ -23,7 +23,12 @@ export async function fetchBlogEngagementStats(
   slugs: string[],
 ): Promise<Map<string, BlogSlugStats>> {
   const map = new Map<string, BlogSlugStats>();
-  if (!slugs.length || !process.env.DATABASE_URL?.trim()) {
+  if (!slugs.length) {
+    return map;
+  }
+
+  const prisma = getPrisma();
+  if (!prisma) {
     return map;
   }
 

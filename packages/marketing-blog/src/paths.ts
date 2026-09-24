@@ -10,6 +10,13 @@ export function resolveMonorepoRoot(): string {
     return path.isAbsolute(fromEnv) ? fromEnv : path.resolve(process.cwd(), fromEnv);
   }
 
+  if (process.env.VERCEL === "1") {
+    const fromPlatformApp = path.resolve(process.cwd(), "../..");
+    if (existsSync(path.join(fromPlatformApp, CONTENT_REL))) {
+      return fromPlatformApp;
+    }
+  }
+
   let dir = process.cwd();
   for (let i = 0; i < 6; i += 1) {
     const candidate = path.join(dir, CONTENT_REL);
