@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getPrisma } from "@/lib/prisma";
 
 export type CmsDbStatus = {
   research: boolean;
@@ -6,6 +6,8 @@ export type CmsDbStatus = {
 };
 
 async function tableReady(table: "research_posts" | "open_roles"): Promise<boolean> {
+  const prisma = getPrisma();
+  if (!prisma) return false;
   try {
     if (table === "research_posts") {
       await prisma.$queryRaw`SELECT 1 FROM research_posts LIMIT 1`;
@@ -19,7 +21,7 @@ async function tableReady(table: "research_posts" | "open_roles"): Promise<boole
 }
 
 export async function getCmsDbStatus(): Promise<CmsDbStatus> {
-  if (!process.env.DATABASE_URL?.trim()) {
+  if (!getPrisma()) {
     return { research: false, careers: false };
   }
   const [research, careers] = await Promise.all([
