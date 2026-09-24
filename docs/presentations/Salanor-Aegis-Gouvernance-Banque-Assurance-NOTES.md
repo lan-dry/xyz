@@ -278,7 +278,7 @@ Je suis **Landry Bougang Fotso**, Salanor Ltd, Kigali.
 
 Site : **www.salanor.com**, produit **/products/aegis**, transparence **/trust**.  
 Console : **app.salanor.com**.  
-Contact : **hello@salanor.com** ou **partners@salanor.com**.
+Contact : **contact@salanor.com** ou **partners@salanor.com**.
 
 Je vous envoie le **PDF** de cette présentation et la **fiche une page** après l'échange.
 

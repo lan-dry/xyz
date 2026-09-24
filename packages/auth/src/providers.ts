@@ -19,13 +19,17 @@ export function getOAuthProviderIds(): SalanorOAuthProviderId[] {
 
 /** Auth.js providers for Salanor apps (magic link + optional OAuth). */
 export function salanorAuthProviders(): Provider[] {
-  const providers: Provider[] = [
-    Nodemailer({
-      server: process.env.EMAIL_SERVER,
-      from: process.env.EMAIL_FROM,
-      sendVerificationRequest: sendSalanorMagicLinkEmail,
-    }),
-  ];
+  const providers: Provider[] = [];
+
+  if (process.env.EMAIL_SERVER?.trim()) {
+    providers.push(
+      Nodemailer({
+        server: process.env.EMAIL_SERVER,
+        from: process.env.EMAIL_FROM,
+        sendVerificationRequest: sendSalanorMagicLinkEmail,
+      }),
+    );
+  }
 
   if (hasOAuthPair("AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET")) {
     providers.push(

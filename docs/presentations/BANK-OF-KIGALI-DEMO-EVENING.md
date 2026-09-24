@@ -45,12 +45,21 @@ In the room say: *"This node represents your core banking API — in production 
 
 ## Policies to create (all active together)
 
+Create in **Console → Policies** (or your existing BK-named policies from the first demo).
+
 ### Payments — `app.payments.transfer`
 
 | Name | Rule type | Limit | Decision |
 |------|-----------|-------|----------|
-| `BK · Vendor payment · per-tx limit` | Max per transaction | USD 1,000 | Require approval |
-| `BK · Daily payment cap · anti-structuring` | Daily total (24h) | USD 3,000 | Require approval |
+| Per-tx limit (e.g. vendor payment) | Max per transaction | USD 1,000 | Require approval |
+| Daily cap (anti-structuring) | Daily total (24h) | USD 3,000 | Require approval |
+
+**Optional for scoping** (uses new contextual rules — any client, not BK-specific in code):
+
+| Name | Rule type | Condition | Decision |
+|------|-----------|-----------|----------|
+| VIP stricter limit | Max per transaction | USD 500 · **when segment = VIP** | Require approval |
+| Blocked payee list | Blocked beneficiary | e.g. `BLOCKED_VENDOR_LTD` | Deny |
 
 ### Data exfiltration — `app.data.customer_export`
 
@@ -88,9 +97,9 @@ From `Bank-of-Kigali-AI-USE-CASES.md` — isolated tenant, masked accounts, BYOK
 
 ### B. Show Policies (1 min)
 
-Open **Policies** — all four rules active. Say:
+Open **Policies** — active rules for payments, export deny, account limits. Say:
 
-> *"Per-transaction limit, daily total against structuring, deny on bulk export, approval on account limits — same engine, different tools."*
+> *"Per-transaction limit, daily total against structuring, deny on bulk export, approval on account limits — same engine, different tools. For the next phase we add segment and blocked-payee rules in the same UI."*
 
 ### C. Main live demo (8 min)
 
@@ -119,7 +128,7 @@ Open **Policies** — all four rules active. Say:
 ## Before you leave home (15 min)
 
 - [ ] Re-import **main workflow** (updated JSON)
-- [ ] Create **4 policies** (table above)
+- [ ] Create **4 policies** (table above); optional VIP / blocked-payee via Console rule types
 - [ ] Workflow Bridge **ON** on agent `agt_e172524c…`
 - [ ] Run **main workflow once** → Approve → **one COMPLETED trace** (not EXECUTING orphan)
 - [ ] Optional: run **routine $450** → no approval, one COMPLETED trace

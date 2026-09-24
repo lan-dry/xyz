@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kigali Care Pharmacy · Online ordering · UI concept</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --brand: #0d9488;
+        --brand-dark: #0f766e;
+        --brand-soft: #ecfdf5;
+        --brand-muted: #99f6e4;
+        --navy: #0f172a;
+        --text: #1e293b;
+        --muted: #64748b;
+        --border: #e2e8f0;
+        --surface: #ffffff;
+        --bg: #f1f5f9;
+        --warning-bg: #fffbeb;
+        --warning-text: #b45309;
+        --rx: #7c3aed;
+        --radius: 14px;
+        --radius-sm: 10px;
+        --shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+        --phone-w: 390px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        min-height: 100vh;
+      }
+
+      @media (max-width: 960px) {
+        .app-shell {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          position: sticky;
+          top: 0;
+          z-index: 20;
+          max-height: none;
+        }
+      }
+
+      .sidebar {
+        background: var(--navy);
+        color: #e2e8f0;
+        padding: 24px 20px;
+        overflow-y: auto;
+      }
+
+      .sidebar .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+
+      .logo-mark {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(145deg, var(--brand), var(--brand-dark));
+        display: grid;
+        place-items: center;
+        color: white;
+        font-weight: 700;
+        font-size: 18px;
+      }
+
+      .sidebar h1 {
+        font-size: 15px;
+        font-weight: 700;
+        margin: 0;
+        color: #fff;
+      }
+
+      .sidebar .sub {
+        font-size: 12px;
+        color: #94a3b8;
+        margin: 4px 0 20px;
+        line-height: 1.45;
+      }
+
+      .nav-group {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #64748b;
+        margin: 16px 0 8px;
+      }
+
+      .nav-btn {
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: transparent;
+        color: #cbd5e1;
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        margin-bottom: 4px;
+      }
+
+      .nav-btn:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: #fff;
+      }
+
+      .nav-btn.active {
+        background: rgba(13, 148, 136, 0.25);
+        color: #5eead4;
+      }
+
+      .sidebar-foot {
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid #334155;
+        font-size: 11px;
+        color: #64748b;
+        line-height: 1.5;
+      }
+
+      .main {
+        padding: 28px 32px 48px;
+        overflow-x: auto;
+      }
+
+      .main-head {
+        margin-bottom: 24px;
+      }
+
+      .main-head h2 {
+        margin: 0 0 6px;
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--navy);
+      }
+
+      .main-head p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--muted);
+        max-width: 52ch;
+      }
+
+      .screen {
+        display: none;
+        animation: fade 0.25s ease;
+      }
+
+      .screen.active {
+        display: block;
+      }
+
+      @keyframes fade {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      /* Cover */
+      .cover-card {
+        max-width: 720px;
+        background: var(--surface);
+        border-radius: 20px;
+        padding: 40px 44px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+      }
+
+      .cover-card h2 {
+        font-size: 28px;
+        margin: 0 0 12px;
+        color: var(--navy);
+      }
+
+      .cover-list {
+        margin: 24px 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .cover-list li {
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 14px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+
+      .cover-list li::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--brand);
+        margin-top: 6px;
+        flex-shrink: 0;
+      }
+
+      .badge-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 20px;
+      }
+
+      .badge {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: var(--brand-soft);
+        color: var(--brand-dark);
+      }
+
+      /* Phone frame */
+      .phone-wrap {
+        display: flex;
+        gap: 32px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+      }
+
+      .phone {
+        width: var(--phone-w);
+        background: #0f172a;
+        border-radius: 36px;
+        padding: 12px;
+        box-shadow: var(--shadow);
+      }
+
+      .phone-inner {
+        background: var(--surface);
+        border-radius: 28px;
+        overflow: hidden;
+        min-height: 720px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .status-bar {
+        height: 28px;
+        background: var(--surface);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--navy);
+      }
+
+      .app-header {
+        padding: 12px 16px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .app-header .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .app-header .title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--navy);
+      }
+
+      .lang-pill {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--bg);
+        color: var(--muted);
+      }
+
+      .branch-bar {
+        margin-top: 12px;
+        padding: 12px 14px;
+        background: var(--brand-soft);
+        border-radius: var(--radius-sm);
+        border: 1px solid #a7f3d0;
+      }
+
+      .branch-bar .label {
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--brand-dark);
+      }
+
+      .branch-bar .name {
+        font-size: 14px;
+        font-weight: 600;
+        margin-top: 2px;
+      }
+
+      .branch-bar .change {
+        font-size: 12px;
+        color: var(--brand);
+        font-weight: 600;
+        margin-top: 4px;
+        cursor: pointer;
+      }
+
+      .phone-body {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+      }
+
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        background: var(--bg);
+        border-radius: var(--radius-sm);
+        margin-bottom: 14px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .chip {
+        font-size: 12px;
+        font-weight: 500;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      .chip.active {
+        background: var(--brand);
+        border-color: var(--brand);
+        color: white;
+      }
+
+      .product-card {
+        display: flex;
+        gap: 14px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 12px;
+        background: var(--surface);
+      }
+
+      .product-thumb {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: var(--bg);
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+      }
+
+      .product-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .product-info h4 {
+        margin: 0 0 4px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .product-info .meta {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .product-info .price {
+        font-size: 15px;
+        font-weight: 700;
+        margin-top: 6px;
+        color: var(--navy);
+      }
+
+      .stock {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 6px;
+        align-self: flex-start;
+      }
+
+      .stock.ok {
+        background: var(--brand-soft);
+        color: var(--brand-dark);
+      }
+
+      .stock.rx {
+        background: #f3e8ff;
+        color: var(--rx);
+      }
+
+      .btn-primary {
+        display: block;
+        width: 100%;
+        padding: 14px 20px;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: var(--brand);
+        color: white;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 8px;
+      }
+
+      .btn-primary:hover {
+        background: var(--brand-dark);
+      }
+
+      .btn-ghost {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text);
+        margin-top: 8px;
+      }
+
+      .bottom-nav {
+        display: flex;
+        border-top: 1px solid var(--border);
+        padding: 10px 8px 14px;
+        justify-content: space-around;
+        background: var(--surface);
+      }
+
+      .bottom-nav span {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .bottom-nav span.on {
+        color: var(--brand);
+      }
+
+      .note-panel {
+        flex: 1;
+        min-width: 260px;
+        max-width: 340px;
+        padding: 20px;
+        background: var(--surface);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .note-panel strong {
+        color: var(--navy);
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+
+      .alert {
+        padding: 12px 14px;
+        border-radius: var(--radius-sm);
+        font-size: 12px;
+        line-height: 1.45;
+        margin: 12px 0;
+      }
+
+      .alert.warn {
+        background: var(--warning-bg);
+        color: var(--warning-text);
+        border: 1px solid #fcd34d;
+      }
+
+      .line-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+
+      .summary-box {
+        background: var(--bg);
+        border-radius: var(--radius-sm);
+        padding: 14px;
+        margin: 12px 0;
+      }
+
+      .timeline {
+        margin: 16px 0;
+      }
+
+      .timeline-step {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 14px;
+        align-items: flex-start;
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-top: 4px;
+        flex-shrink: 0;
+      }
+
+      .dot.done {
+        background: var(--brand);
+      }
+
+      .dot.current {
+        background: var(--brand);
+        box-shadow: 0 0 0 4px var(--brand-muted);
+      }
+
+      .dot.pending {
+        background: var(--border);
+      }
+
+      /* Desktop staff */
+      .desktop {
+        background: var(--surface);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        max-width: 960px;
+      }
+
+      .desktop-layout {
+        display: grid;
+        grid-template-columns: 200px 1fr;
+        min-height: 520px;
+      }
+
+      .desk-nav {
+        background: #f8fafc;
+        border-right: 1px solid var(--border);
+        padding: 16px 12px;
+      }
+
+      .desk-nav-item {
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+
+      .desk-nav-item.on {
+        background: var(--brand-soft);
+        color: var(--brand-dark);
+        font-weight: 600;
+      }
+
+      .desk-main {
+        padding: 24px;
+      }
+
+      .desk-main h3 {
+        margin: 0 0 16px;
+        font-size: 18px;
+      }
+
+      .order-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        margin-bottom: 10px;
+      }
+
+      .rx-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      @media (max-width: 700px) {
+        .rx-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .rx-preview {
+        height: 200px;
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-sm);
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-size: 13px;
+        background: var(--bg);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      .btn-sm {
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .btn-sm.primary {
+        background: var(--brand);
+        color: white;
+      }
+
+      .btn-sm.secondary {
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+
+      .upload-zone {
+        border: 2px dashed var(--brand);
+        border-radius: var(--radius);
+        padding: 28px 16px;
+        text-align: center;
+        background: var(--brand-soft);
+        font-size: 13px;
+        color: var(--brand-dark);
+        margin: 12px 0;
+      }
+
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .stat-card {
+        padding: 14px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--bg);
+      }
+
+      .stat-card .val {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--navy);
+      }
+
+      .stat-card .lbl {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+
+      .map-placeholder {
+        height: 120px;
+        border-radius: var(--radius-sm);
+        background: #e2e8f0;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        color: var(--muted);
+        margin: 12px 0;
+      }
+
+      .toggle-row {
+        display: flex;
+        gap: 8px;
+        margin: 12px 0;
+      }
+
+      .toggle-row .chip {
+        flex: 1;
+        text-align: center;
+      }
+
+      @media print {
+        .sidebar {
+          display: none;
+        }
+        .app-shell {
+          grid-template-columns: 1fr;
+        }
+        .screen {
+          display: block !important;
+          page-break-after: always;
+        }
+        .phone {
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="logo">
+          <div class="logo-mark">+</div>
+          <div>
+            <h1>UI concept</h1>
+          </div>
+        </div>
+        <p class="sub">
+          Kigali Care Pharmacy · Online ordering<br />
+          Prepared by Salanor Ltd · For discussion only
+        </p>
+
+        <div class="nav-group">Start here</div>
+        <button type="button" class="nav-btn active" data-screen="cover">Client overview</button>
+
+        <div class="nav-group">Patient app (mobile)</div>
+        <button type="button" class="nav-btn" data-screen="login">Sign in (OTP)</button>
+        <button type="button" class="nav-btn" data-screen="home">Home & catalog</button>
+        <button type="button" class="nav-btn" data-screen="product">Product detail</button>
+        <button type="button" class="nav-btn" data-screen="branch">Branch picker</button>
+        <button type="button" class="nav-btn" data-screen="fulfil">Pickup vs delivery</button>
+        <button type="button" class="nav-btn" data-screen="rx-upload">Prescription upload</button>
+        <button type="button" class="nav-btn" data-screen="cart">Cart & insurance</button>
+        <button type="button" class="nav-btn" data-screen="track">Order tracking</button>
+        <button type="button" class="nav-btn" data-screen="delivery">Out for delivery</button>
+        <button type="button" class="nav-btn" data-screen="account">Account & addresses</button>
+
+        <div class="nav-group">Staff console</div>
+        <button type="button" class="nav-btn" data-screen="staff-rx">Pharmacist review</button>
+        <button type="button" class="nav-btn" data-screen="staff-orders">Fulfilment queue</button>
+        <button type="button" class="nav-btn" data-screen="staff-handover">Pickup handover</button>
+        <button type="button" class="nav-btn" data-screen="staff-sync">PMS sync & alerts</button>
+        <button type="button" class="nav-btn" data-screen="staff-insurance">Insurance claims</button>
+        <button type="button" class="nav-btn" data-screen="staff-admin">Owner settings</button>
+
+        <div class="sidebar-foot">
+          Replace name and colors with your pharmacy brand at kickoff. Production build follows
+          SAL-PHARM-SRS-001.
+        </div>
+      </aside>
+
+      <main class="main">
+        <section class="screen active" id="screen-cover">
+          <div class="main-head">
+            <h2>What your customers will see</h2>
+            <p>
+              A licensed-pharmacy-grade ordering channel: stock from your PMS, RSSB-ready checkout,
+              and every prescription reviewed by a named pharmacist before dispense.
+            </p>
+          </div>
+          <div class="cover-card">
+            <h2>Order medicines online — with trust built in</h2>
+            <p style="margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6">
+              Patients browse on their phone, choose your branch, pay or co-pay with mobile money, and
+              track pickup or delivery. Your team uses a simple staff console tied to the same stock
+              and receipts you already run in-store.
+            </p>
+            <ul class="cover-list">
+              <li>Real-time catalog synced from your pharmacy management system</li>
+              <li>Prescription upload with pharmacist approval (GDP/GPP aligned workflow)</li>
+              <li>RSSB and private insurance co-pay split at checkout</li>
+              <li>Pickup codes, delivery zones, and audit trail for disputes</li>
+              <li>English & French at launch; Kinyarwanda when you supply translations</li>
+              <li>Phone OTP login, saved addresses, dependent orders for family Rx</li>
+              <li>Delivery zones, cold-chain rules, proof of delivery</li>
+              <li>Cancellations, partial refunds, and complaint log</li>
+              <li>Owner dashboard: schemes, formulary upload, branch hours, audit export</li>
+            </ul>
+            <div class="badge-row">
+              <span class="badge">Rwanda FDA-ready process</span>
+              <span class="badge">RRA fiscal link via PMS</span>
+              <span class="badge">Mobile-first</span>
+            </div>
+            <p style="margin-top: 28px; font-size: 13px; color: var(--muted)">
+              Use the menu on the left to walk through each screen. This is a visual concept — final
+              pixels use your logo and colors after contract signing.
+            </p>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-login">
+          <div class="main-head">
+            <h2>Patient · Sign in</h2>
+            <p>Mobile number OTP (primary). Email optional. Consent recorded with policy version.</p>
+          </div>
+          <div class="phone-wrap">
+            <div class="phone">
+              <div class="phone-inner">
+                <div class="status-bar">9:41</div>
+                <div class="phone-body" style="padding-top: 48px">
+                  <h3 style="margin: 0 0 8px; font-size: 22px">Welcome back</h3>
+                  <p style="font-size: 13px; color: var(--muted); margin: 0 0 20px">
+                    Sign in to track orders and save prescriptions.
+                  </p>
+                  <p style="font-size: 13px; font-weight: 600; margin-bottom: 6px">Mobile number</p>
+                  <div class="search" style="color: var(--text)">+250 78x xxx xxx</div>
+                  <button type="button" class="btn-primary">Send code</button>
+                  <p style="font-size: 11px; color: var(--muted); margin-top: 16px; line-height: 1.5">
+                    By continuing you accept our privacy policy and terms (v2026-09).
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="note-panel">
+              <strong>Guest checkout</strong>
+              Optional for OTC-only if the pharmacy enables it. Rx orders always tied to verified contact.
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-home">
+          <div class="main-head">
+            <h2>Patient · Home & catalog</h2>
+            <p>Branch is visible up front so stock always matches the shelf they will collect from.</p>
+          </div>
+          <div class="phone-wrap">
+            <div class="phone">
+              <div class="phone-inner">
+                <div class="status-bar">9:41</div>
+                <div class="app-header">
+                  <div class="row">
+                    <span class="title">Kigali Care</span>
+                    <span class="lang-pill">EN · FR</span>
+                  </div>
+                  <div class="branch-bar">
+                    <div class="label">Serving branch</div>
+                    <div class="name">Nyarugenge · KN 4 Ave</div>
+                    <div class="change">Change branch</div>
+                  </div>
+                </div>
+                <div class="phone-body">
+                  <div class="search">Search medicines, vitamins…</div>
+                  <div class="chips">
+                    <span class="chip active">All</span>
+                    <span class="chip">Pain relief</span>
+                    <span class="chip">Vitamins</span>
+                    <span class="chip">Baby care</span>
+                  </div>
+                  <div class="product-card">
+                    <div class="product-thumb" style="font-size: 11px; font-weight: 700; color: var(--brand-dark)">OTC</div>
+                    <div class="product-info">
+                      <h4>Paracetamol 500 mg</h4>
+                      <div class="meta">OTC · 20 tablets</div>
+                      <div class="price">800 RWF</div>
+                    </div>
+                    <span class="stock ok">In stock</span>
+                  </div>
+                  <div class="product-card">
+                    <div class="product-thumb" style="font-size: 11px; font-weight: 700; color: var(--rx)">Rx</div>
+                    <div class="product-info">
+                      <h4>Amoxicillin 500 mg</h4>
+                      <div class="meta">Prescription required</div>
+                      <div class="price">2,400 RWF</div>
+                    </div>
+                    <span class="stock rx">Rx</span>
+                  </div>
+                  <button type="button" class="btn-primary">Add to cart</button>
+                </div>
+                <div class="bottom-nav">
+                  <span class="on">Shop</span>
+                  <span>Orders</span>
+                  <span>Account</span>
+                </div>
+              </div>
+            </div>
+            <div class="note-panel">
+              <strong>Why this feels trustworthy</strong>
+              Licensed pharmacy name, clear Rx vs OTC labels, and branch-specific stock. No surprise
+              “out of stock” at checkout — the cart always knows which shop serves the patient.
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-product">
+          <div class="main-head">
+            <h2>Patient · Product detail</h2>
+            <p>FDA registration ref (admin), Rx flag, batch-aware stock message, notify-me when out.</p>
+          </div>
+          <div class="phone-wrap">
+            <div class="phone">
+              <div class="phone-inner">
+                <div class="status-bar">9:41</div>
+                <div class="phone-body">
+                  <div class="product-thumb" style="width: 100%; height: 100px; margin-bottom: 14px; font-size: 14px">Amoxicillin 500 mg</div>
+                  <span class="stock rx">Prescription required</span>
+                  <h3 style="margin: 10px 0 6px">Amoxicillin 500 mg capsules</h3>
+                  <p style="font-size: 12px; color: var(--muted); margin: 0 0 12px">14 capsules · Nyarugenge · In stock (32)</p>
+                  <div class="price" style="font-size: 22px; font-weight: 700">2,400 RWF</div>
+                  <p style="font-size: 12px; color: var(--muted); margin: 12px 0">Take as directed by your prescriber. Pharmacist review required.</p>
+                  <div class="chips">
+                    <span class="chip">−</span>
+                    <span class="chip active">1</span>
+                    <span class="chip">+</span>
+                  </div>
+                  <button type="button" class="btn-primary">Add to cart</button>
+                  <button type="button" class="btn-primary btn-ghost">Notify when back in stock</button>
+                </div>
+              </div>
+            </div>
+            <div class="note-panel">
+              <strong>Not purchasable at zero stock</strong>
+              Catalog hides or blocks add-to-cart when PMS quantity is 0. Price refresh at checkout if changed.
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-branch">
+          <div class="main-head">
+            <h2>Patient · Choose branch</h2>
+            <p>Cart re-validates all lines when branch changes — avoids empty shelf at checkout.</p>
+          </div>
+          <div class="phone-wrap">
+            <div class="phone">
+              <div class="phone-inner">
+                <div class="app-header"><span class="title">Serving branch</span></div>
+                <div class="phone-body">
+                  <div class="product-card" style="border-color: var(--brand)">
+                    <div class="product-info">
+                      <h4>Nyarugenge · KN 4 Ave</h4>
+                      <div class="meta">Open until 20:00 · 3/3 items in your cart</div>
+                    </div>
+                    <span class="stock ok">Selected</span>
+                  </div>
+                  <div class="product-card">
+                    <div class="product-info">
+                      <h4>Remera · KG 11 Ave</h4>
+                      <div class="meta">Open until 21:00 · 1/3 items available</div>
+                    </div>
+                  </div>
+                  <button type="button" class="btn-primary">Find branch with full cart</button>
+                </div>
+              </div>
+            </div>
+            <div class="note-panel">
+              <strong>Multi-branch chains</strong>
+              Shared product catalog; each branch has its own PMS stock and delivery zone.
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-fulfil">
+          <div class="main-head">
+            <h2>Patient · Pickup or delivery</h2>
+            <p>Zone fees, same-day cut-off, cold-chain warning on mixed carts.</p>
+          </div>
+          <div class="phone-wrap">
+            <div class="phone">
+              <div class="phone-inner">
+                <div class="app-header"><span class="title">How to receive</span></div>
+                <div class="phone-body">
+                  <div class="toggle-row">
+                    <span class="chip active">Pickup (free)</span>
+                    <span class="chip">Delivery</span>
+                  </div>
+                  <div class="map-placeholder">Map pin · Gasabo zone · 1,500 RWF</div>
+                  <div class="alert warn">Cold-chain item in cart: delivery only within 8 km before 14:00.</div>
+                  <p style="font-size: 13px; font-weight: 600">Delivery address</p>
+                  <div class="search" style="color: var(--text); margin-bottom: 8px">Home · KK 15 Rd, Kigali</div>
+                  <button type="button" class="btn-primary">Continue to payment</button>
+                </div>
+              </div>
+            </div>
+            <div class="note-panel">
+              <strong>Pay at pickup</strong>
+              Supported for OTC: order enters picking queue; MoMo recorded at counter via PMS if preferred.
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-rx-upload">
+          <div class="main-head">
+            <h2>Patient · Prescription upload</h2>
+            <p>Camera or gallery, link to cart lines, optional notes (allergies). OCR assists staff only.</p>
+          </div>
+          <div class="phone-wrap">
+            <div class="phone">
+              <div class="phone-inner">
+                <div class="app-header"><span class="title">Upload prescription</span></div>
+                <div class="phone-body">
+                  <div class="upload-zone">Tap to photograph prescription<br /><span style="font-size: 11px">Clear prescriber name and date</span></div>
+                  <p style="font-size: 13px; font-weight: 600">Linked items</p>
+                  <div class="line-item"><span>Amoxicillin 500 mg</span></div>
+                  <p style="font-size: 13px; font-weight: 600; margin-top: 12px">For patient</p>
+                  <div class="search" style="color: var(--text)">Jean Mukamana (self)</div>
+                  <button type="button" class="btn-primary btn-ghost" style="margin-top: 8px">Order for family member</button>
+                  <button type="button" class="btn-primary">Submit for review</button>
+                </div>
+              </div>
+            </div>
+            <div class="note-panel">
+              <strong>No auto-approve</strong>
+              Pharmacist must approve with license on record before dispense authorization.
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-cart">
+          <div class="main-head">
+            <h2>Patient · Cart & insurance</h2>
+            <p>RSSB co-pay shown before MoMo payment. Rx lines wait for pharmacist approval.</p>
+          </div>
+          <div class="phone-wrap">
+            <div class="phone">
+              <div class="phone-inner">
+                <div class="status-bar">9:41</div>
+                <div class="app-header">
+                  <div class="row">
+                    <span class="title">Checkout</span>
+                  </div>
+                </div>
+                <div class="phone-body">
+                  <div class="line-item"><span>Paracetamol ×2</span><strong>1,600 RWF</strong></div>
+                  <div class="line-item"><span>Amoxicillin ×1 (Rx)</span><strong>2,400 RWF</strong></div>
+                  <div class="alert warn">
+                    Prescription required. Payment for Amoxicillin is held until your pharmacist
+                    approves the uploaded Rx.
+                  </div>
+                  <p style="font-size: 13px; font-weight: 600; margin: 16px 0 8px">Insurance</p>
+                  <div class="chips">
+                    <span class="chip">Cash</span>
+                    <span class="chip active">RSSB Medical</span>
+                  </div>
+                  <div class="summary-box">
+                    <div class="line-item"><span>Insurer portion</span><span>2,040 RWF</span></div>
+                    <div class="line-item"><span>Your co-pay (15%)</span><strong>360 RWF</strong></div>
+                    <div class="line-item"><span>Due now (estimate)</span><strong>1,960 RWF</strong></div>
+                  </div>
+                  <button type="button" class="btn-primary">Upload prescription & continue</button>
+                  <button type="button" class="btn-primary btn-ghost">Pay with MTN MoMo</button>
+                </div>
+              </div>
+            </div>
+            <div class="note-panel">
+              <strong>Regulatory alignment</strong>
+              Formulary warnings per line, member ID validation, and co-pay split match how your PMS
+              already posts RSSB claims — the website is an intake channel, not a replacement for
+              in-store dispensing rules.
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-track">
+          <div class="main-head">
+            <h2>Patient · Order tracking</h2>
+            <p>Clear status reduces “did you get my order?” calls to the counter.</p>
+          </div>
+          <div class="phone-wrap">
+            <div class="phone">
+              <div class="phone-inner">
+                <div class="status-bar">9:41</div>
+                <div class="app-header">
+                  <div class="row">
+                    <span class="title">Order #PH-20481</span>
+                  </div>
+                </div>
+                <div class="phone-body">
+                  <div class="timeline">
+                    <div class="timeline-step">
+                      <div class="dot done"></div>
+                      <div>
+                        <strong style="font-size: 14px">Submitted</strong>
+                        <div style="font-size: 12px; color: var(--muted)">Today, 09:12</div>
+                      </div>
+                    </div>
+                    <div class="timeline-step">
+                      <div class="dot current"></div>
+                      <div>
+                        <strong style="font-size: 14px">Pharmacist review</strong>
+                        <div style="font-size: 12px; color: var(--muted)">Usually under 2 hours</div>
+                      </div>
+                    </div>
+                    <div class="timeline-step">
+                      <div class="dot pending"></div>
+                      <div>
+                        <strong style="font-size: 14px; color: var(--muted)">Ready for pickup</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="alert warn" style="background: var(--brand-soft); color: var(--brand-dark); border-color: #a7f3d0">
+                    We will SMS you when approved. Pickup at Nyarugenge with code 847291.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="note-panel">
+              <strong>Notifications</strong>
+              SMS / WhatsApp / email per patient preference — same events your staff see in the queue.
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-delivery">
+          <div class="main-head">
+            <h2>Patient · Delivery in progress</h2>
+            <p>Agent assigned, OTP proof of delivery, failed delivery reschedule.</p>
+          </div>
+          <div class="phone-wrap">
+            <div class="phone">
+              <div class="phone-inner">
+                <div class="app-header"><span class="title">Order #PH-20455</span></div>
+                <div class="phone-body">
+                  <span class="stock ok">Out for delivery</span>
+                  <div class="map-placeholder">Live map · Agent Eric · ETA 25 min</div>
+                  <p style="font-size: 13px; margin: 12px 0">Show this code to the driver: <strong>6291</strong></p>
+                  <button type="button" class="btn-primary btn-ghost">Call pharmacy</button>
+                </div>
+              </div>
+            </div>
+            <div class="note-panel">
+              <strong>Failed delivery</strong>
+              Staff records reason, reschedules or returns stock via console workflow.
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-account">
+          <div class="main-head">
+            <h2>Patient · Account</h2>
+            <p>Profiles, addresses, insurance cards, notification preferences (SMS / WhatsApp / email).</p>
+          </div>
+          <div class="phone-wrap">
+            <div class="phone">
+              <div class="phone-inner">
+                <div class="app-header"><span class="title">My account</span></div>
+                <div class="phone-body">
+                  <div class="product-card"><div class="product-info"><h4>Jean Mukamana</h4><div class="meta">+250 78••• ••••</div></div></div>
+                  <p style="font-size: 12px; font-weight: 600; color: var(--muted); margin: 16px 0 8px">INSURANCE PROFILES</p>
+                  <div class="line-item"><span>RSSB Medical · ••••4821</span><span>Edit</span></div>
+                  <p style="font-size: 12px; font-weight: 600; color: var(--muted); margin: 16px 0 8px">ADDRESSES</p>
+                  <div class="line-item"><span>Home · Gasabo</span><span>Default</span></div>
+                  <p style="font-size: 12px; font-weight: 600; color: var(--muted); margin: 16px 0 8px">NOTIFICATIONS</p>
+                  <div class="line-item"><span>SMS order updates</span><span>On</span></div>
+                  <div class="line-item"><span>WhatsApp</span><span>On</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="note-panel">
+              <strong>Data minimization</strong>
+              National ID optional, encrypted for insurance verification. Patient sees only their orders.
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-staff-rx">
+          <div class="main-head">
+            <h2>Staff · Pharmacist review</h2>
+            <p>Side-by-side Rx image, patient context, and one-click approve with license on record.</p>
+          </div>
+          <div class="desktop">
+            <div class="desktop-layout">
+              <div class="desk-nav">
+                <div class="desk-nav-item on">Rx review</div>
+                <div class="desk-nav-item">Orders</div>
+                <div class="desk-nav-item">Catalog sync</div>
+                <div class="desk-nav-item">Reports</div>
+                <p style="font-size: 11px; color: var(--muted); margin-top: 24px; padding: 0 12px">
+                  Branch: Nyarugenge
+                </p>
+              </div>
+              <div class="desk-main">
+                <h3>Prescription review · 3 waiting</h3>
+                <div class="rx-grid">
+                  <div class="rx-preview">Prescription scan · zoom & rotate</div>
+                  <div>
+                    <p style="margin: 0 0 8px; font-size: 14px"><strong>Jean Mukamana</strong> · RSSB</p>
+                    <p style="margin: 0 0 12px; font-size: 13px; color: var(--muted)">
+                      Dr. Uwimana · 15 Sep 2026
+                    </p>
+                    <div class="product-card" style="margin: 0">
+                      <div class="product-info">
+                        <h4>Amoxicillin 500 mg ×14</h4>
+                        <div class="meta">Formulary: covered</div>
+                      </div>
+                    </div>
+                    <div class="actions">
+                      <button type="button" class="btn-sm primary">Approve</button>
+                      <button type="button" class="btn-sm secondary">Partial</button>
+                      <button type="button" class="btn-sm secondary">Request info</button>
+                      <button type="button" class="btn-sm secondary">Reject</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-staff-orders">
+          <div class="main-head">
+            <h2>Staff · Fulfilment queue</h2>
+            <p>Same order states as the patient app — picking, ready, handover with pickup code.</p>
+          </div>
+          <div class="desktop">
+            <div class="desktop-layout">
+              <div class="desk-nav">
+                <div class="desk-nav-item">Rx review</div>
+                <div class="desk-nav-item on">Orders</div>
+                <div class="desk-nav-item">Catalog sync</div>
+                <div class="desk-nav-item">Reports</div>
+              </div>
+              <div class="desk-main">
+                <h3>Orders · Nyarugenge</h3>
+                <div class="order-row">
+                  <div>
+                    <strong>PH-20470</strong> · Paul K. · OTC<br />
+                    <span style="font-size: 12px; color: var(--muted)">PMS sync OK</span>
+                  </div>
+                  <span class="stock ok">Picking</span>
+                </div>
+                <div class="order-row">
+                  <div>
+                    <strong>PH-20481</strong> · Jean M. · Rx<br />
+                    <span style="font-size: 12px; color: var(--muted)">Awaiting pharmacist</span>
+                  </div>
+                  <span class="stock rx">Review</span>
+                </div>
+                <div class="order-row">
+                  <div>
+                    <strong>PH-20465</strong> · Alice T.<br />
+                    <span style="font-size: 12px; color: var(--muted)">Pickup code 847291</span>
+                  </div>
+                  <span class="stock ok">Ready</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-staff-handover">
+          <div class="main-head">
+            <h2>Staff · Pickup handover</h2>
+            <p>Verify pickup code + name; optional ID for Rx; record staff id and complete in PMS.</p>
+          </div>
+          <div class="desktop">
+            <div class="desktop-layout">
+              <div class="desk-nav">
+                <div class="desk-nav-item on">Orders</div>
+              </div>
+              <div class="desk-main">
+                <h3>Handover · PH-20465</h3>
+                <div class="summary-box">
+                  <p style="margin: 0 0 8px"><strong>Alice T.</strong> · Ready for pickup</p>
+                  <p style="margin: 0; font-size: 24px; letter-spacing: 0.2em; font-weight: 700">847291</p>
+                </div>
+                <div class="search" style="color: var(--text); margin-bottom: 12px">Enter code from patient phone</div>
+                <label style="font-size: 13px; display: flex; gap: 8px; align-items: center; margin-bottom: 12px">
+                  <input type="checkbox" checked /> ID checked (Rx order)
+                </label>
+                <button type="button" class="btn-sm primary">Complete handover · sync PMS sale</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-staff-sync">
+          <div class="main-head">
+            <h2>Staff · PMS integration health</h2>
+            <p>Catalog sync, reservation errors, manual fallback JSON export.</p>
+          </div>
+          <div class="desktop">
+            <div class="desktop-layout">
+              <div class="desk-nav">
+                <div class="desk-nav-item on">Catalog sync</div>
+              </div>
+              <div class="desk-main">
+                <div class="stat-grid">
+                  <div class="stat-card"><div class="val">2m</div><div class="lbl">Last sync</div></div>
+                  <div class="stat-card"><div class="val">1,842</div><div class="lbl">SKUs online</div></div>
+                  <div class="stat-card"><div class="val" style="color: var(--warning-text)">1</div><div class="lbl">Sync errors</div></div>
+                </div>
+                <div class="alert warn">Reservation failed for PH-20472 — retry or paste order into PMS manually.</div>
+                <button type="button" class="btn-sm secondary">Download order JSON</button>
+                <button type="button" class="btn-sm primary">Force refresh stock</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-staff-insurance">
+          <div class="main-head">
+            <h2>Staff · Insurance & claims</h2>
+            <p>Pending reimbursement, rejections, monthly CSV reconciliation to PMS invoices.</p>
+          </div>
+          <div class="desktop">
+            <div class="desktop-layout">
+              <div class="desk-nav">
+                <div class="desk-nav-item on">Insurance</div>
+              </div>
+              <div class="desk-main">
+                <div class="stat-grid">
+                  <div class="stat-card"><div class="val">24</div><div class="lbl">Submitted</div></div>
+                  <div class="stat-card"><div class="val">6</div><div class="lbl">Pending</div></div>
+                  <div class="stat-card"><div class="val">2</div><div class="lbl">Rejected</div></div>
+                </div>
+                <div class="order-row">
+                  <div><strong>PH-20401</strong> · RSSB · 12,400 RWF insurer portion<br /><span style="font-size: 12px; color: var(--muted)">PMS invoice #8842</span></div>
+                  <span class="stock ok">Paid</span>
+                </div>
+                <div class="order-row">
+                  <div><strong>PH-20388</strong> · MMI · Non-formulary line<br /><span style="font-size: 12px; color: var(--muted)">Patient switched to cash</span></div>
+                  <span class="stock rx">Rejected</span>
+                </div>
+                <button type="button" class="btn-sm secondary">Export monthly statement CSV</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-staff-admin">
+          <div class="main-head">
+            <h2>Owner · Settings</h2>
+            <p>Branches, delivery zones, insurance schemes, formulary CSV, staff roles, audit log export.</p>
+          </div>
+          <div class="desktop">
+            <div class="desktop-layout">
+              <div class="desk-nav">
+                <div class="desk-nav-item">Reports</div>
+                <div class="desk-nav-item on">Settings</div>
+              </div>
+              <div class="desk-main">
+                <h3>Pharmacy configuration</h3>
+                <div class="line-item"><span>Branches (2)</span><span>Manage</span></div>
+                <div class="line-item"><span>RSSB Medical scheme</span><span>Active</span></div>
+                <div class="line-item"><span>Formulary CSV</span><span>Uploaded Sep 2026</span></div>
+                <div class="line-item"><span>Responsible pharmacist on record</span><span>RPh. N. Habimana</span></div>
+                <div class="line-item"><span>Rx register export (PDF/CSV)</span><span>Download</span></div>
+                <div class="line-item"><span>Audit log (Rx image views)</span><span>Export</span></div>
+                <p style="font-size: 12px; color: var(--muted); margin-top: 16px">Legal pages: privacy, terms, online pharmacy disclosure (Rwanda FDA).</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const buttons = document.querySelectorAll(".nav-btn");
+      const screens = document.querySelectorAll(".screen");
+
+      buttons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-screen");
+          buttons.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          screens.forEach((s) => s.classList.remove("active"));
+          document.getElementById("screen-" + id).classList.add("active");
+        });
+      });
+    </script>
+  </body>
+</html>

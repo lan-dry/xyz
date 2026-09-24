@@ -17,6 +17,7 @@ export type BlogPost = {
   seoTitle: string | null;
   seoDescription: string | null;
   readingTimeMinutes: number;
+  lastPublishedByEmail?: string | null;
 };
 
 export type BlogPostInput = {
@@ -49,4 +50,5 @@ export type BlogPostListItem = Pick<
   | "createdAt"
   | "updatedAt"
   | "readingTimeMinutes"
+  | "lastPublishedByEmail"
 >;

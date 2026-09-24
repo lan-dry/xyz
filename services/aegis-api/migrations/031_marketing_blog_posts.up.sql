@@ -14,7 +14,11 @@ CREATE TABLE IF NOT EXISTS marketing_blog_posts (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
   seo_title         TEXT,
-  seo_description   TEXT
+  seo_description   TEXT,
+  created_by_user_id UUID REFERENCES users (id) ON DELETE SET NULL,
+  updated_by_user_id UUID REFERENCES users (id) ON DELETE SET NULL,
+  published_by_user_id UUID REFERENCES users (id) ON DELETE SET NULL,
+  last_published_by_email TEXT
 );
 
 CREATE INDEX IF NOT EXISTS marketing_blog_posts_status_published_at_idx

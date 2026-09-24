@@ -548,8 +548,13 @@ Do **not** put `DATABASE_URL` on Vercel console.
 | `BILLING_API_URL` | Yes |
 | `PLATFORM_BOOTSTRAP_SECRET` | Yes |
 | `SESSION_COOKIE_DOMAIN` | Yes |
+| `DATABASE_URL` | Yes (Content: research, careers, blog stats) |
+| `NEXT_PUBLIC_MARKETING_URL` | Yes (blog “View live” links, e.g. `https://www.salanor.com`) |
+| `BLOG_GITHUB_TOKEN` | Yes in prod (blog saves commit to Git when not on repo disk) |
+| `BLOG_GITHUB_REPO` | Yes if using token (e.g. `salanor-ltd/salanor`) |
+| `BLOG_GITHUB_BRANCH` | Optional (default `main`) |
 
-Staff accounts need `platform_staff` flag in Postgres (set via bootstrap or SQL).
+Staff accounts need a **platform role** (`staff` / `admin` / `superadmin`) on their account — see `docs-internal/PLATFORM_OPS.md`. Content: staff read-only; admin+ can edit blog, research, careers, leads.
 
 ### Vercel: salanor-docs
 

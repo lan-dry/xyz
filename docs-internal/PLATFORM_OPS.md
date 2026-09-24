@@ -111,7 +111,10 @@ There is **no** `NEXT_PUBLIC_PLATFORM_OPS` flag on the customer console anymore.
 | `/organizations` | List/edit orgs, plan assignment, **View in console** (impersonate) |
 | `/accounts` | List accounts, platform role (superadmin), suspend, password reset |
 | `/plans` | Plan catalog limits + Stripe price IDs |
-| `/leads` | Marketing contact form (`CONTACT_DATA_DIR/messages.jsonl`) |
+| `/content/leads` | Marketing contact form inbox (JSONL via Salanor ID; `/leads` redirects here) |
+| `/content/blog` | Git Markdown blog — list, edit, stats, media (`@salanor/marketing-blog`) |
+| `/content/research` | Research posts CMS (Prisma `research_posts`) |
+| `/content/careers` | Open roles CMS (Prisma `open_roles`) |
 | `/audit-logs` | Cross-tenant console audit trail (paginated) |
 | `/commands` | Command reference — all pnpm scripts, roles, scenario cheat sheet |
 | `/accounts/:id` | Account profile + memberships |

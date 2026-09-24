@@ -1,0 +1,75 @@
+# Pages CMS — https://pagescms.org
+# Connect this repo in Pages CMS (GitHub App). Editors use pagescms.org, not www.salanor.com/admin.
+# Same Markdown files as local/Cursor workflow; merge → Vercel deploy unchanged.
+
+media:
+  - name: blog_assets
+    label: Blog images & video files
+    input: apps/web-marketing/public/blog/media
+    output: /blog/media
+    categories: [image, video]
+    rename: safe
+
+content:
+  - name: blog
+    label: Blog posts
+    type: collection
+    path: apps/web-marketing/content/blog
+    format: yaml-frontmatter
+    extension: md
+    filename: "{primary}.md"
+    view:
+      primary: title
+      fields: [status, publishedAt, authorName]
+      sort: [publishedAt, desc]
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: slug
+        label: Slug
+        type: string
+        required: true
+      - name: excerpt
+        label: Excerpt
+        type: text
+        required: true
+      - name: authorName
+        label: Author name
+        type: string
+        required: true
+      - name: authorRole
+        label: Author role
+        type: string
+      - name: tags
+        label: Tags
+        type: string
+        list: true
+      - name: status
+        label: Status
+        type: select
+        options:
+          values: [draft, published]
+        default: draft
+      - name: publishedAt
+        label: Published at (ISO date)
+        type: string
+      - name: seoTitle
+        label: SEO title
+        type: string
+      - name: seoDescription
+        label: SEO description
+        type: text
+      - name: coverImageUrl
+        label: Cover image
+        type: image
+        media: blog_assets
+      - name: body
+        label: Article body
+        type: rich-text
+        required: true
+        options:
+          format: markdown
+          media: blog_assets
+          path: blog

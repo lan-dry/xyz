@@ -4,10 +4,13 @@ import Link from "next/link";
 import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import {
+  BookOpen,
+  Briefcase,
   Building2,
   ClipboardList,
   CreditCard,
   ExternalLink,
+  FileText,
   Inbox,
   LayoutDashboard,
   Moon,
@@ -38,19 +41,46 @@ import shell from "./ops-shell.module.css";
 
 const SIDEBAR_KEY = "salanor.ops.sidebar.collapsed";
 
-const NAV: Array<{ href: string; label: string; icon: LucideIcon }> = [
-  { href: "/", label: "Overview", icon: LayoutDashboard },
-  { href: "/provision", label: "Provision org", icon: UserPlus },
-  { href: "/organizations", label: "Organizations", icon: Building2 },
-  { href: "/accounts", label: "Accounts", icon: Users },
-  { href: "/team", label: "Platform team", icon: Shield },
-  { href: "/plans", label: "Plans", icon: CreditCard },
-  { href: "/leads", label: "Leads", icon: Inbox },
-  { href: "/audit-logs", label: "Audit log", icon: ClipboardList },
-  { href: "/workers", label: "Workers", icon: ServerCog },
-  { href: "/commands", label: "Commands", icon: Terminal },
-  { href: "/settings", label: "Profile", icon: UserCircle },
+type NavItem = { href: string; label: string; icon: LucideIcon };
+
+type NavSection = { label: string | null; items: NavItem[] };
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    label: null,
+    items: [
+      { href: "/", label: "Overview", icon: LayoutDashboard },
+      { href: "/provision", label: "Provision org", icon: UserPlus },
+      { href: "/organizations", label: "Organizations", icon: Building2 },
+      { href: "/accounts", label: "Accounts", icon: Users },
+      { href: "/team", label: "Platform team", icon: Shield },
+      { href: "/plans", label: "Plans", icon: CreditCard },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { href: "/content/leads", label: "Leads", icon: Inbox },
+      { href: "/content/blog", label: "Blog", icon: FileText },
+      { href: "/content/research", label: "Research", icon: BookOpen },
+      { href: "/content/careers", label: "Careers", icon: Briefcase },
+    ],
+  },
+  {
+    label: "Platform",
+    items: [
+      { href: "/audit-logs", label: "Audit log", icon: ClipboardList },
+      { href: "/workers", label: "Workers", icon: ServerCog },
+      { href: "/commands", label: "Commands", icon: Terminal },
+      { href: "/settings", label: "Profile", icon: UserCircle },
+    ],
+  },
 ];
+
+function isActivePath(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function OpsShell({
   title,
@@ -140,24 +170,26 @@ export function OpsShell({
         </div>
         <div className={shell.sidebarScroll}>
           <nav className={shell.nav}>
-            {NAV.map((item) => {
-              const active =
-                item.href === "/"
-                  ? pathname === "/"
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`${shell.navLink} ${active ? shell.navLinkActive : ""}`}
-                  title={item.label}
-                >
-                  <Icon className={shell.navIcon} aria-hidden />
-                  <span className={shell.navLabel}>{item.label}</span>
-                </Link>
-              );
-            })}
+            {NAV_SECTIONS.map((section) => (
+              <div key={section.label ?? "main"}>
+                {section.label ? <p className={shell.navSection}>{section.label}</p> : null}
+                {section.items.map((item) => {
+                  const active = isActivePath(pathname, item.href);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`${shell.navLink} ${active ? shell.navLinkActive : ""}`}
+                      title={item.label}
+                    >
+                      <Icon className={shell.navIcon} aria-hidden />
+                      <span className={shell.navLabel}>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
         </div>
       </aside>

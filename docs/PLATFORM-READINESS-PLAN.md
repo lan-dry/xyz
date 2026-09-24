@@ -75,7 +75,7 @@
 |---|------|-----|----------|
 | 2.1 | **Contextual policy conditions** | #1 BK objection | **Engine done** — Console UI + BK example policies remain |
 | 2.2 | Console UI for new condition types | Ops can configure without code | Policies page |
-| 2.3 | Example BK policies: VIP segment lower threshold, blocked beneficiary list | Demo + scoping | BK sandbox org |
+| 2.3 | Example contextual policies for demos | Scoping narrative | **Done in product** — configure per org in Console (no client-specific seed in repo) |
 | 2.4 | Trace-level "verify all events" or clearer verify UX | Audit question in room | Console traces page |
 | 2.5 | Export sample bundle pre-generated for sales | Attach to follow-up emails | One READY export per demo org |
 

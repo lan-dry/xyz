@@ -113,6 +113,20 @@
   padding-top: var(--console-nav-top-gap);
 }
 
+.navSection {
+  margin: 0.75rem 0 0.25rem;
+  padding: 0 var(--console-nav-pad-x);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--console-fg-subtle);
+}
+
+.sidebarCollapsed .navSection {
+  display: none;
+}
+
 .navLink {
   display: flex;
   align-items: center;

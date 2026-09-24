@@ -5,6 +5,7 @@ export type AdminNavItem = {
   href: string;
   label: string;
   visible: boolean;
+  external?: boolean;
 };
 
 export type AdminNavGroup = {
@@ -12,6 +13,15 @@ export type AdminNavGroup = {
   items: AdminNavItem[];
 };
 
+function opsUrl(path: string): string {
+  const base = (process.env.NEXT_PUBLIC_PLATFORM_URL?.trim() || "http://localhost:3003").replace(
+    /\/$/,
+    "",
+  );
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+/** @deprecated Staff CMS moved to Platform Ops (ops.salanor.com). This nav deep-links there. */
 export function adminNavGroupsForRole(role: InternalRole): AdminNavGroup[] {
   const canContacts = hasAdminPermission(role, "admin:contacts:read");
   const canCms = hasAdminPermission(role, "admin:cms:read");
@@ -24,29 +34,47 @@ export function adminNavGroupsForRole(role: InternalRole): AdminNavGroup[] {
       items: [{ href: "/admin", label: "Dashboard", visible: true }],
     },
     {
-      label: "Inbound",
-      items: [{ href: "/admin/contacts", label: "Contacts", visible: canContacts }],
-    },
-    {
-      label: "Content",
+      label: "Content (Platform Ops)",
       items: [
-        { href: "/admin/research", label: "Research", visible: canCms },
-        { href: "/admin/careers", label: "Careers", visible: canCms },
+        {
+          href: opsUrl("/content/leads"),
+          label: "Leads",
+          visible: canContacts || canCms,
+          external: true,
+        },
+        { href: opsUrl("/content/blog"), label: "Blog", visible: canCms, external: true },
+        { href: opsUrl("/content/research"), label: "Research", visible: canCms, external: true },
+        { href: opsUrl("/content/careers"), label: "Careers", visible: canCms, external: true },
       ],
     },
     {
-      label: "Tenants",
+      label: "Tenants (Platform Ops)",
       items: [
-        { href: "/admin/organizations", label: "Organizations", visible: canTenants },
-        { href: "/admin/users", label: "Users", visible: canTenants },
+        {
+          href: opsUrl("/organizations"),
+          label: "Organizations",
+          visible: canTenants,
+          external: true,
+        },
+        { href: opsUrl("/accounts"), label: "Accounts", visible: canTenants, external: true },
       ],
     },
     {
       label: "Platform",
-      items: [{ href: "/admin/internal-users", label: "Internal users", visible: canInternalUsers }],
+      items: [
+        {
+          href: opsUrl("/team"),
+          label: "Platform team",
+          visible: canInternalUsers,
+          external: true,
+        },
+        { href: "/admin/internal-users", label: "Internal users (legacy)", visible: canInternalUsers },
+      ],
     },
-  ].map((group) => ({
-    ...group,
-    items: group.items.filter((item) => item.visible),
-  })).filter((group) => group.items.length > 0);
+  ]
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.visible),
+    }))
+    .filter((group) => group.items.length > 0);
 }

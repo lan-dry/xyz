@@ -4,18 +4,28 @@ import { notFound } from "next/navigation";
 
 import { BlogCard } from "@/components/blog/blog-card";
 import { BlogProse } from "@/components/blog/blog-prose";
+import { BlogArticleEngagement } from "@/components/blog/blog-article-engagement";
+import { BlogListen } from "@/components/blog/blog-listen";
 import { BlogShare } from "@/components/blog/blog-share";
 import { BlogToc } from "@/components/blog/blog-toc";
 import styles from "@/components/blog/blog.module.css";
 import { getBlogPostBySlug, listBlogPosts } from "@/lib/blog/store";
 import { extractTableOfContents, formatBlogDate } from "@/lib/blog/utils";
+import { resolveBlogCoverUrl } from "@/lib/blog/default-cover";
+import { absoluteBlogOgImage } from "@/lib/blog/og-image";
 import { SITE_ORIGIN } from "@/lib/site-origin";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
+
+export async function generateStaticParams() {
+  const { getPublishedBlogSlugs } = await import("@/lib/blog/store");
+  const slugs = await getPublishedBlogSlugs();
+  return slugs.map(({ slug }) => ({ slug }));
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -23,16 +33,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!post || post.status !== "published") {
     return { title: "Article not found" };
   }
+  const ogImage = absoluteBlogOgImage(post.coverImageUrl);
+  const title = post.seoTitle ?? post.title;
+  const description = post.seoDescription ?? post.excerpt;
   return {
-    title: post.seoTitle ?? post.title,
-    description: post.seoDescription ?? post.excerpt,
+    title,
+    description,
     openGraph: {
-      title: post.seoTitle ?? post.title,
-      description: post.seoDescription ?? post.excerpt,
+      title,
+      description,
       type: "article",
       publishedTime: post.publishedAt ?? undefined,
       url: `${SITE_ORIGIN}/blog/${post.slug}`,
-      images: post.coverImageUrl ? [{ url: post.coverImageUrl }] : undefined,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
     },
   };
 }
@@ -100,8 +119,10 @@ export default async function BlogArticlePage({ params }: Props) {
               </div>
             ) : null}
 
+            <BlogArticleEngagement slug={post.slug} />
+            <BlogListen slug={post.slug} title={post.title} contentHtml={post.contentHtml} />
             <BlogProse html={post.contentHtml} />
-            <BlogShare title={post.title} url={articleUrl} />
+            <BlogShare slug={post.slug} title={post.title} url={articleUrl} />
 
             {related.length > 0 ? (
               <section className={styles.related}>

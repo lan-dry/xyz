@@ -65,6 +65,34 @@ model OpenRole {
   @@map("open_roles")
 }
 
+model MarketingBlogPost {
+  id                   String    @id @default(uuid()) @db.Uuid
+  slug                 String    @unique
+  title                String
+  excerpt              String    @default("")
+  contentHtml          String    @default("") @map("content_html")
+  coverImageUrl        String?   @map("cover_image_url")
+  authorName           String    @default("Landry Bougang") @map("author_name")
+  authorRole           String?   @map("author_role")
+  tags                 String[]  @default([])
+  status               String    @default("draft")
+  publishedAt          DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  seoTitle             String?   @map("seo_title")
+  seoDescription       String?   @map("seo_description")
+  createdByUserId      String?   @map("created_by_user_id") @db.Uuid
+  createdByUser        User?     @relation("BlogPostCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUserId      String?   @map("updated_by_user_id") @db.Uuid
+  updatedByUser        User?     @relation("BlogPostUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  publishedByUserId    String?   @map("published_by_user_id") @db.Uuid
+  publishedByUser      User?     @relation("BlogPostPublishedBy", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  lastPublishedByEmail String?   @map("last_published_by_email")
+
+  @@index([status, publishedAt(sort: Desc)])
+  @@map("marketing_blog_posts")
+}
+
 model ContactMessage {
   id           String   @id @default(uuid()) @db.Uuid
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -110,6 +138,9 @@ model User {
   accounts             Account[]
   sessions             Session[]
   identityLink         IdentityLink?
+  blogPostsCreated     MarketingBlogPost[] @relation("BlogPostCreatedBy")
+  blogPostsUpdated     MarketingBlogPost[] @relation("BlogPostUpdatedBy")
+  blogPostsPublished   MarketingBlogPost[] @relation("BlogPostPublishedBy")
 
   @@map("users")
 }

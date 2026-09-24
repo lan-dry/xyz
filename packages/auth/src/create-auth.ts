@@ -1,5 +1,5 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import NextAuth from "next-auth";
+import NextAuth, { type NextAuthResult } from "next-auth";
 
 import {
   getInternalRoleForEmail,
@@ -94,5 +94,5 @@ export function createSalanorAuth(prisma: SalanorAuthPrisma) {
   const { auth, handlers: defaultHandlers, signIn, signOut } = NextAuth(authOptions);
   const handlers = resolveAuthRouteHandlers(authOptions, defaultHandlers);
 
-  return { auth, handlers, signIn, signOut };
+  return { auth, handlers, signIn, signOut } as NextAuthResult;
 }

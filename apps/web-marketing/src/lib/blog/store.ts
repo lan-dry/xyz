@@ -3,9 +3,22 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import pg from "pg";
 
+import {
+  getGitBlogPostById,
+  getGitBlogPostBySlug,
+  gitBlogContentEnabled,
+  listGitBlogPosts as listGitBlogPosts,
+} from "./git-content";
 import { sanitizeBlogHtml } from "./sanitize";
 import type { BlogPost, BlogPostInput, BlogPostListItem, BlogPostStatus } from "./types";
 import { readingTimeMinutes, slugify } from "./utils";
+
+/** Legacy DB/JSON write path only (Git is the production source). */
+type BlogPublisherContext = {
+  userId: string;
+  email: string;
+  displayName: string | null;
+};
 
 let pool: pg.Pool | null = null;
 
@@ -25,6 +38,7 @@ type BlogRow = {
   updated_at: Date | string;
   seo_title: string | null;
   seo_description: string | null;
+  last_published_by_email: string | null;
 };
 
 function useDatabase(): boolean {
@@ -73,6 +87,7 @@ function mapRow(row: BlogRow): BlogPost {
     seoTitle: row.seo_title,
     seoDescription: row.seo_description,
     readingTimeMinutes: readingTimeMinutes(contentHtml),
+    lastPublishedByEmail: row.last_published_by_email ?? null,
   };
 }
 
@@ -138,6 +153,7 @@ function normalizeFileRow(post: BlogPost): BlogRow {
     updated_at: post.updatedAt,
     seo_title: post.seoTitle,
     seo_description: post.seoDescription,
+    last_published_by_email: post.lastPublishedByEmail ?? null,
   };
 }
 
@@ -208,6 +224,10 @@ export async function listBlogPosts(options?: {
   const status = options?.status ?? (options?.includeDrafts ? "all" : "published");
   const tag = options?.tag?.trim().toLowerCase();
 
+  if (gitBlogContentEnabled()) {
+    return listGitBlogPosts({ status, tag, includeDrafts: options?.includeDrafts });
+  }
+
   if (useDatabase()) {
     const params: unknown[] = [];
     const clauses: string[] = [];
@@ -244,6 +264,10 @@ export async function listBlogPosts(options?: {
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+  if (gitBlogContentEnabled()) {
+    return getGitBlogPostBySlug(slug);
+  }
+
   if (useDatabase()) {
     const result = await getPool().query<BlogRow>(
       `SELECT * FROM marketing_blog_posts WHERE slug = $1 LIMIT 1`,
@@ -257,6 +281,10 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
 }
 
 export async function getBlogPostById(id: string): Promise<BlogPost | null> {
+  if (gitBlogContentEnabled()) {
+    return getGitBlogPostById(id);
+  }
+
   if (useDatabase()) {
     const result = await getPool().query<BlogRow>(
       `SELECT * FROM marketing_blog_posts WHERE id = $1 LIMIT 1`,
@@ -269,19 +297,29 @@ export async function getBlogPostById(id: string): Promise<BlogPost | null> {
   return post ?? null;
 }
 
-export async function createBlogPost(input: BlogPostInput): Promise<BlogPost> {
+export async function createBlogPost(
+  input: BlogPostInput,
+  publisher?: BlogPublisherContext,
+): Promise<BlogPost> {
   const normalized = normalizeInput(input);
   const slug = await ensureUniqueSlug(normalized.slug!);
   const id = randomUUID();
   const now = new Date().toISOString();
+  const authorName =
+    normalized.authorName?.trim() ||
+    publisher?.displayName?.trim() ||
+    publisher?.email ||
+    "Salanor";
+  const isPublished = normalized.status === "published";
 
   if (useDatabase()) {
     const result = await getPool().query<BlogRow>(
       `INSERT INTO marketing_blog_posts (
          id, slug, title, excerpt, content_html, cover_image_url,
          author_name, author_role, tags, status, published_at,
-         seo_title, seo_description
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+         seo_title, seo_description,
+         created_by_user_id, updated_by_user_id, published_by_user_id, last_published_by_email
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
        RETURNING *`,
       [
         id,
@@ -290,13 +328,17 @@ export async function createBlogPost(input: BlogPostInput): Promise<BlogPost> {
         normalized.excerpt,
         normalized.contentHtml,
         normalized.coverImageUrl,
-        normalized.authorName,
+        authorName,
         normalized.authorRole,
         normalized.tags,
         normalized.status,
         normalized.publishedAt,
         normalized.seoTitle,
         normalized.seoDescription,
+        publisher?.userId ?? null,
+        publisher?.userId ?? null,
+        isPublished ? (publisher?.userId ?? null) : null,
+        isPublished ? (publisher?.email ?? null) : null,
       ],
     );
     return mapRow(result.rows[0]!);
@@ -318,6 +360,7 @@ export async function createBlogPost(input: BlogPostInput): Promise<BlogPost> {
     updated_at: now,
     seo_title: normalized.seoTitle ?? null,
     seo_description: normalized.seoDescription ?? null,
+    last_published_by_email: isPublished ? (publisher?.email ?? null) : null,
   });
   const posts = readFilePosts();
   posts.unshift(post);
@@ -325,7 +368,11 @@ export async function createBlogPost(input: BlogPostInput): Promise<BlogPost> {
   return post;
 }
 
-export async function updateBlogPost(id: string, input: BlogPostInput): Promise<BlogPost | null> {
+export async function updateBlogPost(
+  id: string,
+  input: BlogPostInput,
+  publisher?: BlogPublisherContext,
+): Promise<BlogPost | null> {
   const existing = await getBlogPostById(id);
   if (!existing) return null;
 
@@ -334,14 +381,26 @@ export async function updateBlogPost(id: string, input: BlogPostInput): Promise<
   if (slug !== existing.slug) {
     slug = await ensureUniqueSlug(slug, id);
   }
-
+  const becamePublished =
+    normalized.status === "published" && existing.status !== "published";
   if (useDatabase()) {
     const result = await getPool().query<BlogRow>(
       `UPDATE marketing_blog_posts SET
          slug = $2, title = $3, excerpt = $4, content_html = $5,
          cover_image_url = $6, author_name = $7, author_role = $8,
          tags = $9, status = $10, published_at = $11,
-         seo_title = $12, seo_description = $13, updated_at = now()
+         seo_title = $12, seo_description = $13, updated_at = now(),
+         updated_by_user_id = $14,
+         published_by_user_id = CASE
+           WHEN $10 = 'published' THEN COALESCE($15, published_by_user_id)
+           WHEN $10 = 'draft' THEN NULL
+           ELSE published_by_user_id
+         END,
+         last_published_by_email = CASE
+           WHEN $10 = 'published' AND ($16::text IS NOT NULL) THEN $16
+           WHEN $10 = 'draft' THEN NULL
+           ELSE last_published_by_email
+         END
        WHERE id = $1
        RETURNING *`,
       [
@@ -358,6 +417,9 @@ export async function updateBlogPost(id: string, input: BlogPostInput): Promise<
         normalized.publishedAt,
         normalized.seoTitle,
         normalized.seoDescription,
+        publisher?.userId ?? null,
+        becamePublished || normalized.status === "published" ? (publisher?.userId ?? null) : null,
+        becamePublished && publisher?.email ? publisher.email : null,
       ],
     );
     const row = result.rows[0];
@@ -383,6 +445,10 @@ export async function updateBlogPost(id: string, input: BlogPostInput): Promise<
     updated_at: new Date().toISOString(),
     seo_title: normalized.seoTitle ?? null,
     seo_description: normalized.seoDescription ?? null,
+    last_published_by_email:
+      normalized.status === "published"
+        ? (publisher?.email ?? existing.lastPublishedByEmail ?? null)
+        : null,
   });
   posts[index] = updated;
   writeFilePosts(posts);
