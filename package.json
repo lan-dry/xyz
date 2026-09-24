@@ -19,7 +19,6 @@
     "db:seed": "pnpm --filter aegis-api db:seed",
     "db:seed:bootstrap": "pnpm --filter aegis-api db:seed:bootstrap",
     "db:generate": "prisma generate",
-    "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:push:web": "prisma db push",
     "db:migrate:web": "prisma migrate dev",
