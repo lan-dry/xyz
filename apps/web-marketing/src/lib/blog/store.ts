@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { normalizePostgresDatabaseUrl } from "@salanor/db-url";
 import pg from "pg";
 
 import {
@@ -49,7 +50,10 @@ function getPool(): pg.Pool {
   if (pool) return pool;
   const url = process.env.DATABASE_URL?.trim();
   if (!url) throw new Error("DATABASE_URL is required for blog storage");
-  pool = new pg.Pool({ connectionString: url, max: 4 });
+  pool = new pg.Pool({
+    connectionString: normalizePostgresDatabaseUrl(url),
+    max: 4,
+  });
   return pool;
 }
 

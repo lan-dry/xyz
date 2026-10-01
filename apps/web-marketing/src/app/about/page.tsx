@@ -21,7 +21,7 @@ export default function AboutPage() {
       <MarketingPage
         label="About"
         title="Salanor"
-        lead="We build what enterprises need before autonomous agents run in regulated environments. Not another agent framework."
+        lead="We build audit-grade records for automated decisions — who acted, under which policy, with evidence you can export when compliance asks."
         layout="wide"
         backHref="/"
         showBackLink={false}
@@ -48,7 +48,7 @@ export default function AboutPage() {
             <a href={contactUrl()} style={{ color: "var(--teal-bright)", textDecoration: "none" }}>
               Get access
             </a>{" "}
-            for design partners and investors. Console accounts are provisioned after onboarding.
+            for pilots and enterprise buyers. Console access is provisioned after we onboard your org.
           </p>
         </>
       </MarketingPage>

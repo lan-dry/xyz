@@ -9,7 +9,7 @@ import styles from "./trust.module.css";
 export const metadata: Metadata = {
   title: "Trust & status",
   description:
-    "What is live in the Salanor Aegis design-partner pilot vs roadmap. BYOK, witness cadence, compliance exports, and integrations.",
+    "What Salanor Aegis ships today vs pilot and roadmap — BYOK, witness cadence, compliance exports, and integrations.",
   alternates: { canonical: "/trust" },
 };
 
@@ -21,8 +21,8 @@ export default function TrustPage() {
     <MarketingPage
       layout="wide"
       label="Trust"
-      title="Platform status"
-      lead="Honest view of what works in production today for design partners. Updated with each release."
+      title="What we ship today"
+      lead="Straight status for buyers and security reviewers: live, pilot, or roadmap — updated as we release."
     >
       <p className={styles.summary}>
         <strong>{live}</strong> capabilities live · <strong>{pilot}</strong> in pilot ·{" "}
@@ -76,7 +76,10 @@ export default function TrustPage() {
       </div>
 
       <section className={styles.ops}>
-        <h2>Production ops checklist</h2>
+        <h2>For operators (production checklist)</h2>
+        <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem", color: "var(--text-muted)" }}>
+          Reference if you run Aegis workers on your own infrastructure.
+        </p>
         <ul>
           <li>
             <code>pnpm witness:worker</code>: Merkle batches every 60s (

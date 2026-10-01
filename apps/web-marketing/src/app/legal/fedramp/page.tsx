@@ -17,7 +17,7 @@ export default function FedRampPage() {
       title="FedRAMP Moderate path"
       layout="narrow"
       backHref="/trust"
-      lead="How we map Aegis to FedRAMP Moderate controls for US public-sector design partners."
+      lead="How we map Aegis to FedRAMP Moderate controls for US public-sector buyers evaluating the platform."
     >
       <LegalProse>
         <LegalMeta>

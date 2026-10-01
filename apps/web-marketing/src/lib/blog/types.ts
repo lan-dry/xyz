@@ -9,6 +9,8 @@ export type BlogPost = {
   coverImageUrl: string | null;
   authorName: string;
   authorRole: string | null;
+  authorAccountId?: string | null;
+  authorEmail?: string | null;
   tags: string[];
   status: BlogPostStatus;
   publishedAt: string | null;

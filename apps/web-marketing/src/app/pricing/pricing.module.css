@@ -28,7 +28,7 @@
 
 .cardHighlight {
   border-color: var(--border-bright);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--teal) 25%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--teal-bright) 35%, transparent);
 }
 
 .cardHead {
@@ -118,13 +118,15 @@
 }
 
 .ctaPrimary {
-  background: var(--teal-dim);
-  border-color: var(--teal);
-  color: var(--text);
+  background: var(--teal-bright);
+  border-color: var(--teal-bright);
+  color: #0a0c0b;
+  font-weight: 600;
 }
 
 .ctaPrimary:hover {
-  background: var(--teal);
+  background: #5dd4bb;
+  border-color: #5dd4bb;
 }
 
 .compareWrap {

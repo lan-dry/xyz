@@ -130,7 +130,7 @@ export default function SpecPage() {
         <p className={styles.note}>
           Implementer feedback:{" "}
           <a href="mailto:standards@salanor.com">standards@salanor.com</a> or the{" "}
-          <Link href="/contact">contact form</Link> (topic: design partner).
+          <Link href="/contact">contact form</Link>.
         </p>
       </section>
     </MarketingPage>

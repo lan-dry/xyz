@@ -22,9 +22,9 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-const titleDefault = "Salanor · Governed automation with audit proof";
+const titleDefault = "Salanor · Verifiable decision record for automated actions";
 const description =
-  "Salanor implements critical workflows on your stack with Aegis built in: rules, human approvals, signed traces, and compliance exports.";
+  "Who authorized this action — and can you prove it later? Salanor (Aegis) signs automated tool calls, enforces policy and human approval, and exports evidence for audit.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),

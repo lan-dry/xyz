@@ -26,11 +26,13 @@ export function ProductPageContent({ product }: { product: Product }) {
         <div className={shared.heroGrid} aria-hidden />
         <div className="section-inner">
           <ScrollReveal>
-            <Link href="/#products" className={s.back}>
-              ← Platform
+            <Link href="/" className="page-nav-link">
+              Salanor home
             </Link>
-            <p className="section-label">{product.tag}</p>
-            <span className={s.status}>{product.status}</span>
+            <div className={s.productMeta}>
+              <span className={s.productTag}>{product.tag}</span>
+              <span className={s.status}>{product.status}</span>
+            </div>
             <h1>{product.headline}</h1>
             {"brandLine" in product && product.brandLine ? (
               <p className={s.brandLine}>{product.brandLine}</p>
@@ -51,7 +53,7 @@ export function ProductPageContent({ product }: { product: Product }) {
                     View pricing →
                   </Link>
                   <Link href="/contact" className={shared.btnHeroGhost}>
-                    Request design partner access
+                    Contact
                   </Link>
                   <a href="https://github.com/salanor-ltd/salanor" className={shared.btnHeroGhost} target="_blank" rel="noopener noreferrer">
                     View on GitHub

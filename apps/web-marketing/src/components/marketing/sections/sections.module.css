@@ -78,6 +78,49 @@
   max-width: 34rem;
 }
 
+.heroIcp {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 1rem;
+  max-width: 32rem;
+}
+
+.exampleList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 40rem;
+}
+
+.exampleList li {
+  padding-left: 1.25rem;
+  position: relative;
+  color: var(--text);
+  line-height: 1.65;
+}
+
+.exampleList li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--teal-bright);
+}
+
+.exampleFoot {
+  margin: 1.5rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  max-width: 36rem;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -156,21 +199,20 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--teal);
-  color: #fff;
+  background: var(--teal-bright);
+  color: #0a0c0b;
   padding: 0.875rem 1.75rem;
   border-radius: 8px;
   font-size: 0.9375rem;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
-  border: 1px solid var(--teal);
-  transition: all 0.2s;
+  border: 1px solid var(--teal-bright);
+  transition: background 0.2s, border-color 0.2s;
 }
 
 .btnHero:hover {
-  background: var(--teal-bright);
-  border-color: var(--teal-bright);
-  transform: translateY(-1px);
+  background: #5dd4bb;
+  border-color: #5dd4bb;
 }
 
 .btnHeroGhost {
@@ -291,7 +333,7 @@
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--teal);
+  color: var(--teal-bright);
   margin-bottom: 0.625rem;
 }
 
@@ -326,11 +368,11 @@
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--teal);
+  color: var(--text);
   border: 1px solid var(--border-bright);
   border-radius: 4px;
   padding: 0.1875rem 0.5rem;
-  background: rgba(67, 194, 169, 0.08);
+  background: rgba(67, 194, 169, 0.12);
 }
 
 /* Implementation offer */

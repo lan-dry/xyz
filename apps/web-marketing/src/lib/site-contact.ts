@@ -39,7 +39,7 @@ const DEFAULT_CONTACT: SiteContact = {
     {
       id: "partnerships",
       label: "Partnerships",
-      description: "Design partners, pilots, integrations, and procurement.",
+      description: "Pilots, production rollouts, integrations, and procurement.",
       email: "partners@salanor.com",
     },
     {

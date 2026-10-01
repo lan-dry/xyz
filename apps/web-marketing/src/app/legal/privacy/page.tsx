@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       title="Privacy Policy"
       layout="narrow"
       backHref="/"
-      lead="How we handle personal information when you use our website, contact us, or participate in an Aegis design partner pilot."
+      lead="How we handle personal information when you use our website, contact us, or use the Aegis console and APIs."
     >
       <LegalProse>
         <LegalMeta>
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
             <li>Visit salanor.com and related marketing pages</li>
             <li>Submit the contact or design-partner forms</li>
             <li>Sign in to the Aegis console or Salanor Platform Ops (pilot environments)</li>
-            <li>Use the {BRAND.product} API and SDKs as a customer or design partner</li>
+            <li>Use the {BRAND.product} API and SDKs as a customer</li>
           </ul>
           <p>
             Customer agreements and data processing addenda (DPAs) govern production tenant data

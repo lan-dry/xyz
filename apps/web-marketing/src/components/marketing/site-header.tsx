@@ -6,39 +6,21 @@ import { useCallback, useEffect, useId, useState } from "react";
 
 import { ConsoleNavLink } from "./console-nav-link";
 import { contactUrl, docsUrl } from "@/lib/site-urls";
-import { PRODUCTS } from "@/lib/marketing-content";
 
 import btn from "./buttons.module.css";
 import { DocsDropdown, type DocsNavItem } from "./docs-dropdown";
 import { NavTextLink } from "./nav-link";
-import { ProductsDropdown, type ProductNavItem } from "./products-dropdown";
 import { SalanorLogo } from "./salanor-logo";
 import styles from "./site-header.module.css";
 
-const PRODUCT_NAV: ProductNavItem[] = [
-  {
-    href: "/products/aegis",
-    label: PRODUCTS.aegis.name,
-    description: PRODUCTS.aegis.tag,
-    badge: "GA 2026",
-  },
-  {
-    href: "/products/aether",
-    label: PRODUCTS.aether.name,
-    description: PRODUCTS.aether.tag,
-    badge: "2027",
-  },
-];
-
 const DOCS_NAV: DocsNavItem[] = [
-  { product: "aegis", label: "Aegis", description: "SDK, API, APS-1 events" },
-  { product: "aether", label: "Aether", description: "Intelligence layer (preview)" },
+  { product: "aegis", label: "Documentation", description: "SDK, API, APS-1 events" },
 ];
 
 const NAV_LINKS = [
+  { href: "/products/aegis", label: "Aegis" },
   { href: "/about", label: "About" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/spec", label: "Specs" },
   { href: "/#how", label: "How it works" },
   { href: "/contact", label: "Contact" },
 ] as const;
@@ -62,12 +44,10 @@ export function SiteHeader() {
   const pathname = usePathname();
   const mobileId = useId();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [productsOpen, setProductsOpen] = useState(false);
   const [docsOpen, setDocsOpen] = useState(false);
 
   const closeAll = useCallback(() => {
     setMobileOpen(false);
-    setProductsOpen(false);
     setDocsOpen(false);
   }, []);
 
@@ -92,14 +72,6 @@ export function SiteHeader() {
         </div>
 
         <nav className={styles.nav} aria-label="Primary">
-          <ProductsDropdown
-            items={PRODUCT_NAV}
-            open={productsOpen}
-            onOpenChange={(open) => {
-              setProductsOpen(open);
-              if (open) setDocsOpen(false);
-            }}
-          />
           {NAV_LINKS.map((item) => (
             <NavTextLink key={item.href} href={item.href}>
               {item.label}
@@ -108,10 +80,7 @@ export function SiteHeader() {
           <DocsDropdown
             items={DOCS_NAV}
             open={docsOpen}
-            onOpenChange={(open) => {
-              setDocsOpen(open);
-              if (open) setProductsOpen(false);
-            }}
+            onOpenChange={setDocsOpen}
           />
         </nav>
 
@@ -138,38 +107,19 @@ export function SiteHeader() {
         className={`${styles.mobilePanel} ${mobileOpen ? styles.mobilePanelOpen : ""}`}
         hidden={!mobileOpen}
       >
-        <p className={styles.mobileSectionLabel}>Products</p>
         <ul className={styles.mobileNav}>
-          {PRODUCT_NAV.map((item) => (
-            <li key={item.href}>
-              <Link href={item.href} onClick={closeAll}>
-                <strong style={{ color: "var(--text)", fontWeight: 500 }}>{item.label}</strong>
-                <span style={{ display: "block", fontSize: "0.75rem", marginTop: "0.125rem" }}>
-                  {item.description}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <p className={styles.mobileSectionLabel}>Documentation</p>
-        <ul className={styles.mobileNav}>
-          {DOCS_NAV.map((item) => (
-            <li key={item.product}>
-              <a href={docsUrl(item.product)} onClick={closeAll}>
-                <strong style={{ color: "var(--text)", fontWeight: 500 }}>{item.label}</strong>
-                <span style={{ display: "block", fontSize: "0.75rem", marginTop: "0.125rem" }}>
-                  {item.description}
-                </span>
-              </a>
-            </li>
-          ))}
           {NAV_LINKS.map((item) => (
-            <li key={`m-${item.href}`}>
+            <li key={item.href}>
               <Link href={item.href} onClick={closeAll}>
                 {item.label}
               </Link>
             </li>
           ))}
+          <li>
+            <a href={docsUrl("aegis")} onClick={closeAll}>
+              Documentation
+            </a>
+          </li>
         </ul>
         <div className={styles.mobileCtas}>
           <ConsoleNavLink className={btn.btnGhost} onClick={closeAll} />
