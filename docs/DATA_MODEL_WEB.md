@@ -49,16 +49,15 @@
 
 ## 2. Tables
 
-### `authors`
+### `account` (byline fields)
+Staff public research byline lives on the Salanor ID account row (see `docs/RESEARCH_ATTRIBUTION.md`):
+
 | Column | Type | Notes |
 |--------|------|-------|
-| id | uuid PK | |
-| name | text | |
-| role | text | |
-| bio | text | |
-| photo_url | text | |
-| links | jsonb | Array of `{label, href}` |
-| created_at | timestamptz | |
+| byline_name | text | Public name on www/research |
+| byline_title | text | Title / affiliation |
+| byline_bio | text | Short bio |
+| byline_photo_url | text | Optional headshot |
 
 ### `research_posts`
 | Column | Type | Notes |
@@ -68,7 +67,9 @@
 | title | text | |
 | dek | text | short summary |
 | body | text | MDX serialized **or** filesystem pointer + DB row metadata only (hybrid pattern) |
-| author_id | uuid FK → authors | nullable if guest |
+| author_account_id | uuid FK → account | Byline account (publisher) |
+| published_by_account_id | uuid FK → account | Audit: who published |
+| last_edited_by_account_id | uuid FK → account | Audit: last save in Ops |
 | track | research_track | |
 | published_at | timestamptz | nullable until published |
 | updated_at | timestamptz | |
@@ -117,12 +118,17 @@
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
-| email | text UNIQUE | |
-| confirmed_at | timestamptz nullable | |
-| source | text | |
-| unsubscribed_at | timestamptz nullable | |
+| email | text | unique via `lower(trim(email))` |
+| created_at / updated_at | timestamptz | |
+| confirmed_at | timestamptz nullable | set after double opt-in |
+| confirm_token | text unique nullable | cleared after confirm |
+| confirm_token_expires_at | timestamptz nullable | default 72h |
+| unsubscribe_token | text unique | permanent per row; use in List-Unsubscribe |
+| unsubscribed_at | timestamptz nullable | soft unsubscribe (do not DELETE) |
+| source | text | e.g. `website_footer` |
+| signup_ip_hash | text nullable | salted hash |
 
-**RLS:** INSERT with rate checks; SELECT admin only.
+See **`docs/NEWSLETTER.md`** for flows and API routes.
 
 ---
 

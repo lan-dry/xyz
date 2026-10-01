@@ -32,7 +32,7 @@
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "next dev",
+        "command": "node -e \"console.error('\\nDEPRECATED: apps/web is legacy. Use web-marketing (:3001), web-console (:3000), web-platform (:3003). See apps/web/README.md\\n'); process.exit(1)\"",
         "cwd": "apps/web"
       }
     },

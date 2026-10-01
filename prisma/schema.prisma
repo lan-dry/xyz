@@ -12,35 +12,22 @@ datasource db {
   // Local dev: DATABASE_URL alone is enough for `db push`.
 }
 
-model Author {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  role      String
-  bio       String
-  photoUrl  String?  @map("photo_url")
-  links     Json?
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  researchPosts ResearchPost[]
-
-  @@map("authors")
-}
-
 model ResearchPost {
-  id             String    @id @default(uuid()) @db.Uuid
-  slug           String    @unique
-  title          String
-  dek            String
-  body           String
-  authorId       String?   @map("author_id") @db.Uuid
-  author         Author?   @relation(fields: [authorId], references: [id])
-  track          String
-  publishedAt    DateTime? @map("published_at") @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  readingMinutes Int       @map("reading_minutes")
-  heroImageUrl   String?   @map("hero_image_url")
-  ogImageUrl     String?   @map("og_image_url")
-  status         String
+  id                     String    @id @default(uuid()) @db.Uuid
+  slug                   String    @unique
+  title                  String
+  dek                    String
+  body                   String
+  authorAccountId        String?   @map("author_account_id") @db.Uuid
+  publishedByAccountId   String?   @map("published_by_account_id") @db.Uuid
+  lastEditedByAccountId  String?   @map("last_edited_by_account_id") @db.Uuid
+  track                  String
+  publishedAt            DateTime? @map("published_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  readingMinutes         Int       @map("reading_minutes")
+  heroImageUrl           String?   @map("hero_image_url")
+  ogImageUrl             String?   @map("og_image_url")
+  status                 String
 
   @@index([status, publishedAt(sort: Desc)])
   @@map("research_posts")
@@ -115,11 +102,17 @@ model ContactMessage {
 }
 
 model NewsletterSubscriber {
-  id             String    @id @default(uuid()) @db.Uuid
-  email          String    @unique
-  confirmedAt    DateTime? @map("confirmed_at") @db.Timestamptz(6)
-  source         String
-  unsubscribedAt DateTime? @map("unsubscribed_at") @db.Timestamptz(6)
+  id                    String    @id @default(uuid()) @db.Uuid
+  email                 String
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  confirmedAt           DateTime? @map("confirmed_at") @db.Timestamptz(6)
+  confirmToken          String?   @unique @map("confirm_token")
+  confirmTokenExpiresAt DateTime? @map("confirm_token_expires_at") @db.Timestamptz(6)
+  unsubscribeToken      String    @unique @map("unsubscribe_token")
+  unsubscribedAt        DateTime? @map("unsubscribed_at") @db.Timestamptz(6)
+  source                String    @default("website")
+  signupIpHash          String?   @map("signup_ip_hash")
 
   @@index([email])
   @@map("newsletter_subscribers")

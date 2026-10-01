@@ -3,6 +3,7 @@
 **You (Salanor):** Platform Ops **http://localhost:3003**  
 **Partner (customer):** Aegis Console **http://localhost:3000**
 
+**Sales-first (demo + emails):** [DESIGN_PARTNER_DEMO.md](./DESIGN_PARTNER_DEMO.md)  
 Full step-by-step UI paths: [E2E_PARTNER_ONBOARDING.md](./E2E_PARTNER_ONBOARDING.md).
 
 ---

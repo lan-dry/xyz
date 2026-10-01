@@ -64,6 +64,12 @@ export {
 } from "./login-events.js";
 export { hashPassword, verifyPassword } from "./password.js";
 export {
+  formatAuditLocation,
+  formatCountryLabel,
+  getClientGeoFromHeaders,
+  type ClientGeo,
+} from "./client-geo.js";
+export {
   checkRateLimit,
   getClientIp,
   ingestRateLimitKey,
@@ -158,6 +164,7 @@ export {
   platformListAccounts,
   platformListAccountsPaginated,
   platformListAuditLogs,
+  platformListDistinctAuditActions,
   platformListOrganizations,
   platformGetOrganization,
   platformOverviewStats,

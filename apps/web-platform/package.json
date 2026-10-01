@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3003",
+    "dev:clean": "node ../../tools/scripts/rm-rf.mjs .next && next dev --port 3003",
     "build": "next build",
     "start": "next start --port 3003",
     "lint": "eslint .",
@@ -15,7 +16,9 @@
     "@salanor/plan-display": "workspace:*",
     "@tanstack/react-query": "^5.77.2",
     "lucide-react": "^1.16.0",
+    "marked": "^15.0.12",
     "next": "^15.3.3",
+    "sanitize-html": "^2.17.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
@@ -23,6 +26,7 @@
     "@next/eslint-plugin-next": "^15.3.3",
     "@salanor/config": "workspace:*",
     "@types/node": "^22.15.21",
+    "@types/sanitize-html": "^2.16.1",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
     "eslint": "^9.28.0",

@@ -8,6 +8,7 @@ import {
   platformGetAccount,
   platformListAccountsPaginated,
   platformListAuditLogs,
+  platformListDistinctAuditActions,
   platformListWorkerRuns,
   platformListOrganizations,
   platformGetOrganization,
@@ -401,12 +402,21 @@ platformRoutes.get("/overview/stats", async (c) => {
   return c.json({ stats });
 });
 
+platformRoutes.get("/audit-logs/actions", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:read");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const actions = await platformListDistinctAuditActions(getPool());
+  return c.json({ actions });
+});
+
 platformRoutes.get("/audit-logs", async (c) => {
   const access = await requirePlatformPermission(c, "platform:read");
   if (!access.ok) return c.json({ error: access.error }, 403);
   const limit = Number(c.req.query("limit") || "50");
   const offset = Number(c.req.query("offset") || "0");
-  const result = await platformListAuditLogs(getPool(), { limit, offset });
+  const action = c.req.query("action")?.trim();
+  const q = c.req.query("q")?.trim();
+  const result = await platformListAuditLogs(getPool(), { limit, offset, action, q });
   return c.json({
     logs: result.logs.map((row) => ({
       ...row,

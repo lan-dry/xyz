@@ -107,7 +107,10 @@ export async function postEvent(c: Context): Promise<Response> {
     }
 
     const toolName = event.tool_name?.trim() ?? "";
-    if (toolName) {
+    // Result events after wrapFetchResume are signed allow; obligation was satisfied at approval time.
+    const skipObligationRecheck =
+      event.action_kind === "result" || event.action_kind === "human_approval";
+    if (toolName && event.action_kind !== "policy_decision" && !skipObligationRecheck) {
       const policyPayload = enrichProvenancePayload({
         payload: event.payload as Record<string, unknown>,
         toolName,
@@ -120,16 +123,23 @@ export async function postEvent(c: Context): Promise<Response> {
         toolName,
         payload: policyPayload,
       });
-      if (policy.decision === "deny") {
-        event.policy_decision = "deny";
-        if (policy.policy_id !== "none") {
-          event.policy_id = policy.policy_id;
-        }
-      } else if (policy.decision === "allow_with_obligation") {
-        event.policy_decision = "allow_with_obligation";
-        if (policy.policy_id !== "none") {
-          event.policy_id = policy.policy_id;
-        }
+      if (policy.decision === "deny" && event.policy_decision === "allow") {
+        return c.json(
+          { error: "Policy denied this tool; event must be signed with policy_decision deny" },
+          403,
+        );
+      }
+      if (
+        policy.decision === "allow_with_obligation" &&
+        event.policy_decision === "allow"
+      ) {
+        return c.json(
+          {
+            error:
+              "Policy requires approval; use wrapFetch or sign allow_with_obligation",
+          },
+          403,
+        );
       }
     }
 

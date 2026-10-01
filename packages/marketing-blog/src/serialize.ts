@@ -1,5 +1,6 @@
 import matter from "gray-matter";
 
+import { toSortableIso } from "./dates";
 import type {
   BlogEditorContext,
   BlogMarkdownFrontmatter,
@@ -38,6 +39,13 @@ export function buildFrontmatter(
     seoTitle: input.seoTitle?.trim() || null,
     seoDescription: input.seoDescription?.trim() || null,
     coverImageUrl: input.coverImageUrl?.trim() || null,
+    authorAccountId: ctx.isCreate
+      ? ctx.editorAccountId?.trim() || null
+      : ctx.priorAuthorAccountId?.trim() || ctx.editorAccountId?.trim() || null,
+    authorEmail: ctx.isCreate
+      ? ctx.editorEmail.trim().toLowerCase()
+      : (ctx.priorAuthorEmail?.trim().toLowerCase() ||
+          ctx.editorEmail.trim().toLowerCase()),
     createdByEmail: ctx.isCreate ? ctx.editorEmail : ctx.previousCreatedByEmail ?? ctx.editorEmail,
     lastEditedByEmail: ctx.editorEmail,
     lastEditedAt: now,
@@ -67,13 +75,18 @@ export function parseBlogMarkdown(raw: string, filePath: string): BlogMarkdownPo
     authorRole: fm.authorRole?.trim() || null,
     tags: Array.isArray(fm.tags) ? fm.tags.map((t) => String(t).trim()).filter(Boolean) : [],
     status,
-    publishedAt: fm.publishedAt ?? null,
+    publishedAt: toSortableIso(fm.publishedAt) || null,
     seoTitle: fm.seoTitle?.trim() || null,
     seoDescription: fm.seoDescription?.trim() || null,
     coverImageUrl: fm.coverImageUrl?.trim() || null,
+    authorAccountId: fm.authorAccountId?.trim() || null,
+    authorEmail:
+      fm.authorEmail?.trim().toLowerCase() ||
+      fm.createdByEmail?.trim().toLowerCase() ||
+      null,
     createdByEmail: fm.createdByEmail?.trim() || null,
     lastEditedByEmail: fm.lastEditedByEmail?.trim() || null,
-    lastEditedAt: fm.lastEditedAt ?? null,
+    lastEditedAt: toSortableIso(fm.lastEditedAt) || null,
     bodyMarkdown: content.replace(/^\n/, "").replace(/\n$/, ""),
     filePath,
   } satisfies BlogMarkdownPost;

@@ -1,6 +1,5 @@
-/** Defaults match `tools/seed/dev.sql` (dev-org). Override via `.env` for live org testing. */
-export const DEV_ORGANIZATION_ID = "11111111-1111-4111-8111-111111111111";
-export const DEV_ORGANIZATION_SLUG = "dev-org";
+import { DEFAULT_PLATFORM_ORG_SLUG, resolveOrganizationId } from "./resolve-org-id.mts";
+
 export const DEV_AGENT_ID = "agent-dev-01";
 export const DEV_KEY_ID = "key-dev-01";
 
@@ -11,12 +10,15 @@ export type DemoTargets = {
   keyId: string;
 };
 
-export function getDemoTargets(): DemoTargets {
+export async function getDemoTargets(): Promise<DemoTargets> {
+  const organizationSlug =
+    process.env.DEMO_ORGANIZATION_SLUG?.trim() ||
+    process.env.PILOT_ORGANIZATION_SLUG?.trim() ||
+    DEFAULT_PLATFORM_ORG_SLUG;
+  const organizationId = await resolveOrganizationId(organizationSlug);
   return {
-    organizationId:
-      process.env.DEMO_ORGANIZATION_ID?.trim() || DEV_ORGANIZATION_ID,
-    organizationSlug:
-      process.env.DEMO_ORGANIZATION_SLUG?.trim() || DEV_ORGANIZATION_SLUG,
+    organizationId,
+    organizationSlug,
     agentId: process.env.DEMO_AGENT_ID?.trim() || DEV_AGENT_ID,
     keyId: process.env.DEMO_KEY_ID?.trim() || DEV_KEY_ID,
   };

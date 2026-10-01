@@ -5,6 +5,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import pg from "pg";
 import "../db/load-env.js";
+import { resolveDemoOrganizationId } from "../db/resolve-organization.js";
 import { publishTransparencyLogForOrg } from "./publish.js";
 
 function loadEnvFile(): void {
@@ -32,13 +33,11 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const organizationId =
-  process.env.DEMO_ORGANIZATION_ID ?? "11111111-1111-4111-8111-111111111111";
-
 const pool = new pg.Pool({ connectionString: databaseUrl });
 const client = await pool.connect();
 
 try {
+  const organizationId = await resolveDemoOrganizationId(client);
   const result = await publishTransparencyLogForOrg(client, organizationId);
   console.log(
     JSON.stringify({ ok: true, organization_id: organizationId, ...result }, null, 2),

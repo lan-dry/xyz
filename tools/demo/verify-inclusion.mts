@@ -4,6 +4,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import pg from "pg";
+import { resolveOrganizationId } from "./resolve-org-id.mts";
 
 function loadEnvFile(): void {
   const root = resolve(import.meta.dirname, "../..");
@@ -35,8 +36,7 @@ const { verifyEventFull } = await import(
   "../../services/aegis-api/src/witness/verify-event.js"
 );
 
-const organizationId =
-  process.env.DEMO_ORGANIZATION_ID ?? "11111111-1111-4111-8111-111111111111";
+const organizationId = await resolveOrganizationId();
 
 const pool = new pg.Pool({ connectionString: databaseUrl });
 const client = await pool.connect();

@@ -12,6 +12,10 @@ export type BlogMarkdownFrontmatter = {
   seoTitle?: string | null;
   seoDescription?: string | null;
   coverImageUrl?: string | null;
+  /** Stable Salanor account UUID — public byline loads from Ops → My public profile. */
+  authorAccountId?: string | null;
+  /** Legacy fallback if authorAccountId is missing (email changes break this link). */
+  authorEmail?: string | null;
   createdByEmail?: string | null;
   lastEditedByEmail?: string | null;
   lastEditedAt?: string | null;
@@ -39,7 +43,11 @@ export type BlogPostSaveInput = {
 
 export type BlogEditorContext = {
   editorEmail: string;
+  editorAccountId?: string;
   editorDisplayName?: string | null;
   isCreate: boolean;
   previousCreatedByEmail?: string | null;
+  /** Preserved on edit so co-authors do not reassign the byline account. */
+  priorAuthorAccountId?: string | null;
+  priorAuthorEmail?: string | null;
 };

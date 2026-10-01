@@ -23,7 +23,9 @@ git clone git@github.com:salanor-ltd/salanor.git
 cd salanor
 pnpm install
 docker compose up -d
-pnpm db:migrate && pnpm db:seed
+pnpm db:migrate
+pnpm db:seed:bootstrap   # real staff email — prod and local
+pnpm db:local:pilot-fixture   # optional: dev-org demo (Docker only)
 pnpm --filter aegis-api test
 curl -f http://localhost:8080/health
 ```

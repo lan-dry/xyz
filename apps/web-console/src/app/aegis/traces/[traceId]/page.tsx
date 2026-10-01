@@ -71,18 +71,19 @@ export default function TraceDetailPage() {
 
   return (
     <ConsolePage>
-      <BackLink href="/aegis/traces">← Traces</BackLink>
+      <BackLink href="/aegis/traces">Traces</BackLink>
       {isLoading ? <LoadingBlock /> : null}
       {error ? <ErrorAlert message="Trace not found or failed to load." /> : null}
       {data ? (
         <>
           <PageHeader
-            title={data.trace.trace_id}
+            title={traceInsights?.headline ?? "Agent run record"}
             subtitle={
               <>
-                Agent <code>{data.trace.agent_id}</code> ·{" "}
+                Trace <code>{data.trace.trace_id}</code> · agent{" "}
+                <code>{data.trace.agent_id}</code> ·{" "}
                 <StatusBadge status={data.trace.status} /> · {data.trace.total_events}{" "}
-                event(s) · started {new Date(data.trace.started_at).toLocaleString()}
+                step(s) · {new Date(data.trace.started_at).toLocaleString()}
               </>
             }
             actions={
@@ -90,15 +91,15 @@ export default function TraceDetailPage() {
                 href={`/aegis/traces/${encodeURIComponent(traceId)}/replay`}
                 className={`${ui.btn} ${ui.btnPrimary}`}
               >
-                Replay
+                Step-through replay
               </Link>
             }
           />
-          {data.trace.chain_root_hash ? (
-            <ChainRootPanel
-              chainRootHash={data.trace.chain_root_hash}
-              rootEventId={data.trace.root_event_id}
-              rootEventHash={data.trace.root_event_hash}
+          {traceInsights ? (
+            <GovernanceInsightsPanel
+              headline={traceInsights.headline}
+              subtitle="Blocked actions show what the agent tried, with what context, and which policy stopped it."
+              insights={traceInsights.insights}
             />
           ) : null}
           {highlightEvent?.provenance_claim ? (
@@ -107,11 +108,20 @@ export default function TraceDetailPage() {
               authority={highlightEvent.provenance_authority}
             />
           ) : null}
-          {traceInsights ? (
-            <GovernanceInsightsPanel
-              headline={traceInsights.headline}
-              insights={traceInsights.insights}
-            />
+          {data.trace.chain_root_hash ? (
+            <details style={{ marginBottom: "1rem" }}>
+              <summary
+                className={ui.panelTitle}
+                style={{ cursor: "pointer", fontSize: "0.9375rem", marginBottom: "0.5rem" }}
+              >
+                Cryptographic chain (for auditors)
+              </summary>
+              <ChainRootPanel
+                chainRootHash={data.trace.chain_root_hash}
+                rootEventId={data.trace.root_event_id}
+                rootEventHash={data.trace.root_event_hash}
+              />
+            </details>
           ) : null}
           {hasTimeline ? (
             <SpanTreePanel tree={data.span_tree ?? []} orphanEvents={orphanEvents} />

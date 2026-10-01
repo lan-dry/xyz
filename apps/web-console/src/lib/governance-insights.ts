@@ -72,6 +72,7 @@ export function buildGovernanceInsights(
   };
 
   const insights: GovernanceInsight[] = [];
+  const deniedBlocks: GovernanceInsight[] = [];
 
   for (const e of events) {
     const p = payloadRecord(e.payload);
@@ -103,14 +104,39 @@ export function buildGovernanceInsights(
 
     if (e.action_kind === "policy_decision") {
       stats.policy_evaluations += 1;
-      if (e.policy_decision === "deny") stats.tools_denied += 1;
+      if (e.policy_decision === "deny") {
+        stats.tools_denied += 1;
+        const tool = e.tool_name?.trim() || "unknown tool";
+        const summary =
+          str(p?.investor_summary) ??
+          str(p?.business_context) ??
+          str(p?.trigger_detail);
+        const trigger = str(p?.trigger_source);
+        const amount = num(p?.amount_usd ?? p?.amount);
+        const policyLabel = str(p?.policy_id) ?? "your active policy";
+        const detailLines = [
+          summary,
+          amount != null ? `Attempted amount: $${amount} USD (not sent).` : null,
+          trigger
+            ? `After workflow step: ${trigger}${p?.trigger_detail ? ` (${str(p.trigger_detail)})` : ""}.`
+            : null,
+          `Policy ${policyLabel} denied this tool before any payment API was called.`,
+        ].filter(Boolean);
+        deniedBlocks.push({
+          id: `deny-${deniedBlocks.length}-${tool}`,
+          severity: "critical",
+          title: `Blocked: ${tool}`,
+          detail: detailLines.join(" "),
+          metric: amount != null ? `$${amount}` : "deny",
+        });
+      }
       if (e.policy_decision === "allow") stats.tools_allowed += 1;
       if (e.policy_decision === "allow_with_obligation") {
         stats.obligation_required += 1;
       }
 
       const amount = num(p?.amount_usd ?? p?.amount);
-      if (amount != null) {
+      if (amount != null && e.policy_decision !== "deny") {
         stats.financial_exposure_usd =
           (stats.financial_exposure_usd ?? 0) + amount;
       }
@@ -143,12 +169,16 @@ export function buildGovernanceInsights(
     });
   }
 
-  if (stats.tools_denied > 0) {
+  if (deniedBlocks.length > 0) {
+    for (const block of deniedBlocks.reverse()) {
+      insights.unshift(block);
+    }
+  } else if (stats.tools_denied > 0) {
     insights.unshift({
       id: "prevented-actions",
       severity: "critical",
       title: "High-risk actions stopped before execution",
-      detail: `${stats.tools_denied} tool call(s) denied by policy before any outbound API ran. Loss prevention is one benefit: not the only one.`,
+      detail: `${stats.tools_denied} tool call(s) denied by policy before any outbound API ran.`,
       metric: String(stats.tools_denied),
     });
   }

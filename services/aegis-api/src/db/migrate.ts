@@ -8,9 +8,10 @@ const MIGRATIONS_DIR = join(
   "../../migrations",
 );
 
-/** Forward-only SQL migrations (one `.sql` file per version). */
+/** Forward-only SQL migrations (one `.sql` file per version). Greenfield: `001_baseline` only. */
 const MIGRATIONS = [
   { version: "001_baseline", file: "001_baseline.sql" },
+  { version: "002_account_byline_social", file: "002_account_byline_social.sql" },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {

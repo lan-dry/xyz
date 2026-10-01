@@ -65,6 +65,17 @@ export async function githubListMarkdownFiles(repoDir: string): Promise<string[]
     .map((e) => e.path);
 }
 
+export async function githubListFiles(repoDir: string): Promise<string[]> {
+  const res = await githubFetch(repoDir.replace(/^\//, ""));
+  if (res.status === 404) return [];
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`GitHub list failed (${res.status}): ${body.slice(0, 200)}`);
+  }
+  const entries = (await res.json()) as GitHubDirEntry[];
+  return entries.filter((e) => e.type === "file").map((e) => e.name);
+}
+
 export async function githubPutFile(
   repoPath: string,
   contentUtf8: string,

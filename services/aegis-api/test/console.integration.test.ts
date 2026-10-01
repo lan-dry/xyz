@@ -1,17 +1,26 @@
 import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import "../src/db/load-env.js";
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
 import { consoleRoutes } from "../src/routes/console/index.js";
+import {
+  applyIntegrationFixture,
+  INTEGRATION_MEMBERSHIP_A,
+  INTEGRATION_MEMBERSHIP_B,
+  INTEGRATION_ORG_A,
+  INTEGRATION_ORG_B,
+} from "./integration-fixture.js";
+import { insertTestAdmin } from "./insert-test-admin.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describeIfDb = databaseUrl ? describe : describe.skip;
 
-const ORG_A = "11111111-1111-4111-8111-111111111111";
+const ORG_A = INTEGRATION_ORG_A;
+const VITEST_PASSWORD = "vitest-console-pass-12";
+
+let adminOrgAEmail: string;
+let adminOrgBEmail: string;
 
 function appWithConsole() {
   const app = new Hono();
@@ -39,11 +48,25 @@ async function login(
 describeIfDb("console API", () => {
   beforeAll(async () => {
     await migrateUp();
-    const seedPath = resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      "../../../tools/seed/dev.sql",
+    await applyIntegrationFixture(getPool());
+    await getPool().query(
+      `INSERT INTO organization (organization_id, name, slug, onboarding_completed_at)
+       VALUES ($1, 'Isolation Test Organization', 'dev-org-b', now())
+       ON CONFLICT (slug) DO NOTHING`,
+      [INTEGRATION_ORG_B],
     );
-    await getPool().query(readFileSync(seedPath, "utf8"));
+    const a = await insertTestAdmin(getPool(), {
+      organizationId: ORG_A,
+      membershipId: INTEGRATION_MEMBERSHIP_A,
+      password: VITEST_PASSWORD,
+    });
+    const b = await insertTestAdmin(getPool(), {
+      organizationId: INTEGRATION_ORG_B,
+      membershipId: INTEGRATION_MEMBERSHIP_B,
+      password: VITEST_PASSWORD,
+    });
+    adminOrgAEmail = a.email;
+    adminOrgBEmail = b.email;
   });
 
   afterAll(async () => {
@@ -82,11 +105,7 @@ describeIfDb("console API", () => {
     );
 
     const app = appWithConsole();
-    const cookieA = await login(
-      app,
-      "dev@salanor.local",
-      process.env.DEV_CONSOLE_PASSWORD_ORG_A ?? "dev-admin-change-me",
-    );
+    const cookieA = await login(app, adminOrgAEmail, VITEST_PASSWORD);
     const resA = await app.request("/v1/console/traces", {
       headers: { Cookie: `aegis_session=${cookieA}` },
     });
@@ -126,11 +145,7 @@ describeIfDb("console API", () => {
     };
     expect(detailBody.events[0]?.provenance_claim).toContain("agent-dev-01");
 
-    const cookieB = await login(
-      app,
-      "dev-b@salanor.local",
-      process.env.DEV_CONSOLE_PASSWORD_ORG_B ?? "dev-b-admin-change-me",
-    );
+    const cookieB = await login(app, adminOrgBEmail, VITEST_PASSWORD);
     const resB = await app.request("/v1/console/traces", {
       headers: { Cookie: `aegis_session=${cookieB}` },
     });
@@ -141,11 +156,7 @@ describeIfDb("console API", () => {
 
   it("admin can create ingest key scoped to organization", async () => {
     const app = appWithConsole();
-    const cookie = await login(
-      app,
-      "dev@salanor.local",
-      process.env.DEV_CONSOLE_PASSWORD_ORG_A ?? "dev-admin-change-me",
-    );
+    const cookie = await login(app, adminOrgAEmail, VITEST_PASSWORD);
     const res = await app.request("/v1/console/ingest-keys", {
       method: "POST",
       headers: {

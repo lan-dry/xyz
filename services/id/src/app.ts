@@ -11,6 +11,7 @@ import {
   createPasswordResetToken,
   createSession,
   deleteSession,
+  getClientGeoFromHeaders,
   getClientIp,
   isEmailVerified,
   pickDefaultOrganizationId,
@@ -124,6 +125,7 @@ app.post("/v1/id/auth/login", async (c) => {
   }
 
   const ip = getClientIp(c.req.raw.headers);
+  const geo = getClientGeoFromHeaders(c.req.raw.headers);
   const userAgent = c.req.header("user-agent") ?? null;
   const email = body.email.trim().toLowerCase();
 
@@ -212,6 +214,7 @@ app.post("/v1/id/auth/login", async (c) => {
       email: session.email,
       source: "salanor-id",
       ip,
+      geo,
     });
     await recordAccountLoginEvent(client, {
       accountId: verified.accountId,

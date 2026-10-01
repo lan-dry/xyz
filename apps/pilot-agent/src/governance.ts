@@ -1,16 +1,20 @@
 import {
   newSpanId,
   newTraceId,
+  ApprovalRequiredError,
   PolicyDeniedError,
+  wrapFetchResume,
   recordDataAccess,
   recordDecision,
   recordLlmInvocation as sdkRecordLlm,
   recordProvenanceClaim,
   recordTraceStart,
+  recordTraceComplete,
   wrapFetch,
   type RecordContext,
 } from "@salanor/aegis";
 import type { PilotConfig } from "./config.js";
+import { buildInvestorSummary } from "./explain.js";
 
 export { newTraceId };
 
@@ -55,6 +59,22 @@ export function createGovernance(config: PilotConfig, traceId: string): Governan
   };
 }
 
+export async function finishTraceSession(
+  gov: Governance,
+  input: { summary: string; outcome?: "ok" | "error" },
+): Promise<string> {
+  return recordTraceComplete(
+    gov.recordCtx,
+    { summary: input.summary, outcome: input.outcome },
+    {
+      sign: gov.sign,
+      ingest: gov.ingest,
+      spanId: gov.spans.session,
+      spanLabel: "Session complete",
+    },
+  );
+}
+
 export async function startTraceSession(
   gov: Governance,
   input: { ticketId: string; summary: string },
@@ -93,9 +113,7 @@ export async function recordLlmInvocation(
     spanLabel?: string;
   },
 ): Promise<string> {
-  const investorSummary = input.businessContext
-    ? `${input.businessContext} Data touched: ${input.dataTouched.join(", ")}.`
-    : `AI step "${input.purpose}" on ${input.dataTouched.join(", ")}.`;
+  const investorSummary = buildInvestorSummary(input);
 
   return sdkRecordLlm(
     gov.recordCtx,
@@ -203,7 +221,11 @@ export async function attemptPaymentTool(
     triggerSource?: string;
     triggerReason?: string;
   },
-): Promise<"denied" | "allowed"> {
+): Promise<
+  | { outcome: "denied" }
+  | { outcome: "allowed" }
+  | { outcome: "approval_required"; approvalId: string; eventId: string }
+> {
   try {
     await wrapFetch(
       input.upstreamUrl,
@@ -247,11 +269,55 @@ export async function attemptPaymentTool(
         ingest: gov.ingest,
       },
     );
-    return "allowed";
+    return { outcome: "allowed" };
   } catch (err) {
     if (err instanceof PolicyDeniedError) {
-      return "denied";
+      return { outcome: "denied" };
+    }
+    if (err instanceof ApprovalRequiredError) {
+      return {
+        outcome: "approval_required",
+        approvalId: err.approvalId,
+        eventId: err.eventId,
+      };
     }
     throw err;
   }
+}
+
+export async function resumePaymentAfterApproval(
+  gov: Governance,
+  input: {
+    approvalId: string;
+    upstreamUrl: string;
+    amountUsd: number;
+    customerEmail: string;
+    orderId: string;
+  },
+): Promise<void> {
+  await wrapFetchResume(
+    input.approvalId,
+    input.upstreamUrl,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount_usd: input.amountUsd,
+        customer_email: input.customerEmail,
+        order_id: input.orderId,
+      }),
+    },
+    {
+      context: {
+        organizationId: gov.config.organizationId,
+        agentId: gov.config.agentId,
+        keyId: gov.config.keyId,
+        traceId: gov.traceId,
+        toolName: "stripe.paymentIntents.create",
+        actorPrincipal: gov.config.actorPrincipal,
+      },
+      sign: gov.sign,
+      ingest: gov.ingest,
+    },
+  );
 }

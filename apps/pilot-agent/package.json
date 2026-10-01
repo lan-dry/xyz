@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "pilot": "tsx src/index.ts",
+    "pilot:approval": "tsx src/index.ts approval",
+    "pilot:resume": "tsx src/index.ts resume",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

@@ -94,6 +94,36 @@ export async function recordTraceStart(
   return ingestEvent(event, options);
 }
 
+/** Closes a trace session (signed). Marks trace completed on ingest. */
+export async function recordTraceComplete(
+  ctx: RecordContext,
+  input: { summary?: string; outcome?: "ok" | "error" },
+  options: RecordOptions,
+): Promise<string> {
+  const spanId = options.spanId ?? newSpanId();
+  const event: ApsEvent = {
+    schema_version: 1,
+    event_id: newEventId(),
+    organization_id: ctx.organizationId,
+    trace_id: ctx.traceId,
+    agent_id: ctx.agentId,
+    key_id: ctx.keyId,
+    emitted_at: new Date().toISOString(),
+    actor_type: "agent",
+    actor_principal: ctx.actorPrincipal,
+    action_kind: "tool_call",
+    policy_decision: "allow",
+    tool_name: "aegis.trace.complete",
+    payload: mergeSpanPayload(spanId, options.spanLabel ?? "Session complete", {
+      action: "trace_session_complete",
+      summary: input.summary,
+      outcome: input.outcome ?? "ok",
+    }),
+  };
+
+  return ingestEvent(event, options);
+}
+
 /** Records an LLM boundary event (signed + ingested). */
 export async function recordLlmInvocation(
   ctx: RecordContext,

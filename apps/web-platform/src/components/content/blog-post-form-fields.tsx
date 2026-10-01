@@ -82,7 +82,7 @@ export function BlogPostFormFields({
       <input
         name="tags"
         defaultValue={defaults?.tags?.join(", ") ?? ""}
-        placeholder="Tags (comma-separated)"
+        placeholder="Tags (comma-separated labels — shown on the article, not used as site filters)"
         className={ui.input}
       />
       <div className={`${forms.formGrid3} ${forms.formGrid2}`}>
@@ -139,7 +139,7 @@ export function BlogPostFormFields({
       />
       {defaultAuthorEmail ? (
         <p style={{ fontSize: "0.75rem", color: "var(--console-fg-muted)" }}>
-          Git frontmatter records editor audit ({defaultAuthorEmail}).
+          Saves authorAccountId (stable Salanor account) plus editor audit ({defaultAuthorEmail}).
         </p>
       ) : null}
     </>

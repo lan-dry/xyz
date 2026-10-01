@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { assertPlatformSessionAction } from "@/lib/platform-server-session";
+import { gcUnreferencedBlogMedia } from "@/lib/cms-media-gc";
 import { getPrisma } from "@/lib/prisma";
 
 function requirePrisma() {
@@ -18,7 +19,7 @@ function toDate(input: FormDataEntryValue | null): Date | null {
 }
 
 export async function createRole(formData: FormData) {
-  await assertPlatformSessionAction("platform:content.write");
+  const session = await assertPlatformSessionAction("platform:content.write");
   await requirePrisma().openRole.create({
     data: {
       title: String(formData.get("title") ?? "").trim(),
@@ -35,11 +36,12 @@ export async function createRole(formData: FormData) {
       closesAt: toDate(formData.get("closesAt")),
     },
   });
+  await gcUnreferencedBlogMedia(session.email);
   revalidatePath("/content/careers");
 }
 
 export async function updateRole(id: string, formData: FormData) {
-  await assertPlatformSessionAction("platform:content.write");
+  const session = await assertPlatformSessionAction("platform:content.write");
   await requirePrisma().openRole.update({
     where: { id },
     data: {
@@ -57,6 +59,7 @@ export async function updateRole(id: string, formData: FormData) {
       closesAt: toDate(formData.get("closesAt")),
     },
   });
+  await gcUnreferencedBlogMedia(session.email);
   revalidatePath("/content/careers");
   revalidatePath(`/content/careers/${id}`);
 }

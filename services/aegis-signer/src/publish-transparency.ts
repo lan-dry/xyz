@@ -31,13 +31,26 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const organizationId =
-  process.env.DEMO_ORGANIZATION_ID ?? "11111111-1111-4111-8111-111111111111";
-
 const pool = new pg.Pool({ connectionString: databaseUrl });
 const client = await pool.connect();
 
 try {
+  const fromEnv = process.env.DEMO_ORGANIZATION_ID?.trim();
+  const slug =
+    process.env.DEMO_ORGANIZATION_SLUG?.trim() || "salanor-platform";
+  let organizationId = fromEnv;
+  if (!organizationId) {
+    const row = await client.query<{ organization_id: string }>(
+      `SELECT organization_id FROM organization WHERE slug = $1`,
+      [slug],
+    );
+    organizationId = row.rows[0]?.organization_id;
+  }
+  if (!organizationId) {
+    console.error(`No organization slug "${slug}". Run bootstrap + local pilot fixture.`);
+    process.exit(1);
+  }
+
   const result = await publishTransparencyLogForOrg(client, organizationId);
   console.log(JSON.stringify({ ok: true, organization_id: organizationId, ...result }, null, 2));
 } finally {

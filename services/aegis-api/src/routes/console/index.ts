@@ -23,6 +23,7 @@ import {
 import {
   assertCanCreateIngestKey,
   checkRateLimit,
+  getClientGeoFromHeaders,
   getClientIp,
   loginRateLimitKey,
   PlanLimitError,
@@ -209,6 +210,7 @@ consoleRoutes.route("/", governanceRoutes);
 
 consoleRoutes.post("/auth/login", async (c) => {
   const ip = getClientIp(c.req.raw.headers);
+  const geo = getClientGeoFromHeaders(c.req.raw.headers);
   const loginLimit = readRateLimitEnv("LOGIN_RATE_LIMIT", 20);
   const windowMs = readRateLimitEnv("LOGIN_RATE_WINDOW_MS", 900_000);
   const rl = checkRateLimit(loginRateLimitKey(ip), { limit: loginLimit, windowMs });
@@ -269,6 +271,7 @@ consoleRoutes.post("/auth/login", async (c) => {
       membershipId: session.userId,
       email: session.email,
       ip,
+      geo,
       source: "aegis-console",
     });
     setCookie(c, SALANOR_SESSION_COOKIE, token, sessionCookieOptions(60 * 60 * 24 * 7));

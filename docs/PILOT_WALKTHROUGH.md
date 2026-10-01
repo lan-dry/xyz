@@ -299,6 +299,7 @@ pnpm pilot:e2e        # onboarding API test (developer only)
 
 ## Related
 
+- [DESIGN_PARTNER_DEMO.md](./DESIGN_PARTNER_DEMO.md) — sales runbook (ICP, 20-min agenda, email templates)  
 - [E2E_PARTNER_ONBOARDING.md](./E2E_PARTNER_ONBOARDING.md) — detailed UI paths  
 - [PLATFORM_OPS.md](../docs-internal/PLATFORM_OPS.md) — staff app  
 - [apps/pilot-agent/README.md](../apps/pilot-agent/README.md) — env vars for the reference app

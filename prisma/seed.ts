@@ -3,24 +3,21 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  const author = await prisma.author.upsert({
-    where: {
-      id: "00000000-0000-4000-8000-000000000001",
-    },
-    create: {
-      id: "00000000-0000-4000-8000-000000000001",
-      name: "Ada Example",
-      role: "Research lead",
-      bio: "Seed author for local development and CMS previews.",
-      photoUrl: null,
-      links: null,
-    },
-    update: {
-      name: "Ada Example",
-      role: "Research lead",
-      bio: "Seed author for local development and CMS previews.",
-    },
-  });
+  const bylineEmail =
+    process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase() ??
+    process.env.PRISMA_SEED_BYLINE_EMAIL?.trim().toLowerCase();
+
+  if (bylineEmail) {
+    await prisma.$executeRaw`
+      UPDATE account
+      SET
+        byline_name = COALESCE(byline_name, 'Ada Example'),
+        byline_title = COALESCE(byline_title, 'Research lead'),
+        byline_bio = COALESCE(byline_bio, 'Seed byline for local development and CMS previews.'),
+        updated_at = now()
+      WHERE lower(email) = ${bylineEmail}
+    `;
+  }
 
   await prisma.openRole.upsert({
     where: { slug: "staff-security-engineer" },
@@ -77,28 +74,39 @@ async function main() {
     update: { name: "Dev Organization" },
   });
 
-  await prisma.researchPost.upsert({
-    where: { slug: "evidence-bundles-101" },
-    create: {
-      slug: "evidence-bundles-101",
-      title: "Evidence bundles 101",
-      dek: "A seed post for listing and detail pages in local dev.",
-      body:
-        "This is placeholder body copy for the Salanor web seed.\n\n" +
-        "Paragraphs are split on blank lines and rendered as plain text — no raw HTML is interpreted.",
-      authorId: author.id,
-      track: "Labs",
-      publishedAt: new Date(),
-      readingMinutes: 4,
-      heroImageUrl: null,
-      ogImageUrl: null,
-      status: "published",
-    },
-    update: {
-      status: "published",
-      authorId: author.id,
-    },
-  });
+  let authorAccountId: string | null = null;
+  if (bylineEmail) {
+    const row = await prisma.account.findFirst({
+      where: { email: { equals: bylineEmail, mode: "insensitive" } },
+      select: { id: true },
+    });
+    authorAccountId = row?.id ?? null;
+  }
+
+  if (authorAccountId) {
+    await prisma.researchPost.upsert({
+      where: { slug: "evidence-bundles-101" },
+      create: {
+        slug: "evidence-bundles-101",
+        title: "Evidence bundles 101",
+        dek: "A seed post for listing and detail pages in local dev.",
+        body:
+          "This is placeholder body copy for the Salanor web seed.\n\n" +
+          "Paragraphs are split on blank lines and rendered as plain text — no raw HTML is interpreted.",
+        authorAccountId,
+        track: "Labs",
+        publishedAt: new Date(),
+        readingMinutes: 4,
+        heroImageUrl: null,
+        ogImageUrl: null,
+        status: "published",
+      },
+      update: {
+        status: "published",
+        authorAccountId,
+      },
+    });
+  }
 }
 
 main()

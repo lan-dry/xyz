@@ -4,6 +4,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import {
   auditAuthLoginSuccess,
   createSession,
+  getClientGeoFromHeaders,
   getClientIp,
   OAuthLoginError,
   recordAccountLoginEvent,
@@ -318,6 +319,7 @@ export function registerOAuthRoutes(app: import("hono").Hono): void {
             auth.organizationId,
           );
           const ip = getClientIp(c.req.raw.headers);
+          const geo = getClientGeoFromHeaders(c.req.raw.headers);
           const userAgent = c.req.header("user-agent") ?? null;
           await auditAuthLoginSuccess(client, {
             organizationId: session.organizationId,
@@ -325,6 +327,7 @@ export function registerOAuthRoutes(app: import("hono").Hono): void {
             email: session.email,
             source: `oauth-${provider}`,
             ip,
+            geo,
           });
           await recordAccountLoginEvent(client, {
             accountId: auth.accountId,

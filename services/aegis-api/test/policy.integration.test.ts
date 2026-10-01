@@ -8,14 +8,12 @@ import {
 } from "@salanor/aegis";
 import { createServer, type Server } from "node:http";
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import "../src/db/load-env.js";
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
+import { applyIntegrationFixture } from "./integration-fixture.js";
 import { activatePolicy, createPolicy } from "../src/repo/policies.js";
 import { postEvent } from "../src/routes/events.js";
 import { postPolicyEvaluate } from "../src/routes/policy-evaluate.js";
@@ -114,11 +112,7 @@ function startMockUpstream(): Promise<{
 describeIfDb("policy engine (Stage 6 exit)", () => {
   beforeAll(async () => {
     await migrateUp();
-    const seedPath = resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      "../../../tools/seed/dev.sql",
-    );
-    await getPool().query(readFileSync(seedPath, "utf8"));
+    await applyIntegrationFixture(getPool());
   });
 
   afterAll(async () => {

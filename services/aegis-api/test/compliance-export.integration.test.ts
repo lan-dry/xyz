@@ -3,13 +3,16 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import "../src/db/load-env.js";
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
+import {
+  applyIntegrationFixture,
+  INTEGRATION_MEMBERSHIP_A,
+  INTEGRATION_ORG_A,
+} from "./integration-fixture.js";
+import { insertTestAdmin } from "./insert-test-admin.js";
 import { persistSignedEvent } from "../src/ingest/persist.js";
 import { sha256FileHex } from "../src/compliance/integrity.js";
 import { exportZipPath } from "../src/compliance/storage.js";
@@ -22,10 +25,10 @@ import {
 const databaseUrl = process.env.DATABASE_URL;
 const describeIfDb = databaseUrl ? describe : describe.skip;
 
-const ORG = "11111111-1111-4111-8111-111111111111";
+const ORG = INTEGRATION_ORG_A;
 const DEV_AGENT = "agent-dev-01";
 const DEV_KEY = "key-dev-01";
-const USER = "22222222-2222-4222-8222-222222222222";
+const USER = INTEGRATION_MEMBERSHIP_A;
 const privateKeyB64 =
   process.env.DEV_SIGNING_PRIVATE_KEY_B64 ??
   "mqUA8ONIg7SN0gL8luCakqehaIzp8Lys6ZHMjAoBx/M=";
@@ -55,11 +58,12 @@ describeIfDb("compliance export (Stage 10 exit)", () => {
     process.env.COMPLIANCE_EXPORT_DIR = exportDir;
 
     await migrateUp();
-    const seedPath = resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      "../../../tools/seed/dev.sql",
-    );
-    await getPool().query(readFileSync(seedPath, "utf8"));
+    await applyIntegrationFixture(getPool());
+    await insertTestAdmin(getPool(), {
+      organizationId: INTEGRATION_ORG_A,
+      membershipId: INTEGRATION_MEMBERSHIP_A,
+      password: "vitest-export-pass-12",
+    });
 
     const periodStart = "2026-05-20T00:00:00.000Z";
     const periodEnd = "2026-05-22T23:59:59.999Z";

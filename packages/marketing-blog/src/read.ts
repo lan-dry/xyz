@@ -3,8 +3,15 @@ import path from "node:path";
 
 import { githubGetTextFile, githubListMarkdownFiles } from "./github";
 import { blogContentDir, blogContentRepoPath, localContentAvailable } from "./paths";
+import { toSortableIso } from "./dates";
 import { parseBlogMarkdown } from "./serialize";
 import type { BlogMarkdownPost } from "./types";
+
+function comparePostsNewestFirst(a: BlogMarkdownPost, b: BlogMarkdownPost): number {
+  const ta = toSortableIso(a.publishedAt ?? a.lastEditedAt);
+  const tb = toSortableIso(b.publishedAt ?? b.lastEditedAt);
+  return tb.localeCompare(ta);
+}
 
 const CONTENT_REPO_DIR = "apps/web-marketing/content/blog";
 
@@ -26,11 +33,7 @@ function listLocalPosts(): BlogMarkdownPost[] {
     if (post) posts.push(post);
   }
 
-  posts.sort((a, b) => {
-    const ta = a.publishedAt ?? a.lastEditedAt ?? "";
-    const tb = b.publishedAt ?? b.lastEditedAt ?? "";
-    return tb.localeCompare(ta);
-  });
+  posts.sort(comparePostsNewestFirst);
   return posts;
 }
 
@@ -43,11 +46,7 @@ async function listRemotePosts(): Promise<BlogMarkdownPost[]> {
     const parsed = parseBlogMarkdown(file.text, repoPath);
     if (parsed) posts.push(parsed);
   }
-  posts.sort((a, b) => {
-    const ta = a.publishedAt ?? a.lastEditedAt ?? "";
-    const tb = b.publishedAt ?? b.lastEditedAt ?? "";
-    return tb.localeCompare(ta);
-  });
+  posts.sort(comparePostsNewestFirst);
   return posts;
 }
 

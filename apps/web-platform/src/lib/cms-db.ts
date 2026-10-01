@@ -32,5 +32,5 @@ export async function getCmsDbStatus(): Promise<CmsDbStatus> {
 }
 
 export function cmsSetupHint(): string {
-  return "Run from repo root: pnpm db:push (or pnpm db:migrate:web) so Prisma creates research_posts and open_roles. Set DATABASE_URL on Platform Ops (same Neon DB as marketing if you use one).";
+  return "From repo root run: pnpm db:migrate (001_baseline includes research_posts and open_roles). Set DATABASE_URL on Platform Ops. Do not use pnpm db:push on the shared Aegis database.";
 }

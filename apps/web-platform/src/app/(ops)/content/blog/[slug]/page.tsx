@@ -6,7 +6,7 @@ import { BlogPostFormFields } from "@/components/content/blog-post-form-fields";
 import { ContentPageShell } from "@/components/content/content-page-shell";
 import forms from "@/components/content/content-forms.module.css";
 import { ui } from "@/components/ops-ui/ops-ui";
-import { fetchBlogEngagementStats } from "@/lib/content/blog-stats";
+import { fetchBlogEngagementByCountry, fetchBlogEngagementStats } from "@/lib/content/blog-stats";
 import { getPlatformSessionServer, requirePlatformSession } from "@/lib/platform-server-session";
 import { canPlatform } from "@/lib/platform-permissions";
 import { getMarketingBlogPostBySlug } from "@salanor/marketing-blog";
@@ -32,6 +32,7 @@ export default async function OpsContentBlogEditPage({
 
   const statsMap = await fetchBlogEngagementStats([post.slug]);
   const stats = statsMap.get(post.slug);
+  const viewsByCountry = await fetchBlogEngagementByCountry(post.slug);
 
   return (
     <ContentPageShell
@@ -80,11 +81,45 @@ export default async function OpsContentBlogEditPage({
         </div>
       </div>
 
+      {viewsByCountry.length > 0 ? (
+        <div className={`${ui.card} ${ui.cardPad}`} style={{ marginBottom: "1rem" }}>
+          <p className={ui.cardTitle}>Page views by country</p>
+          <p style={{ fontSize: "0.75rem", color: "var(--console-fg-muted)", marginBottom: "0.75rem" }}>
+            From edge headers on www (Vercel/Cloudflare). Local dev often shows Unknown until deployed.
+          </p>
+          <table className={ui.table}>
+            <thead>
+              <tr>
+                <th>Country</th>
+                <th>Views</th>
+              </tr>
+            </thead>
+            <tbody>
+              {viewsByCountry.map((row) => (
+                <tr key={row.country}>
+                  <td>{row.label}</td>
+                  <td>{row.views}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
       <div className={`${ui.card} ${ui.cardPad}`} style={{ marginBottom: "1rem", fontSize: "0.8125rem" }}>
         <p>
           <strong>Public byline:</strong> {post.authorName}
           {post.authorRole ? ` · ${post.authorRole}` : ""}
         </p>
+        {post.authorAccountId ? (
+          <p>
+            Author account: <span className="mono">{post.authorAccountId}</span> (stable if email changes)
+          </p>
+        ) : (
+          <p style={{ color: "var(--console-fg-muted)" }}>
+            No authorAccountId in frontmatter yet — save once from Ops to link byline to your account UUID.
+          </p>
+        )}
         {post.createdByEmail ? <p>Created in ops by {post.createdByEmail}</p> : null}
         {post.lastEditedByEmail ? (
           <p>

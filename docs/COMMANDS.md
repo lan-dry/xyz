@@ -13,9 +13,9 @@ All commands run from the **repository root** unless noted. Requires Node 22+, p
 | Step | Command |
 |------|---------|
 | Infrastructure | `docker compose up -d` |
-| Schema + seed | `pnpm db:migrate` then `pnpm db:seed` |
+| Schema + bootstrap | `pnpm db:migrate` then `pnpm db:seed:bootstrap` (+ optional `pnpm db:local:pilot-fixture`) |
 | All apps | `pnpm dev` |
-| Console | http://localhost:3000 — login `dev@salanor.local` + `DEV_CONSOLE_PASSWORD_ORG_A` |
+| Console | http://localhost:3000 — login with `BOOTSTRAP_ADMIN_EMAIL` (after bootstrap + pilot fixture) |
 
 ---
 
@@ -52,7 +52,7 @@ curl http://127.0.0.1:8092/health    # insurance-api
 |---------|----------------|------|
 | `pnpm db:migrate` | Apply pending SQL migrations | After pull, fresh DB |
 | *(reset)* | `DROP SCHEMA public CASCADE` + `CREATE SCHEMA public` | Dev only when re-applying baseline — see `DATABASE_SAFETY.md` |
-| `pnpm db:seed` | Run `tools/seed/dev.sql` (idempotent) | Reset dev data |
+| `pnpm db:local:pilot-fixture` | Demo org + ingest (local Docker only) | After bootstrap for pilot-agent |
 
 **Warning:** Integration tests that run `migrate down` against your `DATABASE_URL` will **wipe data**. Use a separate DB for tests in production-like environments.
 
@@ -60,7 +60,7 @@ curl http://127.0.0.1:8092/health    # insurance-api
 
 ## 3. Demo & client walkthrough (testing)
 
-Prerequisites: `pnpm db:migrate`, `pnpm db:seed`, `pnpm --filter aegis-api dev` running.
+Prerequisites: `pnpm db:migrate`, bootstrap + pilot fixture, `pnpm --filter aegis-api dev` running.
 
 | Command | What it does |
 |---------|----------------|
@@ -79,8 +79,7 @@ Set in repo root `.env` (see `tools/demo/README.md`):
 
 | Variable | Purpose |
 |----------|---------|
-| `DEMO_ORGANIZATION_ID` | Target org UUID |
-| `DEMO_ORGANIZATION_SLUG` | e.g. `dev-org` (public URLs) |
+| `DEMO_ORGANIZATION_ID` | Optional override; default resolves `salanor-platform` from `DATABASE_URL` |
 | `DEMO_AGENT_ID` / `DEMO_KEY_ID` | Signing identity |
 | `DEV_SIGNING_PRIVATE_KEY_B64` | Private key for demos |
 | `AEGIS_INGEST_DEV_KEY` | Ingest API secret for that org |
@@ -187,7 +186,7 @@ Console: open event → **Verify chain + inclusion**.
 |------|----------|
 | Deploy API + ID + console | Your host (Vercel, Fly, K8s, etc.) — set env from `.env.example` |
 | Migrations | `pnpm db:migrate` in release pipeline **before** traffic |
-| **Never** run `db:seed` | Production data only |
+| **Never** run `db:local:pilot-fixture` on Neon | Local Docker only |
 | Compliance ZIPs | `COMPLIANCE_EXPORT_DIR` on persistent volume |
 | Monthly exports | Cron: `pnpm compliance:schedule` or `compliance:worker` |
 | Witness batch | Cron: `pnpm witness:batch` (frequency per SLA) |
@@ -221,10 +220,10 @@ Requires `DATABASE_URL` pointing at Postgres. Prefer a **dedicated test database
 
 | Scenario | Commands |
 |----------|----------|
-| **First day on repo** | `docker compose up -d` → `pnpm install` → `pnpm db:migrate` → `pnpm db:seed` → `pnpm dev` |
+| **First day on repo** | `docker compose up -d` → `pnpm install` → `pnpm db:migrate` → `pnpm db:seed:bootstrap` → `pnpm db:local:pilot-fixture` → `pnpm dev` |
 | **Client demo in 15 min** | `pnpm demo:ingest` → console Traces → verify event → Policies → Exports → download ZIP |
 | **Full proof story** | `pnpm demo:full-system` |
-| **Reset dev login** | `pnpm db:seed` (clears password hashes for dev accounts) |
+| **Reset local DB** | `pnpm pilot:reset` or see `docs/LOCAL_DATABASE.md` |
 | **Monthly auditor bundle** | Enable schedule in console → cron `pnpm compliance:schedule` |
 | **Third-party verify** | `pnpm verifier:public -- --org <slug> --event <id>` |
 

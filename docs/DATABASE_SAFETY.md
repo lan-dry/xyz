@@ -4,10 +4,10 @@
 
 `DATABASE_URL` in `.env` often points at the **same Postgres** used by:
 
-- **Aegis / platform** — `pnpm db:migrate` (`services/aegis-api/migrations/*`)
-- **Marketing Prisma** — `prisma/schema.prisma` (research, careers, contacts, etc.)
+- **Aegis + Ops CMS** — `pnpm db:migrate` (`001_baseline.sql` — single greenfield file)
+- **Prisma client** — `prisma/schema.prisma` (types/queries only; **schema changes go in SQL migrations**, not `db:push`, on the shared Neon URL)
 
-These are **different migration systems**. They must not fight each other on one database.
+On one Neon database, **`pnpm db:migrate`** is the single apply path for Aegis and for `research_posts` / `open_roles` / `contact_messages`.
 
 ## Never on production / shared Neon
 
@@ -19,9 +19,9 @@ These are **different migration systems**. They must not fight each other on one
 
 If Prisma warns **“You are about to drop the `organization` table”** — **answer No** and stop.
 
-## Research / careers tables (Prisma)
+## Research / careers / newsletter (Platform Ops)
 
-Use **`pnpm db:migrate:web`** against a **marketing-only** database, **or** run `pnpm db:push` only when `DATABASE_URL` is a **throwaway/local** URL — never the same URL as Aegis prod without understanding the warning.
+Included in **`001_baseline.sql`** (same `pnpm db:migrate` as Aegis). **Do not** `db:push` on prod Neon.
 
 ## If you already ran `db:push` and accepted data loss
 
@@ -30,7 +30,7 @@ Use **`pnpm db:migrate:web`** against a **marketing-only** database, **or** run 
 3. Promote or swap endpoints per [Neon restore docs](https://neon.tech/docs/manage/restore).
 4. Do **not** run `db:push` again on the live Aegis URL.
 
-Blog engagement and the rest of Aegis: `pnpm db:migrate` applies **`001_baseline.sql`** (forward-only; no down migrations). No Prisma push required.
+`pnpm db:migrate` applies **`001_baseline.sql`** (Aegis + web CMS + newsletter). No Prisma push on shared prod. After a baseline change on an existing DB, **drop schema and re-migrate** (see `services/aegis-api/migrations/README.md`).
 
 ## Fresh start (empty Neon, no dev seed)
 
@@ -55,7 +55,7 @@ $env:BOOTSTRAP_ADMIN_PASSWORD="your-long-password-here"
 pnpm db:seed:bootstrap
 ```
 
-3. **Do not** run `pnpm db:seed` on production — that loads dev agents, demo orgs, and `@salanor.local` users.
+3. Use **`pnpm db:seed:bootstrap`** only for staff accounts. Demo org/agent data for local pilot: **`pnpm db:local:pilot-fixture`** (refuses non-local `DATABASE_URL`).
 
 4. Sign in at **ops.salanor.com** (Platform Ops) with the bootstrap email.
 

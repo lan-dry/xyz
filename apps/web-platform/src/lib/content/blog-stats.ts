@@ -1,3 +1,5 @@
+import { formatCountryLabel } from "@/lib/client-geo-display";
+
 import { getPrisma } from "@/lib/prisma";
 
 export type BlogSlugStats = {
@@ -5,6 +7,12 @@ export type BlogSlugStats = {
   uniqueSessions: number;
   listenStarts: number;
   shareClicks: number;
+};
+
+export type BlogCountryViews = {
+  country: string;
+  label: string;
+  views: number;
 };
 
 type Row = {
@@ -59,4 +67,33 @@ export async function fetchBlogEngagementStats(
   }
 
   return map;
+}
+
+type CountryRow = {
+  country: string;
+  views: bigint | number;
+};
+
+export async function fetchBlogEngagementByCountry(slug: string): Promise<BlogCountryViews[]> {
+  const prisma = getPrisma();
+  if (!prisma || !slug.trim()) return [];
+
+  try {
+    const rows = await prisma.$queryRaw<CountryRow[]>`
+      SELECT COALESCE(NULLIF(TRIM(metadata->>'country'), ''), '??') AS country,
+             COUNT(*)::bigint AS views
+      FROM blog_engagement_events
+      WHERE slug = ${slug.trim().toLowerCase()} AND event_name = 'page_view'
+      GROUP BY 1
+      ORDER BY views DESC
+      LIMIT 25
+    `;
+    return rows.map((row) => ({
+      country: row.country,
+      label: formatCountryLabel(row.country),
+      views: toNum(row.views),
+    }));
+  } catch {
+    return [];
+  }
 }

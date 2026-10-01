@@ -12,6 +12,7 @@ export type EventRowForVerify = {
   event_id: string;
   organization_id: string;
   trace_id: string;
+  span_id: string | null;
   parent_event_id: string | null;
   agent_id: string;
   key_id: string;
@@ -74,6 +75,7 @@ function toApsEvent(row: EventRowForVerify): ApsEvent {
     sig_alg: row.sig_alg,
     sig_value_b64: row.sig_value_b64,
   };
+  if (row.span_id) event.span_id = row.span_id;
   if (row.parent_event_id) event.parent_event_id = row.parent_event_id;
   if (row.policy_id) event.policy_id = row.policy_id;
   if (row.tool_name) event.tool_name = row.tool_name;

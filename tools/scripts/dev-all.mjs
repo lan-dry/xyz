@@ -25,7 +25,10 @@ function runNx(args, label) {
   return child;
 }
 
-console.log("[dev] Starting web apps (3000–3003) and APIs (8080, 8091, …)\n");
+console.log("[dev] Starting web apps (3000–3003) and APIs (8080, 8091, …)");
+console.log(
+  "[dev] If :3003 shows blank/404 chunks after a production build, run: pnpm --filter @salanor/web-platform dev:clean\n",
+);
 
 runNx(
   [

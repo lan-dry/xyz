@@ -1,6 +1,7 @@
 import { digestHex } from "@salanor/aegis";
 import type { ApsEvent } from "@salanor/aegis";
 import type pg from "pg";
+import { completeTrace } from "../repo/trace-status.js";
 import { ensureSpanForEvent, resolveSpanId } from "./ensure-span.js";
 
 export type PersistResult = {
@@ -189,6 +190,10 @@ export async function persistSignedEvent(
        AND root_event_id IS NULL`,
     [event.event_id, event.trace_id, event.organization_id],
   );
+
+  if (event.tool_name === "aegis.trace.complete") {
+    await completeTrace(client, event.organization_id, event.trace_id);
+  }
 
   return {
     eventId: event.event_id,

@@ -1,13 +1,15 @@
-import { existsSync, mkdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
   githubDeleteFile,
   githubGetTextFile,
+  githubListFiles,
   githubPutBinaryFile,
   githubPutFile,
   githubWriteEnabled,
 } from "./github";
+import { blogMediaFilenameFromPublicPath } from "./media-paths";
 import {
   blogContentRepoPath,
   blogMediaDir,
@@ -112,6 +114,60 @@ export async function uploadMarketingBlogMedia(
     existing?.sha,
   );
   return { publicPath: `/blog/media/${filename}` };
+}
+
+export async function deleteMarketingBlogMedia(
+  publicPath: string,
+  editorEmail: string,
+): Promise<void> {
+  const filename = blogMediaFilenameFromPublicPath(publicPath);
+  if (!filename) throw new Error("Invalid media path");
+
+  if (localContentAvailable() && process.env.BLOG_ADMIN_FORCE_GITHUB?.trim() !== "1") {
+    const dest = path.join(blogMediaDir(), filename);
+    if (existsSync(dest)) unlinkSync(dest);
+    return;
+  }
+
+  if (!githubWriteEnabled()) {
+    throw new Error("Media delete requires local repo or BLOG_GITHUB_TOKEN.");
+  }
+
+  const repoPath = blogMediaRepoPath(filename);
+  await githubDeleteFile(repoPath, `blog: delete media ${filename} (ops by ${editorEmail})`);
+}
+
+const MEDIA_REPO_DIR = "apps/web-marketing/public/blog/media";
+
+function listLocalBlogMediaFilenames(): string[] {
+  const dir = blogMediaDir();
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).filter((name) => name !== ".gitkeep" && !name.startsWith("."));
+}
+
+async function listRemoteBlogMediaFilenames(): Promise<string[]> {
+  if (!githubWriteEnabled()) return [];
+  return githubListFiles(MEDIA_REPO_DIR);
+}
+
+/** Remove files under /blog/media that are not in `referencedPublicPaths`. */
+export async function purgeUnreferencedBlogMedia(
+  referencedPublicPaths: Set<string>,
+  editorEmail: string,
+): Promise<{ deleted: string[] }> {
+  const filenames =
+    localContentAvailable() && process.env.BLOG_ADMIN_FORCE_GITHUB?.trim() !== "1"
+      ? listLocalBlogMediaFilenames()
+      : await listRemoteBlogMediaFilenames();
+
+  const deleted: string[] = [];
+  for (const name of filenames) {
+    const publicPath = `/blog/media/${name}`;
+    if (referencedPublicPaths.has(publicPath)) continue;
+    await deleteMarketingBlogMedia(publicPath, editorEmail);
+    deleted.push(publicPath);
+  }
+  return { deleted };
 }
 
 /** @internal — slug rename helper for local only */

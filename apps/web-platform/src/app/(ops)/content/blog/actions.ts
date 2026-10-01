@@ -11,6 +11,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { assertPlatformSessionAction } from "@/lib/platform-server-session";
+import { gcUnreferencedBlogMedia } from "@/lib/cms-media-gc";
 
 function parseTags(raw: FormDataEntryValue | null): string[] {
   if (typeof raw !== "string" || !raw.trim()) return [];
@@ -61,9 +62,11 @@ export async function createBlogPost(formData: FormData) {
 
   const { slug } = await saveMarketingBlogPost(input, {
     editorEmail: session.email,
+    editorAccountId: session.account_id,
     isCreate: true,
   });
 
+  await gcUnreferencedBlogMedia(session.email);
   revalidatePath("/content/blog");
   redirect(`/content/blog/${encodeURIComponent(slug)}`);
 }
@@ -87,12 +90,16 @@ export async function updateBlogPost(previousSlug: string, formData: FormData) {
     input,
     {
       editorEmail: session.email,
+      editorAccountId: session.account_id,
       isCreate: false,
       previousCreatedByEmail: prior.createdByEmail,
+      priorAuthorAccountId: prior.authorAccountId,
+      priorAuthorEmail: prior.authorEmail,
     },
     { previousSlug },
   );
 
+  await gcUnreferencedBlogMedia(session.email);
   revalidatePath("/content/blog");
   revalidatePath(`/content/blog/${previousSlug}`);
   revalidatePath(`/content/blog/${slug}`);

@@ -1,12 +1,10 @@
 import { signEvent, type ApsEvent } from "@salanor/aegis";
 import { createHash, randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import "../src/db/load-env.js";
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
+import { applyIntegrationFixture } from "./integration-fixture.js";
 import { postEvent } from "../src/routes/events.js";
 import { Hono } from "hono";
 
@@ -66,11 +64,7 @@ async function ingest(
 describeIfDb("ingest", () => {
   beforeAll(async () => {
     await migrateUp();
-    const seedPath = resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      "../../../tools/seed/dev.sql",
-    );
-    await getPool().query(readFileSync(seedPath, "utf8"));
+    await applyIntegrationFixture(getPool());
   });
 
   afterAll(async () => {

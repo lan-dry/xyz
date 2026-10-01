@@ -1,0 +1,650 @@
+// Generated from 001_baseline.sql — import at https://dbdiagram.io
+// Project > Import > DBML
+
+// Core identity
+TableGroup core_identity {
+  organization
+  account
+  membership
+  organization_invitation
+  session
+  password_reset_token
+  email_verification_token
+  account_oauth
+  organization_sso
+  account_login_event
+}
+
+// Ingest
+TableGroup ingest {
+  ingest_api_key
+  idempotency_record
+}
+
+// Aegis agents and keys
+TableGroup aegis_agents {
+  agent
+  signing_key
+  did_document
+}
+
+// Aegis policy
+TableGroup aegis_policy {
+  policy
+  policy_rule
+  approval_channel
+}
+
+// Aegis traces and events
+TableGroup aegis_ledger {
+  trace
+  span
+  event
+  approval
+}
+
+// Aegis witness
+TableGroup aegis_witness {
+  merkle_root
+  inclusion_proof
+  transparency_log_entry
+}
+
+// Aegis exports and webhooks
+TableGroup aegis_integrations {
+  artifact
+  compliance_export
+  siem_destination
+  webhook_endpoint
+  compliance_export_schedule
+}
+
+// Aegis analytics
+TableGroup aegis_analytics {
+  anomaly_score
+  insurance_metric
+}
+
+// Platform audit
+TableGroup platform_ops {
+  audit_log
+}
+
+// Billing and plans
+TableGroup billing {
+  plan_catalog
+  organization_usage_monthly
+  organization_billing_event
+}
+
+// Workflows and workers
+TableGroup workflows {
+  workflow_run
+  worker_run
+}
+
+// Web CMS
+TableGroup web_cms {
+  contact_messages
+  marketing_blog_posts
+  blog_engagement_events
+  research_posts
+  open_roles
+  newsletter_subscribers
+  newsletter_campaigns
+  newsletter_campaign_deliveries
+}
+
+Table organization {
+  organization_id uuid [pk]
+  name text [not null]
+  slug text [not null]
+  plan text [not null]
+  region text [not null]
+  topology text [not null]
+  active boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  billing_source text [not null]
+  billing_status text [not null]
+  governance_settings jsonb [not null]
+}
+
+Table account {
+  account_id uuid [pk]
+  email text [not null]
+  active boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table membership {
+  membership_id uuid [pk]
+  account_id uuid [not null]
+  organization_id uuid [not null]
+  role text [not null]
+  status text [not null]
+  joined_at timestamptz [not null]
+}
+
+Table organization_invitation {
+  invitation_id uuid [pk]
+  organization_id uuid [not null]
+  email text [not null]
+  role text [not null]
+  token_hash text [not null]
+  status text [not null]
+  invited_by uuid
+  expires_at timestamptz [not null]
+  created_at timestamptz [not null]
+}
+
+Table session {
+  session_id uuid [pk]
+  membership_id uuid [not null]
+  account_id uuid [not null]
+  organization_id uuid [not null]
+  token_hash text [not null]
+  expires_at timestamptz [not null]
+  created_at timestamptz [not null]
+  impersonator_account_id uuid
+  parent_session_id uuid
+}
+
+Table ingest_api_key {
+  key_id uuid [pk]
+  organization_id uuid [not null]
+  name text [not null]
+  key_prefix text [not null]
+  key_hash text [not null]
+  active boolean [not null]
+  created_at timestamptz [not null]
+}
+
+Table idempotency_record {
+  organization_id uuid [pk]
+  idempotency_key text [pk]
+  event_id text [not null]
+  created_at timestamptz [not null]
+}
+
+Table agent {
+  agent_id text [pk]
+  organization_id uuid [not null]
+  did text [not null]
+  slug text [not null]
+  active boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table signing_key {
+  key_id text [pk]
+  agent_id text [not null]
+  organization_id uuid [not null]
+  kms_provider text
+  public_key_b64 text [not null]
+  algorithm text [not null]
+  valid_from timestamptz [not null]
+  revoked boolean [not null]
+  created_at timestamptz [not null]
+  bridge_enabled boolean [not null]
+}
+
+Table did_document {
+  did_document_id uuid [pk]
+  agent_id text [not null]
+  organization_id uuid [not null]
+  document_json jsonb [not null]
+  published_at timestamptz [not null]
+}
+
+Table policy {
+  policy_id text [pk]
+  organization_id uuid [not null]
+  name text [not null]
+  version int [not null]
+  status text [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+}
+
+Table policy_rule {
+  rule_id text [pk]
+  policy_id text [not null]
+  tool_pattern text [not null]
+  decision text [not null]
+  priority int [not null]
+}
+
+Table approval_channel {
+  channel_id text [pk]
+  organization_id uuid [not null]
+  channel_type text [not null]
+  active boolean [not null]
+  created_at timestamptz [not null]
+}
+
+Table trace {
+  trace_id text [pk]
+  organization_id uuid [not null]
+  agent_id text [not null]
+  status text [not null]
+  started_at timestamptz [not null]
+  total_events int [not null]
+  denied_events int [not null]
+  approved_events int [not null]
+}
+
+Table span {
+  span_id text [pk]
+  organization_id uuid [not null]
+  trace_id text [not null]
+  parent_span_id text
+  status text [not null]
+  started_at timestamptz [not null]
+}
+
+Table event {
+  event_id text [pk]
+  organization_id uuid [not null]
+  trace_id text [not null]
+  parent_event_id text
+  agent_id text [not null]
+  key_id text [not null]
+  policy_id text
+  schema_version int [not null]
+  sequence_num bigint [not null]
+  event_hash text [not null]
+  actor_type text [not null]
+  actor_principal text [not null]
+  action_kind text [not null]
+  policy_decision text [not null]
+  result_status text
+  sig_alg text [not null]
+  sig_value_b64 text [not null]
+  chain_valid boolean [not null]
+  emitted_at timestamptz [not null]
+  ingested_at timestamptz [not null]
+  span_id text
+}
+
+Table approval {
+  approval_id text [pk]
+  event_id text [not null]
+  organization_id uuid [not null]
+  approver_user_id uuid
+  channel_type text [not null]
+  status text [not null]
+  created_at timestamptz [not null]
+}
+
+Table merkle_root {
+  root_id text [pk]
+  organization_id uuid [not null]
+  root_hash text [not null]
+  tree_size int [not null]
+  interval_start timestamptz [not null]
+  interval_end timestamptz [not null]
+  anchoring_type text
+  published boolean [not null]
+}
+
+Table inclusion_proof {
+  proof_id text [pk]
+  event_id text [not null]
+  root_id text [not null]
+  organization_id uuid [not null]
+  merkle_path jsonb [not null]
+  leaf_index int [not null]
+  generated_at timestamptz [not null]
+}
+
+Table transparency_log_entry {
+  entry_id text [pk]
+  organization_id uuid [not null]
+  event_id text [not null]
+  root_id text
+  log_index bigint [not null]
+  leaf_hash text [not null]
+  published_at timestamptz [not null]
+}
+
+Table artifact {
+  artifact_id uuid [pk]
+  organization_id uuid [not null]
+  event_id text
+  storage_uri text [not null]
+  content_hash text [not null]
+  worm_locked boolean [not null]
+  created_at timestamptz [not null]
+}
+
+Table compliance_export {
+  export_id text [pk]
+  organization_id uuid [not null]
+  requested_by uuid
+  bundle_type text [not null]
+  status text [not null]
+  period_start timestamptz [not null]
+  period_end timestamptz [not null]
+  created_at timestamptz [not null]
+}
+
+Table siem_destination {
+  dest_id text [pk]
+  organization_id uuid [not null]
+  provider text [not null]
+  status text [not null]
+  created_at timestamptz [not null]
+}
+
+Table webhook_endpoint {
+  endpoint_id uuid [pk]
+  organization_id uuid [not null]
+  url text [not null]
+  secret_hash text [not null]
+  active boolean [not null]
+  created_at timestamptz [not null]
+}
+
+Table anomaly_score {
+  score_id text [pk]
+  organization_id uuid [not null]
+  agent_id text [not null]
+  window_start timestamptz [not null]
+  window_end timestamptz [not null]
+  computed_at timestamptz [not null]
+}
+
+Table insurance_metric {
+  metric_id text [pk]
+  organization_id uuid [not null]
+  tool_risk_class text
+  window_start timestamptz [not null]
+  window_end timestamptz [not null]
+  computed_at timestamptz [not null]
+}
+
+Table audit_log {
+  audit_id uuid [pk]
+  organization_id uuid [not null]
+  user_id uuid
+  action text [not null]
+  resource_type text [not null]
+  created_at timestamptz [not null]
+}
+
+Table password_reset_token {
+  token_hash text [pk]
+  account_id uuid [not null]
+  expires_at timestamptz [not null]
+  created_at timestamptz [not null]
+}
+
+Table email_verification_token {
+  token_hash text [pk]
+  account_id uuid [not null]
+  expires_at timestamptz [not null]
+  created_at timestamptz [not null]
+}
+
+Table compliance_export_schedule {
+  schedule_id text [pk]
+  organization_id uuid [not null]
+  bundle_type text [not null]
+  cadence text [not null]
+  enabled boolean [not null]
+  day_of_month int [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table plan_catalog {
+  plan_slug text [pk]
+  display_name text [not null]
+  max_ingest_keys int [not null]
+  max_members int [not null]
+  retention_days int [not null]
+  self_serve boolean [not null]
+  active boolean [not null]
+  sort_order int [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  list_price text [not null]
+  list_price_detail text [not null]
+  tagline text [not null]
+  billing_note text [not null]
+  marketing_highlighted boolean [not null]
+}
+
+Table organization_usage_monthly {
+  organization_id uuid [pk]
+  period_month date [pk]
+  event_count int [not null]
+  updated_at timestamptz [not null]
+}
+
+Table account_oauth {
+  provider text [pk]
+  provider_subject text [pk]
+  account_id uuid [not null]
+  created_at timestamptz [not null]
+}
+
+Table organization_sso {
+  organization_id uuid [pk]
+  provider text [not null]
+  workos_organization_id text [not null]
+  enabled boolean [not null]
+  updated_at timestamptz [not null]
+  jit_provision boolean [not null]
+}
+
+Table account_login_event {
+  event_id uuid [pk]
+  account_id uuid [not null]
+  organization_id uuid
+  method text [not null]
+  success boolean [not null]
+  created_at timestamptz [not null]
+}
+
+Table workflow_run {
+  trace_id text [pk]
+  organization_id uuid [not null]
+  agent_id text [not null]
+  key_id text [not null]
+  external_system text [not null]
+  status text [not null]
+  created_at timestamptz [not null]
+}
+
+Table organization_billing_event {
+  billing_event_id uuid [pk]
+  organization_id uuid [not null]
+  event_type text [not null]
+  actor_account_id uuid
+  created_at timestamptz [not null]
+}
+
+Table worker_run {
+  run_id text [pk]
+  worker_name text [not null]
+  status text [not null]
+  started_at timestamptz [not null]
+  summary jsonb [not null]
+}
+
+Table contact_messages {
+  id uuid [pk]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  name text [not null]
+  email text [not null]
+  reason text [not null]
+  message text [not null]
+  source_path text [not null]
+  ip_hash text [not null]
+  status text [not null]
+}
+
+Table marketing_blog_posts {
+  id uuid [pk]
+  slug text [not null]
+  title text [not null]
+  excerpt text [not null]
+  content_html text [not null]
+  author_name text [not null]
+  tags text [not null]
+  status text [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  created_by_user_id uuid
+  updated_by_user_id uuid
+  published_by_user_id uuid
+}
+
+Table blog_engagement_events {
+  id uuid [pk]
+  slug text [not null]
+  event_name text [not null]
+  session_key text [not null]
+  value_num text
+  created_at timestamptz [not null]
+}
+
+Table research_posts {
+  id uuid [pk]
+  slug text [not null]
+  title text [not null]
+  dek text [not null]
+  body text [not null]
+  author_account_id uuid
+  published_by_account_id uuid
+  last_edited_by_account_id uuid
+  track text [not null]
+  updated_at timestamptz [not null]
+  reading_minutes int [not null]
+  status text [not null]
+}
+
+Table open_roles {
+  id uuid [pk]
+  slug text [not null]
+  title text [not null]
+  team text [not null]
+  location text [not null]
+  seniority text [not null]
+  employment_type text [not null]
+  summary text [not null]
+  requirements text [not null]
+  posted_at timestamptz [not null]
+  status text [not null]
+}
+
+Table newsletter_subscribers {
+  id uuid [pk]
+  email text [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  confirm_token text
+  unsubscribe_token text [not null]
+  source text [not null]
+}
+
+Table newsletter_campaigns {
+  id uuid [pk]
+  subject text [not null]
+  body_html text [not null]
+  body_text text [not null]
+  status text [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  recipient_count int [not null]
+  success_count int [not null]
+  failure_count int [not null]
+}
+
+Table newsletter_campaign_deliveries {
+  id uuid [pk]
+  campaign_id uuid [not null]
+  subscriber_id uuid [not null]
+  status text [not null]
+  sent_at timestamptz [not null]
+}
+
+Ref: membership.account_id > account.account_id
+Ref: membership.organization_id > organization.organization_id
+Ref: organization_invitation.organization_id > organization.organization_id
+Ref: organization_invitation.invited_by > membership.membership_id
+Ref: session.membership_id > membership.membership_id
+Ref: session.account_id > account.account_id
+Ref: session.organization_id > organization.organization_id
+Ref: session.impersonator_account_id > account.account_id
+Ref: session.parent_session_id > session.session_id
+Ref: ingest_api_key.organization_id > organization.organization_id
+Ref: idempotency_record.organization_id > organization.organization_id
+Ref: agent.organization_id > organization.organization_id
+Ref: signing_key.agent_id > agent.agent_id
+Ref: signing_key.organization_id > organization.organization_id
+Ref: did_document.agent_id > agent.agent_id
+Ref: did_document.organization_id > organization.organization_id
+Ref: policy.organization_id > organization.organization_id
+Ref: policy.created_by > membership.membership_id
+Ref: policy_rule.policy_id > policy.policy_id
+Ref: approval_channel.organization_id > organization.organization_id
+Ref: trace.organization_id > organization.organization_id
+Ref: trace.agent_id > agent.agent_id
+Ref: span.organization_id > organization.organization_id
+Ref: span.trace_id > trace.trace_id
+Ref: span.parent_span_id > span.span_id
+Ref: event.organization_id > organization.organization_id
+Ref: event.trace_id > trace.trace_id
+Ref: event.parent_event_id > event.event_id
+Ref: event.agent_id > agent.agent_id
+Ref: event.key_id > signing_key.key_id
+Ref: event.policy_id > policy.policy_id
+Ref: event.span_id > span.span_id
+Ref: approval.event_id > event.event_id
+Ref: approval.organization_id > organization.organization_id
+Ref: approval.approver_user_id > membership.membership_id
+Ref: merkle_root.organization_id > organization.organization_id
+Ref: inclusion_proof.event_id > event.event_id
+Ref: inclusion_proof.root_id > merkle_root.root_id
+Ref: inclusion_proof.organization_id > organization.organization_id
+Ref: transparency_log_entry.organization_id > organization.organization_id
+Ref: transparency_log_entry.event_id > event.event_id
+Ref: transparency_log_entry.root_id > merkle_root.root_id
+Ref: artifact.organization_id > organization.organization_id
+Ref: artifact.event_id > event.event_id
+Ref: compliance_export.organization_id > organization.organization_id
+Ref: compliance_export.requested_by > membership.membership_id
+Ref: siem_destination.organization_id > organization.organization_id
+Ref: webhook_endpoint.organization_id > organization.organization_id
+Ref: anomaly_score.organization_id > organization.organization_id
+Ref: anomaly_score.agent_id > agent.agent_id
+Ref: insurance_metric.organization_id > organization.organization_id
+Ref: audit_log.organization_id > organization.organization_id
+Ref: audit_log.user_id > membership.membership_id
+Ref: password_reset_token.account_id > account.account_id
+Ref: email_verification_token.account_id > account.account_id
+Ref: compliance_export_schedule.organization_id > organization.organization_id
+Ref: organization_usage_monthly.organization_id > organization.organization_id
+Ref: account_oauth.account_id > account.account_id
+Ref: organization_sso.organization_id > organization.organization_id
+Ref: account_login_event.account_id > account.account_id
+Ref: account_login_event.organization_id > organization.organization_id
+Ref: workflow_run.organization_id > organization.organization_id
+Ref: workflow_run.agent_id > agent.agent_id
+Ref: workflow_run.key_id > signing_key.key_id
+Ref: organization_billing_event.organization_id > organization.organization_id
+Ref: organization_billing_event.actor_account_id > account.account_id
+Ref: marketing_blog_posts.created_by_user_id > account.account_id
+Ref: marketing_blog_posts.updated_by_user_id > account.account_id
+Ref: marketing_blog_posts.published_by_user_id > account.account_id
+Ref: research_posts.author_account_id > account.account_id
+Ref: research_posts.published_by_account_id > account.account_id
+Ref: research_posts.last_edited_by_account_id > account.account_id
+Ref: newsletter_campaign_deliveries.campaign_id > newsletter_campaigns.id
+Ref: newsletter_campaign_deliveries.subscriber_id > newsletter_subscribers.id

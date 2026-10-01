@@ -9,9 +9,6 @@ import {
 } from "@salanor/aegis";
 import { createServer, type Server } from "node:http";
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import "../src/db/load-env.js";
@@ -29,6 +26,8 @@ import {
   postApprovalRequest,
 } from "../src/routes/approvals.js";
 import { ensureDevBridgeKey, ensureDevIngestKey, ensureDevSigningKey, loadEventRowForVerify } from "./helpers.js";
+import { applyIntegrationFixture, INTEGRATION_MEMBERSHIP_A, INTEGRATION_ORG_A } from "./integration-fixture.js";
+import { insertTestAdmin } from "./insert-test-admin.js";
 import { verifyEventFull } from "../src/witness/verify-event.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -40,7 +39,9 @@ const describeIfDb = databaseUrl ? describe : describe.skip;
 const DEV_ORG = "11111111-1111-4111-8111-111111111111";
 const DEV_AGENT = "agent-dev-01";
 const DEV_KEY = "key-dev-01";
-const DEV_USER = "22222222-2222-4222-8222-222222222222";
+const DEV_USER = INTEGRATION_MEMBERSHIP_A;
+const VITEST_PASSWORD = "vitest-approval-pass-12";
+let approverEmail: string;
 const INGEST_KEY = process.env.AEGIS_INGEST_DEV_KEY ?? "aegis_dev_local_change_me";
 const OBLIGATION_TOOL = "payments.wire.transfer";
 
@@ -200,11 +201,13 @@ function startMockUpstream(): Promise<{
 describeIfDb("human approvals (Stage 7 exit)", () => {
   beforeAll(async () => {
     await migrateUp();
-    const seedPath = resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      "../../../tools/seed/dev.sql",
-    );
-    await getPool().query(readFileSync(seedPath, "utf8"));
+    await applyIntegrationFixture(getPool());
+    const admin = await insertTestAdmin(getPool(), {
+      organizationId: INTEGRATION_ORG_A,
+      membershipId: INTEGRATION_MEMBERSHIP_A,
+      password: VITEST_PASSWORD,
+    });
+    approverEmail = admin.email;
     await ensureDevIngestKey(getPool(), INGEST_KEY, DEV_ORG);
     await ensureDevSigningKey(
       getPool(),
@@ -308,7 +311,7 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
         agentId: DEV_AGENT,
         keyId: DEV_KEY,
         parentEventId: caught!.eventId,
-        approverEmail: "dev@salanor.local",
+        approverEmail,
         approvalId: caught!.approvalId,
         decision: "approved",
       });

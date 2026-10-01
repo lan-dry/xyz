@@ -96,7 +96,9 @@ export async function writePlatformAuditEvent(
 ): Promise<void> {
   const organizationId = await getPlatformAuditOrganizationId(client);
   if (!organizationId) {
-    console.warn("[platform-auth] platform audit org missing; run migration 013");
+    console.warn(
+      `[platform-auth] platform audit org missing (slug ${PLATFORM_AUDIT_ORG_SLUG}); run pnpm db:migrate`,
+    );
     return;
   }
 

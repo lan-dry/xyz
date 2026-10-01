@@ -8,13 +8,14 @@ import {
   recordAgentDecision,
   recordLlmInvocation,
   recordTicketDataRead,
-  recordTraceProvenanceClaim,
+  finishTraceSession,
   startTraceSession,
 } from "./governance.js";
 import { runGemini } from "./gemini.js";
+import { CONSOLE_ENV_GUIDE, PILOT_TRACE_READING_GUIDE } from "./explain.js";
 
 /** Simulated support ticket — contains PII + financial ask (refund). */
-const SAMPLE_TICKET = {
+export const SAMPLE_TICKET = {
   ticket_id: "TKT-8842",
   customer_email: "jordan.pilot@example.com",
   order_id: "ORD-2026-4410",
@@ -122,6 +123,7 @@ export async function runSupportRefundScenario(
     response: summary.text,
     dataTouched: ["ticket_message", "order_id"],
     dataClassification: "pii",
+    businessContext: `Summarize ticket ${SAMPLE_TICKET.ticket_id} for human review before any refund action`,
     parentEventId: classifyEventId,
     spanId: gov.spans.triage,
     spanLabel: "LLM triage",
@@ -141,7 +143,7 @@ export async function runSupportRefundScenario(
       triggerSource: "llm_refund_workflow",
       triggerReason: `After classifying ticket ${SAMPLE_TICKET.ticket_id} as refund-related`,
     });
-    paymentBlocked = outcome === "denied";
+    paymentBlocked = outcome.outcome === "denied";
     steps.push(
       paymentBlocked
         ? "3. stripe.paymentIntents.create → BLOCKED by policy (no payment sent)"
@@ -181,6 +183,7 @@ export async function runSupportRefundScenario(
     response: reply.text,
     dataTouched: ["customer_email", "ticket_message"],
     dataClassification: "pii",
+    businessContext: `Draft customer reply after payment was blocked for ticket ${SAMPLE_TICKET.ticket_id}`,
     spanId: gov.spans.reply,
     spanLabel: "Safe customer reply",
   });
@@ -188,17 +191,28 @@ export async function runSupportRefundScenario(
   console.log(`  ${steps.at(-1)}`);
   console.log(`     → ${reply.text.slice(0, 120)}…\n`);
 
+  await finishTraceSession(gov, {
+    summary: paymentBlocked
+      ? `Refund workflow ended safely; $${SAMPLE_TICKET.refund_amount_usd} payment blocked by policy`
+      : `Refund workflow finished (payment not blocked — check policies)`,
+    outcome: "ok",
+  });
+  steps.push("5. trace.complete → trace status COMPLETED in Console");
+  console.log(`  ${steps.at(-1)}\n`);
+
   console.log("=== Done ===");
   console.log(`Open traces: ${consoleUrl}`);
-  console.log("\n--- Investor narrative (what to show) ---");
-  console.log("1. Every LLM step is signed with data_touched — proves what the AI read.");
-  console.log("2. wrapFetch gates payment tools — policy deny stops money leaving before humans review.");
-  console.log("3. Each event has investor_summary + trigger_reason in the payload (see event detail).");
+  console.log("\n--- How this trace explains AI behaviour ---");
+  PILOT_TRACE_READING_GUIDE.forEach((line, i) => console.log(`${i + 1}. ${line}`));
   if (paymentBlocked) {
-    console.log(`4. This run BLOCKED ${SAMPLE_TICKET.refund_amount_usd} — zero dollars lost, full audit trail.`);
+    console.log(
+      `4. This run BLOCKED $${SAMPLE_TICKET.refund_amount_usd} refund — policy denied payment; customer got a safe draft only.`,
+    );
   } else {
-    console.log("4. ⚠ Payment was NOT blocked — add deny policy, then re-run to show prevention.");
+    console.log("4. ⚠ Payment was NOT blocked — run pnpm pilot:ensure-policy, then pilot:agent again.");
   }
+  console.log("\n--- Credentials (from Console) ---");
+  CONSOLE_ENV_GUIDE.forEach((line) => console.log(`• ${line}`));
   console.log("See docs/INVESTOR_DEMO.md for the full talk track.\n");
 
   return {

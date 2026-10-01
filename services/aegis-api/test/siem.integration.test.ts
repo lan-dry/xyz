@@ -1,13 +1,11 @@
 import { signEvent, type ApsEvent } from "@salanor/aegis";
 import { createServer, type Server } from "node:http";
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import "../src/db/load-env.js";
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
+import { applyIntegrationFixture } from "./integration-fixture.js";
 import { persistSignedEvent } from "../src/ingest/persist.js";
 import { exportEventToSiemDestinations } from "../src/siem/export.js";
 import { buildOtlpLogsPayload } from "../src/siem/otel-payload.js";
@@ -47,11 +45,7 @@ function buildEvent(): ApsEvent {
 describeIfDb("SIEM OTel export (Stage 10)", () => {
   beforeAll(async () => {
     await migrateUp();
-    const seedPath = resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      "../../../tools/seed/dev.sql",
-    );
-    await getPool().query(readFileSync(seedPath, "utf8"));
+    await applyIntegrationFixture(getPool());
 
     mockServer = createServer((req, res) => {
       const chunks: Buffer[] = [];

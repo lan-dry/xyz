@@ -1,12 +1,6 @@
 import type pg from "pg";
 import { hashPassword, verifyPassword } from "./password.js";
 
-/** Legacy shared dev passwords (local only) — used when account has no password_hash yet. */
-const DEV_PASSWORD =
-  process.env.DEV_CONSOLE_PASSWORD_ORG_A ?? "dev-admin-change-me";
-const DEV_PASSWORD_B =
-  process.env.DEV_CONSOLE_PASSWORD_ORG_B ?? "dev-b-admin-change-me";
-
 export type DevLoginResult = {
   accountId: string;
   organizationId: string;
@@ -17,10 +11,6 @@ export type VerifiedAccount = {
   email: string;
   displayName: string | null;
 };
-
-function devEnvPasswordMatches(password: string): boolean {
-  return password === DEV_PASSWORD || password === DEV_PASSWORD_B;
-}
 
 /** Verify email + password without requiring an active org membership. */
 export async function verifyAccountPassword(
@@ -44,19 +34,10 @@ export async function verifyAccountPassword(
     return null;
   }
 
-  let passwordOk = false;
-  if (account.password_hash) {
-    passwordOk = verifyPassword(password, account.password_hash);
-  } else if (devEnvPasswordMatches(password)) {
-    passwordOk = true;
-    const hash = hashPassword(password);
-    await client.query(
-      `UPDATE account SET password_hash = $1, updated_at = now() WHERE account_id = $2`,
-      [hash, account.account_id],
-    );
+  if (!account.password_hash) {
+    return null;
   }
-
-  if (!passwordOk) {
+  if (!verifyPassword(password, account.password_hash)) {
     return null;
   }
 

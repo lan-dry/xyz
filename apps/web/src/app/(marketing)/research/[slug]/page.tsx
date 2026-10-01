@@ -11,7 +11,7 @@ type PageProps = {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = await prisma.researchPost.findFirst({
-    where: { slug, status: "published" },
+    where: { slug: { equals: slug, mode: "insensitive" }, status: "published" },
     select: { title: true, dek: true, ogImageUrl: true },
   });
   if (!post) return { title: "Research" };

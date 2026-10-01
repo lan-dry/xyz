@@ -30,6 +30,7 @@ verifyRoutes.get(
            e.event_id,
            e.organization_id,
            e.trace_id,
+           e.span_id,
            e.parent_event_id,
            e.agent_id,
            e.key_id,

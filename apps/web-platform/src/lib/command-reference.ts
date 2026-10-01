@@ -37,7 +37,7 @@ export const ROLE_GUIDE = {
       },
     ],
     grant:
-      "Super admin: assign any platform role. Platform admin: assign staff/admin or remove platform role (not super admin). Changes are logged as platform.role.changed in Audit log. Seed sets dev@salanor.local to superadmin.",
+      "Super admin: assign any platform role. Platform admin: assign staff/admin or remove platform role (not super admin). Changes are logged as platform.role.changed in Audit log. First superadmin: pnpm db:seed:bootstrap.",
     cannot:
       "Cannot demote the last super admin. Org admins cannot grant platform roles.",
   },
@@ -82,12 +82,18 @@ export const COMMAND_SECTIONS: CommandSection[] = [
         when: "Fresh DB or after pulling new migrations",
       },
       {
-        command: "pnpm db:seed",
-        summary: "Load dev accounts and sample org",
+        command: "pnpm db:seed:bootstrap",
+        summary: "Create Platform Ops superadmin (real email)",
         details:
-          "Idempotent seed (`tools/seed/dev.sql`). Creates dev@salanor.local, sets platform_role = superadmin, dev orgs, demo keys. **Never run in production.**",
-        when: "Reset dev login or first local setup",
-        destructive: true,
+          "Requires BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD. Same path as production.",
+        when: "First local setup or fresh DB after migrate",
+      },
+      {
+        command: "pnpm db:local:pilot-fixture",
+        summary: "Local demo org + pilot-agent data",
+        details:
+          "Docker DATABASE_URL only. Links bootstrap admin to dev-org; adds ingest key and policy demo.",
+        when: "After bootstrap when running pilot:agent or console demos",
       },
       {
         command: "pnpm dev",
@@ -173,11 +179,10 @@ export const COMMAND_SECTIONS: CommandSection[] = [
         when: "Fresh Neon after db:migrate",
       },
       {
-        command: "pnpm db:seed",
-        summary: "Re-seed dev data",
-        details: "Resets dev password hashes and sample org. Wipes predictable dev state.",
-        when: "Forgot dev password or need clean demo org",
-        destructive: true,
+        command: "pnpm db:local:pilot-fixture",
+        summary: "Re-apply local pilot demo org",
+        details: "Idempotent SQL fixture + dev-org membership for BOOTSTRAP_ADMIN_EMAIL.",
+        when: "Need dev-org agent/ingest after schema reset",
       },
     ],
   },
@@ -422,7 +427,7 @@ export const COMMAND_SECTIONS: CommandSection[] = [
 export const SCENARIO_CHEATSHEET = [
   {
     scenario: "First day on repo",
-    steps: "docker compose up -d → pnpm install → pnpm db:migrate → pnpm db:seed → pnpm dev",
+    steps: "docker compose up -d → pnpm install → pnpm db:migrate → pnpm db:seed:bootstrap → pnpm db:local:pilot-fixture → pnpm dev",
   },
   {
     scenario: "Investor demo (15 min)",
@@ -430,7 +435,7 @@ export const SCENARIO_CHEATSHEET = [
   },
   {
     scenario: "Grant yourself Platform Ops",
-    steps: "pnpm db:seed (dev@salanor.local) or SQL: platform_role = 'superadmin' → open :3003",
+    steps: "pnpm db:seed:bootstrap → open :3003 with BOOTSTRAP_ADMIN_EMAIL",
   },
   {
     scenario: "Promote user to org admin",
@@ -446,6 +451,6 @@ export const SCENARIO_CHEATSHEET = [
   },
   {
     scenario: "Reset dev login password",
-    steps: "pnpm db:seed (resets dev password hashes)",
+    steps: "Use forgot-password on :3000 / :8091 or re-run bootstrap on empty DB",
   },
 ] as const;

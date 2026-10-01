@@ -1,13 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import "../src/db/load-env.js";
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
 import { runOrganizationHousekeeping } from "../src/maintenance/housekeeping.js";
 import { ensureDevIngestKey } from "./helpers.js";
+import { applyIntegrationFixture } from "./integration-fixture.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describeIfDb = databaseUrl ? describe : describe.skip;
@@ -20,11 +18,7 @@ const INGEST_KEY = process.env.AEGIS_INGEST_DEV_KEY ?? "aegis_dev_local_change_m
 describeIfDb("housekeeping (Sprint 1)", () => {
   beforeAll(async () => {
     await migrateUp();
-    const seedPath = resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      "../../../tools/seed/dev.sql",
-    );
-    await getPool().query(readFileSync(seedPath, "utf8"));
+    await applyIntegrationFixture(getPool());
     await ensureDevIngestKey(getPool(), INGEST_KEY, DEV_ORG);
   });
 

@@ -13,6 +13,7 @@ export function useOpsListParams(defaultLimit: OpsPageSize = 25) {
   const searchParams = useSearchParams();
 
   const q = searchParams.get("q") ?? "";
+  const action = searchParams.get("action") ?? "";
   const limit = useMemo(() => {
     const raw = Number(searchParams.get("limit") ?? String(defaultLimit));
     return (OPS_PAGE_SIZES.includes(raw as OpsPageSize) ? raw : defaultLimit) as OpsPageSize;
@@ -65,12 +66,24 @@ export function useOpsListParams(defaultLimit: OpsPageSize = 25) {
     [replaceParams],
   );
 
+  const setAction = useCallback(
+    (nextAction: string) => {
+      replaceParams({
+        action: nextAction.trim() || null,
+        page: "1",
+      });
+    },
+    [replaceParams],
+  );
+
   return {
     q,
+    action,
     limit,
     page,
     offset,
     setQuery,
+    setAction,
     setPage,
     setLimit,
     replaceParams,

@@ -1,3 +1,4 @@
+import { normalizePostgresDatabaseUrl } from "@salanor/db-url";
 import pg from "pg";
 
 const { Pool } = pg;
@@ -9,8 +10,7 @@ export function getDatabaseUrl(): string {
   if (!url) {
     throw new Error("DATABASE_URL is required");
   }
-  // Windows/Docker Desktop: "localhost" often resolves to ::1 first; Postgres may only listen on IPv4.
-  return url.replace(/@localhost([:/])/g, "@127.0.0.1$1");
+  return normalizePostgresDatabaseUrl(url);
 }
 
 export function getPool(): pg.Pool {

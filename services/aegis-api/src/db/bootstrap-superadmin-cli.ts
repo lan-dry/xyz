@@ -1,5 +1,5 @@
 /**
- * Production bootstrap: one Platform Ops superadmin + internal "Salanor" org.
+ * Production bootstrap: one Platform Ops superadmin on the internal org from 001_baseline.
  * No dev agents, policies, ingest keys, or @salanor.local accounts.
  *
  * Usage (DATABASE_URL = Neon direct/unpooled from your machine):
@@ -7,12 +7,16 @@
  */
 import "./load-env.js";
 import { hashPassword } from "@salanor/platform-auth";
+import { assertBootstrapEmailAllowed } from "./bootstrap-guard.js";
 import { closePool, getPool } from "./pool.js";
+
+const PLATFORM_ORG_SLUG = "salanor-platform";
 
 const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
 const password = process.env.BOOTSTRAP_ADMIN_PASSWORD?.trim();
-const orgName = process.env.BOOTSTRAP_ORG_NAME?.trim() || "Salanor";
-const orgSlug = process.env.BOOTSTRAP_ORG_SLUG?.trim().toLowerCase() || "salanor";
+const orgSlug =
+  process.env.BOOTSTRAP_ORG_SLUG?.trim().toLowerCase() || PLATFORM_ORG_SLUG;
+const orgName = process.env.BOOTSTRAP_ORG_NAME?.trim() || "Salanor Platform";
 const displayName =
   process.env.BOOTSTRAP_ADMIN_DISPLAY_NAME?.trim() || email?.split("@")[0] || "Admin";
 
@@ -28,20 +32,33 @@ if (password.length < 10) {
   process.exit(1);
 }
 
+assertBootstrapEmailAllowed(email);
+
 const client = await getPool().connect();
 
 try {
   await client.query("BEGIN");
 
-  const orgRow = await client.query<{ organization_id: string }>(
-    `INSERT INTO organization (name, slug, onboarding_completed_at)
-     VALUES ($1, $2, now())
-     ON CONFLICT (slug) DO UPDATE SET
-       name = EXCLUDED.name,
-       onboarding_completed_at = COALESCE(organization.onboarding_completed_at, now())
+  let orgRow = await client.query<{ organization_id: string }>(
+    `UPDATE organization SET
+       name = $2,
+       active = true,
+       onboarding_completed_at = COALESCE(onboarding_completed_at, now()),
+       updated_at = now()
+     WHERE slug = $1
      RETURNING organization_id`,
-    [orgName, orgSlug],
+    [orgSlug, orgName],
   );
+
+  if (!orgRow.rows[0]) {
+    orgRow = await client.query<{ organization_id: string }>(
+      `INSERT INTO organization (name, slug, onboarding_completed_at, active)
+       VALUES ($1, $2, now(), true)
+       RETURNING organization_id`,
+      [orgName, orgSlug],
+    );
+  }
+
   const organizationId = orgRow.rows[0]!.organization_id;
 
   const passwordHash = hashPassword(password);
@@ -90,6 +107,11 @@ try {
   console.log(`  organization: ${orgName} (${orgSlug})`);
   console.log(`  superadmin:   ${email}`);
   console.log("  Platform Ops: sign in at ops.salanor.com (or :3003 locally)");
+  if (orgSlug !== PLATFORM_ORG_SLUG) {
+    console.warn(
+      `  Note: platform audit_log expects slug "${PLATFORM_ORG_SLUG}"; custom BOOTSTRAP_ORG_SLUG may skip audit rows.`,
+    );
+  }
 } catch (error) {
   await client.query("ROLLBACK");
   console.error(error);

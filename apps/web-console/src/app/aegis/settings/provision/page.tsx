@@ -72,8 +72,7 @@ export default function ProvisionOrgPage() {
               Set <code className="mono">NEXT_PUBLIC_PLATFORM_OPS=1</code> and{" "}
               <code className="mono">PLATFORM_BOOTSTRAP_SECRET</code> in{" "}
               <code className="mono">.env</code> to create customer organizations from
-              the console. Until then, use <code className="mono">pnpm db:seed</code>{" "}
-              or the ID API directly.
+              the console. Until then, use Platform Ops or the ID API directly.
             </>
           }
         />

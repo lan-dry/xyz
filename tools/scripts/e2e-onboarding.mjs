@@ -79,16 +79,23 @@ if (provHttp.res.ok) {
   console.warn(
     "WARN provision HTTP 403 — Salanor ID process likely started without PLATFORM_BOOTSTRAP_SECRET.",
   );
-  console.warn("     Using seeded dev admin for invite/RBAC tests (restart: pnpm dev from repo with .env).");
-  provisionNote = "used-dev-admin";
+  console.warn(
+    "     Using BOOTSTRAP admin for invite/RBAC tests (run pnpm db:local:pilot-fixture after bootstrap).",
+  );
+  provisionNote = "used-bootstrap-admin";
 } else {
   fail("provision", `${provHttp.res.status} ${JSON.stringify(provHttp.json)}`);
 }
 
-const loginEmail = provisionNote ? "dev@salanor.local" : adminEmail;
+const loginEmail = provisionNote
+  ? (process.env.BOOTSTRAP_ADMIN_EMAIL ?? "").trim()
+  : adminEmail;
 const loginPass = provisionNote
-  ? (process.env.DEV_CONSOLE_PASSWORD_ORG_A ?? "dev-admin-change-me")
+  ? (process.env.BOOTSTRAP_ADMIN_PASSWORD ?? "")
   : adminPass;
+if (provisionNote && (!loginEmail || !loginPass)) {
+  fail("env", "BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD required when provision is 403");
+}
 
 const login = await req(`${idBase}/auth/login`, {
   method: "POST",

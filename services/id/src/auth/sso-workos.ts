@@ -4,6 +4,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import {
   auditAuthLoginSuccess,
   createSession,
+  getClientGeoFromHeaders,
   getClientIp,
   provisionJitSsoMember,
   recordAccountLoginEvent,
@@ -197,6 +198,7 @@ export function registerSsoRoutes(app: import("hono").Hono): void {
 
         const { token, session } = await createSession(client, accountId, organizationId);
         const ip = getClientIp(c.req.raw.headers);
+        const geo = getClientGeoFromHeaders(c.req.raw.headers);
         const userAgent = c.req.header("user-agent") ?? null;
         await auditAuthLoginSuccess(client, {
           organizationId: session.organizationId,
@@ -204,6 +206,7 @@ export function registerSsoRoutes(app: import("hono").Hono): void {
           email: session.email,
           source: "sso-workos",
           ip,
+          geo,
         });
         await recordAccountLoginEvent(client, {
           accountId,

@@ -1,4 +1,5 @@
 import type pg from "pg";
+import type { ClientGeo } from "./client-geo.js";
 import { writeAuditEvent } from "./identity.js";
 
 export type ConsoleAuditActor = {
@@ -111,8 +112,10 @@ export async function auditAuthLoginSuccess(
     email: string;
     source?: string;
     ip?: string;
+    geo?: ClientGeo;
   },
 ): Promise<void> {
+  const geo = input.geo;
   await auditConsoleEvent(
     client,
     {
@@ -127,6 +130,9 @@ export async function auditAuthLoginSuccess(
       metadata: {
         source: input.source ?? "salanor-id",
         ...(input.ip ? { ip: input.ip } : {}),
+        ...(geo?.country ? { country: geo.country } : {}),
+        ...(geo?.region ? { region: geo.region } : {}),
+        ...(geo?.city ? { city: geo.city } : {}),
       },
     },
   );

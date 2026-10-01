@@ -47,8 +47,7 @@ cp .env.example .env.local
 | `AEGIS_API_URL`        | e.g. `http://127.0.0.1:8080`     |
 | `NEXT_PUBLIC_AEGIS_API_URL` | Console → API (browser)      |
 | `CONSOLE_ORIGIN`       | CORS origin for console (default `http://localhost:3000`) |
-| `DEV_CONSOLE_PASSWORD_ORG_A` | Dev login for org A (`dev@salanor.local`) |
-| `DEV_CONSOLE_PASSWORD_ORG_B` | Dev login for org B (`dev-b@salanor.local`) |
+| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | Same as production — run `pnpm db:seed:bootstrap` |
 | `PUBLIC_SITE_URL`      | e.g. `http://localhost:3000`     |
 
 Never commit real secrets.
@@ -78,23 +77,17 @@ Historical reference: `docs-internal/schema/v1/001_initial.sql`
 
 ---
 
-## Database migrations and seed
+## Database migrations and bootstrap
+
+See **[LOCAL_DATABASE.md](./LOCAL_DATABASE.md)** (Docker Postgres, save Neon CU-hours).
 
 ```bash
 pnpm db:migrate
-pnpm db:seed
+pnpm db:seed:bootstrap
+pnpm db:local:pilot-fixture   # optional: dev-org + pilot-agent
 ```
 
-Re-apply from scratch (local only — drops all tables):
-
-```sql
-DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO PUBLIC;
-```
-
-Then `pnpm db:migrate` and `pnpm db:seed`.
-
-Dev seed (`tools/seed/dev.sql`): org A (demo data) + org B (empty isolation test), users, agent, ingest key.  
-Local ingest secret: `aegis_dev_local_change_me` (see `.env.example`).
+Local ingest secret after pilot fixture: `aegis_dev_local_change_me` (see `.env.example`).
 
 ---
 
@@ -170,7 +163,7 @@ pnpm dev
 
 | Login | Password (default) | Expected |
 | ----- | ------------------ | -------- |
-| `dev@salanor.local` | `DEV_CONSOLE_PASSWORD_ORG_A` (`dev-admin-change-me`) | Traces from Stage 3 demo |
+| Your `BOOTSTRAP_ADMIN_EMAIL` | password from bootstrap | Console on `dev-org` after `pnpm db:local:pilot-fixture` |
 | `dev-b@salanor.local` | `DEV_CONSOLE_PASSWORD_ORG_B` (`dev-b-admin-change-me`) | Empty trace list |
 
 Console routes: `http://localhost:3000/aegis` (traces, event detail, API keys at `/aegis/keys`).

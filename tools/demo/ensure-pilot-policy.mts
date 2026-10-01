@@ -1,39 +1,52 @@
 /**
- * Ensure pilot org has active deny rule for stripe.paymentIntents.create.
+ * Ensure your Console org has active deny rule for stripe.paymentIntents.create.
+ * Org: CLI arg or AEGIS_ORGANIZATION_ID from .env (Console → Settings → Organization).
  */
 import { randomUUID } from "node:crypto";
 import pg from "pg";
-import { loadPilotAgentEnv } from "./load-env.mts";
+import { normalizePostgresDatabaseUrl } from "@salanor/db-url";
 
-loadPilotAgentEnv();
+import { loadEnvFile } from "./load-env.mts";
+import { resolveOrganizationSlug } from "./resolve-org-id.mts";
 
-const orgId =
-  process.argv[2]?.trim() || process.env.PILOT_ORGANIZATION_ID?.trim();
+loadEnvFile();
+
 const dbUrl = process.env.DATABASE_URL?.trim();
-
 if (!dbUrl) {
-  console.error(
-    "DATABASE_URL missing — set it in repo root .env (see .env.example)",
-  );
+  console.error("DATABASE_URL missing — set it in repo root .env (Postgres for local dev)");
   process.exit(1);
 }
+
+const orgId = process.argv[2]?.trim() || process.env.AEGIS_ORGANIZATION_ID?.trim();
 if (!orgId) {
   console.error(
-    "Pass organization_id or set PILOT_ORGANIZATION_ID in apps/pilot-agent/.env",
+    "Set AEGIS_ORGANIZATION_ID in .env (Console → Settings → Organization) or pass org UUID as first argument.",
   );
   process.exit(1);
 }
 
-const pool = new pg.Pool({ connectionString: dbUrl });
+const pool = new pg.Pool({
+  connectionString: normalizePostgresDatabaseUrl(dbUrl),
+});
 try {
-  const org = await pool.query(`SELECT slug FROM organization WHERE organization_id = $1`, [
+  const slug = await resolveOrganizationSlug(orgId);
+  const orgCheck = await pool.query(`SELECT 1 FROM organization WHERE organization_id = $1`, [
     orgId,
   ]);
-  const slug = org.rows[0]?.slug;
-  if (!slug) {
+  if (!orgCheck.rows[0]) {
     console.error(`Organization not found: ${orgId}`);
     process.exit(1);
   }
+
+  await pool.query(
+    `DELETE FROM policy_rule pr
+     USING policy p
+     WHERE pr.policy_id = p.policy_id
+       AND p.organization_id = $1
+       AND pr.tool_pattern = 'stripe.paymentIntents.create'
+       AND pr.decision = 'allow_with_obligation'`,
+    [orgId],
+  );
 
   const existing = await pool.query(
     `SELECT pr.rule_id

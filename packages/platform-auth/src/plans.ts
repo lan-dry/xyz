@@ -1340,9 +1340,18 @@ function trendFromDailySeries(series: number[]): number | null {
   return Math.round(((recent - earlier) / earlier) * 100);
 }
 
+export async function platformListDistinctAuditActions(
+  client: pg.Pool | pg.PoolClient,
+): Promise<string[]> {
+  const result = await client.query<{ action: string }>(
+    `SELECT DISTINCT action FROM audit_log ORDER BY action ASC LIMIT 100`,
+  );
+  return result.rows.map((r) => r.action);
+}
+
 export async function platformListAuditLogs(
   client: pg.Pool | pg.PoolClient,
-  opts: { limit?: number; offset?: number },
+  opts: { limit?: number; offset?: number; action?: string; q?: string },
 ): Promise<{
   logs: Array<{
     audit_id: string;
@@ -1362,10 +1371,33 @@ export async function platformListAuditLogs(
 }> {
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
   const offset = Math.max(opts.offset ?? 0, 0);
+  const params: unknown[] = [];
+  const parts: string[] = [];
+
+  if (opts.action?.trim()) {
+    params.push(opts.action.trim());
+    parts.push(`a.action = $${params.length}`);
+  }
+  if (opts.q?.trim()) {
+    params.push(`%${opts.q.trim()}%`);
+    const n = params.length;
+    parts.push(
+      `(a.action ILIKE $${n} OR a.resource_type ILIKE $${n} OR a.resource_id ILIKE $${n} OR a.metadata::text ILIKE $${n} OR o.name ILIKE $${n} OR o.slug ILIKE $${n})`,
+    );
+  }
+
+  const whereSql = parts.length ? `WHERE ${parts.join(" AND ")}` : "";
+
   const countResult = await client.query<{ count: string }>(
-    `SELECT COUNT(*)::text AS count FROM audit_log`,
+    `SELECT COUNT(*)::text AS count
+     FROM audit_log a
+     JOIN organization o ON o.organization_id = a.organization_id
+     ${whereSql}`,
+    params,
   );
   const total = Number(countResult.rows[0]?.count ?? 0);
+
+  const listParams = [...params, limit, offset];
   const result = await client.query<{
     audit_id: string;
     organization_id: string;
@@ -1385,9 +1417,10 @@ export async function platformListAuditLogs(
      JOIN organization o ON o.organization_id = a.organization_id
      LEFT JOIN membership m ON m.membership_id = a.user_id
      LEFT JOIN account ac ON ac.account_id = m.account_id
+     ${whereSql}
      ORDER BY a.created_at DESC
-     LIMIT $1 OFFSET $2`,
-    [limit, offset],
+     LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`,
+    listParams,
   );
   return { logs: result.rows, total, limit, offset };
 }

@@ -1,11 +1,9 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildMerkleTree, getMerkleProof, verifyMerkleProof } from "@salanor/witness-merkle";
 import "../src/db/load-env.js";
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
+import { applyIntegrationFixture } from "./integration-fixture.js";
 import { runWitnessBatchForOrg } from "../../aegis-signer/src/batch-lib.js";
 import { verifyEventFull, type EventRowForVerify } from "../src/witness/verify-event.js";
 
@@ -36,11 +34,7 @@ async function loadEventRow(eventId: string): Promise<EventRowForVerify> {
 describeIfDb("witness / Merkle (Stage 8 exit)", () => {
   beforeAll(async () => {
     await migrateUp();
-    const seedPath = resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      "../../../tools/seed/dev.sql",
-    );
-    await getPool().query(readFileSync(seedPath, "utf8"));
+    await applyIntegrationFixture(getPool());
     await runWitnessBatchForOrg(getPool(), ORG);
   });
 

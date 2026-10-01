@@ -1,42 +1,14 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useRouter } from "next/navigation";
-import { Suspense, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { getPlatformSessionServer } from "@/lib/platform-server-session";
 
-import { LoadingBlock } from "@/components/ops-ui/ops-ui";
-import { platformApi } from "@/lib/platform-api";
+export const dynamic = "force-dynamic";
 
-function OpsAuthGate({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-
-  const sessionQuery = useQuery({
-    queryKey: ["platform", "session"],
-    queryFn: () => platformApi<{ staff: boolean; email: string }>("session"),
-    retry: false,
-  });
-
-  useEffect(() => {
-    if (sessionQuery.isError) {
-      router.replace("/login");
-    }
-  }, [sessionQuery.isError, router]);
-
-  if (sessionQuery.isPending) {
-    return <LoadingBlock label="Loading Platform Ops…" />;
+export default async function OpsLayout({ children }: { children: React.ReactNode }) {
+  const session = await getPlatformSessionServer();
+  if (!session) {
+    redirect("/login");
   }
 
-  if (!sessionQuery.data) {
-    return null;
-  }
-
-  return <>{children}</>;
-}
-
-export default function OpsAuthLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <Suspense fallback={<LoadingBlock label="Loading…" />}>
-      <OpsAuthGate>{children}</OpsAuthGate>
-    </Suspense>
-  );
+  return children;
 }

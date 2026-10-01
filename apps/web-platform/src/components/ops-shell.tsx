@@ -13,6 +13,7 @@ import {
   FileText,
   Inbox,
   LayoutDashboard,
+  Mail,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -63,7 +64,9 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/content/leads", label: "Leads", icon: Inbox },
       { href: "/content/blog", label: "Blog", icon: FileText },
       { href: "/content/research", label: "Research", icon: BookOpen },
+      { href: "/content/authors", label: "My public profile", icon: UserCircle },
       { href: "/content/careers", label: "Careers", icon: Briefcase },
+      { href: "/content/newsletter", label: "Newsletter", icon: Mail },
     ],
   },
   {

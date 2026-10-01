@@ -61,5 +61,6 @@ Open the printed trace URL → **Why this matters** at top → drill into events
 
 ## Related
 
+- [DESIGN_PARTNER_DEMO.md](./DESIGN_PARTNER_DEMO.md) — 20-min live demo agenda + outreach/handoff emails
 - [PILOT_WALKTHROUGH.md](./PILOT_WALKTHROUGH.md)
 - Reference app: `apps/pilot-agent/`

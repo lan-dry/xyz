@@ -1,13 +1,11 @@
 import { signEvent, type ApsEvent } from "@salanor/aegis";
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { verifyPublicBundle } from "../../../tools/verifier/verify-lib.js";
 import "../src/db/load-env.js";
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
+import { applyIntegrationFixture } from "./integration-fixture.js";
 import { persistSignedEvent } from "../src/ingest/persist.js";
 import { getDidDocumentByAgent } from "../src/repo/did.js";
 import { buildPublicVerificationBundle } from "../src/transparency/bundle.js";
@@ -47,11 +45,7 @@ function buildEvent(): ApsEvent {
 describeIfDb("transparency log (Stage 9 exit)", () => {
   beforeAll(async () => {
     await migrateUp();
-    const seedPath = resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      "../../../tools/seed/dev.sql",
-    );
-    await getPool().query(readFileSync(seedPath, "utf8"));
+    await applyIntegrationFixture(getPool());
 
     const signed = await signEvent(buildEvent(), {
       privateKeyB64,

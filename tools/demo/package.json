@@ -11,10 +11,16 @@
     "full-system": "tsx full-system.mts",
     "verify-plan-limit": "tsx verify-plan-limit-402.mts",
     "ensure-pilot-policy": "tsx ensure-pilot-policy.mts",
+    "ensure-pilot-approval-policy": "tsx ensure-pilot-approval-policy.mts",
+    "test": "tsx --test pilot-explain.test.mts",
     "dev-delete-accounts": "tsx dev-delete-accounts.mts"
+  },
+  "exports": {
+    "./resolve-org": "./resolve-org-id.mts"
   },
   "dependencies": {
     "@salanor/aegis": "workspace:*",
+    "@salanor/db-url": "workspace:*",
     "pg": "^8.16.0"
   },
   "devDependencies": {

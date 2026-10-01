@@ -16,6 +16,7 @@ import {
 import { AUDIT_PAGE_SIZES, useAuditListParams } from "@/hooks/use-audit-list-params";
 import { TruncatedId } from "@/components/console/truncated-id";
 import { consoleApi } from "@/lib/api";
+import { formatAuditLocation } from "@/lib/audit-location";
 
 type AuditLogRow = {
   audit_id: string;
@@ -35,6 +36,7 @@ type AuditLogsResponse = {
 };
 
 const AUDIT_PRESETS = [
+  { label: "Sign-in success", action: "auth.login.success" },
   { label: "Member removed", action: "membership.suspended" },
   { label: "Member reactivated", action: "membership.reactivated" },
   { label: "Role changed", action: "membership.role_changed" },
@@ -166,6 +168,7 @@ export default function AuditLogsPage() {
                     <th>Action</th>
                     <th>Resource</th>
                     <th>Actor</th>
+                    <th>Location</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -184,6 +187,9 @@ export default function AuditLogsPage() {
                         ) : null}
                       </td>
                       <td>{row.actor_email ?? "-"}</td>
+                      <td style={{ fontSize: "0.8125rem", maxWidth: "14rem" }}>
+                        {formatAuditLocation(row.metadata)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
