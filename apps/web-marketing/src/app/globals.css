@@ -14,7 +14,7 @@
   --border-bright: rgba(67, 194, 169, 0.3);
   --text: #e8ede9;
   --text-muted: #7a8c88;
-  --text-dim: #4a5c58;
+  --text-dim: #8a9a96;
   --header-height: 4.5rem;
   --section-pad-x: clamp(1rem, 4vw, 3rem);
   --content-max: 75rem;
@@ -83,7 +83,7 @@ a {
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--teal);
+  color: var(--teal-bright);
   margin-bottom: 1.25rem;
 }
 
@@ -92,7 +92,20 @@ a {
   display: block;
   width: 1.5rem;
   height: 1px;
-  background: var(--teal);
+  background: var(--teal-bright);
+  opacity: 0.65;
+}
+
+.page-nav-link {
+  display: inline-block;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-bottom: 1.25rem;
+}
+
+.page-nav-link:hover {
+  color: var(--teal-bright);
 }
 
 .page-placeholder {

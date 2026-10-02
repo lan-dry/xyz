@@ -21,6 +21,9 @@ export type GitBlogFrontmatter = {
   seoTitle?: string | null;
   seoDescription?: string | null;
   coverImageUrl?: string | null;
+  authorAccountId?: string | null;
+  authorEmail?: string | null;
+  createdByEmail?: string | null;
 };
 
 function contentDir(): string {
@@ -64,6 +67,11 @@ function parseFile(filePath: string): BlogPost | null {
     coverImageUrl: fm.coverImageUrl?.trim() || null,
     authorName: fm.authorName?.trim() || "Salanor",
     authorRole: fm.authorRole?.trim() || null,
+    authorAccountId: fm.authorAccountId?.trim() || null,
+    authorEmail:
+      fm.authorEmail?.trim().toLowerCase() ||
+      fm.createdByEmail?.trim().toLowerCase() ||
+      null,
     tags: Array.isArray(fm.tags) ? fm.tags.map((t) => String(t).trim()).filter(Boolean) : [],
     status,
     publishedAt,

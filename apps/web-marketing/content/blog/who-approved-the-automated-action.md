@@ -1,10 +1,10 @@
 ---
-title: "Who approved the automated action?"
+title: "Automate the routine. Keep the proof."
 slug: who-approved-the-automated-action
 excerpt: >-
-  Most teams talk about AI governance at the policy level. The operational risk
-  is simpler: money or sensitive data moves through automation, and nobody can
-  answer who allowed it.
+  Governed automation is not about approving every step. It is about running
+  the normal path at machine speed—and having a defensible record when something
+  exceptional happens.
 authorName: Landry Bougang
 authorRole: Founder, Salanor
 tags:
@@ -13,31 +13,35 @@ tags:
   - Finance
 status: published
 publishedAt: 2026-09-14T12:00:00.000Z
-seoTitle: Who approved the automated action?
+seoTitle: Governed automation — routine at speed, proof when it matters
 seoDescription: >-
-  The operational AI governance gap: proof when money or sensitive data moves
-  through automation.
+  Operational AI control for finance: automate workflows, record exceptions,
+  and answer audit without slowing the happy path.
 coverImageUrl:
 ---
 
-Most teams talk about AI governance at the policy level.
+Most teams still frame “AI governance” as policies and principles decks.
 
-The risk I keep seeing is simpler: money or sensitive data moves through an automated step, and nobody can answer **who allowed this** on a normal Tuesday.
+In production, the question is narrower: **can you run automation at full speed and still reconstruct what happened** when a payout, a limit change, or a sensitive API call actually executed?
 
-Not model safety. Not a chatbot on the website. The gap is **proof** when an action actually runs.
+That is not anti-automation. It is what regulated ops expects once volume grows.
 
 ## What audit actually asks
 
 When something goes wrong six months later, internal audit does not ask for your AI principles deck. They ask:
 
-- Who approved this payout?
-- What rule was in effect?
-- Can you reconstruct the chain without searching email?
+- What rule was in effect when this ran?
+- Which steps were fully automated—and which had a named approver?
+- Can you export the chain without searching email?
 
-If the answer is "we think someone in ops signed off in Slack," the governance program did not help.
+If the answer is “we think someone in ops signed off in Slack,” the control layer failed—not the automation.
 
 ## Routine should pass. Exceptions should be recorded.
 
-Good control does not mean blocking every transaction. It means the normal path stays fast, and only anomalies get a named approver plus a record you can export.
+Good control **does not** mean a human click on every transaction. It means:
 
-That is the layer we build at Salanor: automate the workflow, keep the proof.
+- **Routine paths stay automated**—fast, repeatable, low friction.
+- **Exceptions and policy hits** get a named approver and an immutable record.
+- **Proof travels with the action**, not in a side channel.
+
+That is the layer we build at Salanor: govern actions, not slide decks—so you can automate with confidence and show evidence when it counts.

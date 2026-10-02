@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getPublishedBlogSlugs } from "@/lib/blog/store";
+import { listPublishedResearch } from "@/lib/cms/research-store";
 
 const SITE = "https://www.salanor.com";
 
@@ -18,6 +19,7 @@ const routes: Array<{
   { path: "/contact", changeFrequency: "monthly", priority: 0.8 },
   { path: "/spec", changeFrequency: "monthly", priority: 0.75 },
   { path: "/careers", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/research", changeFrequency: "weekly", priority: 0.6 },
   { path: "/blog", changeFrequency: "weekly", priority: 0.65 },
   { path: "/legal/privacy", changeFrequency: "yearly", priority: 0.3 },
   { path: "/legal/terms", changeFrequency: "yearly", priority: 0.3 },
@@ -47,5 +49,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     blogEntries = [];
   }
 
-  return [...staticEntries, ...blogEntries];
+  let researchEntries: MetadataRoute.Sitemap = [];
+  try {
+    const posts = await listPublishedResearch();
+    researchEntries = posts.map((p) => ({
+      url: `${SITE}/research/${p.slug}`,
+      lastModified: new Date(p.updatedAt),
+      changeFrequency: "monthly" as const,
+      priority: 0.55,
+    }));
+  } catch {
+    researchEntries = [];
+  }
+
+  return [...staticEntries, ...blogEntries, ...researchEntries];
 }

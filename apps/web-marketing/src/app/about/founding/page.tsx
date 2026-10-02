@@ -54,14 +54,11 @@ export default function FoundingPage() {
               <p className={aboutStyles.foundingSign}>The founding team</p>
               <div className={aboutStyles.foundingCard}>
                 <p>
-                  Operating principles and how we work with design partners live on the company
+                  Operating principles and how we work with customers live on the company
                   About page.
                 </p>
                 <Link href="/about">About Salanor →</Link>
               </div>
-              <Link href="/about" className={pageStyles.back}>
-                ← Back to About
-              </Link>
             </article>
             <FoundingSidebar />
           </div>

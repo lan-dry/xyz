@@ -7,7 +7,8 @@ export async function sendEmailViaResend(input: {
   subject: string;
   text: string;
   html?: string;
-}): Promise<{ sent: boolean; reason?: string }> {
+  headers?: Record<string, string>;
+}): Promise<{ sent: boolean; reason?: string; id?: string }> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
     return { sent: false, reason: "RESEND_API_KEY not configured" };
@@ -30,6 +31,7 @@ export async function sendEmailViaResend(input: {
       subject: input.subject,
       text: input.text,
       html: input.html,
+      headers: input.headers,
     }),
   });
 
@@ -38,5 +40,6 @@ export async function sendEmailViaResend(input: {
     throw new Error(`Resend API ${response.status}: ${body.slice(0, 200)}`);
   }
 
-  return { sent: true };
+  const json = (await response.json().catch(() => ({}))) as { id?: string };
+  return { sent: true, id: json.id };
 }

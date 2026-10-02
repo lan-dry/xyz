@@ -1,3 +1,4 @@
+import { normalizePostgresDatabaseUrl } from "@salanor/db-url";
 import pg from "pg";
 
 let pool: pg.Pool | null = null;
@@ -6,7 +7,10 @@ function getPool(): pg.Pool {
   if (pool) return pool;
   const url = process.env.DATABASE_URL?.trim();
   if (!url) throw new Error("DATABASE_URL is required for contact form storage");
-  pool = new pg.Pool({ connectionString: url, max: 4 });
+  pool = new pg.Pool({
+    connectionString: normalizePostgresDatabaseUrl(url),
+    max: 4,
+  });
   return pool;
 }
 

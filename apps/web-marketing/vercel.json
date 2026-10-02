@@ -2,5 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "cd ../.. && pnpm --filter @salanor/web-marketing build"
+  "buildCommand": "cd ../.. && pnpm --filter @salanor/web-marketing build",
+  "crons": [
+    {
+      "path": "/api/cron/newsletter-send",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

@@ -3,7 +3,7 @@ export const BRAND = {
   company: "Salanor",
   product: "Aegis",
   taglineShort: "Aegis by Salanor",
-  taglineFull: "Aegis by Salanor: provenance and liability coverage for AI agents.",
+  taglineFull: "Verifiable decision record for automated actions — Aegis by Salanor.",
   platformLine: "Infrastructure for agent systems you can audit",
 } as const;
 
@@ -107,25 +107,34 @@ export const PLATFORM_DATA_POINTS = [
     detail:
       "witness:worker batches pending events every 60 seconds and publishes transparency log entries.",
   },
-  {
-    id: "insurance",
-    value: "Preview",
-    label: "Liability bridge (Aether)",
-    detail: "Research program: risk telemetry for underwriters, built on the same Aegis ledger.",
-  },
 ] as const;
 
-/** Homepage hero + implementation offer (sales-aligned, light touch). */
+/** Who the public homepage speaks to first (Rehan / design-partner clarity). */
+export const HOME_ICP =
+  "For teams running automation on money, accounts, or sensitive customer data — fintech, insurance ops, and regulated in-house engineering." as const;
+
+/** One concrete scene — plain language, not architecture jargon. */
+export const HOME_WORKFLOW_EXAMPLE = {
+  title: "Example: a payout agent tries to move USD 2,500",
+  lines: [
+    "Policy runs before the transfer API is called — deny, allow, or pause for a human approver.",
+    "Every decision and tool call becomes a signed trace: who acted, which policy version applied, what ran.",
+    "Six months later, risk or audit downloads an export — not a folder of screenshots and log grep.",
+  ],
+  footnote: "Same pattern for refunds, KYC escalation, admin access, or fraud review workflows.",
+} as const;
+
+/** Homepage hero + design-partner offer (aligned with docs/PITCH_FINTECH_HUB.md). */
 export const IMPLEMENTATION_OFFER = {
-  badge: "Implementation + Aegis platform",
-  headline: "Automate the workflow.",
-  headlineAccent: "Keep the proof.",
+  badge: "Aegis · early access",
+  headline: "Who authorized this action?",
+  headlineAccent: "Prove it later.",
   subhead:
-    "We implement one critical workflow on your stack (n8n, APIs, or custom agents) with Aegis governance built in from day one.",
+    "Salanor is a verifiable decision record for automated actions — every risky tool call is signed, tied to policy, and exportable as evidence auditors can check without trusting our UI.",
   detail:
-    "Before money moves or sensitive data leaves, Aegis enforces your rules, routes human approval, and records a signed trace your audit team can export.",
+    "We help you put one high-risk workflow into production (payout, refund, KYC escalation, or similar) with Aegis built in: enforce rules, route approvals, keep the receipt.",
   primaryCta: "Book a scoping call",
-  secondaryCta: "How it works",
+  secondaryCta: "See Aegis",
   section: {
     label: "What we deliver",
     title: "One governed workflow in production",
@@ -154,6 +163,7 @@ export const IMPLEMENTATION_OFFER = {
   },
 } as const;
 
+/** Full technical steps — product page & docs. */
 export const HOW_IT_WORKS = [
   {
     step: "01",
@@ -177,6 +187,25 @@ export const HOW_IT_WORKS = [
   },
 ] as const;
 
+/** Homepage — three steps from the fintech pitch (no duplicate implementation grid). */
+export const HOME_HOW_IT_WORKS = [
+  {
+    step: "01",
+    title: "Witness before the call",
+    desc: "Policy runs before the dangerous action — deny, allow, or require human approval in Console.",
+  },
+  {
+    step: "02",
+    title: "Signed trace",
+    desc: "Each step is a cryptographic event: who decided, what ran, which policy was in force.",
+  },
+  {
+    step: "03",
+    title: "Export the proof",
+    desc: "Traces, approvals, and compliance bundles your risk team can hand to audit — not spreadsheet archaeology.",
+  },
+] as const;
+
 export const INVESTOR_QUOTES = [
   {
     text: "The gap isn't model safety. It's decision defensibility when an agent acts on a Tuesday in March.",
@@ -193,7 +222,7 @@ export const PRODUCTS = {
     slug: "aegis",
     name: "Aegis",
     tag: "Provenance & Audit",
-    status: "Live · design partners",
+    status: "Early access",
     brandLine: BRAND.taglineFull,
     headline: "Signed provenance for every agent action",
     subhead:
@@ -322,18 +351,9 @@ export const SALANOR_STACK = [
     name: "Aegis",
     slug: "aegis",
     role: "Provenance & audit",
-    status: "Live · design partners",
+    status: "Early access",
     description: "Signed APS-1 ledger, policy engine, human approvals, compliance exports.",
     href: "/products/aegis",
-  },
-  {
-    name: "Aether",
-    slug: "aether",
-    role: "Intelligence & risk",
-    status: "Research program",
-    description:
-      "Anomaly detection, risk scoring, and insurer-ready telemetry on the same ledger.",
-    href: "/products/aether",
   },
   {
     name: "APS-1",

@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@salanor/db-url": "workspace:*",
+    "@salanor/platform-auth": "workspace:*",
     "@salanor/plan-display": "workspace:*",
     "gray-matter": "^4.0.3",
     "marked": "^15.0.12",

@@ -37,7 +37,7 @@ export function MarketingPage({
           <div className={styles.body}>{children}</div>
           {showBackLink ? (
             <Link href={backHref} className={styles.back}>
-              ← Back to home
+              Home
             </Link>
           ) : null}
         </div>

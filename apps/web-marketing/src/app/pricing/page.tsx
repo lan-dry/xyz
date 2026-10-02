@@ -43,13 +43,11 @@ export default async function PricingPage() {
     <MarketingPage
       layout="wide"
       label="Pricing"
-      title="Plans that match how teams adopt governance"
-      lead="Per organization, not per seat. Start free, upgrade when you need production volume, scheduled exports, or enterprise SSO."
+      title="Aegis plans"
+      lead="One organization, one bill — not per seat. Start free to evaluate traces and policy; move to Team or Enterprise when you need volume, scheduled exports, or SSO."
     >
       {live ? (
-        <p className={styles.liveNote}>
-          List prices and limits sync from Platform Ops (refreshed every minute).
-        </p>
+        <p className={styles.liveNote}>Prices and limits shown here match what we publish for new sign-ups.</p>
       ) : null}
 
       <div className={styles.grid}>
@@ -134,10 +132,9 @@ export default async function PricingPage() {
       </section>
 
       <p className={styles.note}>
-        Team checkout uses Stripe when configured in production. Change list prices in{" "}
-        <strong>Platform Ops → Plans</strong>; charges follow the Stripe Price ID on each plan.
-        Enterprise limits and invoice billing stay in Ops. See also our{" "}
-        <Link href="/trust">trust center</Link> for what is live vs roadmap.
+        Team self-serve checkout uses Stripe where we support it. Enterprise and invoicing:{" "}
+        <Link href="/contact">contact us</Link>. What is shipping today vs roadmap:{" "}
+        <Link href="/trust">trust center</Link>.
       </p>
     </MarketingPage>
   );

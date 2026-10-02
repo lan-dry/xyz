@@ -3,12 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { BlogCard } from "@/components/blog/blog-card";
-import { BlogProse } from "@/components/blog/blog-prose";
 import { BlogArticleEngagement } from "@/components/blog/blog-article-engagement";
-import { BlogListen } from "@/components/blog/blog-listen";
+import { BlogArticleListen } from "@/components/blog/blog-article-listen";
+import { BlogAuthorSocial } from "@/components/blog/blog-author-social";
 import { BlogShare } from "@/components/blog/blog-share";
 import { BlogToc } from "@/components/blog/blog-toc";
 import styles from "@/components/blog/blog.module.css";
+import { resolveBlogAuthorDisplay } from "@/lib/blog/author-byline";
 import { getBlogPostBySlug, listBlogPosts } from "@/lib/blog/store";
 import { extractTableOfContents, formatBlogDate } from "@/lib/blog/utils";
 import { absoluteBlogOgImage } from "@/lib/blog/og-image";
@@ -64,7 +65,8 @@ export default async function BlogArticlePage({ params }: Props) {
   const all = await listBlogPosts({ status: "published" });
   const related = all.filter((p) => p.slug !== post.slug).slice(0, 3);
   const articleUrl = `${SITE_ORIGIN}/blog/${post.slug}`;
-  const initials = post.authorName
+  const author = await resolveBlogAuthorDisplay(post);
+  const initials = author.name
     .split(" ")
     .map((p) => p[0])
     .join("")
@@ -76,21 +78,17 @@ export default async function BlogArticlePage({ params }: Props) {
       <div className={styles.articleWide}>
         <div>
           <div className={styles.articleInner} style={{ padding: 0, maxWidth: "none" }}>
-            <Link href="/blog" className={styles.backLink}>
-              ← All articles
+            <Link href="/blog" className="page-nav-link">
+              All articles
             </Link>
 
             <header className={styles.articleHeader}>
               {post.tags.length > 0 ? (
                 <div className={styles.cardTags} style={{ marginBottom: "1rem" }}>
                   {post.tags.map((tag) => (
-                    <Link
-                      key={tag}
-                      href={`/blog?tag=${encodeURIComponent(tag)}`}
-                      className={styles.tag}
-                    >
+                    <span key={tag} className={styles.tag}>
                       {tag}
-                    </Link>
+                    </span>
                   ))}
                 </div>
               ) : null}
@@ -98,12 +96,20 @@ export default async function BlogArticlePage({ params }: Props) {
               {post.excerpt ? <p className={styles.articleExcerpt}>{post.excerpt}</p> : null}
               <div className={styles.articleMetaRow}>
                 <div className={styles.authorBlock}>
-                  <div className={styles.authorAvatar}>{initials}</div>
+                  {author.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={author.photoUrl} alt="" className={styles.authorAvatarImg} />
+                  ) : (
+                    <div className={styles.authorAvatar}>{initials}</div>
+                  )}
                   <div>
-                    <span className={styles.authorName}>{post.authorName}</span>
-                    {post.authorRole ? (
-                      <span className={styles.authorRole}>{post.authorRole}</span>
-                    ) : null}
+                    <span className={styles.authorName}>{author.name}</span>
+                    {author.role ? <span className={styles.authorRole}>{author.role}</span> : null}
+                    <BlogAuthorSocial
+                      linkedinUrl={author.linkedinUrl}
+                      xUrl={author.xUrl}
+                      instagramUrl={author.instagramUrl}
+                    />
                   </div>
                 </div>
                 <span>{formatBlogDate(post.publishedAt ?? post.createdAt)}</span>
@@ -119,8 +125,11 @@ export default async function BlogArticlePage({ params }: Props) {
             ) : null}
 
             <BlogArticleEngagement slug={post.slug} />
-            <BlogListen slug={post.slug} title={post.title} contentHtml={post.contentHtml} />
-            <BlogProse html={post.contentHtml} />
+            <BlogArticleListen
+              slug={post.slug}
+              title={post.title}
+              contentHtml={post.contentHtml}
+            />
             <BlogShare slug={post.slug} title={post.title} url={articleUrl} />
 
             {related.length > 0 ? (

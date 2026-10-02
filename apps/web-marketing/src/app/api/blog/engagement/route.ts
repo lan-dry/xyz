@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
+import { normalizePostgresDatabaseUrl } from "@salanor/db-url";
+import { getClientGeoFromHeaders, getClientIp } from "@salanor/platform-auth";
 import pg from "pg";
 
 export const runtime = "nodejs";
@@ -24,7 +26,12 @@ let pool: pg.Pool | null = null;
 function getPool(): pg.Pool | null {
   const url = process.env.DATABASE_URL?.trim();
   if (!url) return null;
-  if (!pool) pool = new pg.Pool({ connectionString: url, max: 4 });
+  if (!pool) {
+    pool = new pg.Pool({
+      connectionString: normalizePostgresDatabaseUrl(url),
+      max: 4,
+    });
+  }
   return pool;
 }
 
@@ -65,14 +72,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip")?.trim() ||
-    "unknown";
+  const ip = getClientIp(req.headers);
+  const geo = getClientGeoFromHeaders(req.headers);
 
   const metadata = {
     ...(body.metadata && typeof body.metadata === "object" ? body.metadata : {}),
     ip_hash: hashIp(ip),
+    ...(geo.country ? { country: geo.country } : {}),
+    ...(geo.region ? { region: geo.region } : {}),
+    ...(geo.city ? { city: geo.city } : {}),
   };
 
   try {

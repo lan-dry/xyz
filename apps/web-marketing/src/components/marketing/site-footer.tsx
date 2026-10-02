@@ -8,7 +8,6 @@ import styles from "./site-footer.module.css";
 
 const PRODUCT_LINKS = [
   { href: "/products/aegis", label: "Aegis" },
-  { href: "/products/aether", label: "Aether" },
   { href: "/spec", label: "APS-1 & did:agent" },
   { href: "/pricing", label: "Pricing" },
 ] as const;
@@ -17,7 +16,6 @@ const DEVELOPER_LINKS = [
   { href: "/spec", label: "APS-1 & did:agent" },
   { href: docsUrl("aegis"), label: "Aegis docs", external: true },
   { href: docsUrl("aegis"), label: "@salanor/aegis SDK", external: true },
-  { href: docsUrl("aether"), label: "Aether docs", external: true },
   { href: "https://github.com/salanor-ltd/salanor", label: "GitHub", external: true },
 ] as const;
 
@@ -32,6 +30,7 @@ const COMPANY_LINKS = [
   { href: "/about", label: "About" },
   { href: "/about/founding", label: "Founding note" },
   { href: "/blog", label: "Blog" },
+  { href: "/research", label: "Research" },
   { href: "/careers", label: "Careers" },
   { href: "/contact", label: "Contact" },
 ] as const;

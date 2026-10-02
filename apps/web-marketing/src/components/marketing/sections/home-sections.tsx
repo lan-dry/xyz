@@ -1,20 +1,15 @@
 import Link from "next/link";
 
-import { DataPointField } from "@/components/marketing/data-point-field";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
-import btn from "@/components/marketing/buttons.module.css";
 import { HeroDataVisual } from "@/components/marketing/hero-data-visual";
-import { contactUrl, publicVerifyUrl } from "@/lib/site-urls";
+import { contactUrl } from "@/lib/site-urls";
 import {
-  BRAND,
   COMPLIANCE_AVAILABLE,
   COMPLIANCE_ROADMAP,
-  FOUNDING_PULL_QUOTE,
-  HOW_IT_WORKS,
+  HOME_HOW_IT_WORKS,
+  HOME_ICP,
+  HOME_WORKFLOW_EXAMPLE,
   IMPLEMENTATION_OFFER,
-  INVESTOR_QUOTES,
-  PLATFORM_DATA_POINTS,
-  PRODUCTS,
 } from "@/lib/marketing-content";
 
 import s from "./sections.module.css";
@@ -30,123 +25,48 @@ export function HeroSection() {
             <span className={s.badgeDot} />
             <span>{offer.badge}</span>
           </div>
+          <p className={s.heroIcp}>{HOME_ICP}</p>
           <h1>
             {offer.headline}
             <br />
             <span className={s.heroAccent}>{offer.headlineAccent}</span>
           </h1>
           <p className={s.heroSub}>{offer.subhead}</p>
-          <p className={s.heroTagline}>
-            {offer.detail}{" "}
-            <Link href="/products/aegis" style={{ color: "var(--teal-bright)", textDecoration: "none" }}>
-              Aegis
-            </Link>{" "}
-            is the platform behind it: policy, approvals, signed APS-1 ledger, and compliance exports.
-          </p>
+          <p className={s.heroTagline}>{offer.detail}</p>
           <div className={s.heroActions}>
             <a href={contactUrl()} className={s.btnHero}>
               {offer.primaryCta}
             </a>
-            <Link href="/#how" className={s.btnHeroGhost}>
+            <Link href="/products/aegis" className={s.btnHeroGhost}>
               {offer.secondaryCta}
             </Link>
           </div>
-          <p className={s.heroNote}>
-            Already onboarded? Open <strong style={{ color: "var(--text-muted)", fontWeight: 500 }}>Console</strong> in the header.
-          </p>
         </div>
         <div>
           <HeroDataVisual />
-          <p className={s.heroVisualCaption}>Aegis provenance pipeline</p>
+          <p className={s.heroVisualCaption}>Policy → sign → ledger → export</p>
         </div>
       </div>
     </section>
   );
 }
 
-export function ImplementationSection() {
-  const { section } = IMPLEMENTATION_OFFER;
+export function WorkflowExampleSection() {
+  const ex = HOME_WORKFLOW_EXAMPLE;
   return (
-    <section className={s.sectionAlt} id="implementation">
+    <section className={s.sectionAlt} id="example">
       <div className="section-inner">
         <ScrollReveal className={s.header}>
-          <p className="section-label">{section.label}</p>
-          <h2>{section.title}</h2>
-          <p>{section.intro}</p>
+          <p className="section-label">Concrete</p>
+          <h2>{ex.title}</h2>
         </ScrollReveal>
-        <ScrollReveal delay={80}>
-          <div className={s.serviceGrid}>
-            {section.deliverables.map((item) => (
-              <article key={item.step} className={s.serviceCard}>
-                <div className={s.stepNum}>{item.step}</div>
-                <h3 className={s.stepTitle}>{item.title}</h3>
-                <p className={s.stepDesc}>{item.desc}</p>
-              </article>
+        <ScrollReveal delay={60}>
+          <ul className={s.exampleList}>
+            {ex.lines.map((line) => (
+              <li key={line}>{line}</li>
             ))}
-          </div>
-        </ScrollReveal>
-        <ScrollReveal delay={120}>
-          <div className={s.serviceFoot}>
-            <p>{section.footnote}</p>
-            <Link href="/contact" className={s.inlineLink}>
-              {section.cta}
-            </Link>
-          </div>
-        </ScrollReveal>
-      </div>
-    </section>
-  );
-}
-
-export function PlatformSection() {
-  return (
-    <section className={s.section} id="platform">
-      <div className="section-inner">
-        <ScrollReveal className={s.header}>
-          <p className="section-label">Platform</p>
-          <h2>Built so diligence teams can check the work</h2>
-          <p>
-            Shared primitives across Salanor products: provenance, open standards, and regulatory
-            exports.{" "}
-            <Link href={publicVerifyUrl()} className={s.inlineLink}>
-              Verify a published event
-            </Link>{" "}
-            without Salanor credentials.
-          </p>
-        </ScrollReveal>
-        <ScrollReveal delay={80}>
-          <DataPointField points={PLATFORM_DATA_POINTS} />
-        </ScrollReveal>
-      </div>
-    </section>
-  );
-}
-
-export function ProductsTeaserSection() {
-  const cards = [PRODUCTS.aegis, PRODUCTS.aether];
-  return (
-    <section className={s.sectionAlt} id="products">
-      <div className="section-inner">
-        <ScrollReveal className={s.header}>
-          <p className="section-label">Products</p>
-          <h2>Aegis now. Aether in research.</h2>
-          <p>
-            {BRAND.taglineShort} is live for design partners. Aether is a separate research program
-            on the same ledger, not the focus of this quarter.
-          </p>
-        </ScrollReveal>
-        <ScrollReveal delay={100}>
-          <div className={s.teaserGrid}>
-            {cards.map((p) => (
-              <Link key={p.slug} href={`/products/${p.slug}`} className={s.teaserCard}>
-                <span className={s.teaserStatus}>{p.status}</span>
-                <p className={s.teaserTag}>{p.tag}</p>
-                <h3 className={s.teaserName}>{p.name}</h3>
-                <p className={s.teaserDesc}>{p.subhead}</p>
-                <span className={s.teaserLink}>Explore {p.name}</span>
-              </Link>
-            ))}
-          </div>
+          </ul>
+          <p className={s.exampleFoot}>{ex.footnote}</p>
         </ScrollReveal>
       </div>
     </section>
@@ -159,13 +79,13 @@ export function HowItWorksSection() {
       <div className="section-inner">
         <ScrollReveal className={s.header}>
           <p className="section-label">How it works</p>
-          <h2>From agent call to signed record</h2>
-          <p>Four steps, no rewrite of your agent code.</p>
+          <h2>From agent call to evidence you can export</h2>
+          <p>Three steps. Deeper technical detail on the Aegis product page and in docs.</p>
         </ScrollReveal>
-        <ScrollReveal delay={120}>
-          <div className={s.steps}>
-            {HOW_IT_WORKS.map((step) => (
-              <article key={step.step}>
+        <ScrollReveal delay={80}>
+          <div className={s.serviceGrid}>
+            {HOME_HOW_IT_WORKS.map((step) => (
+              <article key={step.step} className={s.serviceCard}>
                 <div className={s.stepNum}>{step.step}</div>
                 <h3 className={s.stepTitle}>{step.title}</h3>
                 <p className={s.stepDesc}>{step.desc}</p>
@@ -178,50 +98,19 @@ export function HowItWorksSection() {
   );
 }
 
-export function InvestorSection() {
+export function ComplianceStripSection() {
   return (
     <section className={s.sectionAlt}>
       <div className="section-inner">
-        <ScrollReveal className={s.header}>
-          <p className="section-label">Why now</p>
-          <h2>Liability is what blocks production</h2>
-          <p>What design partners say before they put agents in real workflows.</p>
-        </ScrollReveal>
-        <ScrollReveal delay={80}>
-          <div className={s.quotes}>
-            {INVESTOR_QUOTES.map((q) => (
-              <blockquote key={q.attr} className={s.quote}>
-                <p>&ldquo;{q.text}&rdquo;</p>
-                <cite>{q.attr}</cite>
-              </blockquote>
-            ))}
-          </div>
-        </ScrollReveal>
-        <ScrollReveal delay={120}>
-          <blockquote className={s.foundingPull}>
-            <p>&ldquo;{FOUNDING_PULL_QUOTE}&rdquo;</p>
-            <footer>
-              <cite>The founding note</cite>
-              <Link href="/about/founding">Read why Salanor exists →</Link>
-            </footer>
-          </blockquote>
-        </ScrollReveal>
-      </div>
-    </section>
-  );
-}
-
-export function ComplianceStripSection() {
-  return (
-    <section className={s.section}>
-      <div className="section-inner">
         <ScrollReveal className={`${s.header} ${s.centerHeader}`}>
-          <p className={`section-label ${s.centerLabel}`}>Compliance</p>
-          <h2>Regulatory outputs, not slide decks</h2>
+          <p className={`section-label ${s.centerLabel}`}>Trust</p>
+          <h2>Evidence for audit, not slide decks</h2>
           <p>
-            Export bundles include control mapping for frameworks we support today. Additional
-            frameworks are on the roadmap. Formal certification is separate. See{" "}
-            <Link href="/trust">platform status</Link>.
+            Export bundles map to frameworks we support today. See{" "}
+            <Link href="/trust" className={s.inlineLink}>
+              trust center
+            </Link>{" "}
+            for live status — mapping is not certification.
           </p>
         </ScrollReveal>
         <ScrollReveal delay={60}>
@@ -249,43 +138,13 @@ export function ComplianceStripSection() {
   );
 }
 
-export function HomeCtaSection() {
-  return (
-    <section className={s.section}>
-      <div className="section-inner">
-        <ScrollReveal>
-          <div className={s.ctaBox}>
-            <h2>Talk to the founders</h2>
-            <p>
-              We are onboarding a small set of design partners. Technical diligence calls are
-              available weekly.
-            </p>
-            <div className={s.ctaActions}>
-              <Link href="/contact" className={s.btnHero}>
-                Request access →
-              </Link>
-              <a href="mailto:partners@salanor.com" className={`${btn.btnGhost}`} style={{ padding: "0.875rem 1.75rem", fontSize: "0.9375rem" }}>
-                partners@salanor.com
-              </a>
-            </div>
-          </div>
-        </ScrollReveal>
-      </div>
-    </section>
-  );
-}
-
 export function HomePageContent() {
   return (
     <>
       <HeroSection />
-      <ImplementationSection />
-      <PlatformSection />
-      <ProductsTeaserSection />
+      <WorkflowExampleSection />
       <HowItWorksSection />
-      <InvestorSection />
       <ComplianceStripSection />
-      <HomeCtaSection />
     </>
   );
 }

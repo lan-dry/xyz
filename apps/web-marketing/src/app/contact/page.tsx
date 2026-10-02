@@ -7,7 +7,7 @@ import page from "@/components/marketing/marketing-page.module.css";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Design partners, investors, press, and enterprise inquiries.",
+  description: "Sales, pilots, press, security disclosure, and enterprise inquiries.",
 };
 
 export default function ContactPage() {
