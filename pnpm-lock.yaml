@@ -176,9 +176,15 @@ importers:
 
   apps/web-marketing:
     dependencies:
+      '@salanor/db-url':
+        specifier: workspace:*
+        version: link:../../packages/db-url
       '@salanor/plan-display':
         specifier: workspace:*
         version: link:../../packages/plan-display
+      '@salanor/platform-auth':
+        specifier: workspace:*
+        version: link:../../packages/platform-auth
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
