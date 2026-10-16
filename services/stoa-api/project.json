@@ -1,0 +1,14 @@
+{
+  "name": "stoa-api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "services/stoa-api",
+  "tags": ["type:service", "scope:stoa"],
+  "targets": {
+    "dev": { "executor": "nx:run-script", "options": { "script": "dev" } },
+    "build": { "executor": "nx:run-script", "options": { "script": "build" } },
+    "lint": { "executor": "nx:run-script", "options": { "script": "lint" } },
+    "typecheck": { "executor": "nx:run-script", "options": { "script": "typecheck" } },
+    "test": { "executor": "nx:run-script", "options": { "script": "test" } }
+  }
+}

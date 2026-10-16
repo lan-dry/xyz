@@ -1,0 +1,104 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.panel {
+  width: min(420px, 100%);
+  height: 100%;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  padding: 1.25rem 1.35rem;
+  overflow: auto;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.08);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.headerTitle h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.close {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.25rem;
+  border-radius: 8px;
+}
+
+.close:hover {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.lead {
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.block {
+  margin-bottom: 1.25rem;
+}
+
+.label {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.profileName {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.muted {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.15rem;
+  line-height: 1.55;
+  font-size: 0.9rem;
+}
+
+.footer {
+  margin: 1.5rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.footer code {
+  font-size: 0.78rem;
+}

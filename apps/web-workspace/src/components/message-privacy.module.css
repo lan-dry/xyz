@@ -1,0 +1,110 @@
+.strip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+.chip,
+.restoredChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid color-mix(in srgb, #059669 35%, var(--border));
+  border-radius: 999px;
+  padding: 0.22rem 0.6rem;
+  background: color-mix(in srgb, #059669 8%, transparent);
+  color: color-mix(in srgb, #047857 80%, var(--text));
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chip:hover,
+.restoredChip:hover {
+  background: color-mix(in srgb, #059669 14%, transparent);
+}
+
+.chip:disabled {
+  cursor: default;
+}
+
+.proof {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px dashed color-mix(in srgb, #059669 45%, var(--border));
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  background: var(--panel);
+  text-align: left;
+}
+
+.proofTitle {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.proofBody {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.proofFoot {
+  margin: 0.5rem 0 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.placeholder {
+  padding: 0 0.2rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, #059669 18%, transparent);
+  color: inherit;
+  font-weight: 600;
+}
+
+.assistantActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+  white-space: normal;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: none;
+  border-radius: 7px;
+  padding: 0.25rem 0.45rem;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.action:hover {
+  background: var(--accent-soft);
+  color: var(--text);
+}
