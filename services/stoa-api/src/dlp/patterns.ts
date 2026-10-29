@@ -177,7 +177,6 @@ export const PROFILE_GROUPS: Record<DlpProfile, PatternGroup[]> = {
     "account_number",
     "iban",
     "national_id",
-    "ipv4",
     "api_secrets",
     "person",
     "address",

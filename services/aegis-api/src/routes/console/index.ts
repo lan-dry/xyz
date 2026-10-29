@@ -69,7 +69,15 @@ import { approvalRoutes } from "./approvals.js";
 import { verifyRoutes } from "./verify.js";
 import { exportRoutes } from "./exports.js";
 import { siemRoutes } from "./siem.js";
+import { webhookRoutes } from "./webhooks.js";
 import { governanceRoutes } from "./governance.js";
+import { workflowRoutes } from "./workflows.js";
+import { coverageRoutes } from "./coverage.js";
+import { incidentRoutes } from "./incidents.js";
+import { proofRoutes } from "./proof.js";
+import { auditorRoutes } from "./auditor.js";
+import { shareRoutes } from "./share.js";
+import { getOverviewMetrics } from "../../repo/overview.js";
 
 const LEGACY_SESSION_COOKIE = "aegis_session";
 
@@ -170,6 +178,7 @@ function parseTraceListFilters(c: {
   const q = c.req.query("q")?.trim();
   const agentId = c.req.query("agent_id")?.trim();
   const status = c.req.query("status")?.trim();
+  const environmentRaw = c.req.query("environment")?.trim();
   const fromRaw = c.req.query("from");
   const toRaw = c.req.query("to");
   const limitRaw = Number(c.req.query("limit") ?? "50");
@@ -186,6 +195,9 @@ function parseTraceListFilters(c: {
   if (q) filters.q = q;
   if (agentId) filters.agentId = agentId;
   if (status) filters.status = status;
+  if (environmentRaw === "production" || environmentRaw === "sandbox") {
+    filters.environment = environmentRaw;
+  }
   if (fromRaw) {
     const from = new Date(fromRaw);
     if (!Number.isNaN(from.getTime())) filters.from = from;
@@ -206,7 +218,14 @@ consoleRoutes.route("/", approvalRoutes);
 consoleRoutes.route("/", verifyRoutes);
 consoleRoutes.route("/", exportRoutes);
 consoleRoutes.route("/", siemRoutes);
+consoleRoutes.route("/", webhookRoutes);
 consoleRoutes.route("/", governanceRoutes);
+consoleRoutes.route("/", workflowRoutes);
+consoleRoutes.route("/", coverageRoutes);
+consoleRoutes.route("/", incidentRoutes);
+consoleRoutes.route("/", proofRoutes);
+consoleRoutes.route("/", auditorRoutes);
+consoleRoutes.route("/", shareRoutes);
 
 consoleRoutes.post("/auth/login", async (c) => {
   const ip = getClientIp(c.req.raw.headers);
@@ -315,6 +334,14 @@ consoleRoutes.get("/insights", requireConsoleSession, async (c) => {
   const orgId = c.get("consoleSession").organizationId;
   const insights = await getOrgGovernanceInsights(getPool(), orgId);
   return c.json({ insights });
+});
+
+consoleRoutes.get("/overview", requireConsoleSession, async (c) => {
+  const orgId = c.get("consoleSession").organizationId;
+  const envRaw = c.req.query("environment")?.trim();
+  const environment = envRaw === "sandbox" ? "sandbox" : "production";
+  const overview = await getOverviewMetrics(getPool(), orgId, environment);
+  return c.json({ overview });
 });
 
 consoleRoutes.get("/system-status", requireConsoleSession, async (c) => {

@@ -1,4 +1,8 @@
 import type pg from "pg";
+import {
+  witnessCheckpointKeyId,
+  witnessCheckpointPublicKeyB64,
+} from "../witness/sign-checkpoint.js";
 
 export type ExportContext = {
   policies: unknown[];
@@ -6,6 +10,12 @@ export type ExportContext = {
   auditLog: unknown[];
   witnessRoots: unknown[];
   inclusionProofs: unknown[];
+  publicKeys: Array<{
+    key_id: string;
+    algorithm: string;
+    public_key_b64: string;
+    purpose: string;
+  }>;
 };
 
 export async function gatherExportContext(
@@ -14,7 +24,7 @@ export async function gatherExportContext(
   periodStart: Date,
   periodEnd: Date,
 ): Promise<ExportContext> {
-  const [policies, approvals, auditLog, witnessRoots, inclusionProofs] =
+  const [policiesRaw, approvals, auditLog, witnessRoots, inclusionProofs, agentKeys] =
     await Promise.all([
       client
         .query(
@@ -35,7 +45,9 @@ export async function gatherExportContext(
            FROM policy p
            LEFT JOIN policy_rule pr ON pr.policy_id = p.policy_id
            WHERE p.organization_id = $1
+             AND p.status = 'active'
            GROUP BY p.policy_id
+           HAVING COUNT(pr.rule_id) > 0
            ORDER BY p.created_at DESC`,
           [organizationId],
         )
@@ -97,7 +109,45 @@ export async function gatherExportContext(
           [organizationId, periodStart, periodEnd],
         )
         .then((r) => r.rows),
+
+      client
+        .query<{ key_id: string; public_key_b64: string; algorithm: string | null }>(
+          `SELECT DISTINCT sk.key_id, sk.public_key_b64, sk.algorithm
+           FROM signing_key sk
+           JOIN event e ON e.key_id = sk.key_id
+           WHERE e.organization_id = $1
+             AND e.emitted_at >= $2
+             AND e.emitted_at <= $3
+             AND sk.public_key_b64 IS NOT NULL
+             AND length(trim(sk.public_key_b64)) > 0`,
+          [organizationId, periodStart, periodEnd],
+        )
+        .then((r) => r.rows),
     ]);
 
-  return { policies, approvals, auditLog, witnessRoots, inclusionProofs };
+  const publicKeys: ExportContext["publicKeys"] = agentKeys.map((k) => ({
+    key_id: k.key_id,
+    algorithm: (k.algorithm ?? "ed25519").toLowerCase(),
+    public_key_b64: k.public_key_b64,
+    purpose: "agent_event_signature",
+  }));
+
+  const witnessPub = await witnessCheckpointPublicKeyB64();
+  if (witnessPub) {
+    publicKeys.push({
+      key_id: witnessCheckpointKeyId(),
+      algorithm: "ed25519",
+      public_key_b64: witnessPub,
+      purpose: "witness_checkpoint_signature",
+    });
+  }
+
+  return {
+    policies: policiesRaw,
+    approvals,
+    auditLog,
+    witnessRoots,
+    inclusionProofs,
+    publicKeys,
+  };
 }

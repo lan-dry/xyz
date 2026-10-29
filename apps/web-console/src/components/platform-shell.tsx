@@ -34,23 +34,39 @@ export function PlatformShell({
           <nav style={{ display: "flex", gap: "0.5rem" }}>
             {PLATFORM_PRODUCTS.map((product) => {
               const active =
-                pathname === product.href ||
-                pathname.startsWith(`${product.href}/`);
-              return (
-                <Link
-                  key={product.slug}
-                  href={product.href}
-                  style={{
-                    padding: "0.25rem 0.75rem",
-                    borderRadius: "4px",
-                    fontSize: "0.875rem",
-                    fontWeight: active ? 600 : 400,
-                    background: active ? "#e2e8f0" : "transparent",
-                    color: active ? "#0f172a" : "#64748b",
-                  }}
-                >
+                !product.external &&
+                (pathname === product.href ||
+                  pathname.startsWith(`${product.href}/`));
+              const style = {
+                padding: "0.25rem 0.75rem",
+                borderRadius: "4px",
+                fontSize: "0.875rem",
+                fontWeight: active ? 600 : 400,
+                background: active ? "#e2e8f0" : "transparent",
+                color: active ? "#0f172a" : "#64748b",
+              } as const;
+              const label = (
+                <>
                   {product.name}
                   {product.status === "preview" ? " (preview)" : ""}
+                </>
+              );
+              if (product.external) {
+                return (
+                  <a
+                    key={product.slug}
+                    href={product.href}
+                    style={style}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {label}
+                  </a>
+                );
+              }
+              return (
+                <Link key={product.slug} href={product.href} style={style}>
+                  {label}
                 </Link>
               );
             })}

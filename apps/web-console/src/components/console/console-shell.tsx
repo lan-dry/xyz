@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen,
   ExternalLink,
@@ -20,8 +21,15 @@ import {
   toggleConsoleTheme,
   type ConsoleTheme,
 } from "@/lib/console-theme";
+import {
+  environmentLabel,
+  persistConsoleEnvironment,
+  readConsoleEnvironment,
+  type ConsoleEnvironment,
+} from "@/lib/console-environment";
 import { PLATFORM_PRODUCTS } from "@/lib/products";
 import { docsUrl, MARKETING_URL, PLATFORM_URL } from "@/lib/site-urls";
+import { consoleApi } from "@/lib/api";
 import type { ConsoleImpersonation, ConsoleOrganization, ConsoleUser } from "@/lib/types";
 
 import { SalanorLogo } from "@/components/salanor-logo";
@@ -87,12 +95,23 @@ export function ConsoleShell({
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState<ConsoleTheme>("light");
+  const [environment, setEnvironment] = useState<ConsoleEnvironment>("production");
+
+  const pendingApprovalsQuery = useQuery({
+    queryKey: ["console", "approvals", "pending", "nav-badge"],
+    queryFn: () =>
+      consoleApi<{ approvals: unknown[] }>("/approvals?status=pending"),
+    refetchInterval: 15_000,
+    enabled: product === "aegis",
+  });
+  const pendingCount = pendingApprovalsQuery.data?.approvals?.length ?? 0;
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(SIDEBAR_KEY) === "1");
     const resolved = resolveConsoleTheme();
     applyConsoleTheme(resolved);
     setTheme(resolved);
+    setEnvironment(readConsoleEnvironment());
   }, []);
 
   useEffect(() => {
@@ -131,7 +150,7 @@ export function ConsoleShell({
       <aside
         className={`${shell.sidebar} ${collapsed ? shell.sidebarCollapsed : ""}`}
       >
-        <div className={shell.brand}>
+        <div className={`${shell.brand} ${collapsed ? shell.brandCollapsed : ""}`}>
           {!collapsed ? (
             <Link href="/aegis" className={shell.brandLink}>
               <SalanorLogo
@@ -141,14 +160,7 @@ export function ConsoleShell({
                 variant={theme === "dark" ? "white" : "primary"}
               />
             </Link>
-          ) : (
-            <Link href="/aegis" className={shell.brandLink} title="Salanor">
-              <SalanorLogo
-                size={28}
-                variant={theme === "dark" ? "white" : "primary"}
-              />
-            </Link>
-          )}
+          ) : null}
           <button
             type="button"
             className={shell.collapseBtn}
@@ -168,15 +180,46 @@ export function ConsoleShell({
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isNavActive(pathname, item.href);
+              const badge =
+                item.badgeKey === "approvals" && pendingCount > 0
+                  ? pendingCount > 99
+                    ? "99+"
+                    : String(pendingCount)
+                  : null;
+              const className = `${shell.navLink} ${active ? shell.navLinkActive : ""}`;
+              const inner = (
+                <>
+                  <Icon className={shell.navIcon} aria-hidden />
+                  <span className={shell.navLabel}>{item.label}</span>
+                  {badge && !collapsed ? (
+                    <span className={shell.navBadge} aria-label={`${badge} pending`}>
+                      {badge}
+                    </span>
+                  ) : null}
+                </>
+              );
+              if (item.external) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className={className}
+                    title={collapsed ? item.label : undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {inner}
+                  </a>
+                );
+              }
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`${shell.navLink} ${active ? shell.navLinkActive : ""}`}
+                  className={className}
                   title={collapsed ? item.label : undefined}
                 >
-                  <Icon className={shell.navIcon} aria-hidden />
-                  <span className={shell.navLabel}>{item.label}</span>
+                  {inner}
                 </Link>
               );
             })}
@@ -187,7 +230,28 @@ export function ConsoleShell({
           {!collapsed ? <p className={shell.productLabel}>Products</p> : null}
           {PLATFORM_PRODUCTS.map((p) => {
             const active =
-              pathname === p.href || pathname.startsWith(`${p.href}/`);
+              !p.external &&
+              (pathname === p.href || pathname.startsWith(`${p.href}/`));
+            const label = (
+              <>
+                {p.name}
+                {p.status === "preview" ? " · preview" : ""}
+              </>
+            );
+            if (p.external) {
+              return (
+                <a
+                  key={p.slug}
+                  href={p.href}
+                  className={shell.productLink}
+                  title={collapsed ? p.name : undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {label}
+                </a>
+              );
+            }
             return (
               <Link
                 key={p.slug}
@@ -195,8 +259,7 @@ export function ConsoleShell({
                 className={`${shell.productLink} ${active ? shell.productLinkActive : ""}`}
                 title={collapsed ? p.name : undefined}
               >
-                {p.name}
-                {p.status === "preview" ? " · preview" : ""}
+                {label}
               </Link>
             );
           })}
@@ -207,6 +270,29 @@ export function ConsoleShell({
         <header className={shell.topBar}>
           <div className={shell.topBarLeft}>
             <OrgDisplay organization={organization} organizations={organizations} />
+            {product === "aegis" ? (
+              <label className={shell.envSwitcher}>
+                <span className={shell.envLabel}>Env</span>
+                <select
+                  className={ui.select}
+                  aria-label="Environment"
+                  value={environment}
+                  onChange={(e) => {
+                    const next = e.target.value as ConsoleEnvironment;
+                    setEnvironment(next);
+                    persistConsoleEnvironment(next);
+                    window.dispatchEvent(
+                      new CustomEvent("salanor:console-environment", {
+                        detail: next,
+                      }),
+                    );
+                  }}
+                >
+                  <option value="production">{environmentLabel("production")}</option>
+                  <option value="sandbox">{environmentLabel("sandbox")}</option>
+                </select>
+              </label>
+            ) : null}
           </div>
           <div className={shell.topBarRight}>
             <TopLink href={docsUrl("aegis")} label="Documentation" icon={BookOpen} external />

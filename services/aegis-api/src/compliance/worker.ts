@@ -51,11 +51,15 @@ export async function runComplianceExport(
       policy_decision: string;
       tool_name: string | null;
       event_hash: string;
+      sig_alg: string | null;
+      sig_value_b64: string | null;
+      key_id: string | null;
       emitted_at: Date;
       payload: unknown;
     }>(
       `SELECT event_id, trace_id, agent_id, action_kind, policy_decision,
-              tool_name, event_hash, emitted_at, payload
+              tool_name, event_hash, sig_alg, sig_value_b64, key_id,
+              emitted_at, payload
        FROM event
        WHERE organization_id = $1
          AND emitted_at >= $2
@@ -66,6 +70,11 @@ export async function runComplianceExport(
         claimed.period_start,
         claimed.period_end,
       ],
+    );
+
+    const orgMeta = await client.query<{ name: string }>(
+      `SELECT name FROM organization WHERE organization_id = $1`,
+      [claimed.organization_id],
     );
 
     const context = await gatherExportContext(
@@ -80,6 +89,7 @@ export async function runComplianceExport(
       outputPath: zipPath,
       exportId,
       organizationId: claimed.organization_id,
+      organizationName: orgMeta.rows[0]?.name ?? null,
       bundleType: claimed.bundle_type,
       periodStart: claimed.period_start,
       periodEnd: claimed.period_end,

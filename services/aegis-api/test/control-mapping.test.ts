@@ -11,6 +11,7 @@ const emptyContext: ExportContext = {
   auditLog: [{ action: "membership.role_changed" }],
   witnessRoots: [{ root_id: "root_1" }],
   inclusionProofs: [{ proof_id: "prf_1" }],
+  publicKeys: [],
 };
 
 describe("control mapping", () => {
@@ -65,7 +66,9 @@ describe("control mapping", () => {
       soc2: mapping,
     });
 
-    expect(report.report_type).toBe("soc2_type1_readiness");
+    expect(report.report_type).toBe("soc2_readiness_summary");
+    expect(report.disclaimer.toLowerCase()).toContain("not a soc 2");
+    expect(report.control_summary.evidence_missing).toBeGreaterThan(0);
     expect(report.recommendations.length).toBeGreaterThan(0);
     expect(report.overall_status).toBe("fail");
   });

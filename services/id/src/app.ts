@@ -38,6 +38,7 @@ import { handlePublicPlans } from "./routes/public-plans.js";
 import { sendEmailVerificationEmail } from "./email/send-email-verification.js";
 import { registerOAuthRoutes } from "./auth/oauth-handlers.js";
 import { registerSsoRoutes } from "./auth/sso-workos.js";
+import { scimRoutes } from "./routes/scim.js";
 
 const consoleOrigin =
   process.env.CONSOLE_ORIGIN ?? "http://localhost:3000";
@@ -45,6 +46,8 @@ const platformOrigin =
   process.env.PLATFORM_ORIGIN ?? "http://localhost:3003";
 const marketingOrigin =
   process.env.MARKETING_ORIGIN ?? "http://localhost:3001";
+const stoaOrigin =
+  process.env.STOA_WORKSPACE_ORIGIN ?? "http://localhost:3004";
 
 export const app = new Hono();
 
@@ -54,7 +57,7 @@ registerSsoRoutes(app);
 app.use(
   "*",
   cors({
-    origin: [consoleOrigin, platformOrigin, marketingOrigin],
+    origin: [consoleOrigin, platformOrigin, marketingOrigin, stoaOrigin],
     credentials: true,
     allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type"],
@@ -101,6 +104,7 @@ app.post("/v1/id/leads/contact", handlePublicContact);
 app.route("/v1/id/public", publicContactRoutes);
 
 app.route("/v1/id", identityRoutes);
+app.route("/v1/scim", scimRoutes);
 app.route("/v1/id/platform", platformRoutes);
 
 app.post("/v1/id/auth/login", async (c) => {

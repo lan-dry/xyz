@@ -1,2 +1,5 @@
-export type { ChatMessage } from "./complete-chat.js";
-export { completeChat } from "./complete-chat.js";
+export type { ChatImagePart, ChatMessage } from "./complete-chat.js";
+export {
+  completeChat,
+  visionRedactedImagesEnabled,
+} from "./complete-chat.js";

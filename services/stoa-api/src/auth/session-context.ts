@@ -82,7 +82,7 @@ async function ensureTenantAndUser(
   }
   const tenantId = tenantRow.rows[0]?.id;
   if (!tenantId) {
-    throw new Error("Failed to resolve Stoa tenant");
+    throw new Error("Failed to resolve Workspace tenant");
   }
 
   const userRow = await pool.query<{ id: string }>(
@@ -101,7 +101,7 @@ async function ensureTenantAndUser(
   );
   const userId = userRow.rows[0]?.id;
   if (!userId) {
-    throw new Error("Failed to resolve Stoa user");
+    throw new Error("Failed to resolve Workspace user");
   }
   try {
     await syncUserSiteFromDirectory({
@@ -203,8 +203,22 @@ export async function sessionAuthMiddleware(
         });
         await next();
         return;
-      } catch {
-        return c.json({ error: "Failed to provision Stoa tenant" }, 500);
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        console.error("[stoa-api] provision Workspace tenant failed:", detail);
+        const missingDb =
+          /database .+ does not exist/i.test(detail) ||
+          detail.includes("3D000") ||
+          /relation .+ does not exist/i.test(detail);
+        return c.json(
+          {
+            error: "Failed to provision Workspace tenant",
+            detail: missingDb
+              ? "Workspace DB missing or unmigrated. Create STOA_DATABASE_URL database then: pnpm --filter stoa-api db:migrate"
+              : detail,
+          },
+          500,
+        );
       }
     }
   }

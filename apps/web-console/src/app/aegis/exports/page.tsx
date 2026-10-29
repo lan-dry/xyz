@@ -1,6 +1,14 @@
 "use client";
 
-import { BookOpen, CalendarClock, Download, FileArchive, Info, Plus } from "lucide-react";
+import {
+  BookOpen,
+  CalendarClock,
+  Download,
+  FileArchive,
+  Info,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
@@ -45,9 +53,11 @@ type ComplianceSchedule = {
 };
 
 const BUNDLE_TYPES = [
-  { value: "soc2", label: "SOC 2" },
-  { value: "eu_ai_act", label: "EU AI Act" },
-  { value: "combined", label: "Combined (recommended)" },
+  { value: "combined", label: "Evidence pack (recommended)" },
+  { value: "soc2", label: "SOC 2 maps (draft)" },
+  { value: "eu_ai_act", label: "EU AI Act maps (draft)" },
+  { value: "nist_ai_rmf", label: "NIST AI RMF maps (draft)" },
+  { value: "bnr_local", label: "BNR / local maps (draft)" },
 ] as const;
 
 function formatBytes(bytes: number | null): string {
@@ -148,6 +158,19 @@ export default function ExportsPage() {
     },
   });
 
+  const deleteExport = useMutation({
+    mutationFn: (row: ComplianceExport) =>
+      consoleApi<{ ok: boolean }>(
+        `/compliance/exports/${encodeURIComponent(row.export_id)}`,
+        { method: "DELETE" },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["console", "compliance-exports"],
+      });
+    },
+  });
+
   const exports = exportsQuery.data?.exports ?? [];
   const pendingExports = exports.filter(
     (e) => e.status === "pending" || e.status === "processing",
@@ -165,10 +188,35 @@ export default function ExportsPage() {
   return (
     <ConsolePage>
       <PageHeader
-        title="Compliance exports"
-        subtitle="Download tamper-evident audit bundles with SOC 2 and EU AI Act control mapping."
+        title="Evidence"
+        subtitle="Tamper-evident audit bundles (SOC 2, EU AI Act, NIST AI RMF, BNR local) plus Risk Approval Pack for pilot sign-off."
         actions={
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              onClick={async () => {
+                try {
+                  const data = await consoleApi<{ pack: Record<string, unknown> }>(
+                    "/risk-approval-pack",
+                  );
+                  const blob = new Blob([JSON.stringify(data.pack, null, 2)], {
+                    type: "application/json",
+                  });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `risk-approval-pack-${new Date().toISOString().slice(0, 10)}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch {
+                  setDownloadError("Could not download Risk Approval Pack.");
+                }
+              }}
+            >
+              <Download size={16} aria-hidden />
+              Risk Approval Pack
+            </button>
             <button
               type="button"
               className={`${ui.btn} ${ui.btnSecondary}`}
@@ -202,12 +250,8 @@ export default function ExportsPage() {
             {pendingExports.length} export{pendingExports.length === 1 ? "" : "s"} queued
           </strong>
           <p style={{ margin: "0.35rem 0 0", fontSize: "0.8125rem", lineHeight: 1.5 }}>
-            Status stays <em>pending</em> until the compliance worker runs on the API host. In
-            development, run{" "}
-            <code className="mono" style={{ fontSize: "0.75rem" }}>
-              pnpm compliance:worker
-            </code>{" "}
-            from the repo root (or enable a daily cron in production: see{" "}
+            Preparing your evidence pack. This usually finishes within a minute. Leave{" "}
+            <strong>Generate immediately</strong> checked when creating an export, or open{" "}
             <button
               type="button"
               className={styles.linkButton}
@@ -215,7 +259,7 @@ export default function ExportsPage() {
             >
               How exports work
             </button>
-            ).
+            .
           </p>
         </div>
       ) : null}
@@ -255,7 +299,7 @@ export default function ExportsPage() {
                 <span>
                   <span className={styles.toggleLabel}>Generate immediately</span>
                   <span className={styles.toggleHint}>
-                    Uncheck to queue only (requires compliance worker).
+                    Uncheck to queue for the next scheduled run.
                   </span>
                 </span>
               </label>
@@ -292,7 +336,7 @@ export default function ExportsPage() {
             >
               <p className={styles.cardDesc}>
                 Automatically export the <strong>previous calendar month</strong> on the day you
-                choose (UTC). Best for ongoing SOC 2 Type I evidence.
+                choose (UTC). Best for ongoing readiness evidence packs.
               </p>
 
               <label className={styles.toggleRow}>
@@ -304,7 +348,7 @@ export default function ExportsPage() {
                 <span>
                   <span className={styles.toggleLabel}>Enable monthly auto-export</span>
                   <span className={styles.toggleHint}>
-                    Requires a daily server job: see “What’s exported?”
+                    Team plan and higher. Production prepares packs on schedule.
                   </span>
                 </span>
               </label>
@@ -402,8 +446,20 @@ export default function ExportsPage() {
             <ExportTable
               exports={exports}
               onDownload={(row) => downloadExport.mutate(row)}
+              onDelete={(row) => {
+                if (
+                  window.confirm(
+                    `Delete ${row.export_id}? This frees a Free-plan export slot for this month.`,
+                  )
+                ) {
+                  deleteExport.mutate(row);
+                }
+              }}
               downloadingId={
                 downloadExport.isPending ? downloadExport.variables?.export_id : null
+              }
+              deletingId={
+                deleteExport.isPending ? deleteExport.variables?.export_id : null
               }
             />
           ) : null}
@@ -417,11 +473,15 @@ export default function ExportsPage() {
 function ExportTable({
   exports,
   onDownload,
+  onDelete,
   downloadingId,
+  deletingId,
 }: {
   exports: ComplianceExport[];
   onDownload: (row: ComplianceExport) => void;
+  onDelete: (row: ComplianceExport) => void;
   downloadingId: string | null | undefined;
+  deletingId: string | null | undefined;
 }) {
   return (
     <div className={ui.tableWrap}>
@@ -469,21 +529,34 @@ function ExportTable({
                 )}
               </td>
               <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                {row.status === "ready" ? (
+                <div style={{ display: "inline-flex", gap: "0.35rem", alignItems: "center" }}>
+                  {row.status === "ready" ? (
+                    <button
+                      type="button"
+                      className={`${ui.btn} ${ui.btnPrimary}`}
+                      disabled={downloadingId === row.export_id}
+                      onClick={() => onDownload(row)}
+                    >
+                      <Download size={14} aria-hidden />
+                      {downloadingId === row.export_id ? "Saving…" : "Download"}
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: "0.75rem", color: "var(--console-fg-subtle)" }}>
+                      {row.status}
+                    </span>
+                  )}
                   <button
                     type="button"
-                    className={`${ui.btn} ${ui.btnPrimary}`}
-                    disabled={downloadingId === row.export_id}
-                    onClick={() => onDownload(row)}
+                    className={`${ui.btn} ${ui.btnSecondary}`}
+                    disabled={deletingId === row.export_id}
+                    onClick={() => onDelete(row)}
+                    aria-label={`Delete ${row.export_id}`}
+                    title="Delete export"
                   >
-                    <Download size={14} aria-hidden />
-                    {downloadingId === row.export_id ? "Saving…" : "Download"}
+                    <Trash2 size={14} aria-hidden />
+                    {deletingId === row.export_id ? "…" : "Delete"}
                   </button>
-                ) : (
-                  <span style={{ fontSize: "0.75rem", color: "var(--console-fg-subtle)" }}>
-                    {row.status}
-                  </span>
-                )}
+                </div>
               </td>
             </tr>
           ))}

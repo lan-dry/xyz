@@ -9,15 +9,17 @@ async function withClient<T>(
   client: pg.Pool | pg.PoolClient,
   fn: (c: pg.PoolClient) => Promise<T>,
 ): Promise<T> {
-  if ("connect" in client) {
-    const conn = (await (client as pg.Pool).connect()) as pg.PoolClient;
-    try {
-      return await fn(conn);
-    } finally {
-      conn.release();
-    }
+  // PoolClient also has `.connect` (already-connected clients throw if called again),
+  // so detect an in-hand client via `.release` instead of `"connect" in client`.
+  if ("release" in client && typeof client.release === "function") {
+    return fn(client);
   }
-  return fn(client as pg.PoolClient);
+  const conn = await (client as pg.Pool).connect();
+  try {
+    return await fn(conn);
+  } finally {
+    conn.release();
+  }
 }
 
 export async function ingestHumanApprovalEvent(
@@ -32,6 +34,7 @@ export async function ingestHumanApprovalEvent(
     approvalId: string;
     decision: "approved" | "rejected";
     toolName?: string;
+    reason?: string;
   },
 ): Promise<string> {
   const keyMaterial = await getSigningKeyMaterial(client, params.organizationId, params.keyId);
@@ -58,6 +61,7 @@ export async function ingestHumanApprovalEvent(
       decision: params.decision,
       tool_name: params.toolName,
       approver_email: params.approverEmail,
+      ...(params.reason ? { reason: params.reason } : {}),
       investor_summary:
         params.decision === "approved"
           ? `Human approved ${params.toolName ?? "tool call"}`

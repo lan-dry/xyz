@@ -1,37 +1,42 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
+  AlertTriangle,
   Bot,
   Building2,
-  FileOutput,
-  KeyRound,
+  FileCheck,
+  GitBranch,
   LayoutDashboard,
-  ScrollText,
-  Search,
+  PieChart,
+  Plug,
   Settings,
   Shield,
+  ShieldCheck,
   UserCheck,
-  Users,
 } from "lucide-react";
 
 export type ConsoleNavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  badge?: string;
+  /** Dynamic badge key — shell fills Approvals from pending count. */
+  badgeKey?: "approvals";
+  external?: boolean;
 };
 
+/** Pitch order (Phase 3). Get started / Search / Members / Keys / Logs live under Settings or Overview. */
 export const AEGIS_NAV: ConsoleNavItem[] = [
-  { href: "/aegis", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/aegis/traces", label: "Traces", icon: Activity },
-  { href: "/aegis/search", label: "Search", icon: Search },
-  { href: "/aegis/approvals", label: "Approvals", icon: UserCheck },
-  { href: "/aegis/members", label: "Members", icon: Users },
+  { href: "/aegis", label: "Overview", icon: LayoutDashboard },
+  { href: "/aegis/live", label: "Live feed", icon: Activity },
+  { href: "/aegis/approvals", label: "Approvals", icon: UserCheck, badgeKey: "approvals" },
   { href: "/aegis/agents", label: "Agents", icon: Bot },
-  { href: "/aegis/keys", label: "API keys", icon: KeyRound },
+  { href: "/aegis/workflows", label: "Workflows", icon: GitBranch },
   { href: "/aegis/policies", label: "Policies", icon: Shield },
-  { href: "/aegis/logs", label: "Logs", icon: ScrollText },
-  { href: "/aegis/exports", label: "Exports", icon: FileOutput },
+  { href: "/aegis/coverage", label: "Coverage", icon: PieChart },
+  { href: "/aegis/incidents", label: "Incidents", icon: AlertTriangle },
+  { href: "/aegis/evidence", label: "Evidence", icon: FileCheck },
+  { href: "/verify", label: "Verify", icon: ShieldCheck, external: true },
+  { href: "/aegis/integrations", label: "Integrations", icon: Plug },
   { href: "/aegis/settings", label: "Settings", icon: Settings },
 ];
 
@@ -41,13 +46,25 @@ export const PLATFORM_OPS_NAV: ConsoleNavItem[] = [
 
 export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/aegis") return pathname === "/aegis";
+  if (href === "/verify") return pathname.startsWith("/verify");
+  if (href === "/aegis/live") {
+    return (
+      pathname === "/aegis/live" ||
+      pathname.startsWith("/aegis/live/") ||
+      pathname === "/aegis/traces" ||
+      pathname.startsWith("/aegis/traces/")
+    );
+  }
+  if (href === "/aegis/evidence") {
+    return (
+      pathname.startsWith("/aegis/evidence") ||
+      pathname.startsWith("/aegis/exports")
+    );
+  }
   if (href === "/aegis/settings") {
     return (
       pathname === "/aegis/settings" ||
-      pathname.startsWith("/aegis/settings/profile") ||
-      pathname.startsWith("/aegis/settings/organization") ||
-      pathname.startsWith("/aegis/settings/security") ||
-      pathname.startsWith("/aegis/settings/integrations")
+      pathname.startsWith("/aegis/settings/")
     );
   }
   return pathname === href || pathname.startsWith(`${href}/`);

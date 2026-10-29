@@ -83,7 +83,11 @@ chatCompletionRoutes.post("/chat/completions", async (c) => {
     return c.json({ error: message }, 502);
   }
   const content = rehydrateText(upstreamReply, vault);
-  await recordMessageUsage(ctx.tenantId, ctx.userId);
+  try {
+    await recordMessageUsage(ctx.tenantId, ctx.userId);
+  } catch {
+    // Don't fail a successful completion if usage accounting is unavailable.
+  }
 
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   await logAuditEvent({
@@ -92,6 +96,8 @@ chatCompletionRoutes.post("/chat/completions", async (c) => {
     eventType: "gateway.completion",
     metadata: {
       model,
+      authMode: ctx.authMode,
+      credentialId: ctx.gatewayCredentialId ?? null,
       redactionCount: totalRedactions,
       redactionManifest: [...manifest.values()],
       upstreamSha256: lastUser ? upstreamFingerprint(lastUser.content) : null,

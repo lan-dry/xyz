@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import { Hono } from "hono";
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import { getPool } from "../../db/pool.js";
@@ -7,6 +7,7 @@ import { exportZipPath } from "../../compliance/storage.js";
 import { sha256FileHex } from "../../compliance/integrity.js";
 import {
   createComplianceExport,
+  deleteComplianceExport,
   getComplianceExport,
   isValidBundleType,
   listComplianceExports,
@@ -82,7 +83,10 @@ exportRoutes.post("/compliance/exports", requireConsoleSession, async (c) => {
   const bundleType = body.bundle_type?.trim();
   if (!bundleType || !isValidBundleType(bundleType)) {
     return c.json(
-      { error: "bundle_type must be soc2, eu_ai_act, or combined" },
+      {
+        error:
+          "bundle_type must be soc2, eu_ai_act, nist_ai_rmf, bnr_local, or combined",
+      },
       422,
     );
   }
@@ -155,6 +159,42 @@ exportRoutes.get(
       return c.json({ error: "Not found" }, 404);
     }
     return c.json({ export: serializeExport(row) });
+  },
+);
+
+exportRoutes.delete(
+  "/compliance/exports/:exportId",
+  requireConsoleSession,
+  async (c) => {
+    const session = c.get("consoleSession");
+    if (session.role !== "admin") {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    const exportId = c.req.param("exportId");
+    if (!exportId) {
+      return c.json({ error: "exportId required" }, 422);
+    }
+    const pool = getPool();
+    const deleted = await deleteComplianceExport(
+      pool,
+      session.organizationId,
+      exportId,
+    );
+    if (!deleted) {
+      return c.json({ error: "Not found" }, 404);
+    }
+    try {
+      await unlink(exportZipPath(session.organizationId, exportId));
+    } catch {
+      // ZIP may already be missing; DB row is the quota source of truth.
+    }
+    await auditFromConsoleSession(pool, session, {
+      action: "compliance.export.deleted",
+      resourceType: "compliance_export",
+      resourceId: exportId,
+      metadata: { bundle_type: deleted.bundle_type },
+    });
+    return c.json({ ok: true, export_id: exportId });
   },
 );
 
@@ -247,14 +287,17 @@ exportRoutes.put("/compliance/schedule", requireConsoleSession, async (c) => {
   const bundleType = body.bundle_type?.trim() ?? "combined";
   if (!isValidBundleType(bundleType)) {
     return c.json(
-      { error: "bundle_type must be soc2, eu_ai_act, or combined" },
+      {
+        error:
+          "bundle_type must be soc2, eu_ai_act, nist_ai_rmf, bnr_local, or combined",
+      },
       422,
     );
   }
 
   const dayOfMonth = body.day_of_month ?? 1;
   if (dayOfMonth < 1 || dayOfMonth > 28) {
-    return c.json({ error: "day_of_month must be 1–28" }, 422);
+    return c.json({ error: "day_of_month must be between 1 and 28" }, 422);
   }
 
   const pool = getPool();

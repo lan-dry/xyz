@@ -1,6 +1,7 @@
 export {
   ApprovalRequiredError,
   PolicyDeniedError,
+  PolicyEvaluationUnavailableError,
 } from "./errors.js";
 export {
   completeTraceViaApi,
@@ -24,3 +25,8 @@ export {
   type WrapFetchConfig,
   type WrapFetchContext,
 } from "./wrap-fetch.js";
+export {
+  drainSignedEventBuffer,
+  enqueueSignedEvent,
+  type FailMode,
+} from "./signed-buffer.js";

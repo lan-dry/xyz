@@ -37,7 +37,7 @@ export function ConsoleNav({
       }}
     >
       <nav>
-        {link("/aegis/traces", "Traces")}
+        {link("/aegis/traces", "Cases")}
         {link("/aegis/approvals", "Approvals")}
         {link("/aegis/settings/keys", "API keys")}
         {link("/aegis/settings/policies", "Policies")}

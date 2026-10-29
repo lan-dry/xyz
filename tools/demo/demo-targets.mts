@@ -1,7 +1,11 @@
-import { DEFAULT_PLATFORM_ORG_SLUG, resolveOrganizationId } from "./resolve-org-id.mts";
+import {
+  DEFAULT_PILOT_ORG_SLUG,
+  resolveOrganizationId,
+} from "./resolve-org-id.mts";
 
-export const DEV_AGENT_ID = "agent-dev-01";
-export const DEV_KEY_ID = "key-dev-01";
+export const PILOT_AGENT_ID = "agent-refund-operations";
+export const PILOT_KEY_ID = "key-refund-operations";
+export { DEFAULT_PILOT_ORG_SLUG };
 
 export type DemoTargets = {
   organizationId: string;
@@ -14,12 +18,12 @@ export async function getDemoTargets(): Promise<DemoTargets> {
   const organizationSlug =
     process.env.DEMO_ORGANIZATION_SLUG?.trim() ||
     process.env.PILOT_ORGANIZATION_SLUG?.trim() ||
-    DEFAULT_PLATFORM_ORG_SLUG;
+    DEFAULT_PILOT_ORG_SLUG;
   const organizationId = await resolveOrganizationId(organizationSlug);
   return {
     organizationId,
     organizationSlug,
-    agentId: process.env.DEMO_AGENT_ID?.trim() || DEV_AGENT_ID,
-    keyId: process.env.DEMO_KEY_ID?.trim() || DEV_KEY_ID,
+    agentId: process.env.DEMO_AGENT_ID?.trim() || PILOT_AGENT_ID,
+    keyId: process.env.DEMO_KEY_ID?.trim() || PILOT_KEY_ID,
   };
 }

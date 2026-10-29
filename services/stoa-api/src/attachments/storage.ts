@@ -9,12 +9,25 @@ export function uploadRoot(): string {
 export async function persistUpload(
   tenantId: string,
   buffer: Buffer,
-): Promise<{ storagePath: string; relativePath: string }> {
+  ext = "bin",
+): Promise<{ storagePath: string; relativePath: string; id: string }> {
   const id = randomUUID();
   const dir = path.join(uploadRoot(), tenantId);
   await mkdir(dir, { recursive: true });
-  const relativePath = path.join(tenantId, `${id}.bin`);
+  const relativePath = path.join(tenantId, `${id}.${ext}`);
   const storagePath = path.join(uploadRoot(), relativePath);
   await writeFile(storagePath, buffer);
-  return { storagePath, relativePath };
+  return { storagePath, relativePath, id };
+}
+
+export async function persistRedactedPng(
+  tenantId: string,
+  originalId: string,
+  buffer: Buffer,
+): Promise<string> {
+  const dir = path.join(uploadRoot(), tenantId);
+  await mkdir(dir, { recursive: true });
+  const relativePath = path.join(tenantId, `${originalId}.redacted.png`);
+  await writeFile(path.join(uploadRoot(), relativePath), buffer);
+  return relativePath;
 }

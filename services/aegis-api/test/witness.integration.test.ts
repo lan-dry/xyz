@@ -1,16 +1,22 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildMerkleTree, getMerkleProof, verifyMerkleProof } from "@salanor/witness-merkle";
+import { signEvent, type ApsEvent } from "@salanor/aegis";
+import { randomUUID } from "node:crypto";
 import "../src/db/load-env.js";
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
 import { applyIntegrationFixture } from "./integration-fixture.js";
 import { runWitnessBatchForOrg } from "../../aegis-signer/src/batch-lib.js";
 import { verifyEventFull, type EventRowForVerify } from "../src/witness/verify-event.js";
+import { persistSignedEvent } from "../src/ingest/persist.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describeIfDb = databaseUrl ? describe : describe.skip;
 
 const ORG = "11111111-1111-4111-8111-111111111111";
+const PRIVATE_KEY =
+  process.env.DEV_SIGNING_PRIVATE_KEY_B64 ??
+  "mqUA8ONIg7SN0gL8luCakqehaIzp8Lys6ZHMjAoBx/M=";
 
 async function loadEventRow(eventId: string): Promise<EventRowForVerify> {
   const result = await getPool().query<EventRowForVerify>(
@@ -35,6 +41,26 @@ describeIfDb("witness / Merkle (Stage 8 exit)", () => {
   beforeAll(async () => {
     await migrateUp();
     await applyIntegrationFixture(getPool());
+    const event: ApsEvent = {
+      schema_version: 1,
+      event_id: `evt_${randomUUID().replace(/-/g, "").slice(0, 24)}`,
+      organization_id: ORG,
+      trace_id: `trc_${randomUUID().replace(/-/g, "").slice(0, 24)}`,
+      agent_id: "agent-dev-01",
+      key_id: "key-dev-01",
+      emitted_at: new Date().toISOString(),
+      actor_type: "agent",
+      actor_principal: "witness-test",
+      action_kind: "tool_call",
+      policy_decision: "allow",
+      tool_name: "test.witness",
+      payload: { test: "witness" },
+    };
+    const signed = await signEvent(event, {
+      privateKeyB64: PRIVATE_KEY,
+      keyId: "key-dev-01",
+    });
+    await persistSignedEvent(getPool(), signed, undefined);
     await runWitnessBatchForOrg(getPool(), ORG);
   });
 

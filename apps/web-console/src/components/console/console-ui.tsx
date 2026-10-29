@@ -40,18 +40,63 @@ export function StatusBadge({
 }) {
   const s = status.toLowerCase();
   let className = ui.badgeMuted;
+  let label = status;
   if (s === "active" || s === "completed" || s === "allow" || s === "ok") {
     className = ui.badgeSuccess;
-  } else if (s === "blocked" || s === "pending" || s === "draft") {
+    if (s === "allow") label = "Allowed";
+    if (s === "completed") label = "Completed";
+  } else if (
+    s === "blocked" ||
+    s === "pending" ||
+    s === "draft" ||
+    s === "allow_with_obligation"
+  ) {
     className = ui.badgeWarning;
+    if (s === "allow_with_obligation" || s === "blocked" || s === "pending") {
+      label = "Ask a person";
+    }
   } else if (s === "executing" || s === "running") {
     className = ui.badgeDefault;
-  } else if (s === "deny" || s === "revoked" || s === "failed" || s === "rejected" || s === "expired" || s === "suspended") {
+    label = "Running";
+  } else if (
+    s === "deny" ||
+    s === "revoked" ||
+    s === "failed" ||
+    s === "rejected" ||
+    s === "expired" ||
+    s === "suspended"
+  ) {
     className = ui.badgeDanger;
+    if (s === "deny") label = "Stopped";
+    if (s === "rejected") label = "Declined";
   } else if (s === "approved") {
     className = ui.badgeSuccess;
+    label = "Approved";
   }
-  return <span className={`${ui.badge} ${className}`}>{status}</span>;
+  return <span className={`${ui.badge} ${className}`}>{label}</span>;
+}
+
+/** Plain-language outcome chip (Allow / Stop / Ask a person). */
+export function OutcomeChip({
+  chip,
+  kind,
+}: {
+  chip: string;
+  kind: string;
+}) {
+  const k = kind.toLowerCase();
+  let className = ui.badgeMuted;
+  if (k === "allow" || k === "approved") className = ui.badgeSuccess;
+  else if (k === "ask_person" || k === "running") className = ui.badgeWarning;
+  else if (
+    k === "stop" ||
+    k === "declined" ||
+    k === "expired" ||
+    k === "failed"
+  ) {
+    className = ui.badgeDanger;
+  }
+  return <span className={`${ui.badge} ${className}`}>{chip}</span>;
 }
 
 export function EmptyState({ title, description }: { title: string; description?: string }) {

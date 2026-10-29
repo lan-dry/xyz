@@ -18,6 +18,7 @@ export type TraceListFilters = {
   q?: string;
   agentId?: string;
   status?: string;
+  environment?: "production" | "sandbox";
   from?: Date;
   to?: Date;
   limit?: number;
@@ -105,6 +106,17 @@ function traceWhereClause(
     n += 1;
     params.push(filters.to);
     parts.push(`t.started_at <= $${n}`);
+  }
+
+  if (filters.environment === "production" || filters.environment === "sandbox") {
+    n += 1;
+    params.push(filters.environment);
+    // Missing agent.environment (pre-migrate) or unknown agent → treat as production.
+    parts.push(`COALESCE(
+      (SELECT a.environment FROM agent a
+       WHERE a.agent_id = t.agent_id AND a.organization_id = t.organization_id),
+      'production'
+    ) = $${n}`);
   }
 
   return { sql: parts.join(" AND "), params };

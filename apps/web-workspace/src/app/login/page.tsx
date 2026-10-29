@@ -49,7 +49,7 @@ function LoginForm() {
   return (
     <div className={styles.shell}>
       <div className={styles.panel}>
-        <h1>Stoa</h1>
+        <h1>Workspace</h1>
         <p className={styles.sub}>Sign in with your work email.</p>
         <form onSubmit={onSubmit}>
           <label className={styles.field}>

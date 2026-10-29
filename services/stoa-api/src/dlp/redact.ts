@@ -13,6 +13,13 @@ import {
   type RedactionManifestEntry,
 } from "./manifest.js";
 
+export type RedactSpan = {
+  start: number;
+  end: number;
+  value: string;
+  token: string;
+};
+
 export type RedactResult = {
   /** Text safe to send upstream (placeholder tokens). */
   text: string;
@@ -23,6 +30,8 @@ export type RedactResult = {
   manifest: RedactionManifestEntry[];
   /** One entry per placeholder in this text, in order of first appearance. */
   items: RedactedItem[];
+  /** Character offsets in the original input (for OCR / pixel redaction). */
+  spans: RedactSpan[];
 };
 
 export type RedactedItem = {
@@ -304,6 +313,7 @@ export function redactPrompt(
   const groupCounts = new Map<ManifestGroup, number>();
   const groupsHit = new Set<PatternGroup>();
   const items: RedactedItem[] = [];
+  const appliedSpans: RedactSpan[] = [];
   let text = "";
   let last = 0;
 
@@ -324,6 +334,12 @@ export function redactPrompt(
     if (span.group !== "custom_term" && span.group !== "custom_pattern") {
       groupsHit.add(span.group);
     }
+    appliedSpans.push({
+      start: span.start,
+      end: span.end,
+      value: span.value,
+      token,
+    });
     text += input.slice(last, span.start) + token;
     last = span.end;
   }
@@ -336,6 +352,7 @@ export function redactPrompt(
     vault,
     manifest: buildRedactionManifest(groupCounts),
     items,
+    spans: appliedSpans,
   };
 }
 

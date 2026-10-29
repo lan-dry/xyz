@@ -1,7 +1,7 @@
 "use client";
 
 import { Bot, Copy, KeyRound, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { EmptyStatePanel } from "@/components/console/empty-state-panel";
@@ -14,11 +14,17 @@ import {
   ui,
 } from "@/components/console/console-ui";
 import { consoleApi } from "@/lib/api";
+import {
+  environmentLabel,
+  readConsoleEnvironment,
+  type ConsoleEnvironment,
+} from "@/lib/console-environment";
 import { formatRelativeTime } from "@/lib/relative-time";
 import type { AgentSummary, AgentCredentialsPayload } from "@/lib/types";
 
 export default function AgentsPage() {
   const queryClient = useQueryClient();
+  const [environment, setEnvironment] = useState<ConsoleEnvironment>("production");
   const [modalOpen, setModalOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [slug, setSlug] = useState("");
@@ -26,9 +32,20 @@ export default function AgentsPage() {
     null,
   );
 
+  useEffect(() => {
+    setEnvironment(readConsoleEnvironment());
+    function onEnv(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail === "sandbox" || detail === "production") setEnvironment(detail);
+    }
+    window.addEventListener("salanor:console-environment", onEnv);
+    return () => window.removeEventListener("salanor:console-environment", onEnv);
+  }, []);
+
   const agentsQuery = useQuery({
-    queryKey: ["console", "agents"],
-    queryFn: () => consoleApi<{ agents: AgentSummary[] }>("/agents"),
+    queryKey: ["console", "agents", environment],
+    queryFn: () =>
+      consoleApi<{ agents: AgentSummary[] }>(`/agents?environment=${environment}`),
   });
 
   const createAgent = useMutation({
@@ -41,6 +58,7 @@ export default function AgentsPage() {
         body: JSON.stringify({
           display_name: displayName.trim() || undefined,
           slug: slug.trim() || undefined,
+          environment,
         }),
       }),
     onSuccess: (data) => {
@@ -64,6 +82,19 @@ export default function AgentsPage() {
   const [bridgeMessage, setBridgeMessage] = useState<string | null>(null);
   /** Optimistic: show "on" immediately after Enable succeeds (even if list API is stale). */
   const [bridgeForcedOn, setBridgeForcedOn] = useState<Record<string, true>>({});
+  const [killMessage, setKillMessage] = useState<string | null>(null);
+
+  const setActive = useMutation({
+    mutationFn: (input: { agentId: string; active: boolean }) =>
+      consoleApi<{ message: string }>(
+        `/agents/${encodeURIComponent(input.agentId)}/${input.active ? "unsuspend" : "suspend"}`,
+        { method: "POST" },
+      ),
+    onSuccess: (data) => {
+      setKillMessage(data.message);
+      void queryClient.invalidateQueries({ queryKey: ["console", "agents"] });
+    },
+  });
 
   const registerByok = useMutation({
     mutationFn: (input: {
@@ -122,7 +153,7 @@ export default function AgentsPage() {
     <ConsolePage>
       <PageHeader
         title="Agents"
-        subtitle="Software identities that sign APS-1 events. SDK path: platform-generated or BYOK (your public key only). Orchestrator path (n8n, Zapier, Make, HTTP): enable Workflow Bridge once and Salanor signs server-side."
+        subtitle={`Software identities for ${environmentLabel(environment)}. Keys and events stay isolated from the other environment.`}
         actions={
           <button
             type="button"
@@ -170,8 +201,16 @@ export default function AgentsPage() {
           {bridgeMessage}
         </div>
       ) : null}
+      {killMessage ? (
+        <div className={`${ui.alert} ${ui.alertInfo}`} style={{ marginBottom: "1.5rem" }}>
+          {killMessage}
+        </div>
+      ) : null}
       {enableBridge.isError ? (
         <ErrorAlert message={(enableBridge.error as Error).message} />
+      ) : null}
+      {setActive.isError ? (
+        <ErrorAlert message={(setActive.error as Error).message} />
       ) : null}
 
       {agentsQuery.isPending ? <LoadingBlock /> : null}
@@ -239,6 +278,27 @@ export default function AgentsPage() {
                   <td>{formatRelativeTime(agent.created_at)}</td>
                   <td>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <button
+                      type="button"
+                      className={`${ui.btn} ${agent.active ? ui.btnDanger : ui.btnPrimary}`}
+                      disabled={setActive.isPending}
+                      onClick={() =>
+                        setActive.mutate({
+                          agentId: agent.agent_id,
+                          active: !agent.active,
+                        })
+                      }
+                      title={
+                        agent.active
+                          ? "Kill switch: stop this agent’s next tool calls"
+                          : "Resume agent after suspend"
+                      }
+                    >
+                      {agent.active ? "Suspend" : "Unsuspend"}
+                    </button>
+                    {!agent.active ? (
+                      <span className={`${ui.badge} ${ui.badgeDanger}`}>Suspended</span>
+                    ) : null}
                     <button
                       type="button"
                       className={`${ui.btn} ${ui.btnSecondary}`}

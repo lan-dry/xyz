@@ -20,6 +20,7 @@ export type AgentRow = {
   display_name: string | null;
   did: string;
   active: boolean;
+  environment: string;
   created_at: Date;
 };
 
@@ -90,20 +91,22 @@ export async function createAgentWithSigningKey(
     organizationSlug: string;
     slug?: string;
     displayName?: string;
+    environment?: "production" | "sandbox";
     auditActorId?: string | null;
   },
 ): Promise<AgentCredentials> {
   const slug = (input.slug ?? "default").trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
   const displayName = input.displayName?.trim() || "Default agent";
+  const environment = input.environment === "sandbox" ? "sandbox" : "production";
   const agentId = `agt_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
   const keyId = `key_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
   const { publicKeyB64, privateKeyB64 } = await generateEd25519KeyPair();
   const did = `did:salanor:${input.organizationSlug}:${agentId}`;
 
   await client.query(
-    `INSERT INTO agent (agent_id, organization_id, did, slug, display_name)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [agentId, input.organizationId, did, slug, displayName],
+    `INSERT INTO agent (agent_id, organization_id, did, slug, display_name, environment)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [agentId, input.organizationId, did, slug, displayName, environment],
   );
 
   await client.query(
@@ -154,17 +157,20 @@ export async function createAgentWithSigningKey(
 export async function listAgentsForOrganization(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
+  environment?: "production" | "sandbox",
 ): Promise<
   (AgentRow & {
     signing_keys: SigningKeySummary[];
   })[]
 > {
   const agents = await client.query<AgentRow>(
-    `SELECT agent_id, organization_id, slug, display_name, did, active, created_at
+    `SELECT agent_id, organization_id, slug, display_name, did, active,
+            COALESCE(environment, 'production') AS environment, created_at
      FROM agent
      WHERE organization_id = $1
+       AND ($2::text IS NULL OR COALESCE(environment, 'production') = $2)
      ORDER BY created_at ASC`,
-    [organizationId],
+    [organizationId, environment ?? null],
   );
 
   const keys = await client.query<SigningKeySummary>(

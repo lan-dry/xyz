@@ -56,13 +56,20 @@ export async function persistSignedEvent(
     }
   }
 
-  const agentCheck = await client.query(
-    `SELECT 1 FROM agent
-     WHERE agent_id = $1 AND organization_id = $2 AND active = true`,
+  // Kill switch (agent.active=false) must block agent-initiated work, not control-plane
+  // attestations: humans still need to Approve/Decline pending holds while suspended.
+  const agentCheck = await client.query<{ active: boolean }>(
+    `SELECT active FROM agent
+     WHERE agent_id = $1 AND organization_id = $2`,
     [event.agent_id, event.organization_id],
   );
   if (agentCheck.rowCount === 0) {
     throw new Error("Unknown agent for organization");
+  }
+  const allowInactiveAgent =
+    event.action_kind === "human_approval" || event.actor_type === "human";
+  if (!agentCheck.rows[0]?.active && !allowInactiveAgent) {
+    throw new Error("Agent is suspended");
   }
 
   const keyCheck = await client.query<{ public_key_b64: string }>(

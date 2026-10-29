@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { redactPrompt } from "../dlp/redact.js";
 import type { RedactionManifestEntry } from "../dlp/manifest.js";
 import { collectThreadVault } from "../dlp/message-presentation.js";
 import { rehydrateText } from "../dlp/rehydrate.js";
@@ -30,11 +29,6 @@ function slugify(name: string): string {
 function formatMessageContent(
   content: string,
   access: "metadata" | "redacted" | "full",
-  dlp: {
-    profile: "standard" | "financial" | "strict";
-    customTerms: string[];
-    customPatterns: import("../tenant/settings.js").TenantCustomDlpPattern[];
-  },
   threadVault: Record<string, string>,
 ): string | null {
   if (access === "metadata") {
@@ -43,11 +37,8 @@ function formatMessageContent(
   if (access === "full") {
     return rehydrateText(content, threadVault);
   }
-  return redactPrompt(content, {
-    profile: dlp.profile,
-    customTerms: dlp.customTerms,
-    customPatterns: dlp.customPatterns,
-  }).text;
+  // Stored placeholders only — do not open the vault or re-run DLP.
+  return content;
 }
 
 export const adminExtendedRoutes = new Hono();
@@ -282,8 +273,8 @@ adminExtendedRoutes.patch("/users/:stoaUserId/site", async (c) => {
     return adminAccessForbidden(c, "You can't change this site.");
   }
   if (
-    siteId === null &&
     previousSiteId &&
+    previousSiteId !== siteId &&
     !canWriteSiteMembership(access, previousSiteId)
   ) {
     return adminAccessForbidden(c, "You can't change this site.");
@@ -485,11 +476,29 @@ adminExtendedRoutes.get("/threads/:threadId", async (c) => {
     },
     contentAccess: access,
     messages: messages.rows.map((m) => {
-      const text = m.role === "user" ? (m.content_display ?? m.content) : m.content;
+      // full: use stored content (includes attachment extracts) then rehydrate
+      // redacted/metadata: member-facing display text (placeholders, no extracts)
+      const text =
+        access === "full"
+          ? m.content
+          : m.role === "user"
+            ? (m.content_display ?? m.content)
+            : m.content;
+      if (access === "metadata") {
+        return {
+          id: m.id,
+          role: m.role,
+          content: null,
+          contentLength: 0,
+          redactionCount: 0,
+          redactionManifest: [],
+          createdAt: m.created_at.toISOString(),
+        };
+      }
       return {
         id: m.id,
         role: m.role,
-        content: formatMessageContent(text, access, settings.dlp, threadVault),
+        content: formatMessageContent(text, access, threadVault),
         contentLength: text.length,
         redactionCount: m.redaction_count,
         redactionManifest: m.redaction_manifest ?? [],

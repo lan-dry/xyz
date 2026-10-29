@@ -17,6 +17,20 @@ export function workosEnabled(): boolean {
   );
 }
 
+/** Pilot map: org slug (lowercase) → WorkOS organization id. */
+export function parseEnvWorkosOrgMap(): Record<string, string> {
+  const raw = process.env.SSO_WORKOS_ORG_MAP?.trim();
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return Object.fromEntries(
+      Object.entries(parsed).map(([k, v]) => [k.toLowerCase(), v]),
+    );
+  } catch {
+    return {};
+  }
+}
+
 export function consoleOrigin(): string {
   return process.env.CONSOLE_ORIGIN ?? "http://localhost:3000";
 }

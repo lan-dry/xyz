@@ -6,7 +6,11 @@ import "../db/load-env.js";
 import { getPool } from "../db/pool.js";
 import { publishTransparencyLogForOrg } from "../transparency/publish.js";
 import { recordWorkerRunResult } from "../workers/record-run.js";
-import { listOrganizationIds, runWitnessBatchForOrg } from "./batch.js";
+import {
+  backfillUnsignedCheckpoints,
+  listOrganizationIds,
+  runWitnessBatchForOrg,
+} from "./batch.js";
 
 const intervalMs = Math.max(
   10_000,
@@ -22,6 +26,7 @@ async function tick(): Promise<void> {
     const results: Array<{ organization_id: string; root_id?: string; tree_size?: number }> =
       [];
 
+    let checkpointsBackfilled = 0;
     for (const organizationId of orgIds) {
       const batch = await runWitnessBatchForOrg(pool, organizationId);
       if (batch) {
@@ -39,6 +44,17 @@ async function tick(): Promise<void> {
           );
         }
       }
+      try {
+        checkpointsBackfilled += await backfillUnsignedCheckpoints(
+          pool,
+          organizationId,
+        );
+      } catch (err) {
+        console.error(
+          `[witness-worker] checkpoint backfill failed for ${organizationId}:`,
+          err,
+        );
+      }
     }
 
     const summary = {
@@ -46,16 +62,18 @@ async function tick(): Promise<void> {
       organizations_scanned: orgIds.length,
       batches: results,
       batch_count: results.length,
+      checkpoints_backfilled: checkpointsBackfilled,
     };
 
     await recordWorkerRunResult(pool, {
       workerName: "witness",
-      status: results.length > 0 ? "ok" : "skipped",
+      status:
+        results.length > 0 || checkpointsBackfilled > 0 ? "ok" : "skipped",
       startedAt,
       summary,
     });
 
-    if (results.length > 0) {
+    if (results.length > 0 || checkpointsBackfilled > 0 || runOnce) {
       console.log(
         JSON.stringify({
           ok: true,

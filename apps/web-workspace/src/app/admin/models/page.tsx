@@ -2,26 +2,30 @@
 
 import Link from "next/link";
 import { Search } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import ui from "@/components/admin-ui.module.css";
 import { HighlightedUpstream } from "@/components/message-privacy";
 import { adminCanWrite } from "@/lib/admin-session";
+import { useAdminSession } from "@/hooks/use-admin-session";
 import {
   fetchAdminSettings,
-  fetchSession,
   previewDlp,
   saveAdminSettings,
   type AdminSettings,
   type DlpPreview,
-  type SessionInfo,
 } from "@/lib/stoa-client";
 
 const SAMPLE_BANK_MESSAGE =
-  "Bonjour, le client Paul Ndongo (CNI 112233445, tél +237 699 12 34 56, paul.ndongo@gmail.com) " +
-  "conteste un débit de 250 000 FCFA du 12/03/2026 sur la carte 4111 1111 1111 1111. " +
-  "Compte 10005 00001 12345678901. Rédige une réponse polie et indique-lui de nous joindre " +
-  "via support@afribank.cm ou la hotline +237 222 23 40 00.";
+  "Please help me reply to a customer complaint.\n\n" +
+  "Customer: Mrs. Aline Uwase, National ID 1199880012345678, tel. +250 788 123 456, " +
+  "email aline.uwase@gmail.com.\n" +
+  "She says her transfer of 1 750 000 RWF on 08/10/2026 never reached her supplier.\n" +
+  "- Debited account: 1000123456789\n" +
+  "- Beneficiary IBAN: RW64 0004 0001 2345 6789 0123 45\n" +
+  "- Her Visa card 4111 1111 1111 1111 was blocked as a precaution the same day.\n\n" +
+  "Funds will be recredited within 48 hours. Draft a professional email for the customer.";
 
 function splitEntries(raw: string): string[] {
   return raw
@@ -35,17 +39,17 @@ const DLP_PROFILES = [
     id: "financial" as const,
     label: "Banking (recommended)",
     detail:
-      "Emails, phone numbers, card numbers, account numbers, IBANs, ID and tax numbers, API keys.",
+      "Emails, phones, cards, accounts, IBANs, IDs, API keys, plus names, addresses and dates of birth via the local detector.",
   },
   {
     id: "strict" as const,
     label: "Banking and network addresses",
-    detail: "Everything above, plus IP addresses.",
+    detail: "Everything in Banking, with IP addresses always on.",
   },
   {
     id: "standard" as const,
     label: "Contact details only",
-    detail: "Emails and phone numbers.",
+    detail: "Emails and phone numbers, plus names when the detector is running.",
   },
 ];
 
@@ -53,17 +57,19 @@ const REVIEW_LEVELS = [
   {
     id: "metadata" as const,
     label: "Titles and dates only",
-    detail: "No message text.",
+    detail: "Admins see that a chat exists, not what was said.",
   },
   {
     id: "redacted" as const,
     label: "Messages with protected values hidden (recommended)",
-    detail: "Card numbers, accounts, emails and the like appear as placeholders.",
+    detail:
+      "Best default for a bank: admins can review work, but cards, accounts, emails and similar stay as placeholders.",
   },
   {
     id: "full" as const,
     label: "Full messages",
-    detail: "For investigations. Limit admin access accordingly.",
+    detail:
+      "Only for investigations. Prefer a small compliance role rather than every admin.",
   },
 ];
 
@@ -93,8 +99,16 @@ export default function AdminPolicyPage() {
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const [modelQuery, setModelQuery] = useState("");
-  const [session, setSession] = useState<SessionInfo | null>(null);
-  const canWrite = adminCanWrite(session);
+  const [providerFilter, setProviderFilter] = useState("all");
+  const [hydrated, setHydrated] = useState(false);
+  const sessionQuery = useAdminSession();
+  const queryClient = useQueryClient();
+  const canWrite = adminCanWrite(sessionQuery.data ?? null);
+  const settingsQuery = useQuery({
+    queryKey: ["stoa", "admin", "settings"],
+    queryFn: fetchAdminSettings,
+    staleTime: 60_000,
+  });
 
   function markDirty() {
     setDirty(true);
@@ -102,37 +116,47 @@ export default function AdminPolicyPage() {
   }
 
   useEffect(() => {
-    fetchSession().then(setSession).catch(() => setSession(null));
-    fetchAdminSettings()
-      .then((next) => {
-        setData(next);
-        setEnabledIds(next.settings.enabledModelIds);
-        setDefaultModelId(next.settings.defaultModelId);
-        setDlpProfile(next.settings.dlp.profile);
-        setCustomTerms((next.settings.dlp.customTerms ?? []).join("\n"));
-        setChatContentAccess(
-          next.settings.adminMask.chatContentAccess ?? "redacted",
-        );
-        setAllowAttachments(next.settings.uploads.allowAttachments);
-        setMaxFileMb(next.settings.uploads.maxFileMb);
-        setQuotaEnforce(next.settings.quotas.enforce);
-        setQuotaUserMsg(next.settings.quotas.maxMessagesPerUserMonth);
-        setQuotaOrgMsg(next.settings.quotas.maxMessagesOrgMonth);
-        setQuotaOrgAttachMb(next.settings.quotas.maxAttachmentMbPerOrgMonth);
-      })
-      .catch((e: Error) => setError(e.message));
-  }, []);
+    if (settingsQuery.isError) {
+      setError((settingsQuery.error as Error).message);
+    }
+  }, [settingsQuery.isError, settingsQuery.error]);
+
+  useEffect(() => {
+    const next = settingsQuery.data;
+    if (!next || dirty) return;
+    setData(next);
+    if (hydrated) return;
+    setEnabledIds(next.settings.enabledModelIds);
+    setDefaultModelId(next.settings.defaultModelId);
+    setDlpProfile(next.settings.dlp.profile);
+    setCustomTerms((next.settings.dlp.customTerms ?? []).join("\n"));
+    setChatContentAccess(
+      next.settings.adminMask.chatContentAccess ?? "redacted",
+    );
+    setAllowAttachments(next.settings.uploads.allowAttachments);
+    setMaxFileMb(next.settings.uploads.maxFileMb);
+    setQuotaEnforce(next.settings.quotas.enforce);
+    setQuotaUserMsg(next.settings.quotas.maxMessagesPerUserMonth);
+    setQuotaOrgMsg(next.settings.quotas.maxMessagesOrgMonth);
+    setQuotaOrgAttachMb(next.settings.quotas.maxAttachmentMbPerOrgMonth);
+    setHydrated(true);
+  }, [settingsQuery.data, dirty, hydrated]);
+
+  function isChatEligible(id: string) {
+    return !/tts|computer-use|deep-research|antigravity|embedding|imagen|veo|whisper|dall-e|moderation|realtime|transcribe|audio/i.test(
+      id,
+    );
+  }
 
   function pickRecommendedDefault(catalog: AdminSettings["availableModels"]) {
-    const skip = (id: string) =>
-      /tts|computer-use|deep-research|antigravity|embedding|imagen|veo/i.test(
-        id,
-      );
-    const eligible = catalog.filter((m) => !skip(m.id));
+    const eligible = catalog.filter((m) => isChatEligible(m.id));
     const prefer = [
       /gemini-2\.5-flash(?!.*preview)/i,
+      /gpt-4o-mini/i,
+      /gpt-4\.1-mini/i,
       /gemini-2\.0-flash/i,
       /gemini-1\.5-flash(?!.*tts)/i,
+      /gpt-4o(?!.*mini)/i,
       /gemini-2\.5-pro/i,
       /gemini-1\.5-pro/i,
     ];
@@ -143,6 +167,31 @@ export default function AdminPolicyPage() {
       }
     }
     return eligible[0] ?? null;
+  }
+
+  /** Small set staff can actually choose from (default + one stronger option when available). */
+  function pickRecommendedSet(catalog: AdminSettings["availableModels"]) {
+    const eligible = catalog.filter((m) => isChatEligible(m.id));
+    const picked: AdminSettings["availableModels"] = [];
+    const take = (re: RegExp) => {
+      const hit = eligible.find(
+        (m) =>
+          !picked.some((p) => p.id === m.id) &&
+          (re.test(m.id) || re.test(m.label)),
+      );
+      if (hit) picked.push(hit);
+    };
+    take(/gemini-2\.5-flash(?!.*preview)/i);
+    take(/gpt-4o-mini/i);
+    take(/gpt-4\.1-mini/i);
+    take(/gemini-2\.0-flash/i);
+    take(/gemini-2\.5-pro/i);
+    take(/gpt-4o(?!.*mini)/i);
+    if (picked.length === 0) {
+      const fallback = pickRecommendedDefault(catalog);
+      return fallback ? [fallback] : [];
+    }
+    return picked.slice(0, 3);
   }
 
   function toggleModel(id: string) {
@@ -225,7 +274,8 @@ export default function AdminPolicyPage() {
       setDefaultModelId(next.settings.defaultModelId);
       setDirty(false);
       setSaved(true);
-      fetchSession().then(setSession).catch(() => setSession(null));
+      queryClient.setQueryData(["stoa", "admin", "settings"], next);
+      void queryClient.invalidateQueries({ queryKey: ["stoa", "session"] });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -247,17 +297,24 @@ export default function AdminPolicyPage() {
   }
 
   const catalog = data?.availableModels ?? [];
+  const providers = useMemo(() => {
+    const set = new Set(catalog.map((m) => m.provider).filter(Boolean));
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [catalog]);
   const filteredCatalog = useMemo(() => {
     const q = modelQuery.trim().toLowerCase();
-    if (!q) {
-      return catalog;
-    }
-    return catalog.filter(
-      (m) =>
+    return catalog.filter((m) => {
+      if (providerFilter !== "all" && m.provider !== providerFilter) {
+        return false;
+      }
+      if (!q) return true;
+      return (
         m.id.toLowerCase().includes(q) ||
-        (m.label ?? "").toLowerCase().includes(q),
-    );
-  }, [catalog, modelQuery]);
+        (m.label ?? "").toLowerCase().includes(q) ||
+        m.provider.toLowerCase().includes(q)
+      );
+    });
+  }, [catalog, modelQuery, providerFilter]);
 
   if (!data) {
     return error ? (
@@ -271,6 +328,7 @@ export default function AdminPolicyPage() {
     data.providerSource !== "none" || data.providerConfigured === true;
   const errorEntries = Object.entries(data.providerErrors ?? {});
   const recommended = pickRecommendedDefault(catalog);
+  const recommendedSet = pickRecommendedSet(catalog);
 
   return (
     <div className={`${ui.page} ${ui.pageWide}`}>
@@ -297,19 +355,25 @@ export default function AdminPolicyPage() {
       {error ? <div className={ui.alertError}>{error}</div> : null}
       {connected && catalog.length > 0 && enabledIds.length === 0 ? (
         <div className={ui.notice}>
-          No model is enabled, so members can&apos;t chat yet.
-          {canWrite && recommended ? (
+          No model is enabled, so members can&apos;t chat yet. Enable a small set
+          (usually 2–3), then set a default.
+          {canWrite && recommendedSet.length > 0 ? (
             <div style={{ marginTop: "0.65rem" }}>
               <button
                 type="button"
                 className={`${ui.btn} ${ui.btnSecondary}`}
                 onClick={() => {
-                  setEnabledIds([recommended.id]);
-                  setDefaultModelId(recommended.id);
+                  setEnabledIds(recommendedSet.map((m) => m.id));
+                  setDefaultModelId(recommendedSet[0]?.id ?? null);
                   markDirty();
                 }}
               >
-                Enable {recommended.label || recommended.id}
+                Enable recommended
+                {recommendedSet.length > 1
+                  ? ` (${recommendedSet.length})`
+                  : recommended
+                    ? `: ${recommended.label || recommended.id}`
+                    : ""}
               </button>
             </div>
           ) : null}
@@ -352,6 +416,10 @@ export default function AdminPolicyPage() {
           <h2 className={ui.sectionTitle} style={{ marginTop: 0 }}>
             Allowed models
           </h2>
+          <p className={ui.metaMuted} style={{ marginBottom: "0.85rem" }}>
+            Providers list every model they expose. Enable only what staff should
+            use (typically 2–3), then choose a default for new chats.
+          </p>
           <div className={ui.toolbar}>
             <label className={ui.field} style={{ flex: 1, marginBottom: 0 }}>
               <span className={ui.metaMuted} style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -365,6 +433,35 @@ export default function AdminPolicyPage() {
                 placeholder="Model name"
               />
             </label>
+            {providers.length > 1 ? (
+              <label className={ui.field} style={{ marginBottom: 0, minWidth: "10rem" }}>
+                <span className={ui.metaMuted}>Provider</span>
+                <select
+                  value={providerFilter}
+                  onChange={(e) => setProviderFilter(e.target.value)}
+                >
+                  <option value="all">All</option>
+                  {providers.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {canWrite && recommendedSet.length > 0 ? (
+              <button
+                type="button"
+                className={`${ui.btn} ${ui.btnSecondary}`}
+                onClick={() => {
+                  setEnabledIds(recommendedSet.map((m) => m.id));
+                  setDefaultModelId(recommendedSet[0]?.id ?? null);
+                  markDirty();
+                }}
+              >
+                Enable recommended
+              </button>
+            ) : null}
             <button
               type="button"
               className={`${ui.btn} ${ui.btnSecondary}`}
@@ -397,6 +494,9 @@ export default function AdminPolicyPage() {
                     onChange={() => toggleModel(m.id)}
                   />
                   <span className={ui.mono}>{m.id}</span>
+                  {m.provider ? (
+                    <span className={ui.metaMuted}> · {m.provider}</span>
+                  ) : null}
                 </label>
               </li>
             ))}
@@ -640,6 +740,9 @@ export default function AdminPolicyPage() {
           <h2 className={ui.sectionTitle} style={{ marginTop: 0 }}>
             Monthly limits
           </h2>
+          <p className={ui.metaMuted} style={{ marginBottom: "0.75rem" }}>
+            Caps reset each calendar month. Organization totals cover every member.
+          </p>
           <ul className={ui.checkList}>
             <li>
               <label>
@@ -668,9 +771,10 @@ export default function AdminPolicyPage() {
                 markDirty();
               }}
             />
+            <span className={ui.fieldHint}>One person&apos;s monthly chat cap.</span>
           </label>
           <label className={ui.field}>
-            Messages for the organization
+            Messages for the whole organization
             <input
               type="number"
               min={0}
@@ -681,9 +785,12 @@ export default function AdminPolicyPage() {
                 markDirty();
               }}
             />
+            <span className={ui.fieldHint}>
+              All members combined across Workspace for this tenant.
+            </span>
           </label>
           <label className={ui.field}>
-            Attachment volume for the organization (MB)
+            Attachment volume for the whole organization (MB)
             <input
               type="number"
               min={0}
@@ -694,6 +801,9 @@ export default function AdminPolicyPage() {
                 markDirty();
               }}
             />
+            <span className={ui.fieldHint}>
+              Total uploaded file size for the month, organization-wide.
+            </span>
           </label>
         </div>
       </div>

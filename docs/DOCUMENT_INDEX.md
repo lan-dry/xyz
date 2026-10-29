@@ -11,6 +11,8 @@ Read in this order for execution:
 | 2a | **`PRODUCTION_DEPLOY.md`** | **Production runbook:** Neon + Fly.io + Vercel, env vars, deploy order, handoff guide |
 | 2b | **`NEON_SETUP.md`** | Neon project link, CLI, MCP, env vars, migrations for Salanor Production |
 | 2c | **`DESIGN_PARTNER_DEMO.md`** | **Sales runbook:** 20-min demo agenda, ICP, outreach/handoff emails, design partner offer |
+| 2d | **`SAFE-AI-WORKSPACE-PRODUCT.md`** | **Stoa** (Product A): ICP, deployment modes, pricing, competitive landscape |
+| 2e | **`SAFE-AI-ENTERPRISE-ARCHITECTURE.md`** | **Stoa enterprise:** Docker bundle, chat UX v1 vs later, gateway, SKUs, licensing |
 | 2b | **`AUTH_ROADMAP.md`** | Auth stages A1–A5 (magic link → OAuth → 2FA → RBAC → SAML); committed, sequenced |
 | 3 | **`DIGITAL_ARCHITECTURE.md`** | URLs, IA alignment with Website Specification, marketing vs console vs docs |
 | 4 | **`DATA_MODEL_WEB.md`** | Postgres/Prisma CMS-light schema (`Salanor_Website_Specification.pdf`) |
@@ -21,6 +23,7 @@ Read in this order for execution:
 | 9 | **`IMPLEMENTATION_PLAN.md`** | Milestones, dependencies, sequencing → completion |
 | 9b | **`DEFERRALS.md`** | Founder-facing deferred decision log with concrete pull-forward triggers post P6 |
 | 10 | **`AEGIS_PHASE_0.md` … `AEGIS_PHASE_6.md`** | Executable acceptance criteria per release slice |
+| 10d | **`AEGIS-FULL-PLATFORM-BUILD-PHASES.md`** | **Full client/investor surface:** Phases 0–8, every Claude-spec capability, acceptance tests, EXISTS/PARTIAL/MISSING |
 | 10b | **`AEGIS_POLICY_V1.md`** | Policy v1 contract: rules schema, editor/replay/manifest APIs, and deferred governance scope |
 | 10c | **`AEGIS_N8N_INTEGRATION.md`** | Workflow Bridge for n8n/Zapier: server-signed runs, least-effort bookends |
 

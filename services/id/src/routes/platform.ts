@@ -140,7 +140,7 @@ platformRoutes.post("/organizations", async (c) => {
         private_key_b64: result.default_agent.private_key_b64,
       },
       message: body.admin_password
-        ? "Organization, admin account, and default agent are ready. Copy default_agent.private_key_b64 now — shown once."
+        ? "Organization, admin account, and default agent are ready. Copy default_agent.private_key_b64 now. It is shown only once."
         : "Organization and default agent created. Copy private_key_b64 now; invite admin via Members if no password was set.",
     });
   } catch (err: unknown) {

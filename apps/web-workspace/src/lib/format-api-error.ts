@@ -22,6 +22,9 @@ export function formatApiError(body: string): string {
       detail?: string;
     };
     if (typeof parsed.error === "string") {
+      if (typeof parsed.detail === "string" && parsed.detail.trim()) {
+        return `${parsed.error}: ${parsed.detail}`;
+      }
       return parsed.error;
     }
     if (parsed.error && typeof parsed.error.message === "string") {

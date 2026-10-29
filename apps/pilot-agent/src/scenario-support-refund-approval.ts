@@ -49,15 +49,26 @@ function startMockPaymentApi(): Promise<{ server: Server; url: string }> {
   });
 }
 
-/** Same ticket story, but policy requires human approval before payment. */
+/** Same ticket story; Standard → Ask a person, Gold → Allow (Phase 2 tiers). */
 export async function runSupportRefundApprovalScenario(
   config: PilotConfig,
-): Promise<ApprovalPendingResult> {
+  opts?: { segment?: "standard" | "gold" | "business" },
+): Promise<ApprovalPendingResult | {
+  mode: "allowed_by_tier";
+  trace_id: string;
+  ticket_id: string;
+  segment: string;
+  console_trace_url: string;
+  steps: string[];
+}> {
+  const segment = opts?.segment ?? "standard";
   const traceId = newTraceId();
   const gov = createGovernance(config, traceId);
   const steps: string[] = [];
 
-  console.log("\n=== Pilot agent: support refund (human approval) ===");
+  console.log(
+    `\n=== Pilot agent: support refund (${segment} tier) ===`,
+  );
   console.log(`Trace ID: ${traceId}\n`);
 
   await startTraceSession(gov, {
@@ -99,22 +110,51 @@ export async function runSupportRefundApprovalScenario(
       amountUsd: SAMPLE_TICKET.refund_amount_usd,
       customerEmail: SAMPLE_TICKET.customer_email,
       orderId: SAMPLE_TICKET.order_id,
+      customerSegment: segment,
+      accountType: SAMPLE_TICKET.account_type,
+      beneficiary: SAMPLE_TICKET.beneficiary,
       upstreamUrl: url,
       triggerSource: "llm_refund_workflow",
-      triggerReason: `Ticket ${SAMPLE_TICKET.ticket_id} classified as refund`,
+      triggerReason: `Ticket ${SAMPLE_TICKET.ticket_id} classified as refund (${segment} tier)`,
     });
+
+    if (segment === "gold" || segment === "business") {
+      if (payment.outcome !== "allowed") {
+        server.close();
+        throw new Error(
+          `Expected allow for ${segment} tier $249 but got ${payment.outcome}. Run: pnpm pilot:ensure-approval-policy`,
+        );
+      }
+      steps.push(
+        `2. stripe.paymentIntents.create → ALLOWED (${segment} tier under limit)`,
+      );
+      console.log(`  ${steps.at(-1)}\n`);
+      await finishTraceSession(gov, {
+        summary: `Refund allowed for ${segment} tier without human approval`,
+        outcome: "ok",
+      });
+      steps.push("3. trace.complete");
+      return {
+        mode: "allowed_by_tier",
+        trace_id: traceId,
+        ticket_id: SAMPLE_TICKET.ticket_id,
+        segment,
+        console_trace_url: `http://localhost:3000/aegis/traces/${encodeURIComponent(traceId)}`,
+        steps,
+      };
+    }
 
     if (payment.outcome !== "approval_required") {
       server.close();
       throw new Error(
-        `Expected approval_required but got ${payment.outcome}. Run: pnpm pilot:ensure-approval-policy`,
+        `Expected approval_required for Standard $249 but got ${payment.outcome}. Run: pnpm pilot:ensure-approval-policy`,
       );
     }
 
     steps.push("2. stripe.paymentIntents.create → WAITING for human (Approvals)");
     console.log(`  ${steps.at(-1)}`);
     console.log(`\n  Approval ID: ${payment.approvalId}`);
-    console.log("  Open Console → Approvals → Approve or Reject");
+    console.log("  Open Console → Approvals → Approve or Decline");
     console.log(`  http://localhost:3000/aegis/approvals`);
     console.log(`\n  After approve: pnpm pilot:agent:resume ${payment.approvalId}\n`);
 
@@ -160,6 +200,9 @@ export async function resumeSupportRefundAfterApproval(
       amountUsd: SAMPLE_TICKET.refund_amount_usd,
       customerEmail: SAMPLE_TICKET.customer_email,
       orderId: SAMPLE_TICKET.order_id,
+      customerSegment: SAMPLE_TICKET.customer_segment,
+      accountType: SAMPLE_TICKET.account_type,
+      beneficiary: SAMPLE_TICKET.beneficiary,
     });
     steps.push("payment executed after human approve (mock API)");
   } finally {

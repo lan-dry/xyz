@@ -1,9 +1,12 @@
 import { buildBrandedEmailHtml } from "./branded-email.js";
-import { EmailDeliveryError, getInviteFromAddress, getResendApiKey } from "./email-delivery.js";
+import { sendTransactionalEmail } from "./email-delivery.js";
 
 export type PasswordResetEmailInput = {
   to: string;
   resetUrl: string;
+  fromAddress?: string;
+  replyTo?: string;
+  organizationId?: string | null;
 };
 
 export function buildPasswordResetEmailHtml(resetUrl: string): string {
@@ -21,7 +24,6 @@ export function buildPasswordResetEmailHtml(resetUrl: string): string {
 export async function sendPasswordResetEmail(
   input: PasswordResetEmailInput,
 ): Promise<void> {
-  const from = getInviteFromAddress();
   const subject = "Reset your Salanor password";
   const html = buildPasswordResetEmailHtml(input.resetUrl);
   const bodyText = [
@@ -33,25 +35,13 @@ export async function sendPasswordResetEmail(
     "This link expires in 1 hour. If you did not request this, ignore this email.",
   ].join("\n");
 
-  const apiKey = getResendApiKey();
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [input.to],
-      subject,
-      text: bodyText,
-      html,
-    }),
+  await sendTransactionalEmail({
+    to: input.to,
+    subject,
+    text: bodyText,
+    html,
+    fromAddress: input.fromAddress,
+    replyTo: input.replyTo,
+    organizationId: input.organizationId,
   });
-
-  if (!response.ok) {
-    const errText = await response.text().catch(() => "");
-    console.error("[salanor-id] Resend password reset failed:", response.status, errText);
-    throw new EmailDeliveryError("email_send_failed", "Failed to send password reset email");
-  }
 }

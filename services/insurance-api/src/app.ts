@@ -91,7 +91,7 @@ consoleRoutes.get("/overview", requireConsoleSession, async (c) => {
       organization_id: session.organizationId,
       metrics: [],
       scaffold: true,
-      note: "Insurance metrics schema not loaded yet — run db:migrate.",
+      note: "Insurance metrics schema not loaded yet. Run db:migrate.",
     });
   }
 });

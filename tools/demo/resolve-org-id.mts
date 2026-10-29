@@ -3,13 +3,17 @@ import { normalizePostgresDatabaseUrl } from "@salanor/db-url";
 
 import { clearStalePilotOrgEnv } from "./pilot-env.mts";
 
+/** Staff Ops home org (bootstrap). Not the customer pilot demo org. */
 export const DEFAULT_PLATFORM_ORG_SLUG = "salanor-platform";
 
-/** Resolve org UUID from DATABASE_URL: slug salanor-platform, else sole org in DB. CLI arg overrides elsewhere. */
+/** Local pilot / demo org created by `pnpm db:local:pilot-fixture`. */
+export const DEFAULT_PILOT_ORG_SLUG = "northwind-payments";
+
+/** Resolve org UUID from DATABASE_URL: Northwind (or PILOT_ORGANIZATION_SLUG), else sole org in DB. */
 export async function resolveOrganizationId(
   slug = process.env.PILOT_ORGANIZATION_SLUG?.trim() ||
     process.env.DEMO_ORGANIZATION_SLUG?.trim() ||
-    DEFAULT_PLATFORM_ORG_SLUG,
+    DEFAULT_PILOT_ORG_SLUG,
 ): Promise<string> {
   clearStalePilotOrgEnv();
 
@@ -48,7 +52,7 @@ export async function resolveOrganizationId(
 
     const slugs = all.rows.map((r) => r.slug).join(", ");
     throw new Error(
-      `No organization with slug "${slug}". Multiple orgs in DB (${slugs}). Set PILOT_ORGANIZATION_SLUG or bootstrap with "${DEFAULT_PLATFORM_ORG_SLUG}".`,
+      `No organization with slug "${slug}". Multiple orgs in DB (${slugs}). Run pnpm db:local:pilot-fixture or set PILOT_ORGANIZATION_SLUG.`,
     );
   } finally {
     await pool.end();

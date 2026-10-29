@@ -10,21 +10,21 @@
 .restoredChip {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  border: 1px solid color-mix(in srgb, #059669 35%, var(--border));
+  gap: 0.3rem;
+  border: none;
   border-radius: 999px;
-  padding: 0.22rem 0.6rem;
-  background: color-mix(in srgb, #059669 8%, transparent);
-  color: color-mix(in srgb, #047857 80%, var(--text));
+  padding: 0.2rem 0.55rem;
+  background: transparent;
+  color: color-mix(in srgb, #047857 70%, var(--muted));
   font: inherit;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 500;
   cursor: pointer;
 }
 
 .chip:hover,
 .restoredChip:hover {
-  background: color-mix(in srgb, #059669 14%, transparent);
+  background: color-mix(in srgb, #059669 10%, transparent);
 }
 
 .chip:disabled {

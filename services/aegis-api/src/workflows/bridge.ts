@@ -61,6 +61,8 @@ export type PolicyGateCapture = {
   rule_id: string | null;
   reason: string;
   engine?: string;
+  decision_layer?: string;
+  signals?: Record<string, unknown>;
 };
 
 function policyGateStep(
@@ -81,6 +83,10 @@ function policyGateStep(
       rule_id: gate.rule_id,
       engine: gate.engine ?? "rules",
       blocked: denied,
+      ...(gate.decision_layer ? { decision_layer: gate.decision_layer } : {}),
+      ...(gate.signals && Object.keys(gate.signals).length > 0
+        ? { signals: gate.signals }
+        : {}),
       investor_summary: denied
         ? `Denied ${gate.tool_name}: ${gate.reason}`
         : gate.decision === "allow_with_obligation"
@@ -166,6 +172,7 @@ export async function enableWorkflowBridgeForAgent(
   key_id: string;
   public_key_b64: string;
   already_enabled: boolean;
+  previous_key_id?: string | null;
 }> {
   if (!isBridgeMasterKeyConfigured()) {
     throw new Error("AEGIS_BRIDGE_MASTER_KEY is not configured on aegis-api");
@@ -203,14 +210,25 @@ export async function enableWorkflowBridgeForAgent(
     }
   }
 
+  const previous = await client.query<{ key_id: string }>(
+    `SELECT key_id FROM signing_key
+     WHERE agent_id = $1 AND organization_id = $2
+       AND bridge_enabled = true AND revoked = false
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [input.agentId, input.organizationId],
+  );
+  const previousKeyId = previous.rows[0]?.key_id ?? null;
+
   const keyId = `key_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
   const { publicKeyB64, privateKeyB64 } = await generateEd25519KeyPair();
   const ciphertext = encryptBridgePrivateKey(privateKeyB64);
 
   await client.query(
-    `UPDATE signing_key SET bridge_enabled = false
+    `UPDATE signing_key
+     SET bridge_enabled = false, revoked = CASE WHEN $2::boolean THEN true ELSE revoked END
      WHERE agent_id = $1 AND bridge_enabled = true`,
-    [input.agentId],
+    [input.agentId, Boolean(input.forceRotate)],
   );
 
   await client.query(
@@ -227,6 +245,7 @@ export async function enableWorkflowBridgeForAgent(
     key_id: keyId,
     public_key_b64: publicKeyB64,
     already_enabled: false,
+    previous_key_id: previousKeyId,
   };
 }
 

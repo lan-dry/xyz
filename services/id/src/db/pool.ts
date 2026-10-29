@@ -7,7 +7,9 @@ let pool: pg.Pool | null = null;
 
 export function getPool(): pg.Pool {
   if (!pool) {
-    const url = process.env.DATABASE_URL;
+    const url =
+      process.env.STOA_IDENTITY_DATABASE_URL?.trim() ||
+      process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL is required");
     pool = new Pool({ connectionString: url });
   }

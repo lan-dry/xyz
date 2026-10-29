@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@salanor/aegis": "workspace:*",
     "@salanor/ui": "workspace:*",
     "@tanstack/react-query": "^5.77.2",
     "lucide-react": "^1.16.0",

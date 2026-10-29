@@ -5,7 +5,14 @@ import { hashInviteToken } from "./invite-token.js";
 import { assertCanAddMember, deleteSessionsForMembership } from "./plans.js";
 import { hashPassword } from "./password.js";
 
-export type OrgRole = "admin" | "engineer" | "auditor" | "viewer";
+export type OrgRole =
+  | "owner"
+  | "admin"
+  | "approver"
+  | "engineer"
+  | "developer"
+  | "auditor"
+  | "viewer";
 
 export type OrganizationRow = {
   organization_id: string;
@@ -111,7 +118,15 @@ export async function updateMemberRole(
     actorAccountId: string;
   },
 ): Promise<MembershipRow> {
-  const allowed: OrgRole[] = ["admin", "engineer", "auditor", "viewer"];
+  const allowed: OrgRole[] = [
+    "owner",
+    "admin",
+    "approver",
+    "engineer",
+    "developer",
+    "auditor",
+    "viewer",
+  ];
   if (!allowed.includes(input.role)) {
     throw new MemberRoleError("Invalid role");
   }
@@ -269,21 +284,49 @@ export type OrgMemberRow = {
 export async function listMembersInOrg(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
-  options?: { limit: number; offset: number },
+  options?: {
+    limit: number;
+    offset: number;
+    q?: string;
+    role?: string;
+    status?: string;
+  },
 ): Promise<{ members: OrgMemberRow[]; total: number }> {
+  const q = options?.q?.trim();
+  const role = options?.role?.trim();
+  const status = options?.status?.trim();
+  const filterParams: unknown[] = [organizationId];
+  const filters: string[] = ["m.organization_id = $1"];
+  if (q) {
+    filterParams.push(`%${q}%`);
+    filters.push(
+      `(a.email ILIKE $${filterParams.length} OR COALESCE(a.display_name, '') ILIKE $${filterParams.length})`,
+    );
+  }
+  if (role) {
+    filterParams.push(role);
+    filters.push(`m.role = $${filterParams.length}`);
+  }
+  if (status) {
+    filterParams.push(status);
+    filters.push(`m.status = $${filterParams.length}`);
+  }
+  const whereSql = filters.join(" AND ");
+
   const countResult = await client.query<{ count: string }>(
     `SELECT COUNT(*)::text AS count
      FROM membership m
-     WHERE m.organization_id = $1`,
-    [organizationId],
+     JOIN account a ON a.account_id = m.account_id
+     WHERE ${whereSql}`,
+    filterParams,
   );
   const total = Number(countResult.rows[0]?.count ?? 0);
 
-  const params: unknown[] = [organizationId];
+  const params: unknown[] = [...filterParams];
   let limitSql = "";
   if (options) {
     params.push(options.limit, options.offset);
-    limitSql = ` LIMIT $2 OFFSET $3`;
+    limitSql = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
 
   const result = await client.query<{
@@ -297,7 +340,7 @@ export async function listMembersInOrg(
     `SELECT m.membership_id, a.email, a.display_name, m.role, m.status, m.joined_at
      FROM membership m
      JOIN account a ON a.account_id = m.account_id
-     WHERE m.organization_id = $1
+     WHERE ${whereSql}
      ORDER BY a.email${limitSql}`,
     params,
   );
@@ -761,16 +804,21 @@ export async function provisionOrganization(
   if (existingAccount.rows[0]) {
     accountId = existingAccount.rows[0].account_id;
     if (input.adminPasswordHash) {
+      // Platform / Ops provision: admin can sign in immediately (self-serve register clears this).
       await client.query(
-        `UPDATE account SET password_hash = $1, display_name = COALESCE($2, display_name), updated_at = now()
+        `UPDATE account
+         SET password_hash = $1,
+             display_name = COALESCE($2, display_name),
+             email_verified_at = COALESCE(email_verified_at, now()),
+             updated_at = now()
          WHERE account_id = $3`,
         [input.adminPasswordHash, input.adminDisplayName ?? null, accountId],
       );
     }
   } else {
     const acct = await client.query<{ account_id: string }>(
-      `INSERT INTO account (email, display_name, password_hash)
-       VALUES ($1, $2, $3)
+      `INSERT INTO account (email, display_name, password_hash, email_verified_at)
+       VALUES ($1, $2, $3, now())
        RETURNING account_id`,
       [email, input.adminDisplayName ?? null, input.adminPasswordHash ?? null],
     );

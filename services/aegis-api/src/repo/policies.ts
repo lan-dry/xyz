@@ -9,6 +9,7 @@ export type PolicyRow = {
   rego_source: string | null;
   wasm_artifact: Buffer | null;
   status: string;
+  environment?: string;
   activated_at: Date | null;
   created_at: Date;
 };
@@ -25,14 +26,18 @@ export type PolicyRuleRow = {
 export async function listPoliciesByOrganization(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
+  environment?: "production" | "sandbox",
 ): Promise<PolicyRow[]> {
   const result = await client.query<PolicyRow>(
     `SELECT policy_id, organization_id, name, version, rego_source,
-            wasm_artifact, status, activated_at, created_at
+            wasm_artifact, status,
+            COALESCE(environment, 'production') AS environment,
+            activated_at, created_at
      FROM policy
      WHERE organization_id = $1
+       AND ($2::text IS NULL OR COALESCE(environment, 'production') = $2)
      ORDER BY created_at DESC`,
-    [organizationId],
+    [organizationId, environment ?? null],
   );
   return result.rows;
 }
@@ -64,14 +69,18 @@ export async function getPolicyWithRules(
 export async function getActivePoliciesWithRules(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
+  environment?: "production" | "sandbox",
 ): Promise<Array<{ policy: PolicyRow; rules: PolicyRuleRow[] }>> {
   const policyResult = await client.query<PolicyRow>(
     `SELECT policy_id, organization_id, name, version, rego_source,
-            wasm_artifact, status, activated_at, created_at
+            wasm_artifact, status,
+            COALESCE(environment, 'production') AS environment,
+            activated_at, created_at
      FROM policy
      WHERE organization_id = $1 AND status = 'active'
+       AND ($2::text IS NULL OR COALESCE(environment, 'production') = $2)
      ORDER BY activated_at DESC NULLS LAST`,
-    [organizationId],
+    [organizationId, environment ?? null],
   );
 
   const results: Array<{ policy: PolicyRow; rules: PolicyRuleRow[] }> = [];
@@ -98,6 +107,7 @@ export async function getActivePolicyWithRules(
 export type CreatePolicyInput = {
   name: string;
   rego_source?: string | null;
+  environment?: "production" | "sandbox";
   rules: Array<{
     tool_pattern: string;
     decision: string;
@@ -112,20 +122,24 @@ export async function createPolicy(
   userId: string | null,
   input: CreatePolicyInput,
 ): Promise<{ policy: PolicyRow; rules: PolicyRuleRow[] }> {
+  const environment = input.environment === "sandbox" ? "sandbox" : "production";
   const versionResult = await client.query<{ max: string | null }>(
     `SELECT MAX(version)::text AS max FROM policy
-     WHERE organization_id = $1 AND name = $2`,
-    [organizationId, input.name],
+     WHERE organization_id = $1 AND name = $2
+       AND COALESCE(environment, 'production') = $3`,
+    [organizationId, input.name, environment],
   );
   const version = Number(versionResult.rows[0]?.max ?? 0) + 1;
   const policyId = `pol_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
 
   const inserted = await client.query<PolicyRow>(
     `INSERT INTO policy (
-       policy_id, organization_id, name, version, rego_source, status, created_by
-     ) VALUES ($1, $2, $3, $4, $5, 'draft', $6)
+       policy_id, organization_id, name, version, rego_source, status, created_by, environment
+     ) VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7)
      RETURNING policy_id, organization_id, name, version, rego_source,
-               wasm_artifact, status, activated_at, created_at`,
+               wasm_artifact, status,
+               COALESCE(environment, 'production') AS environment,
+               activated_at, created_at`,
     [
       policyId,
       organizationId,
@@ -133,6 +147,7 @@ export async function createPolicy(
       version,
       input.rego_source ?? null,
       userId,
+      environment,
     ],
   );
 

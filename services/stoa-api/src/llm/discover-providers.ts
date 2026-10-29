@@ -157,7 +157,28 @@ export async function discoverModelsForKind(
   }
 }
 
-export async function discoverAllTenantModels(tenantId: string): Promise<{
+type TenantModelsCache = {
+  expiresAt: number;
+  value: {
+    models: DiscoveredModel[];
+    errors: Partial<Record<ProviderKind, string>>;
+    anyConfigured: boolean;
+  };
+};
+
+const TENANT_MODELS_TTL_MS = 120_000;
+const tenantModelsCache = new Map<string, TenantModelsCache>();
+
+/** Call after provider keys change so Policy / Providers refresh immediately. */
+export function invalidateTenantModelsCache(tenantId?: string): void {
+  if (tenantId) {
+    tenantModelsCache.delete(tenantId);
+    return;
+  }
+  tenantModelsCache.clear();
+}
+
+async function discoverAllTenantModelsUncached(tenantId: string): Promise<{
   models: DiscoveredModel[];
   errors: Partial<Record<ProviderKind, string>>;
   anyConfigured: boolean;
@@ -165,20 +186,46 @@ export async function discoverAllTenantModels(tenantId: string): Promise<{
   const errors: Partial<Record<ProviderKind, string>> = {};
   const models: DiscoveredModel[] = [];
   let anyConfigured = false;
-  for (const kind of Object.keys(PROVIDER_META) as ProviderKind[]) {
-    const access = await getProviderConnection(tenantId, kind);
-    if (!access) {
+  const kinds = Object.keys(PROVIDER_META) as ProviderKind[];
+  const settled = await Promise.all(
+    kinds.map(async (kind) => {
+      const access = await getProviderConnection(tenantId, kind);
+      if (!access) {
+        return { kind, access: null as null, result: null };
+      }
+      const result = await discoverModelsForKind(kind, access);
+      return { kind, access, result };
+    }),
+  );
+  for (const row of settled) {
+    if (!row.access || !row.result) {
       continue;
     }
     anyConfigured = true;
-    const result = await discoverModelsForKind(kind, access);
-    if (result.error) {
-      errors[kind] = result.error;
+    if (row.result.error) {
+      errors[row.kind] = row.result.error;
     }
-    models.push(...result.models);
+    models.push(...row.result.models);
   }
   models.sort((a, b) => a.label.localeCompare(b.label));
   return { models, errors, anyConfigured };
+}
+
+export async function discoverAllTenantModels(tenantId: string): Promise<{
+  models: DiscoveredModel[];
+  errors: Partial<Record<ProviderKind, string>>;
+  anyConfigured: boolean;
+}> {
+  const hit = tenantModelsCache.get(tenantId);
+  if (hit && hit.expiresAt > Date.now()) {
+    return hit.value;
+  }
+  const value = await discoverAllTenantModelsUncached(tenantId);
+  tenantModelsCache.set(tenantId, {
+    expiresAt: Date.now() + TENANT_MODELS_TTL_MS,
+    value,
+  });
+  return value;
 }
 
 export async function discoverGatewayModels(

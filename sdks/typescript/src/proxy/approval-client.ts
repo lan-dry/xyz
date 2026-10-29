@@ -65,6 +65,54 @@ export async function getApprovalStatusViaApi(
   };
 }
 
+/** Claude §13.2 — verify resume payload matches the approved action digest. */
+export async function checkApprovalBindViaApi(
+  apiBaseUrl: string,
+  ingestApiKey: string,
+  approvalId: string,
+  payload: Record<string, unknown> | undefined,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ ok: boolean; match: boolean; detail?: string }> {
+  const url = new URL(
+    `/v1/aegis/approvals/${encodeURIComponent(approvalId)}/bind-check`,
+    apiBaseUrl,
+  );
+  const res = await fetchImpl(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${ingestApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ payload: payload ?? {} }),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    match?: boolean;
+    detail?: string;
+    error?: string;
+  };
+  if (res.status === 409 || data.match === false) {
+    return {
+      ok: false,
+      match: false,
+      detail:
+        data.detail ??
+        data.error ??
+        "Approved action does not match intended execution",
+    };
+  }
+  if (!res.ok) {
+    throw new Error(
+      `Approval bind-check failed (${res.status}): ${data.error ?? JSON.stringify(data)}`,
+    );
+  }
+  return {
+    ok: data.ok === true || data.ok === undefined,
+    match: data.match === true || data.match === undefined,
+    detail: data.detail,
+  };
+}
+
 export async function completeTraceViaApi(
   apiBaseUrl: string,
   ingestApiKey: string,

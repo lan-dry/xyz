@@ -37,6 +37,11 @@ type PlanUsage = {
     max_members: number;
     retention_days: number;
   };
+  overage?: {
+    events: boolean;
+    events_over_by: number;
+    notice: string | null;
+  };
   self_serve: boolean;
   billing_checkout_enabled: boolean;
   billing_portal_available: boolean;
@@ -272,6 +277,18 @@ function BillingSettingsInner() {
               used={usage.usage.events_this_month}
               cap={usage.limits.events_per_month}
             />
+            {usage.overage?.events ? (
+              <p
+                className={`${ui.alert} ${ui.alertInfo}`}
+                style={{ marginBottom: "1rem", fontSize: "0.875rem" }}
+              >
+                {usage.overage.notice ??
+                  "Event meter exceeded. Recording continues; overage will appear on the next invoice or ops notice."}
+                {usage.overage.events_over_by > 0
+                  ? ` Over by ${usage.overage.events_over_by}.`
+                  : null}
+              </p>
+            ) : null}
             <UsageMeter
               label="API keys"
               used={usage.usage.ingest_keys}

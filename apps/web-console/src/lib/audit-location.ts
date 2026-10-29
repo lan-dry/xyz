@@ -1,5 +1,5 @@
 export function formatAuditLocation(metadata: Record<string, unknown> | null | undefined): string {
-  if (!metadata) return "—";
+  if (!metadata) return "-";
   const parts: string[] = [];
   for (const key of ["city", "region", "country"] as const) {
     const v = metadata[key];
@@ -10,5 +10,5 @@ export function formatAuditLocation(metadata: Record<string, unknown> | null | u
   if (typeof ip === "string" && ip.trim()) {
     return loc ? `${loc} · ${ip.trim()}` : ip.trim();
   }
-  return loc || "—";
+  return loc || "-";
 }

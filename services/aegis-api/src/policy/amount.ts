@@ -33,7 +33,19 @@ export type PolicyWhen = {
   account_types?: string[];
   beneficiary?: string;
   beneficiaries?: string[];
+  /** Match when payload merchant_age_days is strictly less than this value. */
+  merchant_age_days_lt?: number;
+  /** Match when payload merchant_age_days is less than or equal to this value. */
+  merchant_age_days_lte?: number;
+  /** Match when payload risk_tier equals this value (e.g. high). */
+  risk_tier?: string;
 };
+
+/** Claude §12.3 — evaluation layer. Ceilings win over contextual; overrides last. */
+export type PolicyLayer = "ceiling" | "contextual" | "override";
+
+/** Claude §11.4 — where the numeric limit comes from. */
+export type LimitSource = "fixed" | "segment_table" | "lookup";
 
 export type PolicyConditions = {
   rule_type?: string;
@@ -44,6 +56,22 @@ export type PolicyConditions = {
   when?: PolicyWhen;
   /** Blocklisted beneficiary values (exact match, case-insensitive). */
   blocked_beneficiaries?: string[];
+  /**
+   * When rule_type is beneficiary_match: payload field holding the customer on file
+   * (default customer_on_file, then expected_beneficiary).
+   */
+  expected_beneficiary_field?: string;
+  /** Default contextual when omitted. */
+  layer?: PolicyLayer;
+  /** Default fixed when omitted. */
+  limit_source?: LimitSource;
+  /** Used when limit_source is segment_table (keys lowercased). */
+  segment_limits?: Record<string, number>;
+  /**
+   * When amount or limit cannot be resolved.
+   * Default: skip rule. Set allow_with_obligation to Ask a person (§11.4).
+   */
+  on_lookup_fail?: "skip" | "allow_with_obligation" | "deny";
 };
 
 export function parseConditions(

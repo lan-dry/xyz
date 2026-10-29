@@ -53,7 +53,10 @@ export type VerifyEventResult = {
   errors: string[];
 };
 
-function toApsEvent(row: EventRowForVerify): ApsEvent {
+function toApsEvent(
+  row: EventRowForVerify,
+  options?: { includeSpanId?: boolean },
+): ApsEvent {
   const emittedAt =
     row.emitted_at instanceof Date
       ? row.emitted_at.toISOString()
@@ -75,7 +78,10 @@ function toApsEvent(row: EventRowForVerify): ApsEvent {
     sig_alg: row.sig_alg,
     sig_value_b64: row.sig_value_b64,
   };
-  if (row.span_id) event.span_id = row.span_id;
+  // span_id is denormalized onto the event row for indexing. wrapFetch historically
+  // sealed only payload.span_id; record() seals top-level span_id. Reconstruct both
+  // candidates in verifyEventChainLink — never invent the field by default.
+  if (options?.includeSpanId && row.span_id) event.span_id = row.span_id;
   if (row.parent_event_id) event.parent_event_id = row.parent_event_id;
   if (row.policy_id) event.policy_id = row.policy_id;
   if (row.tool_name) event.tool_name = row.tool_name;
@@ -88,6 +94,16 @@ function toApsEvent(row: EventRowForVerify): ApsEvent {
   return event;
 }
 
+async function checkSignatureAndHash(row: EventRowForVerify, event: ApsEvent) {
+  const expectedHash = digestHex(
+    event as unknown as Record<string, unknown>,
+    row.key_id,
+  );
+  const signature_ok = await verifyEventSignature(event, row.public_key_b64);
+  const hash_ok = row.event_hash === expectedHash;
+  return { signature_ok, hash_ok };
+}
+
 export async function verifyEventChainLink(
   client: pg.Pool | pg.PoolClient,
   row: EventRowForVerify,
@@ -96,13 +112,21 @@ export async function verifyEventChainLink(
   hash_ok: boolean;
   prev_ok: boolean;
 }> {
-  const event = toApsEvent(row);
-  const expectedHash = digestHex(
-    event as unknown as Record<string, unknown>,
-    row.key_id,
+  // Prefer reconstruction without injecting DB span_id (matches wrapFetch seals).
+  let { signature_ok, hash_ok } = await checkSignatureAndHash(
+    row,
+    toApsEvent(row),
   );
-  const signature_ok = await verifyEventSignature(event, row.public_key_b64);
-  const hash_ok = row.event_hash === expectedHash;
+  if ((!signature_ok || !hash_ok) && row.span_id) {
+    const withSpan = await checkSignatureAndHash(
+      row,
+      toApsEvent(row, { includeSpanId: true }),
+    );
+    if (withSpan.signature_ok && withSpan.hash_ok) {
+      signature_ok = withSpan.signature_ok;
+      hash_ok = withSpan.hash_ok;
+    }
+  }
 
   const prevRow = await client.query<{ event_hash: string }>(
     `SELECT event_hash FROM event

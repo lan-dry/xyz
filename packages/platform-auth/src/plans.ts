@@ -291,22 +291,39 @@ export async function assertOrgActiveForIngest(
   return ctx;
 }
 
+export type IngestLimitResult = OrgPlanContext & {
+  events_this_month: number;
+  /** True when at or over the monthly event meter. Ingest still proceeds. */
+  events_overage: boolean;
+  events_over_by: number;
+  overage_notice: string | null;
+};
+
+/**
+ * Gate ingest on org active/suspended only.
+ * Monthly event meters are soft: overage is flagged for billing/UI, never a hard 402.
+ * (Phase 6 — recording never stops at quota.)
+ */
 export async function assertIngestWithinLimits(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
-): Promise<OrgPlanContext> {
+): Promise<IngestLimitResult> {
   const ctx = await assertOrgActiveForIngest(client, organizationId);
-  const cap = ctx.limits.events_per_month;
-  if (cap == null) return ctx;
   const used = await getMonthlyEventCount(client, organizationId);
-  if (used >= cap) {
-    throw new PlanLimitError(
-      "events_limit",
-      `Monthly event limit reached (${used}/${cap}). Upgrade plan or contact Salanor.`,
-      402,
-    );
-  }
-  return ctx;
+  const cap = ctx.limits.events_per_month;
+  const events_overage = cap != null && used >= cap;
+  const events_over_by =
+    events_overage && cap != null ? Math.max(0, used - cap + 1) : 0;
+  const overage_notice = events_overage
+    ? `Event meter exceeded (${used}/${cap}). Recording continues; overage will appear on the next invoice or ops notice.`
+    : null;
+  return {
+    ...ctx,
+    events_this_month: used,
+    events_overage,
+    events_over_by,
+    overage_notice,
+  };
 }
 
 export async function assertCanCreateIngestKey(
@@ -426,6 +443,12 @@ export async function getOrgPlanUsageSummary(
     members: number;
   };
   limits: OrgPlanContext["limits"];
+  /** Soft event overage — ingest continues; charge/notice path. */
+  overage: {
+    events: boolean;
+    events_over_by: number;
+    notice: string | null;
+  };
   self_serve: boolean;
   billing_checkout_enabled: boolean;
   billing_portal_available: boolean;
@@ -489,6 +512,10 @@ export async function getOrgPlanUsageSummary(
   const checkoutEnabled = !checkoutKillSwitch;
   const orgBilling = stripeRow.rows[0];
   const stripeCustomerId = orgBilling?.stripe_customer_id?.trim() || null;
+  const eventsCap = ctx.limits.events_per_month;
+  const eventsOverage = eventsCap != null && events >= eventsCap;
+  const eventsOverBy =
+    eventsOverage && eventsCap != null ? Math.max(0, events - eventsCap) : 0;
   return {
     plan: ctx.plan,
     display_name: catalog.rows[0]?.display_name ?? ctx.plan,
@@ -499,6 +526,13 @@ export async function getOrgPlanUsageSummary(
       members: Number(membersCount.rows[0]?.count ?? 0),
     },
     limits: ctx.limits,
+    overage: {
+      events: eventsOverage,
+      events_over_by: eventsOverBy,
+      notice: eventsOverage
+        ? `Event meter exceeded (${events}/${eventsCap}). Recording continues; overage will appear on the next invoice or ops notice.`
+        : null,
+    },
     self_serve: catalog.rows[0]?.self_serve ?? false,
     billing_checkout_enabled: checkoutEnabled,
     billing_portal_available: Boolean(stripeCustomerId),

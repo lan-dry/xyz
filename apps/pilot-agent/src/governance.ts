@@ -217,6 +217,11 @@ export async function attemptPaymentTool(
     amountUsd: number;
     customerEmail: string;
     orderId: string;
+    customerSegment: string;
+    accountType: string;
+    beneficiary: string;
+    /** Customer account on file — must match beneficiary (§13.1). */
+    customerOnFile?: string;
     upstreamUrl: string;
     triggerSource?: string;
     triggerReason?: string;
@@ -248,12 +253,30 @@ export async function attemptPaymentTool(
           actorPrincipal: gov.config.actorPrincipal,
           spanId: gov.spans.payment,
           spanLabel: "Payment tool",
+          policyPayload: {
+            amount_usd: input.amountUsd,
+            segment: input.customerSegment,
+            account_type: input.accountType,
+            beneficiary: input.beneficiary,
+            ...(input.customerOnFile
+              ? { customer_on_file: input.customerOnFile }
+              : {}),
+          },
           auditPayload: {
             provider: "stripe",
             action: "create_payment_intent",
             amount_usd: input.amountUsd,
+            segment: input.customerSegment,
+            account_type: input.accountType,
+            beneficiary: input.beneficiary,
+            ...(input.customerOnFile
+              ? { customer_on_file: input.customerOnFile }
+              : {}),
             currency: "USD",
             resource_id: input.orderId,
+            requester_email:
+              process.env.PILOT_REQUESTER_EMAIL?.trim() ||
+              "pilot-requester@northwind.example",
             trigger_source: input.triggerSource ?? "support_ai_agent",
             trigger_detail:
               input.triggerReason ??
@@ -293,8 +316,19 @@ export async function resumePaymentAfterApproval(
     amountUsd: number;
     customerEmail: string;
     orderId: string;
+    toolName?: string;
+    /** Must match the approved action (§13.2 bind check). */
+    customerSegment?: string;
+    accountType?: string;
+    beneficiary?: string;
+    merchantId?: string;
+    merchantAgeDays?: number;
+    /** When set, intentionally mutates amount for bind-mismatch demos. */
+    resumeAmountUsd?: number;
   },
 ): Promise<void> {
+  const amountUsd = input.resumeAmountUsd ?? input.amountUsd;
+  const isPayout = (input.toolName ?? "").includes("payout");
   await wrapFetchResume(
     input.approvalId,
     input.upstreamUrl,
@@ -302,7 +336,7 @@ export async function resumePaymentAfterApproval(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        amount_usd: input.amountUsd,
+        amount_usd: amountUsd,
         customer_email: input.customerEmail,
         order_id: input.orderId,
       }),
@@ -313,11 +347,129 @@ export async function resumePaymentAfterApproval(
         agentId: gov.config.agentId,
         keyId: gov.config.keyId,
         traceId: gov.traceId,
-        toolName: "stripe.paymentIntents.create",
+        toolName: input.toolName ?? "stripe.paymentIntents.create",
         actorPrincipal: gov.config.actorPrincipal,
+        policyPayload: isPayout
+          ? {
+              amount_usd: amountUsd,
+              merchant_id: input.merchantId ?? input.orderId,
+              merchant_age_days: input.merchantAgeDays ?? 14,
+              beneficiary: input.beneficiary ?? input.merchantId ?? input.orderId,
+              currency: "USD",
+              resource_id: input.merchantId ?? input.orderId,
+            }
+          : {
+              amount_usd: amountUsd,
+              segment: input.customerSegment ?? "standard",
+              account_type: input.accountType ?? "consumer",
+              beneficiary: input.beneficiary ?? "customer-jordan-4410",
+              currency: "USD",
+              resource_id: input.orderId,
+              customer_email: input.customerEmail,
+            },
       },
       sign: gov.sign,
       ingest: gov.ingest,
     },
   );
+}
+
+/** Merchant payout tool — policy holds high amounts to young merchants. */
+export async function attemptPayoutTool(
+  gov: Governance,
+  input: {
+    amountUsd: number;
+    merchantId: string;
+    merchantAgeDays: number;
+    upstreamUrl: string;
+    /** Optional customer model score for Phase 5 band demo (§12). */
+    riskScore?: number;
+    riskModelName?: string;
+    riskModelVersion?: string;
+  },
+): Promise<
+  | { outcome: "denied" }
+  | { outcome: "allowed" }
+  | { outcome: "approval_required"; approvalId: string; eventId: string }
+> {
+  const riskPayload =
+    typeof input.riskScore === "number"
+      ? {
+          risk_score: {
+            value: input.riskScore,
+            source: "customer_fraud_model",
+            model_name: input.riskModelName ?? "northwind-fraud",
+            model_version: input.riskModelVersion ?? "2026.10",
+            scored_at: new Date().toISOString(),
+          },
+        }
+      : {};
+
+  try {
+    await wrapFetch(
+      input.upstreamUrl,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount_usd: input.amountUsd,
+          merchant_id: input.merchantId,
+          merchant_age_days: input.merchantAgeDays,
+          ...riskPayload,
+        }),
+      },
+      {
+        context: {
+          organizationId: gov.config.organizationId,
+          agentId: gov.config.agentId,
+          keyId: gov.config.keyId,
+          traceId: gov.traceId,
+          toolName: "payments.payout.create",
+          actorPrincipal: gov.config.actorPrincipal,
+          spanId: gov.spans.payment,
+          spanLabel: "Payout tool",
+          policyPayload: {
+            amount_usd: input.amountUsd,
+            merchant_id: input.merchantId,
+            merchant_age_days: input.merchantAgeDays,
+            beneficiary: input.merchantId,
+            ...riskPayload,
+          },
+          auditPayload: {
+            provider: "payments",
+            action: "create_payout",
+            amount_usd: input.amountUsd,
+            merchant_id: input.merchantId,
+            merchant_age_days: input.merchantAgeDays,
+            currency: "USD",
+            resource_id: input.merchantId,
+            trigger_source: "payout_ai_agent",
+            trigger_detail:
+              "Payout agent proposed a merchant settlement without human review",
+            business_context: `Payout $${input.amountUsd} to ${input.merchantId} (merchant age ${input.merchantAgeDays} days)`,
+            risk_if_unmonitored:
+              "Unmonitored payouts to new merchants can fund fraud or settlement errors.",
+            investor_summary:
+              "Payout AI tried to send USD to a new merchant. Aegis paused the tool for human approval.",
+            ...riskPayload,
+          },
+        },
+        sign: gov.sign,
+        ingest: gov.ingest,
+      },
+    );
+    return { outcome: "allowed" };
+  } catch (err) {
+    if (err instanceof PolicyDeniedError) {
+      return { outcome: "denied" };
+    }
+    if (err instanceof ApprovalRequiredError) {
+      return {
+        outcome: "approval_required",
+        approvalId: err.approvalId,
+        eventId: err.eventId,
+      };
+    }
+    throw err;
+  }
 }

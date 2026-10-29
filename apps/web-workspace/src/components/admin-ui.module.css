@@ -100,6 +100,12 @@
   border-bottom: none;
 }
 
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.35);
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -134,16 +140,39 @@
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   padding: 0.5rem 0.65rem;
   border: 1px solid var(--console-border-strong);
   border-radius: 6px;
   font: inherit;
+  background: var(--console-surface-hover);
+  color: var(--console-fg);
+  color-scheme: inherit;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: var(--console-fg-subtle);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid var(--console-accent-soft);
+  border-color: var(--console-accent);
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .alertError {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: color-mix(in srgb, var(--console-danger) 12%, var(--console-surface));
+  border: 1px solid color-mix(in srgb, var(--console-danger) 35%, var(--console-border));
   color: var(--console-danger);
   padding: 0.75rem 1rem;
   border-radius: var(--console-radius);
@@ -152,8 +181,8 @@
 }
 
 .alertSuccess {
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
+  background: color-mix(in srgb, var(--console-success) 12%, var(--console-surface));
+  border: 1px solid color-mix(in srgb, var(--console-success) 35%, var(--console-border));
   color: var(--console-success);
   padding: 0.75rem 1rem;
   border-radius: var(--console-radius);
@@ -233,6 +262,19 @@
 .policyTwoCol .card {
   margin-bottom: 0;
   height: 100%;
+}
+
+.policyTwoColFull {
+  grid-column: 1 / -1;
+}
+
+.fieldHint {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--console-fg-muted);
+  line-height: 1.4;
+  font-weight: 400;
 }
 
 .sectionTitle {

@@ -50,6 +50,13 @@ export type TenantEmailSettings = {
   fromName: string | null;
   fromAddress: string | null;
   replyTo: string | null;
+  /** platform = Salanor Resend; smtp = bank's own mail server. */
+  delivery: "platform" | "smtp";
+  smtpHost: string | null;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser: string | null;
+  smtpPassword: string | null;
 };
 
 export type TenantComplianceSettings = {
@@ -87,8 +94,10 @@ const DEFAULT_SETTINGS: TenantSettings = {
       "image/jpeg",
       "image/webp",
       "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "text/plain",
       "text/csv",
+      "application/csv",
     ],
   },
   quotas: {
@@ -116,6 +125,12 @@ const DEFAULT_SETTINGS: TenantSettings = {
     fromName: null,
     fromAddress: null,
     replyTo: null,
+    delivery: "platform",
+    smtpHost: null,
+    smtpPort: 587,
+    smtpSecure: false,
+    smtpUser: null,
+    smtpPassword: null,
   },
 };
 
@@ -369,8 +384,36 @@ function normalizeSettings(raw: unknown): TenantSettings {
         typeof emailObj.replyTo === "string"
           ? emailObj.replyTo.trim().slice(0, 320) || null
           : DEFAULT_SETTINGS.email.replyTo,
+      delivery:
+        emailObj.delivery === "smtp" || emailObj.delivery === "platform"
+          ? emailObj.delivery
+          : DEFAULT_SETTINGS.email.delivery,
+      smtpHost:
+        typeof emailObj.smtpHost === "string"
+          ? emailObj.smtpHost.trim().slice(0, 253) || null
+          : DEFAULT_SETTINGS.email.smtpHost,
+      smtpPort: normalizeSmtpPort(emailObj.smtpPort),
+      smtpSecure:
+        typeof emailObj.smtpSecure === "boolean"
+          ? emailObj.smtpSecure
+          : DEFAULT_SETTINGS.email.smtpSecure,
+      smtpUser:
+        typeof emailObj.smtpUser === "string"
+          ? emailObj.smtpUser.trim().slice(0, 320) || null
+          : DEFAULT_SETTINGS.email.smtpUser,
+      smtpPassword:
+        typeof emailObj.smtpPassword === "string"
+          ? emailObj.smtpPassword || null
+          : DEFAULT_SETTINGS.email.smtpPassword,
     },
   };
+}
+
+function normalizeSmtpPort(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return DEFAULT_SETTINGS.email.smtpPort;
+  }
+  return Math.min(65535, Math.max(1, Math.floor(value)));
 }
 
 function readSettingsObject(raw: unknown): Record<string, unknown> {
@@ -499,6 +542,30 @@ export async function updateTenantSettings(
         patch.email?.replyTo !== undefined
           ? patch.email.replyTo?.trim().slice(0, 320) || null
           : current.email.replyTo,
+      delivery:
+        patch.email?.delivery === "smtp" || patch.email?.delivery === "platform"
+          ? patch.email.delivery
+          : current.email.delivery,
+      smtpHost:
+        patch.email?.smtpHost !== undefined
+          ? patch.email.smtpHost?.trim().slice(0, 253) || null
+          : current.email.smtpHost,
+      smtpPort:
+        patch.email?.smtpPort !== undefined
+          ? normalizeSmtpPort(patch.email.smtpPort)
+          : current.email.smtpPort,
+      smtpSecure:
+        patch.email?.smtpSecure !== undefined
+          ? Boolean(patch.email.smtpSecure)
+          : current.email.smtpSecure,
+      smtpUser:
+        patch.email?.smtpUser !== undefined
+          ? patch.email.smtpUser?.trim().slice(0, 320) || null
+          : current.email.smtpUser,
+      smtpPassword:
+        patch.email?.smtpPassword !== undefined
+          ? patch.email.smtpPassword || null
+          : current.email.smtpPassword,
     },
   };
   if (patch.enabledModelIds !== undefined && next.enabledModelIds.length === 0) {

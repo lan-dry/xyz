@@ -4,6 +4,7 @@ import {
   buildMerkleTree,
   getMerkleProof,
 } from "@salanor/witness-merkle";
+import { signWitnessCheckpoint } from "./sign-checkpoint.js";
 
 export async function runWitnessBatchForOrg(
   client: pg.Pool | pg.PoolClient,
@@ -34,6 +35,8 @@ export async function runWitnessBatchForOrg(
   const intervalStart = pending.rows[0]!.emitted_at;
   const intervalEnd = pending.rows[pending.rows.length - 1]!.emitted_at;
   const rootId = `root_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  const checkpointSig = await signWitnessCheckpoint(root);
+  const publishedAt = new Date();
 
   await client.query("BEGIN");
 
@@ -41,9 +44,20 @@ export async function runWitnessBatchForOrg(
     await client.query(
       `INSERT INTO merkle_root (
          root_id, organization_id, root_hash, tree_size,
-         interval_start, interval_end, anchoring_type, published
-       ) VALUES ($1, $2, $3, $4, $5, $6, 'internal', true)`,
-      [rootId, organizationId, root, size, intervalStart, intervalEnd],
+         interval_start, interval_end, anchoring_type, published, published_at,
+         sig_value_b64, sig_key_id
+       ) VALUES ($1, $2, $3, $4, $5, $6, 'internal', true, $7, $8, $9)`,
+      [
+        rootId,
+        organizationId,
+        root,
+        size,
+        intervalStart,
+        intervalEnd,
+        publishedAt,
+        checkpointSig?.sig_value_b64 ?? null,
+        checkpointSig?.sig_key_id ?? null,
+      ],
     );
 
     for (let i = 0; i < pending.rows.length; i++) {
@@ -65,6 +79,40 @@ export async function runWitnessBatchForOrg(
   }
 
   return { root_id: rootId, root_hash: root, tree_size: size };
+}
+
+/** Backfill signatures on roots created before checkpoint signing was enabled. */
+export async function backfillUnsignedCheckpoints(
+  client: pg.Pool | pg.PoolClient,
+  organizationId?: string,
+): Promise<number> {
+  const result = await client.query<{ root_id: string; root_hash: string }>(
+    organizationId
+      ? `SELECT root_id, root_hash FROM merkle_root
+         WHERE organization_id = $1 AND sig_value_b64 IS NULL
+         ORDER BY interval_end ASC`
+      : `SELECT root_id, root_hash FROM merkle_root
+         WHERE sig_value_b64 IS NULL
+         ORDER BY interval_end ASC`,
+    organizationId ? [organizationId] : [],
+  );
+
+  let signed = 0;
+  for (const row of result.rows) {
+    const checkpointSig = await signWitnessCheckpoint(row.root_hash);
+    if (!checkpointSig) break;
+    await client.query(
+      `UPDATE merkle_root
+       SET sig_value_b64 = $2,
+           sig_key_id = $3,
+           published = true,
+           published_at = COALESCE(published_at, now())
+       WHERE root_id = $1 AND sig_value_b64 IS NULL`,
+      [row.root_id, checkpointSig.sig_value_b64, checkpointSig.sig_key_id],
+    );
+    signed += 1;
+  }
+  return signed;
 }
 
 export async function listOrganizationIds(

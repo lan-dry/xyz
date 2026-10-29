@@ -22,6 +22,19 @@ type VerifyResponse = {
   error?: string;
 };
 
+type LocalDemoResult = {
+  label: string;
+  ok: boolean;
+  detail: string;
+  amountUsd: number;
+};
+
+type TamperDemoResponse = {
+  intact?: { ok: boolean; amount_usd: number; detail: string };
+  tampered?: { ok: boolean; amount_usd: number; detail: string };
+  error?: string;
+};
+
 function CheckRow({ label, ok }: { label: string; ok: boolean }) {
   return (
     <li className={ok ? styles.checkOk : styles.checkFail}>
@@ -38,6 +51,8 @@ function VerifyForm() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VerifyResponse | null>(null);
   const [httpError, setHttpError] = useState<string | null>(null);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoResults, setDemoResults] = useState<LocalDemoResult[] | null>(null);
 
   useEffect(() => {
     const qOrg = searchParams.get("org");
@@ -45,6 +60,7 @@ function VerifyForm() {
     if (qOrg && qEvent) {
       void runVerify(qOrg, qEvent);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when query present
   }, [searchParams]);
 
   async function runVerify(slug: string, evt: string) {
@@ -84,6 +100,51 @@ function VerifyForm() {
     void runVerify(org, eventId);
   }
 
+  async function runTamperDemo() {
+    setDemoLoading(true);
+    setDemoResults(null);
+    try {
+      const res = await fetch("/api/verify/tamper-demo", { method: "POST" });
+      const json = (await res.json()) as TamperDemoResponse;
+      if (!res.ok || json.error) {
+        setDemoResults([
+          {
+            label: "Demo error",
+            ok: false,
+            amountUsd: 0,
+            detail: json.error ?? `Request failed (${res.status})`,
+          },
+        ]);
+        return;
+      }
+      setDemoResults([
+        {
+          label: "Intact receipt",
+          ok: Boolean(json.intact?.ok),
+          amountUsd: json.intact?.amount_usd ?? 249,
+          detail: json.intact?.detail ?? "",
+        },
+        {
+          label: "Tampered receipt",
+          ok: Boolean(json.tampered?.ok),
+          amountUsd: json.tampered?.amount_usd ?? 250,
+          detail: json.tampered?.detail ?? "",
+        },
+      ]);
+    } catch (err) {
+      setDemoResults([
+        {
+          label: "Demo error",
+          ok: false,
+          amountUsd: 0,
+          detail: err instanceof Error ? err.message : "Could not run tamper demo",
+        },
+      ]);
+    } finally {
+      setDemoLoading(false);
+    }
+  }
+
   const verification = result?.verification;
 
   return (
@@ -92,47 +153,48 @@ function VerifyForm() {
         <p className={styles.eyebrow}>Salanor Aegis</p>
         <h1>Public event verification</h1>
         <p className={styles.lead}>
-          Independently confirm that an APS event is included in the witness Merkle tree
-          and the organization transparency log. No console login required.
+          Confirm a sealed event is recorded in the witness tree and transparency
+          log. No console login required. Paste an organization slug and event ID
+          from a case receipt.
         </p>
       </header>
 
       <form className={styles.form} onSubmit={onSubmit}>
-        <label>
-          <span>Organization slug</span>
-          <input
-            value={org}
-            onChange={(e) => setOrg(e.target.value)}
-            placeholder="dev-org"
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </label>
-        <label>
-          <span>Event ID</span>
-          <input
-            value={eventId}
-            onChange={(e) => setEventId(e.target.value)}
-            placeholder="evt_…"
-            className={styles.mono}
-            autoComplete="off"
-            spellCheck={false}
-          />
-        </label>
-        <button type="submit" disabled={loading}>
-          {loading ? "Verifying…" : "Verify"}
-        </button>
+        <div className={styles.fieldRow}>
+          <label>
+            <span>Organization slug</span>
+            <input
+              value={org}
+              onChange={(e) => setOrg(e.target.value)}
+              placeholder="northwind-payments"
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+          <label>
+            <span>Event ID</span>
+            <input
+              value={eventId}
+              onChange={(e) => setEventId(e.target.value)}
+              placeholder="evt_…"
+              className={styles.mono}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+        </div>
+        <div className={styles.actions}>
+          <button type="submit" disabled={loading}>
+            {loading ? "Verifying…" : "Verify event"}
+          </button>
+        </div>
       </form>
 
       {httpError ? <p className={styles.error}>{httpError}</p> : null}
 
       {result && verification ? (
         <section className={styles.result}>
-          <div
-            className={
-              verification.ok ? styles.verdictOk : styles.verdictFail
-            }
-          >
+          <div className={verification.ok ? styles.verdictOk : styles.verdictFail}>
             {verification.ok ? "Verification passed" : "Verification failed"}
           </div>
           <dl className={styles.meta}>
@@ -160,15 +222,58 @@ function VerifyForm() {
           {verification.errors.length > 0 ? (
             <pre className={styles.errors}>{verification.errors.join("\n")}</pre>
           ) : null}
-          <p className={styles.footnote}>
-            CLI:{" "}
-            <code className={styles.mono}>
-              pnpm verifier:public -- --org {result.organization_slug} --event{" "}
-              {result.event_id}
-            </code>
-          </p>
         </section>
       ) : null}
+
+      <section className={styles.demo}>
+        <div className={styles.demoHeader}>
+          <div>
+            <h2>Try tamper sample</h2>
+            <p>
+              Offline Ed25519 check on a Northwind sample receipt. One card is
+              intact; the other changes a single amount byte and must fail.
+            </p>
+          </div>
+          <button
+            type="button"
+            className={styles.demoButton}
+            onClick={() => void runTamperDemo()}
+            disabled={demoLoading}
+          >
+            {demoLoading ? "Checking…" : "Run tamper demo"}
+          </button>
+        </div>
+        <div className={styles.demoGrid}>
+          <article className={styles.demoCard}>
+            <h3>Intact</h3>
+            <p className={styles.mono}>amount_usd: 249</p>
+            <p className={styles.demoHint}>Signed payload as recorded.</p>
+          </article>
+          <article className={styles.demoCard}>
+            <h3>Tampered</h3>
+            <p className={styles.mono}>amount_usd: 250</p>
+            <p className={styles.demoHint}>
+              Same signature; amount edited after signing.
+            </p>
+          </article>
+        </div>
+        {demoResults ? (
+          <ul className={styles.demoResults}>
+            {demoResults.map((row) => (
+              <li
+                key={row.label}
+                className={row.ok ? styles.verdictOk : styles.verdictFail}
+              >
+                <strong>{row.label}</strong>
+                {row.amountUsd > 0 ? (
+                  <span className={styles.mono}> · ${row.amountUsd}</span>
+                ) : null}
+                <div>{row.detail}</div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
     </div>
   );
 }

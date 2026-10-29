@@ -21,7 +21,14 @@ import {
 import { idApi } from "@/lib/id-api";
 import type { MeResponse, OrgInvitation, OrgMember } from "@/lib/types";
 
-const ROLES = ["admin", "engineer", "auditor", "viewer"] as const;
+const ROLES = [
+  "owner",
+  "admin",
+  "approver",
+  "engineer",
+  "auditor",
+  "viewer",
+] as const;
 const MEMBER_PAGE_SIZES = [25, 50, 100] as const;
 
 type InviteLinkResult = {

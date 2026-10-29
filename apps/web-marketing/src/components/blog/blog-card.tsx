@@ -10,8 +10,17 @@ export function BlogCard({ post }: { post: BlogPostListItem }) {
   return (
     <Link href={`/blog/${post.slug}`} className={styles.card}>
       <div className={styles.cardCover}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={resolveBlogCoverUrl(post.coverImageUrl)} alt="" />
+        {post.coverImageUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={resolveBlogCoverUrl(post.coverImageUrl)} alt="" />
+          </>
+        ) : (
+          <div className={styles.cardCoverPlaceholder}>
+            <span>Salanor</span>
+            <strong>{post.title}</strong>
+          </div>
+        )}
       </div>
       <div className={styles.cardBody}>
         <div className={styles.cardMeta}>

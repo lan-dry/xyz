@@ -5,6 +5,6 @@
   "type": "module",
   "description": "Third-party transparency log verifier (no @salanor SDK imports)",
   "scripts": {
-    "verify": "node verify.mts"
+    "verify": "tsx verify.mts"
   }
 }

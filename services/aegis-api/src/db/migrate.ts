@@ -12,6 +12,17 @@ const MIGRATIONS_DIR = join(
 const MIGRATIONS = [
   { version: "001_baseline", file: "001_baseline.sql" },
   { version: "002_account_byline_social", file: "002_account_byline_social.sql" },
+  { version: "004_organization_scim", file: "004_organization_scim.sql" },
+  {
+    version: "005_organization_scim_groups",
+    file: "005_organization_scim_groups.sql",
+  },
+  { version: "006_phase2_control", file: "006_phase2_control.sql" },
+  { version: "007_phase3_ia", file: "007_phase3_ia.sql" },
+  { version: "008_phase4_coverage", file: "008_phase4_coverage.sql" },
+  { version: "009_phase5_proof", file: "009_phase5_proof.sql" },
+  { version: "010_phase6_enterprise", file: "010_phase6_enterprise.sql" },
+  { version: "011_phase8_share_receipt", file: "011_phase8_share_receipt.sql" },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {

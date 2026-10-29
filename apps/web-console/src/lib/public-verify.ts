@@ -26,3 +26,8 @@ export function buildPublicVerifyCliCommand(
 ): string {
   return `pnpm verifier:public -- --org ${organizationSlug.trim()} --event ${eventId.trim()}`;
 }
+
+/** Path for an opaque expiring share token (token from create-share API). */
+export function buildShareReceiptUrl(token: string): string {
+  return `${publicVerifyBaseUrl().replace(/\/$/, "")}/share/${encodeURIComponent(token.trim())}`;
+}

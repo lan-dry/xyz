@@ -50,8 +50,12 @@ function ssoRedirectLogin(error: string, returnTo?: string): string {
   return url.toString();
 }
 
-export function registerSsoRoutes(app: import("hono").Hono): void {
-  app.get("/v1/id/auth/sso/start", async (c) => {
+export function registerSsoRoutes(
+  app: import("hono").Hono,
+  apiPrefix = "/v1/id",
+): void {
+  const prefix = apiPrefix.replace(/\/$/, "");
+  app.get(`${prefix}/auth/sso/start`, async (c) => {
     const limited = enforceOAuthRateLimit(c);
     if (limited) return limited;
 
@@ -102,7 +106,7 @@ export function registerSsoRoutes(app: import("hono").Hono): void {
     return c.redirect(authorizationUrl, 302);
   });
 
-  app.get("/v1/id/auth/sso/callback", async (c) => {
+  app.get(`${prefix}/auth/sso/callback`, async (c) => {
     const limited = enforceOAuthRateLimit(c);
     if (limited) {
       return c.redirect(ssoRedirectLogin("rate_limited"), 302);

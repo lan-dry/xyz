@@ -121,8 +121,8 @@ When the SDK creates a pending approval, optional channels notify admins:
 
 | Variable | Effect |
 |----------|--------|
-| `APPROVAL_SLACK_WEBHOOK_URL` | Slack message with link to console |
-| `RESEND_API_KEY` | Email org admins (or `APPROVAL_NOTIFY_EMAIL` override) |
+| `APPROVAL_SLACK_WEBHOOK_URL` | Optional deploy-wide Slack fallback (prefer Governance UI) |
+| `RESEND_API_KEY` | Email active org admins when Governance email is enabled |
 
 Approve/reject still happens in **Console → Approvals** (`/aegis/approvals?focus=<approval_id>`).
 

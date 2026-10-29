@@ -18,6 +18,7 @@ export async function ensureDevIngestKey(
        key_id, organization_id, name, key_prefix, key_hash, active
      ) VALUES ($1, $2, 'Test Ingest', $3, $4, true)
      ON CONFLICT (key_id) DO UPDATE SET
+       organization_id = EXCLUDED.organization_id,
        key_hash = EXCLUDED.key_hash,
        key_prefix = EXCLUDED.key_prefix,
        active = true,
@@ -46,8 +47,11 @@ export async function ensureDevSigningKey(
   const publicKey = await ed.getPublicKeyAsync(privateKey);
   await client.query(
     `UPDATE signing_key
-     SET public_key_b64 = $1, revoked = false
-     WHERE key_id = $2 AND organization_id = $3 AND agent_id = $4`,
+     SET public_key_b64 = $1,
+         organization_id = $3,
+         agent_id = $4,
+         revoked = false
+     WHERE key_id = $2`,
     [Buffer.from(publicKey).toString("base64"), keyId, organizationId, agentId],
   );
 }

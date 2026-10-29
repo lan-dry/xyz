@@ -11,6 +11,107 @@ import type { MeResponse } from "@/lib/types";
 
 import settings from "../settings.module.css";
 
+type Residency = {
+  region: string;
+  topology: string;
+  legal_hold: boolean;
+  retention_days: number | null;
+  note: string;
+};
+
+function ResidencyLegalHold({ isAdmin }: { isAdmin: boolean }) {
+  const queryClient = useQueryClient();
+  const residencyQuery = useQuery({
+    queryKey: ["console", "organization-residency"],
+    queryFn: () => consoleApi<{ residency: Residency }>("/organization/residency"),
+  });
+  const holdMutation = useMutation({
+    mutationFn: (legal_hold: boolean) =>
+      consoleApi<{ legal_hold: boolean }>("/organization/legal-hold", {
+        method: "PATCH",
+        body: JSON.stringify({ legal_hold }),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["console", "organization-residency"] });
+    },
+  });
+  const residency = residencyQuery.data?.residency;
+  return (
+    <>
+      {residencyQuery.isLoading ? (
+        <p className={ui.muted}>Loading residency…</p>
+      ) : null}
+      {residencyQuery.isError ? (
+        <ErrorAlert message={(residencyQuery.error as Error).message} />
+      ) : null}
+      {residency ? (
+        <dl className={ui.formGrid} style={{ gap: "0.75rem", marginBottom: "1rem" }}>
+          <div>
+            <dt className={ui.muted} style={{ fontSize: "0.75rem" }}>
+              Region
+            </dt>
+            <dd style={{ margin: "0.25rem 0 0" }} className="mono">
+              {residency.region}
+            </dd>
+          </div>
+          <div>
+            <dt className={ui.muted} style={{ fontSize: "0.75rem" }}>
+              Topology
+            </dt>
+            <dd style={{ margin: "0.25rem 0 0" }} className="mono">
+              {residency.topology}
+            </dd>
+          </div>
+          <div>
+            <dt className={ui.muted} style={{ fontSize: "0.75rem" }}>
+              Retention
+            </dt>
+            <dd style={{ margin: "0.25rem 0 0" }}>
+              {residency.retention_days != null
+                ? `${residency.retention_days} days`
+                : "Unlimited"}
+            </dd>
+          </div>
+          <div>
+            <dt className={ui.muted} style={{ fontSize: "0.75rem" }}>
+              Legal hold
+            </dt>
+            <dd style={{ margin: "0.25rem 0 0", fontWeight: 600 }}>
+              {residency.legal_hold ? "On (purge frozen)" : "Off"}
+            </dd>
+          </div>
+        </dl>
+      ) : null}
+      <p className={ui.muted} style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem" }}>
+        {residency?.note ??
+          "Legal hold freezes retention purge for this organization. Region is set at onboarding."}
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
+        {isAdmin ? (
+          <button
+            type="button"
+            className={`${ui.btn} ${ui.btnPrimary}`}
+            disabled={holdMutation.isPending || !residency}
+            onClick={() => holdMutation.mutate(!residency?.legal_hold)}
+          >
+            {holdMutation.isPending
+              ? "Updating…"
+              : residency?.legal_hold
+                ? "Release legal hold"
+                : "Enable legal hold"}
+          </button>
+        ) : null}
+        <Link href="/aegis/settings/members" className={ui.tableLink}>
+          Manage members and Approver roles
+        </Link>
+      </div>
+      {holdMutation.isError ? (
+        <ErrorAlert message={(holdMutation.error as Error).message} />
+      ) : null}
+    </>
+  );
+}
+
 type PlanUsage = {
   plan: string;
   display_name: string;
@@ -86,7 +187,8 @@ export default function OrganizationSettingsPage() {
 
   const org = meQuery.data?.organization;
   const usage = planQuery.data?.plan_usage;
-  const isAdmin = meQuery.data?.user?.role === "admin";
+  const role = meQuery.data?.user?.role;
+  const isAdmin = role === "admin" || role === "owner";
   const onboardingDone = org && !org.needs_onboarding;
 
   useEffect(() => {
@@ -99,140 +201,154 @@ export default function OrganizationSettingsPage() {
   }, [org?.organization_id]);
 
   return (
-    <>
-      <section className={settings.settingCard}>
-        <h2>Organization</h2>
-        <p>Your active organization scope for Aegis data, policies, and exports.</p>
-        {org ? (
-          <dl className={ui.formGrid} style={{ maxWidth: "28rem", gap: "0.75rem" }}>
-            <div>
-              <dt className={ui.muted} style={{ fontSize: "0.75rem" }}>
-                Name
-              </dt>
-              <dd style={{ margin: "0.25rem 0 0", fontWeight: 600 }}>{org.name}</dd>
-            </div>
-            <div>
-              <dt className={ui.muted} style={{ fontSize: "0.75rem" }}>
-                Slug
-              </dt>
-              <dd style={{ margin: "0.25rem 0 0" }} className="mono">
-                {org.slug}
-              </dd>
-            </div>
-            <div>
-              <dt className={ui.muted} style={{ fontSize: "0.75rem" }}>
-                Organization ID
-              </dt>
-              <dd style={{ margin: "0.25rem 0 0" }} className="mono">
-                {org.organization_id}
-              </dd>
-            </div>
-          </dl>
-        ) : null}
-        {isAdmin && onboardingDone ? (
-          <form
-            className={settings.settingsForm}
-            style={{ marginTop: "1.25rem" }}
-            onSubmit={(e) => {
-              e.preventDefault();
-              setEditMessage(null);
-              const payload: { organization_name?: string; organization_slug?: string } = {};
-              if (editName.trim() !== org?.name) {
-                payload.organization_name = editName.trim();
-              }
-              if (editSlug.trim() !== org?.slug) {
-                payload.organization_slug = editSlug.trim();
-              }
-              if (!payload.organization_name && !payload.organization_slug) {
-                setEditMessage("No changes to save.");
-                return;
-              }
-              updateOrg.mutate(payload);
-            }}
-          >
-            <h3 style={{ fontSize: "0.9375rem", margin: "0 0 0.75rem" }}>Rename organization</h3>
-            <p className={ui.muted} style={{ fontSize: "0.8125rem", marginBottom: "0.75rem" }}>
-              Display name can change anytime. Changing the URL slug updates API paths and rebinds
-              agent DIDs (<span className="mono">did:salanor:…</span>): coordinate with your team
-              before saving.
-            </p>
-            <div className={settings.formFields}>
-              <label className={ui.field}>
-                Company name
-                <input
-                  className={ui.input}
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  minLength={2}
-                  maxLength={120}
-                  required
-                />
-              </label>
-              <label className={ui.field}>
-                Organization slug
-                <input
-                  className={`${ui.input} mono`}
-                  value={editSlug}
-                  onChange={(e) => {
-                    setEditSlugTouched(true);
-                    setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+    <div className={settings.settingsStack}>
+      <div className={settings.settingsSectionGrid}>
+        <section className={settings.settingCard}>
+          <h2>Organization</h2>
+          <p>Your active organization scope for Aegis data, policies, and exports.</p>
+          {org ? (
+            <dl className={ui.formGrid} style={{ gap: "0.75rem" }}>
+              <div>
+                <dt className={ui.muted} style={{ fontSize: "0.75rem" }}>
+                  Name
+                </dt>
+                <dd style={{ margin: "0.25rem 0 0", fontWeight: 600 }}>{org.name}</dd>
+              </div>
+              <div>
+                <dt className={ui.muted} style={{ fontSize: "0.75rem" }}>
+                  Slug
+                </dt>
+                <dd style={{ margin: "0.25rem 0 0" }} className="mono">
+                  {org.slug}
+                </dd>
+              </div>
+              <div>
+                <dt className={ui.muted} style={{ fontSize: "0.75rem" }}>
+                  Organization ID
+                </dt>
+                <dd style={{ margin: "0.25rem 0 0" }} className="mono">
+                  {org.organization_id}
+                </dd>
+              </div>
+            </dl>
+          ) : null}
+          {isAdmin && onboardingDone ? (
+            <form
+              className={settings.settingsForm}
+              style={{ marginTop: "1.25rem", maxWidth: "none" }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                setEditMessage(null);
+                const payload: { organization_name?: string; organization_slug?: string } = {};
+                if (editName.trim() !== org?.name) {
+                  payload.organization_name = editName.trim();
+                }
+                if (editSlug.trim() !== org?.slug) {
+                  payload.organization_slug = editSlug.trim();
+                }
+                if (!payload.organization_name && !payload.organization_slug) {
+                  setEditMessage("No changes to save.");
+                  return;
+                }
+                updateOrg.mutate(payload);
+              }}
+            >
+              <h3 style={{ fontSize: "0.9375rem", margin: "0 0 0.75rem" }}>Rename organization</h3>
+              <div className={settings.formFields}>
+                <label className={ui.field}>
+                  Company name
+                  <input
+                    className={ui.input}
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    minLength={2}
+                    maxLength={120}
+                    required
+                  />
+                </label>
+                <label className={ui.field}>
+                  Organization slug
+                  <input
+                    className={`${ui.input} mono`}
+                    value={editSlug}
+                    onChange={(e) => {
+                      setEditSlugTouched(true);
+                      setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+                    }}
+                    minLength={2}
+                    maxLength={48}
+                    pattern="[a-z0-9][a-z0-9-]*"
+                    required
+                    placeholder="acme"
+                  />
+                </label>
+              </div>
+              {editMessage ? (
+                <p
+                  style={{
+                    fontSize: "0.8125rem",
+                    color: updateOrg.isError ? "var(--console-danger, #b91c1c)" : undefined,
                   }}
-                  minLength={2}
-                  maxLength={48}
-                  pattern="[a-z0-9][a-z0-9-]*"
-                  required
-                  placeholder="acme"
-                />
-              </label>
-            </div>
-            <p className={ui.muted} style={{ fontSize: "0.75rem", marginTop: "0.5rem" }}>
-              Short ID used in agent DIDs and internal paths (letters, numbers, hyphens).
-              Not a website URL. Use e.g. <span className="mono">acme</span>, not{" "}
-              <span className="mono">https://acme.com</span>.
-            </p>
-            {editMessage ? (
-              <p
-                style={{
-                  fontSize: "0.8125rem",
-                  color: updateOrg.isError ? "var(--console-danger, #b91c1c)" : undefined,
-                }}
-              >
-                {editMessage}
-              </p>
-            ) : null}
-            <div className={settings.formActions}>
-              <button
-                type="submit"
-                className={`${ui.btn} ${ui.btnPrimary}`}
-                disabled={updateOrg.isPending}
-              >
-                {updateOrg.isPending ? "Saving…" : "Save changes"}
-              </button>
-            </div>
-          </form>
-        ) : null}
-      </section>
+                >
+                  {editMessage}
+                </p>
+              ) : null}
+              <div className={settings.formActions}>
+                <button
+                  type="submit"
+                  className={`${ui.btn} ${ui.btnPrimary}`}
+                  disabled={updateOrg.isPending}
+                >
+                  {updateOrg.isPending ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </form>
+          ) : null}
+        </section>
 
-      <section className={settings.settingCard}>
-        <h2>Plan</h2>
-        {usage ? (
-          <p style={{ margin: "0 0 0.75rem" }}>
-            <strong>{usage.display_name}</strong>{" "}
-            <span className="mono">({usage.plan})</span>
-            {" · "}
-            {usage.usage.events_this_month}
-            {usage.limits.events_per_month != null
-              ? ` / ${usage.limits.events_per_month}`
-              : ""}{" "}
-            events this month
+        <section className={settings.settingCard}>
+          <h2>Legal hold &amp; residency</h2>
+          <p>
+            Freeze retention purge for audits or litigation. Region and topology are set at
+            onboarding.
           </p>
-        ) : (
-          <p className={ui.muted}>Loading plan…</p>
-        )}
-        <p style={{ margin: 0 }}>
-          <Link href="/aegis/settings/billing">Manage plan, usage and billing</Link>
-        </p>
-      </section>
+          <ResidencyLegalHold isAdmin={Boolean(isAdmin)} />
+        </section>
+      </div>
+
+      <div className={settings.settingsSectionGrid}>
+        <section className={settings.settingCard}>
+          <h2>Plan</h2>
+          {usage ? (
+            <p style={{ margin: "0 0 0.75rem" }}>
+              <strong>{usage.display_name}</strong>{" "}
+              <span className="mono">({usage.plan})</span>
+              {" · "}
+              {usage.usage.events_this_month}
+              {usage.limits.events_per_month != null
+                ? ` / ${usage.limits.events_per_month}`
+                : ""}{" "}
+              events this month
+            </p>
+          ) : (
+            <p className={ui.muted}>Loading plan…</p>
+          )}
+          <p style={{ margin: 0 }}>
+            <Link href="/aegis/settings/billing">Manage plan, usage and billing</Link>
+          </p>
+        </section>
+
+        <section className={settings.settingCard}>
+          <h2>People</h2>
+          <p>
+            Invite teammates and assign Owner, Admin, Approver, Engineer, Auditor, or Viewer.
+            Approvers can decide Ask a person; Auditors are read-only.
+          </p>
+          <Link href="/aegis/settings/members" className={`${ui.btn} ${ui.btnPrimary}`}>
+            Open Members
+          </Link>
+        </section>
+      </div>
 
       {isAdmin ? (
         <section className={settings.settingCard}>
@@ -243,6 +359,7 @@ export default function OrganizationSettingsPage() {
           </p>
           <form
             className={settings.settingsForm}
+            style={{ maxWidth: "32rem" }}
             onSubmit={(e) => {
               e.preventDefault();
               if (newOrgName.trim()) {
@@ -276,19 +393,6 @@ export default function OrganizationSettingsPage() {
           </form>
         </section>
       ) : null}
-
-      <section className={settings.settingCard}>
-        <h2>Ledger & region</h2>
-        <p>
-          APS-1 ledger isolation is enforced per organization. Region and BYOC topology are
-          configured by Salanor during onboarding.
-        </p>
-        <p className={ui.muted} style={{ margin: 0, fontSize: "0.8125rem" }}>
-          {isAdmin
-            ? "Manage teammates in Members, ingest credentials in API keys, and tool rules in Policies."
-            : "Ask an organization admin to change organization settings or invite teammates."}
-        </p>
-      </section>
-    </>
+    </div>
   );
 }

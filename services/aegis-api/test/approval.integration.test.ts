@@ -302,8 +302,10 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
         caught!.approvalId,
         DEV_USER,
         "approved",
+        { voterEmail: approverEmail },
       );
-      expect(decided?.status).toBe("approved");
+      expect(decided?.finalized).toBe(true);
+      expect(decided?.detail.status).toBe("approved");
 
       await ingestHumanApprovalEvent(pool, {
         organizationId: DEV_ORG,
@@ -316,6 +318,24 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
         decision: "approved",
       });
 
+      traceStatus = await getTraceStatus(pool, DEV_ORG, traceId);
+      expect(traceStatus).toBe("executing");
+
+      const mismatchedComplete = await apiApp().request(
+        `/v1/aegis/approvals/${encodeURIComponent(caught!.approvalId)}/complete`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${INGEST_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            organization_id: DEV_ORG,
+            trace_id: `trc_${"f".repeat(24)}`,
+          }),
+        },
+      );
+      expect(mismatchedComplete.status).toBe(409);
       traceStatus = await getTraceStatus(pool, DEV_ORG, traceId);
       expect(traceStatus).toBe("executing");
 

@@ -37,7 +37,11 @@ import {
   updateProviderConnection,
   type ProviderKind,
 } from "../tenant/providers.js";
-import { discoverAllTenantModels, discoverModelsForKind } from "../llm/discover-providers.js";
+import {
+  discoverAllTenantModels,
+  discoverModelsForKind,
+  invalidateTenantModelsCache,
+} from "../llm/discover-providers.js";
 
 export const adminRoutes = new Hono();
 
@@ -367,6 +371,7 @@ adminRoutes.patch("/providers/:kind", async (c) => {
     clearKey?: boolean;
   }>();
   const status = await updateProviderConnection(tenantId, kind, body);
+  invalidateTenantModelsCache(tenantId);
   await getPool().query(
     `INSERT INTO stoa_audit_event (tenant_id, user_id, event_type, metadata)
      VALUES ($1, $2, 'admin.providers.updated', $3::jsonb)`,
@@ -447,6 +452,7 @@ adminRoutes.patch("/providers/openai", async (c) => {
     clearKey?: boolean;
   }>();
   const status = await updateOpenAiProvider(tenantId, body);
+  invalidateTenantModelsCache(tenantId);
   await getPool().query(
     `INSERT INTO stoa_audit_event (tenant_id, user_id, event_type, metadata)
      VALUES ($1, $2, 'admin.providers.updated', $3::jsonb)`,
@@ -591,6 +597,7 @@ adminRoutes.get("/settings", async (c) => {
 function withoutSecrets(settings: Awaited<ReturnType<typeof getTenantSettings>>) {
   const { siemWebhookSecret, exportSigningSecret, ...compliance } =
     settings.compliance;
+  const { smtpPassword, ...email } = settings.email;
   return {
     ...settings,
     compliance: {
@@ -599,6 +606,11 @@ function withoutSecrets(settings: Awaited<ReturnType<typeof getTenantSettings>>)
       exportSigningSecret: null,
       siemWebhookSecretSet: Boolean(siemWebhookSecret),
       exportSigningSecretSet: Boolean(exportSigningSecret),
+    },
+    email: {
+      ...email,
+      smtpPassword: null,
+      smtpPasswordSet: Boolean(smtpPassword),
     },
   };
 }
@@ -696,6 +708,12 @@ adminRoutes.patch("/settings", async (c) => {
       fromName?: string | null;
       fromAddress?: string | null;
       replyTo?: string | null;
+      delivery?: "platform" | "smtp";
+      smtpHost?: string | null;
+      smtpPort?: number;
+      smtpSecure?: boolean;
+      smtpUser?: string | null;
+      smtpPassword?: string | null;
     };
   }>();
   try {

@@ -1,8 +1,17 @@
 import { buildBrandedEmailHtml, escapeHtml } from "./branded-email.js";
 import type { InviteEmailInput } from "./send-invite.js";
 
+const ROLE_LABELS: Record<string, string> = {
+  viewer: "Member",
+  auditor: "Auditor",
+  admin: "Administrator",
+  owner: "Owner",
+  engineer: "Engineer",
+};
+
 export function buildInviteEmailHtml(input: InviteEmailInput): string {
   const role =
+    ROLE_LABELS[input.role.toLowerCase()] ??
     input.role.charAt(0).toUpperCase() + input.role.slice(1).replace(/_/g, " ");
   const invitedBy = input.invitedByEmail
     ? `<p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#5c6660;">Invited by <strong style="color:#0a0c0b;">${escapeHtml(input.invitedByEmail)}</strong></p>`

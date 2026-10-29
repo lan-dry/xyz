@@ -1,4 +1,6 @@
 import { Hono } from "hono";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { getPool } from "../db/pool.js";
 import { containsEmbeddedPayload } from "../dlp/redact.js";
 import { redactForUpstream } from "../dlp/detector.js";
@@ -18,7 +20,13 @@ import {
 } from "../dlp/message-presentation.js";
 import { mergeVaults, rehydrateText } from "../dlp/rehydrate.js";
 import { logAuditEvent } from "../audit/log.js";
-import { completeChat, type ChatMessage } from "../llm/openai.js";
+import { uploadRoot } from "../attachments/storage.js";
+import {
+  completeChat,
+  visionRedactedImagesEnabled,
+  type ChatImagePart,
+  type ChatMessage,
+} from "../llm/openai.js";
 import {
   isModelAllowedForTenant,
   resolveDefaultModelId,
@@ -45,13 +53,53 @@ async function loadAttachmentsForMessage(
     mime_type: string;
     byte_size: string;
     text_extract: string | null;
+    redacted_storage_path: string | null;
   }>(
-    `SELECT id, original_name, mime_type, byte_size::text, text_extract
+    `SELECT id, original_name, mime_type, byte_size::text, text_extract,
+            redacted_storage_path
      FROM stoa_attachment
      WHERE tenant_id = $1 AND user_id = $2 AND id = ANY($3::uuid[]) AND scan_status = 'clean'`,
     [tenantId, userId, attachmentIds],
   );
   return result.rows;
+}
+
+/** Upstream-safe label: extension only — filenames often contain PII. */
+function safeAttachmentLabel(originalName: string, mimeType: string): string {
+  const base = originalName.split(/[/\\]/).pop() ?? "file";
+  const dot = base.lastIndexOf(".");
+  const ext =
+    dot > 0 && dot < base.length - 1
+      ? base.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, "")
+      : "";
+  if (ext) return `document.${ext}`;
+  if (mimeType === "application/pdf") return "document.pdf";
+  if (mimeType.startsWith("image/")) return "image";
+  return "document";
+}
+
+/** Load cleaned PNG previews only — never original upload bytes. */
+async function loadRedactedImagesForVision(
+  attachments: {
+    redacted_storage_path: string | null;
+  }[],
+): Promise<ChatImagePart[]> {
+  if (!visionRedactedImagesEnabled()) return [];
+  const images: ChatImagePart[] = [];
+  for (const att of attachments) {
+    const rel = att.redacted_storage_path?.trim();
+    if (!rel) continue;
+    try {
+      const buf = await readFile(path.join(uploadRoot(), rel));
+      images.push({
+        mimeType: "image/png",
+        base64: buf.toString("base64"),
+      });
+    } catch (error) {
+      console.error("[stoa] redacted vision image", error);
+    }
+  }
+  return images;
 }
 
 /** Vault entries from user messages in the thread, optionally only up to a point in time. */
@@ -281,8 +329,12 @@ threadRoutes.get("/threads/:threadId/messages", async (c) => {
             original_name: string;
             mime_type: string;
             byte_size: string;
+            text_extract: string | null;
+            scan_detail: string | null;
+            redacted_storage_path: string | null;
           }>(
-            `SELECT ma.message_id, a.id AS attachment_id, a.original_name, a.mime_type, a.byte_size::text
+            `SELECT ma.message_id, a.id AS attachment_id, a.original_name, a.mime_type,
+                    a.byte_size::text, a.text_extract, a.scan_detail, a.redacted_storage_path
              FROM stoa_message_attachment ma
              JOIN stoa_attachment a ON a.id = ma.attachment_id
              WHERE ma.message_id = ANY($1::uuid[])`,
@@ -304,6 +356,10 @@ threadRoutes.get("/threads/:threadId/messages", async (c) => {
         originalName: a.original_name,
         mimeType: a.mime_type,
         byteSize: Number(a.byte_size),
+        textExtract: (a.text_extract ?? "").trim() || null,
+        scanDetail: a.scan_detail,
+        hasRedactedPreview: Boolean(a.redacted_storage_path),
+        textExtractAvailable: Boolean((a.text_extract ?? "").trim()),
       })),
     })),
   });
@@ -331,6 +387,16 @@ threadRoutes.post("/threads/:threadId/messages", async (c) => {
     return c.json({ error: "Chat not found." }, 404);
   }
 
+  if (!(await isModelAllowedForTenant(ctx.tenantId, thread.model_id))) {
+    return c.json(
+      {
+        error:
+          "This chat's model is no longer approved for your organization. Pick an approved model and try again.",
+      },
+      403,
+    );
+  }
+
   const tenantSettings = await getTenantSettings(ctx.tenantId);
 
   const quota = await assertWithinQuotas(
@@ -353,6 +419,19 @@ threadRoutes.post("/threads/:threadId/messages", async (c) => {
   );
   if (attachmentIds.length > 0 && attachments.length !== attachmentIds.length) {
     return c.json({ error: "A file couldn't be attached." }, 400);
+  }
+
+  // Fail closed: never send attachment metadata alone — model only sees redacted extracts.
+  for (const att of attachments) {
+    const extract = att.text_extract?.trim() ?? "";
+    if (!extract) {
+      return c.json(
+        {
+          error: `“${att.original_name}” has no privacy-reviewed text. Re-upload as PDF, DOCX, or TXT (or enable OCR for images).`,
+        },
+        400,
+      );
+    }
   }
 
   if (
@@ -379,10 +458,11 @@ threadRoutes.post("/threads/:threadId/messages", async (c) => {
 
   let attachmentBlock = "";
   for (const att of attachments) {
-    attachmentBlock += `\n\n[Attachment: ${att.original_name} (${att.mime_type}, ${att.byte_size} bytes)]`;
-    if (att.text_extract) {
-      attachmentBlock += `\nExtract (redacted):\n${att.text_extract.slice(0, 8000)}`;
-    }
+    const extract = (att.text_extract ?? "").trim().slice(0, 8000);
+    // Never put the original filename upstream — names/emails often live in the name.
+    const safeLabel = safeAttachmentLabel(att.original_name, att.mime_type);
+    attachmentBlock += `\n\n[Attachment: ${safeLabel} (${att.byte_size} bytes)]`;
+    attachmentBlock += `\nExtract (redacted):\n${extract}`;
   }
   const messageForStore = safeContent + (attachmentBlock ? attachmentBlock : "");
   const messageForDisplay = safeContent;
@@ -423,6 +503,15 @@ threadRoutes.post("/threads/:threadId/messages", async (c) => {
   }
 
   const chatMessages = await loadUpstreamHistory(ctx.tenantId, threadId);
+  const visionImages = await loadRedactedImagesForVision(attachments);
+  if (visionImages.length > 0) {
+    const lastUser = [...chatMessages]
+      .reverse()
+      .find((m) => m.role === "user");
+    if (lastUser) {
+      lastUser.images = visionImages;
+    }
+  }
   const clientUserMessage = {
     ...presentUserMessage({
       id: userMessageId ?? "",
@@ -438,6 +527,9 @@ threadRoutes.post("/threads/:threadId/messages", async (c) => {
       originalName: a.original_name,
       mimeType: a.mime_type,
       byteSize: Number(a.byte_size),
+      textExtract: (a.text_extract ?? "").trim() || null,
+      hasRedactedPreview: Boolean(a.redacted_storage_path),
+      textExtractAvailable: Boolean((a.text_extract ?? "").trim()),
     })),
   };
   const titleForClient = rehydrateText(threadTitle, threadVault);
@@ -490,6 +582,7 @@ threadRoutes.post("/threads/:threadId/messages", async (c) => {
       upstreamSha256: upstreamFingerprint(messageForStore),
       valuesRestoredInReply: assistantMessage.restoredCount ?? 0,
       attachmentCount: attachments.length,
+      visionRedactedImages: visionImages.length,
       userMessageId,
       assistantMessageId: assistantRow?.id,
     },
@@ -520,6 +613,16 @@ threadRoutes.patch("/threads/:threadId/messages/:messageId", async (c) => {
   const thread = threadRow.rows[0];
   if (!thread) {
     return c.json({ error: "Chat not found." }, 404);
+  }
+
+  if (!(await isModelAllowedForTenant(ctx.tenantId, thread.model_id))) {
+    return c.json(
+      {
+        error:
+          "This chat's model is no longer approved for your organization. Pick an approved model and try again.",
+      },
+      403,
+    );
   }
 
   const msgRow = await getPool().query<{

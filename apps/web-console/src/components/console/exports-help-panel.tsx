@@ -9,7 +9,7 @@ import styles from "./exports-help-panel.module.css";
 const ZIP_FILES = [
   {
     name: "events.ndjson",
-    desc: "Signed APS-1 events: tool calls, model steps, policy decisions, provenance claims.",
+    desc: "APS-1 events with hashes and agent signatures (sig_value_b64 / sig_key_id).",
   },
   {
     name: "policies.json",
@@ -21,31 +21,23 @@ const ZIP_FILES = [
   },
   {
     name: "audit-log.ndjson",
-    desc: "Console audit trail: invites, API keys, impersonation.",
+    desc: "Console audit trail: invites, API keys, membership changes.",
   },
   {
     name: "witness-roots.json",
-    desc: "Transparency log roots for the export window.",
+    desc: "Merkle witness checkpoints for the export window (signed when checkpoint keys are configured).",
   },
   {
     name: "inclusion-proofs.ndjson",
     desc: "Merkle inclusion proofs tying events to witness batches.",
   },
   {
-    name: "control-mapping-soc2.json",
-    desc: "SOC 2 trust services criteria mapping (SOC 2 / combined bundles).",
-  },
-  {
-    name: "soc2-type1-report.json",
-    desc: "Machine-readable Type I evidence summary (bundle dependent).",
-  },
-  {
     name: "manifest.json",
-    desc: "Artifact list, counts, and integrity metadata.",
+    desc: "Artifact list, per-file SHA-256 hashes, and verification summary.",
   },
   {
     name: "README.md",
-    desc: "Offline verification steps for auditors.",
+    desc: "Plain-language purpose, claims, and offline verification steps.",
   },
 ] as const;
 
@@ -77,16 +69,16 @@ export function ExportsHelpPanel({
       title={section === "how" ? "How exports work" : "What’s in an export?"}
       subtitle={
         section === "how"
-          ? "Generation, scheduling, and worker jobs."
-          : "Tamper-evident ZIP bundles for auditors and compliance reviews."
+          ? "Generation, scheduling, and download."
+          : "Evidence packs for auditors and compliance reviews."
       }
     >
       <section className={styles.section} id="export-guide-files">
         <h3 className={styles.sectionTitle}>What’s exported</h3>
         <p className={styles.lead}>
-          Each ready row in <strong>Your exports</strong> is a tamper-evident <strong>ZIP</strong> for
-          the period you chose. Download saves it locally; compare the SHA-256 hash in the table to
-          verify integrity.
+          Each ready row in <strong>Your exports</strong> is a ZIP for the period you chose.
+          Download saves it locally. Compare the SHA-256 hash in the table to the whole ZIP; use{" "}
+          <code>file_hashes</code> in <code>manifest.json</code> for individual files.
         </p>
         <ul className={styles.fileList}>
           {ZIP_FILES.map((f) => (
@@ -102,13 +94,12 @@ export function ExportsHelpPanel({
         <h3 className={styles.sectionTitle}>Bundle types</h3>
         <ul className={styles.bundleList}>
           <li>
-            <strong>SOC 2</strong>: control mapping for trust services criteria.
+            <strong>Evidence pack</strong> (recommended): events, policies, approvals,
+            witness proofs. No framework “pass/fail” maps.
           </li>
           <li>
-            <strong>EU AI Act</strong>: AI governance artifact set.
-          </li>
-          <li>
-            <strong>Combined</strong>: both (recommended for design partners).
+            <strong>SOC 2 / EU AI Act / NIST / BNR maps</strong>: draft internal mappings
+            only. Do not show to external reviewers until counsel-reviewed.
           </li>
         </ul>
       </section>
@@ -116,32 +107,24 @@ export function ExportsHelpPanel({
       <section className={styles.section} id="export-guide-how" ref={howRef}>
         <h3 className={styles.sectionTitle}>How exports work</h3>
         <p className={styles.lead}>
-          <strong>One-time exports</strong> cover the last 30 days. With <em>Generate immediately</em>{" "}
-          checked, the API builds the ZIP in-process. Uncheck to queue only: useful when the worker
-          runs on a schedule.
+          <strong>One-time exports</strong> cover the last 30 days. Leave{" "}
+          <em>Generate immediately</em> checked so the pack is built right away.
         </p>
         <p className={styles.lead}>
-          <strong>Monthly schedule</strong> exports the previous calendar month on the day you choose
-          (UTC). Saving the schedule in the console does not run the job by itself; the server must
-          call <code>pnpm compliance:schedule</code> or <code>pnpm compliance:worker</code> daily.
+          <strong>Monthly schedule</strong> exports the previous calendar month on the day you
+          choose. Production prepares those packs automatically.
         </p>
         <ul className={styles.bundleList}>
           <li>
-            <strong>Pending</strong>: queued; run <code>pnpm compliance:worker</code> on the API
-            host.
+            <strong>Pending</strong>: preparing; refresh in a minute.
           </li>
           <li>
             <strong>Ready</strong>: download the ZIP; verify with the SHA-256 hash in the table.
           </li>
           <li>
-            <strong>Failed</strong>: check API logs; retry after fixing storage (
-            <code>COMPLIANCE_EXPORT_DIR</code>).
+            <strong>Failed</strong>: retry the export; contact support if it keeps failing.
           </li>
         </ul>
-        <p className={styles.opsNote}>
-          <strong>Production cron:</strong> daily <code>pnpm compliance:worker</code> (pending +
-          due schedules). Full reference: <code>docs/COMMANDS.md</code> § Compliance exports.
-        </p>
       </section>
     </SidePanel>
   );

@@ -160,11 +160,6 @@ export default function AdminOverviewPage() {
               ))}
             </ul>
           ) : null}
-          <div className={ui.toolbar} style={{ marginTop: "1rem", marginBottom: 0 }}>
-            <Link href="/admin/models" className={`${ui.btn} ${ui.btnSecondary}`}>
-              Test a message
-            </Link>
-          </div>
         </div>
 
         <div className={ui.card}>

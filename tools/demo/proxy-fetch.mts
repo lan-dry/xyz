@@ -1,5 +1,5 @@
 /**
- * Stage 5 demo: wrapFetch with hardcoded deny on stripe.paymentIntents.create.
+ * Stage 5 demo: wrapFetch with a contextual retail-refund policy.
  *
  * Requires: docker compose up, pnpm db:migrate, pnpm db:seed, aegis-api dev
  */
@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PolicyDeniedError, wrapFetch } from "@salanor/aegis";
+import { getDemoTargets } from "./demo-targets.mts";
 
 function loadEnvFile(): void {
   const root = resolve(import.meta.dirname, "../..");
@@ -28,11 +29,14 @@ function loadEnvFile(): void {
 
 loadEnvFile();
 
-const organizationId = "11111111-1111-4111-8111-111111111111";
-const agentId = "agent-dev-01";
-const keyId = "key-dev-01";
-const ingestKey = process.env.AEGIS_INGEST_DEV_KEY ?? "aegis_dev_local_change_me";
-const privateKeyB64 = process.env.DEV_SIGNING_PRIVATE_KEY_B64;
+const { organizationId, agentId, keyId } = await getDemoTargets();
+const ingestKey =
+  process.env.AEGIS_INGEST_API_KEY ??
+  process.env.AEGIS_INGEST_DEV_KEY ??
+  "aegis_dev_local_change_me";
+const privateKeyB64 =
+  process.env.AEGIS_SIGNING_PRIVATE_KEY_B64 ??
+  process.env.DEV_SIGNING_PRIVATE_KEY_B64;
 const apiBaseUrl = process.env.AEGIS_API_URL ?? "http://127.0.0.1:8080";
 
 if (!privateKeyB64) {
@@ -72,7 +76,16 @@ try {
   upstreamCalls = 0;
   try {
     await wrapFetch(upstreamUrl, { method: "GET" }, {
-      context: { ...baseContext, toolName: "stripe.paymentIntents.create" },
+      context: {
+        ...baseContext,
+        toolName: "stripe.paymentIntents.create",
+        policyPayload: {
+          amount_usd: 249,
+          segment: "retail",
+          account_type: "consumer",
+          beneficiary: "customer-jordan-4410",
+        },
+      },
       sign,
       ingest,
     });

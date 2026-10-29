@@ -16,6 +16,7 @@ import {
   ui,
 } from "@/components/console/console-ui";
 import { consoleApi } from "@/lib/api";
+import { stepTitlePlain } from "@/lib/case-story";
 
 import styles from "./replay.module.css";
 
@@ -112,28 +113,32 @@ export default function TraceReplayPage() {
   return (
     <ConsolePage>
       <BackLink href={`/aegis/traces/${encodeURIComponent(traceId)}`}>
-        ← Trace {traceId}
+        ← Case
       </BackLink>
       {isLoading ? <LoadingBlock /> : null}
       {error ? <ErrorAlert message="Failed to load replay manifest." /> : null}
       {data && step ? (
         <>
           <PageHeader
-            title="Trace reconstruction"
-            subtitle="Signed causal chain rebuilt from APS-1 events. Click Play to animate through every step, or pick a step in the timeline."
+            title="Watch what happened"
+            subtitle="Walk the sealed record like a story. Nothing is run again. This only rebuilds what was already signed."
           />
-          {data.reconstruction_ms != null ? (
-            <p
-              style={{
-                margin: "0 0 1rem",
-                fontSize: "0.8125rem",
-                color: "var(--console-fg-muted)",
-              }}
-            >
-              Reconstructed {data.step_count} signed event(s) in{" "}
-              <strong>{data.reconstruction_ms}ms</strong>
-            </p>
-          ) : null}
+          <p
+            style={{
+              margin: "0 0 1rem",
+              fontSize: "0.8125rem",
+              color: "var(--console-fg-muted)",
+            }}
+          >
+            Rebuilt from <strong>{data.step_count}</strong> sealed record(s)
+            {data.reconstruction_ms != null ? (
+              <>
+                {" "}
+                in <strong>{data.reconstruction_ms}ms</strong>
+              </>
+            ) : null}
+            . Step {step.step_index} of {data.step_count}.
+          </p>
 
           <div className={styles.playbackBar} aria-hidden>
             <div
@@ -143,11 +148,12 @@ export default function TraceReplayPage() {
           </div>
 
           <div className={`${ui.alert} ${ui.alertSuccess}`} style={{ marginBottom: "1rem" }}>
-            {data.disclaimer}
+            Watching a case uses the sealed record. Nothing is executed again on Salanor
+            servers.
           </div>
 
           <div className={styles.layout}>
-            <div className={`${ui.card} ${ui.cardPad}`}>
+            <div className={`${ui.card} ${ui.cardPad} ${styles.timelineCard}`}>
               <p
                 style={{
                   margin: "0 0 0.75rem",
@@ -173,7 +179,7 @@ export default function TraceReplayPage() {
                       <li key={s.event_id}>
                         <button
                           type="button"
-                          className={`${ui.btn} ${active ? ui.btnPrimary : ui.btnSecondary} ${styles.stepButton} ${active ? styles.stepActive : ""}`}
+                          className={`${styles.stepButton} ${active ? styles.stepActive : ""}`}
                           onClick={() => {
                             clearPlayTimer();
                             setIsPlaying(false);
@@ -184,8 +190,14 @@ export default function TraceReplayPage() {
                             className={`${styles.stepDot} ${active ? styles.stepDotActive : ""} ${done ? styles.stepDotDone : ""}`}
                             aria-hidden
                           />
-                          {s.step_index}. {s.action_kind}
-                          {s.tool_name ? ` · ${s.tool_name}` : ""}
+                          <span className={styles.stepLabel}>
+                            {s.step_index}.{" "}
+                            {stepTitlePlain(
+                              s.action_kind,
+                              s.tool_name,
+                              s.policy_decision,
+                            )}
+                          </span>
                         </button>
                       </li>
                     );
@@ -207,66 +219,82 @@ export default function TraceReplayPage() {
                 Step {step.step_index} of {data.step_count}
               </p>
               <h2 className={ui.panelTitle} style={{ marginTop: 0 }}>
-                {step.summary}
+                {stepTitlePlain(
+                  step.action_kind,
+                  step.tool_name,
+                  step.policy_decision,
+                )}
               </h2>
               <p style={{ margin: "0.5rem 0" }}>
-                <StatusBadge status={step.policy_decision} /> · {step.action_kind}
-                {step.tool_name ? ` · ${step.tool_name}` : ""}
+                <StatusBadge status={step.policy_decision} />
               </p>
               {step.emitted_at ? (
                 <p style={{ fontSize: "0.8125rem", color: "var(--console-fg-muted)" }}>
                   {new Date(step.emitted_at).toLocaleString()}
                 </p>
               ) : null}
-              {step.span_id ? (
-                <p className="mono" style={{ fontSize: "0.8125rem", margin: "0.5rem 0 0" }}>
-                  Span: {step.span_id}
-                </p>
-              ) : null}
-              {step.payload_preview ? (
-                <div style={{ marginTop: "0.75rem" }}>
-                  <p
-                    style={{
-                      margin: "0 0 0.35rem",
-                      fontSize: "0.75rem",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Payload preview
-                  </p>
-                  <pre
-                    className="mono"
-                    style={{
-                      margin: 0,
-                      fontSize: "0.75rem",
-                      padding: "0.65rem",
-                      background: "var(--console-bg-subtle)",
-                      borderRadius: "6px",
-                      overflow: "auto",
-                    }}
-                  >
-                    {JSON.stringify(step.payload_preview, null, 2)}
-                  </pre>
-                </div>
-              ) : null}
-              <p style={{ margin: "0.75rem 0 0" }}>
-                Mode:{" "}
-                <strong>
-                  {step.mode === "audit" ? "Audit (view only)" : "Local re-run required"}
-                </strong>
-              </p>
-              {step.local_hint ? (
-                <p style={{ fontSize: "0.875rem", color: "var(--console-fg-subtle)" }}>
-                  {step.local_hint}
+              {step.summary ? (
+                <p style={{ margin: "0.75rem 0 0", fontSize: "0.875rem", lineHeight: 1.5 }}>
+                  {step.summary}
                 </p>
               ) : null}
               <Link
                 href={`/aegis/events/${encodeURIComponent(step.event_id)}`}
                 className={`${ui.btn} ${ui.btnSecondary}`}
                 style={{ marginTop: "1rem", display: "inline-flex" }}
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 Open signed event
               </Link>
+              <details style={{ marginTop: "1rem" }}>
+                <summary
+                  style={{
+                    cursor: "pointer",
+                    fontSize: "0.75rem",
+                    color: "var(--console-fg-subtle)",
+                  }}
+                >
+                  Advanced (engineers)
+                </summary>
+                <p
+                  style={{
+                    margin: "0.5rem 0 0",
+                    fontSize: "0.8125rem",
+                    color: "var(--console-fg-muted)",
+                  }}
+                >
+                  {step.mode === "audit"
+                    ? "Audit view only. Sealed record. Nothing is re-executed here."
+                    : "Re-execution is not run in the cloud. Use your agent runtime locally with the same signing keys if you need a local re-run."}
+                </p>
+                {step.payload_preview ? (
+                  <pre className={`mono ${styles.payloadPre}`} style={{ marginTop: "0.5rem" }}>
+                    {JSON.stringify(step.payload_preview, null, 2)}
+                  </pre>
+                ) : null}
+                {step.local_hint ? (
+                  <p
+                    className="mono"
+                    style={{
+                      margin: "0.35rem 0 0",
+                      fontSize: "0.75rem",
+                      color: "var(--console-fg-subtle)",
+                    }}
+                  >
+                    {step.local_hint}
+                  </p>
+                ) : null}
+                {step.span_id ? (
+                  <p className="mono" style={{ fontSize: "0.75rem", margin: "0.35rem 0 0" }}>
+                    span_id: {step.span_id}
+                  </p>
+                ) : null}
+                <p className="mono" style={{ fontSize: "0.75rem", margin: "0.35rem 0 0" }}>
+                  {step.action_kind}
+                  {step.tool_name ? ` · ${step.tool_name}` : ""}
+                </p>
+              </details>
             </div>
           </div>
 
@@ -291,7 +319,7 @@ export default function TraceReplayPage() {
               ) : (
                 <>
                   <Play size={16} aria-hidden />{" "}
-                  {stepIndex >= stepCount - 1 ? "Replay from start" : "Play reconstruction"}
+                  {stepIndex >= stepCount - 1 ? "Watch from start" : "Play"}
                 </>
               )}
             </button>

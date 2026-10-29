@@ -220,7 +220,7 @@ Third-party verifier: `tools/verifier/` — **no** `@salanor` imports; uses publ
 
 Go SDK: `sdks/go` (`github.com/salanor/salanor-go/aegis`) — sign, ingest, `FetchPublicBundle` / `VerifyPublicBundle`.
 
-DID documents: `GET /v1/public/agents/agent-dev-01/did` or `GET /v1/public/did/did:salanor:dev:agent-01`.
+DID documents for the local prospect fixture: `GET /v1/public/agents/agent-refund-operations/did` or `GET /v1/public/did/did:salanor:pilot:refund-operations`.
 
 Exit test: `transparency.integration.test.ts` + tamper fails in `tools/verifier`.
 

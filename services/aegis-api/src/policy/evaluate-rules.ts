@@ -20,6 +20,10 @@ export type PolicyEvaluation = {
   policy_id: string;
   rule_id: string | null;
   reason: string;
+  /** Claude §12.3 — which layer decided (ceiling / contextual / override). */
+  decision_layer?: "ceiling" | "contextual" | "override" | "default";
+  /** Echo of external signals recorded for the receipt (§12.5 start). */
+  signals?: Record<string, unknown>;
 };
 
 export function evaluateRules(

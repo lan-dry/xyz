@@ -32,37 +32,90 @@ export function requestPayloadFromEvent(
   return null;
 }
 
+const PREVIEW_SKIP_KEYS = new Set([
+  "amount_usd",
+  "amount",
+  "summary",
+  "business_context",
+  "investor_summary",
+  "risk_if_unmonitored",
+  "trigger_detail",
+  "trigger_source",
+  "deferred_request",
+  "request_payload",
+  "obligation_tool",
+  "tool_under_review",
+  "engine",
+  "blocked",
+  "rule_id",
+  "decision",
+  "policy_id",
+  "rationale",
+  "span_label",
+  "span_id",
+  "provider",
+  "action",
+]);
+
+function parseAmount(raw: unknown): number | undefined {
+  const amount =
+    typeof raw === "number"
+      ? raw
+      : typeof raw === "string"
+        ? Number.parseFloat(raw)
+        : undefined;
+  return Number.isFinite(amount) ? amount : undefined;
+}
+
+/** Prefer nested request body; fall back to audit fields on the gate event. */
 export function buildRequestPreview(
   payload: Record<string, unknown> | null | undefined,
 ): RequestPreview {
-  const requestPayload = requestPayloadFromEvent(payload);
-  if (!requestPayload) {
+  if (!payload) {
     return { fields: [] };
   }
 
-  const amountRaw = requestPayload.amount_usd ?? requestPayload.amount;
-  const amount =
-    typeof amountRaw === "number"
-      ? amountRaw
-      : typeof amountRaw === "string"
-        ? Number.parseFloat(amountRaw)
-        : undefined;
+  const requestPayload = requestPayloadFromEvent(payload);
+  const source: Record<string, unknown> = {
+    ...payload,
+    ...(requestPayload ?? {}),
+  };
+
+  const amount = parseAmount(source.amount_usd ?? source.amount);
 
   const fields: Array<{ key: string; value: string }> = [];
-  for (const [key, value] of Object.entries(requestPayload)) {
-    if (key === "amount_usd" || key === "amount" || key === "summary") continue;
+  const preferred = [
+    "beneficiary",
+    "customer_email",
+    "order_id",
+    "resource_id",
+    "segment",
+    "account_type",
+    "currency",
+    "merchant_id",
+  ];
+  for (const key of preferred) {
+    const value = source[key];
+    if (value == null || typeof value === "object") continue;
+    fields.push({ key, value: String(value) });
+  }
+  for (const [key, value] of Object.entries(source)) {
+    if (PREVIEW_SKIP_KEYS.has(key) || preferred.includes(key)) continue;
     if (value == null || typeof value === "object") continue;
     fields.push({ key, value: String(value) });
     if (fields.length >= 8) break;
   }
 
   const summary =
-    typeof requestPayload.summary === "string" ? requestPayload.summary : undefined;
+    (typeof source.summary === "string" && source.summary) ||
+    (typeof source.business_context === "string" && source.business_context) ||
+    (typeof source.investor_summary === "string" && source.investor_summary) ||
+    undefined;
 
   return {
-    amount_usd: Number.isFinite(amount) ? amount : undefined,
+    amount_usd: amount,
     summary,
-    fields,
+    fields: fields.slice(0, 8),
   };
 }
 

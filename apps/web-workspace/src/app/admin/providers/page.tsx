@@ -7,13 +7,12 @@ import { EmptyStatePanel } from "@/components/empty-state-panel";
 import ui from "@/components/admin-ui.module.css";
 import { adminCanWrite } from "@/lib/admin-session";
 import { formatApiError } from "@/lib/format-api-error";
+import { useAdminSession } from "@/hooks/use-admin-session";
 import {
   fetchAdminProviders,
   fetchProviderModels,
-  fetchSession,
   saveProvider,
   testProvider,
-  type SessionInfo,
   type AllProvidersStatus,
   type ProviderKind,
   type StoaModel,
@@ -49,14 +48,12 @@ export default function AdminProvidersPage() {
   const [error, setError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [savedKind, setSavedKind] = useState<ProviderKind | null>(null);
-  const [session, setSession] = useState<SessionInfo | null>(null);
-  const canWrite = adminCanWrite(session);
-
-  useEffect(() => {
-    fetchSession().then(setSession).catch(() => setSession(null));
-  }, []);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const sessionQuery = useAdminSession();
+  const canWrite = adminCanWrite(sessionQuery.data ?? null);
 
   const refreshModels = useCallback(async () => {
+    setModelsLoading(true);
     try {
       const data = await fetchProviderModels();
       setDiscovered(data.models);
@@ -67,6 +64,8 @@ export default function AdminProvidersPage() {
     } catch {
       setDiscovered([]);
       setDiscoverSource("none");
+    } finally {
+      setModelsLoading(false);
     }
   }, []);
 
@@ -119,7 +118,7 @@ export default function AdminProvidersPage() {
       patchForm(kind, { apiKey: "", verified: false });
       setSavedKind(kind);
       await refreshModels();
-      fetchSession().then(setSession).catch(() => setSession(null));
+      void sessionQuery.refetch();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -323,7 +322,12 @@ export default function AdminProvidersPage() {
 
         <div className={ui.card} style={{ position: "sticky", top: "1rem" }}>
           <p className={ui.cardLabel}>Available models ({discovered.length})</p>
-          {!catalogLive ? (
+          {modelsLoading ? (
+            <p className={ui.metaMuted}>
+              <Loader2 className={ui.spinner} aria-hidden /> Loading models from
+              providers…
+            </p>
+          ) : !catalogLive ? (
             <EmptyStatePanel
               icon={Plug}
               title="No providers connected"

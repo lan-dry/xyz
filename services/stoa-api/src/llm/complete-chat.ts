@@ -5,10 +5,47 @@ import {
 } from "../tenant/providers.js";
 import { formatUpstreamError } from "./provider-error.js";
 
+/** Cleaned/redacted image only — never originals. */
+export type ChatImagePart = {
+  mimeType: string;
+  base64: string;
+};
+
 export type ChatMessage = {
   role: "system" | "user" | "assistant";
   content: string;
+  /** Opt-in via STOA_VISION_REDACTED_IMAGES=1. */
+  images?: ChatImagePart[];
 };
+
+export function visionRedactedImagesEnabled(): boolean {
+  return process.env.STOA_VISION_REDACTED_IMAGES === "1";
+}
+
+type OpenAiContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+function openAiMessagePayload(m: ChatMessage): {
+  role: string;
+  content: string | OpenAiContentPart[];
+} {
+  if (!m.images?.length) {
+    return { role: m.role, content: m.content };
+  }
+  const parts: OpenAiContentPart[] = [
+    { type: "text", text: m.content || "(see attached cleaned image)" },
+  ];
+  for (const img of m.images) {
+    parts.push({
+      type: "image_url",
+      image_url: {
+        url: `data:${img.mimeType};base64,${img.base64}`,
+      },
+    });
+  }
+  return { role: m.role, content: parts };
+}
 
 async function completeOpenAiCompat(
   access: { apiKey: string; baseUrl: string },
@@ -21,7 +58,11 @@ async function completeOpenAiCompat(
       Authorization: `Bearer ${access.apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model, messages, temperature: 0.7 }),
+    body: JSON.stringify({
+      model,
+      messages: messages.map(openAiMessagePayload),
+      temperature: 0.7,
+    }),
   });
   if (!response.ok) {
     throw new Error(formatUpstreamError(await response.text(), response.status));
@@ -30,6 +71,31 @@ async function completeOpenAiCompat(
     choices?: { message?: { content?: string } }[];
   };
   return json.choices?.[0]?.message?.content?.trim() ?? "";
+}
+
+type AnthropicContentPart =
+  | { type: "text"; text: string }
+  | {
+      type: "image";
+      source: { type: "base64"; media_type: string; data: string };
+    };
+
+function anthropicContent(m: ChatMessage): string | AnthropicContentPart[] {
+  if (!m.images?.length) return m.content;
+  const parts: AnthropicContentPart[] = [
+    { type: "text", text: m.content || "(see attached cleaned image)" },
+  ];
+  for (const img of m.images) {
+    parts.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: img.mimeType,
+        data: img.base64,
+      },
+    });
+  }
+  return parts;
 }
 
 async function completeAnthropic(
@@ -52,7 +118,7 @@ async function completeAnthropic(
       system,
       messages: convo.map((m) => ({
         role: m.role === "assistant" ? "assistant" : "user",
-        content: m.content,
+        content: anthropicContent(m),
       })),
     }),
   });
@@ -71,6 +137,10 @@ async function completeAnthropic(
   );
 }
 
+type GooglePart =
+  | { text: string }
+  | { inlineData: { mimeType: string; data: string } };
+
 async function completeGoogle(
   access: { apiKey: string; baseUrl: string },
   model: string,
@@ -80,11 +150,25 @@ async function completeGoogle(
   const url = `${base}/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(access.apiKey)}`;
   const contents = messages
     .filter((m) => m.role !== "system")
-    .map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
-    }))
-    .filter((entry) => entry.parts[0]?.text?.trim());
+    .map((m) => {
+      const parts: GooglePart[] = [];
+      if (m.content.trim()) {
+        parts.push({ text: m.content });
+      }
+      for (const img of m.images ?? []) {
+        parts.push({
+          inlineData: { mimeType: img.mimeType, data: img.base64 },
+        });
+      }
+      if (parts.length === 0) {
+        parts.push({ text: " " });
+      }
+      return {
+        role: m.role === "assistant" ? "model" : "user",
+        parts,
+      };
+    })
+    .filter((entry) => entry.parts.length > 0);
   if (contents.length === 0) {
     throw new Error(
       "No message content to send to the model. Type a message and try again.",

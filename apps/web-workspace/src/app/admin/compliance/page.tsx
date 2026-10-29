@@ -175,6 +175,15 @@ export default function AdminCompliancePage() {
   }
 
   async function removeSecret(which: "siem" | "signing") {
+    const label =
+      which === "siem" ? "SIEM webhook secret" : "audit signing key";
+    if (
+      !window.confirm(
+        `Remove the ${label}? Exports or SIEM delivery that depend on it will stop working until you set a new one.`,
+      )
+    ) {
+      return;
+    }
     setBusy(true);
     setError(null);
     setMessage(null);
@@ -260,7 +269,8 @@ export default function AdminCompliancePage() {
       {error ? <div className={ui.alertError}>{error}</div> : null}
       {message ? <div className={ui.alertSuccess}>{message}</div> : null}
 
-      <div className={ui.card} style={{ marginBottom: "1.25rem" }}>
+      <div className={ui.policyTwoCol}>
+      <div className={ui.card}>
         <h2 className={ui.sectionTitle} style={{ marginTop: 0 }}>
           Exports
         </h2>
@@ -342,7 +352,7 @@ export default function AdminCompliancePage() {
         ) : null}
       </div>
 
-      <div className={ui.card} style={{ marginBottom: "1.25rem" }}>
+      <div className={ui.card}>
         <h2 className={ui.sectionTitle} style={{ marginTop: 0 }}>
           Retention
         </h2>
@@ -426,8 +436,9 @@ export default function AdminCompliancePage() {
           ) : null}
         </div>
       </div>
+      </div>
 
-      <div className={ui.card}>
+      <div className={ui.card} style={{ marginTop: "1.25rem" }}>
         <h2 className={ui.sectionTitle} style={{ marginTop: 0 }}>
           Security monitoring (SIEM)
         </h2>

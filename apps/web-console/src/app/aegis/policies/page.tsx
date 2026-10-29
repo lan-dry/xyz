@@ -16,6 +16,10 @@ import {
   ui,
 } from "@/components/console/console-ui";
 import { consoleApi } from "@/lib/api";
+import {
+  readConsoleEnvironment,
+  type ConsoleEnvironment,
+} from "@/lib/console-environment";
 
 type PolicySummary = {
   policy_id: string;
@@ -43,7 +47,8 @@ type PolicyRuleType =
   | "max_per_tx"
   | "min_per_tx"
   | "max_daily_total"
-  | "blocked_beneficiary";
+  | "blocked_beneficiary"
+  | "beneficiary_match";
 
 type PolicyWhenForm = {
   segment: string;
@@ -123,6 +128,13 @@ function buildRulesPayload(form: PolicyFormState) {
             blocked_beneficiaries: parseListInput(form.blockedBeneficiaries),
             ...(when ? { when } : {}),
           }
+        : form.ruleType === "beneficiary_match"
+          ? {
+              rule_type: "beneficiary_match",
+              layer: "ceiling",
+              on_lookup_fail: "deny",
+              ...(when ? { when } : {}),
+            }
         : form.ruleType === "min_per_tx"
           ? {
               rule_type: "min_per_tx",
@@ -136,12 +148,13 @@ function buildRulesPayload(form: PolicyFormState) {
               window_hours: 24,
               ...(when ? { when } : {}),
             };
-  const ruleDecision = form.decision;
+  const ruleDecision =
+    form.ruleType === "beneficiary_match" ? "deny" : form.decision;
   return [
     {
       tool_pattern: form.toolPattern.trim(),
       decision: ruleDecision,
-      priority: 100,
+      priority: form.ruleType === "beneficiary_match" ? 950 : 100,
       conditions,
     },
   ];
@@ -172,11 +185,15 @@ function ruleSummary(rule: PolicyRule): string {
     const list = cond.blocked_beneficiaries?.join(", ") ?? "?";
     return `Block beneficiary: ${list}, then ${decisionLabel}${whenSuffix}`;
   }
+  if (cond?.rule_type === "beneficiary_match") {
+    return `Stop when destination ≠ customer on file, then ${decisionLabel}${whenSuffix}`;
+  }
   return `${rule.tool_pattern}, then ${decisionLabel}`;
 }
 
 export default function PoliciesPage() {
   const queryClient = useQueryClient();
+  const [environment, setEnvironment] = useState<ConsoleEnvironment>("production");
   const [createOpen, setCreateOpen] = useState(false);
   const [editPolicyId, setEditPolicyId] = useState<string | null>(null);
   const [viewPolicyId, setViewPolicyId] = useState<string | null>(null);
@@ -188,11 +205,21 @@ export default function PoliciesPage() {
   const [policyPage, setPolicyPage] = useState(1);
   const [policyLimit, setPolicyLimit] = useState(25);
 
+  useEffect(() => {
+    setEnvironment(readConsoleEnvironment());
+    function onEnv(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail === "sandbox" || detail === "production") setEnvironment(detail);
+    }
+    window.addEventListener("salanor:console-environment", onEnv);
+    return () => window.removeEventListener("salanor:console-environment", onEnv);
+  }, []);
+
   const policiesQuery = useQuery({
-    queryKey: ["console", "policies"],
+    queryKey: ["console", "policies", environment],
     queryFn: () =>
       consoleApi<{ policies: PolicySummary[]; draft_conflicts?: PolicyConflict[] }>(
-        "/policies",
+        `/policies?environment=${environment}`,
       ),
   });
 
@@ -218,6 +245,7 @@ export default function PoliciesPage() {
         method: "POST",
         body: JSON.stringify({
           name: form.name.trim(),
+          environment,
           rules: buildRulesPayload(form),
         }),
       }),
@@ -249,11 +277,20 @@ export default function PoliciesPage() {
 
   const activate = useMutation({
     mutationFn: (policyId: string) =>
-      consoleApi<{ policy: PolicySummary }>(
-        `/policies/${encodeURIComponent(policyId)}/activate`,
-        { method: "POST" },
-      ),
-    onSuccess: () => {
+      consoleApi<{
+        policy?: PolicySummary;
+        pending_confirmation?: boolean;
+        message?: string;
+      }>(`/policies/${encodeURIComponent(policyId)}/activate`, {
+        method: "POST",
+      }),
+    onSuccess: (data) => {
+      if (data.pending_confirmation) {
+        window.alert(
+          data.message ??
+            "Activation requested. A second distinct admin must confirm Activate.",
+        );
+      }
       void queryClient.invalidateQueries({ queryKey: ["console", "policies"] });
     },
   });
@@ -328,6 +365,8 @@ export default function PoliciesPage() {
             ? "max_daily_total"
             : cond?.rule_type === "blocked_beneficiary"
               ? "blocked_beneficiary"
+              : cond?.rule_type === "beneficiary_match"
+                ? "beneficiary_match"
               : "tool";
     setForm({
       name: detail.policy.name,
@@ -379,18 +418,24 @@ export default function PoliciesPage() {
           <select
             className={ui.select}
             value={form.ruleType}
-            onChange={(e) =>
+            onChange={(e) => {
+              const ruleType = e.target.value as PolicyFormState["ruleType"];
               setForm((f) => ({
                 ...f,
-                ruleType: e.target.value as PolicyFormState["ruleType"],
-              }))
-            }
+                ruleType,
+                decision:
+                  ruleType === "beneficiary_match" ? "deny" : f.decision,
+              }));
+            }}
           >
             <option value="tool">When tool matches: allow, deny, or require approval</option>
             <option value="max_per_tx">When amount exceeds per-transaction limit</option>
             <option value="min_per_tx">When amount is below minimum per transaction</option>
             <option value="max_daily_total">When daily total exceeds limit</option>
             <option value="blocked_beneficiary">When beneficiary is blocked</option>
+            <option value="beneficiary_match">
+              When destination does not match customer on file
+            </option>
           </select>
         </label>
         {form.ruleType === "tool" ? (
@@ -425,6 +470,32 @@ export default function PoliciesPage() {
               Matches when the tool name equals your pattern (e.g.{" "}
               <code className="mono">app.payments.transfer</code>). No amount check. Use
               the amount rule types below for USD limits.
+            </p>
+          </>
+        ) : form.ruleType === "beneficiary_match" ? (
+          <>
+            <label className={ui.field} style={{ marginTop: "1rem" }}>
+              Decision
+              <select
+                className={ui.select}
+                value="deny"
+                disabled
+              >
+                <option value="deny">Stop (destination ≠ customer on record)</option>
+              </select>
+            </label>
+            <p
+              style={{
+                margin: "0.5rem 0 0",
+                fontSize: "0.8125rem",
+                color: "var(--console-fg-muted)",
+                lineHeight: 1.5,
+              }}
+            >
+              Compares <code className="mono">beneficiary</code> to{" "}
+              <code className="mono">customer_on_file</code> (or{" "}
+              <code className="mono">expected_beneficiary</code>). Used for the
+              manipulated-agent demo.
             </p>
           </>
         ) : form.ruleType === "blocked_beneficiary" ? (
@@ -610,12 +681,105 @@ export default function PoliciesPage() {
     );
   }
 
+  const [testSegment, setTestSegment] = useState<"standard" | "gold" | "business">(
+    "standard",
+  );
+  const [testAmount, setTestAmount] = useState("249");
+  const [testResult, setTestResult] = useState<{
+    plain_language: string;
+    decision: string;
+    decision_layer?: string;
+    reason: string;
+  } | null>(null);
+
+  const testPolicy = useMutation({
+    mutationFn: () =>
+      consoleApi<{
+        result: {
+          plain_language: string;
+          decision: string;
+          decision_layer?: string;
+          reason: string;
+        };
+      }>("/policies/test", {
+        method: "POST",
+        body: JSON.stringify({
+          tool_name: "stripe.paymentIntents.create",
+          payload: {
+            amount_usd: Number.parseFloat(testAmount) || 249,
+            segment: testSegment,
+            account_type: "consumer",
+            beneficiary: "customer-test",
+          },
+        }),
+      }),
+    onSuccess: (data) => setTestResult(data.result),
+  });
+
   return (
     <ConsolePage>
       <PageHeader
         title="Policies"
         subtitle="Draft, review, activate. Multiple policies can be active at once; rules from all active policies are enforced together."
       />
+
+      <section className={`${ui.card} ${ui.cardPad}`} style={{ marginBottom: "1.25rem" }}>
+        <h2 className={ui.panelTitle} style={{ marginTop: 0 }}>
+          Test a sample action
+        </h2>
+        <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem", color: "var(--console-fg-muted)" }}>
+          Paste-free tier demo: same $249 refund against Standard / Gold / Business limits
+          on the active policy set. Plain-language preview before you activate a draft.
+        </p>
+        <div className={ui.toolbar} style={{ flexWrap: "wrap", gap: "0.5rem" }}>
+          <select
+            className={ui.select}
+            value={testSegment}
+            onChange={(e) =>
+              setTestSegment(e.target.value as "standard" | "gold" | "business")
+            }
+            aria-label="Customer segment"
+          >
+            <option value="standard">Standard ($200)</option>
+            <option value="gold">Gold ($1,000)</option>
+            <option value="business">Business ($5,000)</option>
+          </select>
+          <input
+            className={ui.input}
+            style={{ maxWidth: "8rem" }}
+            type="number"
+            min={1}
+            value={testAmount}
+            onChange={(e) => setTestAmount(e.target.value)}
+            aria-label="Amount USD"
+          />
+          <button
+            type="button"
+            className={`${ui.btn} ${ui.btnPrimary}`}
+            disabled={testPolicy.isPending}
+            onClick={() => testPolicy.mutate()}
+          >
+            {testPolicy.isPending ? "Evaluating…" : "Evaluate"}
+          </button>
+        </div>
+        {testPolicy.error ? (
+          <ErrorAlert message={(testPolicy.error as Error).message} />
+        ) : null}
+        {testResult ? (
+          <p
+            className={`${ui.alert} ${
+              testResult.decision === "deny"
+                ? ui.alertError
+                : testResult.decision === "allow"
+                  ? ui.alertSuccess
+                  : ui.alertInfo
+            }`}
+            style={{ marginTop: "0.75rem", marginBottom: 0 }}
+          >
+            {testResult.plain_language}
+          </p>
+        ) : null}
+      </section>
 
       {draftConflicts.length > 0 ? (
         <div

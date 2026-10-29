@@ -51,8 +51,8 @@ export function GovernanceInsightsPanel({ headline, insights, subtitle }: Props)
           margin: 0,
           padding: 0,
           listStyle: "none",
-          display: "flex",
-          flexDirection: "column",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 22rem), 1fr))",
           gap: "0.75rem",
         }}
       >

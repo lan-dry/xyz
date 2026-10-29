@@ -6,6 +6,8 @@ export type PolicyEvaluateResult = {
   rule_id: string | null;
   reason: string;
   engine?: string;
+  decision_layer?: "ceiling" | "contextual" | "override" | "default" | "agent";
+  signals?: Record<string, unknown>;
 };
 
 export async function evaluatePolicyViaApi(

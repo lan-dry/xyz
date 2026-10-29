@@ -119,15 +119,22 @@ export async function recordMessageUsage(
   attachmentBytes = 0,
 ): Promise<void> {
   const period = currentPeriodMonth();
-  await getPool().query(
-    `INSERT INTO stoa_usage_monthly (tenant_id, user_id, period_month, message_count, attachment_bytes)
-     VALUES ($1, $2, $3::date, 1, $4)
-     ON CONFLICT (tenant_id, user_id, period_month)
-     DO UPDATE SET
-       message_count = stoa_usage_monthly.message_count + 1,
-       attachment_bytes = stoa_usage_monthly.attachment_bytes + EXCLUDED.attachment_bytes`,
-    [tenantId, userId, period, attachmentBytes],
-  );
+  try {
+    await getPool().query(
+      `INSERT INTO stoa_usage_monthly (tenant_id, user_id, period_month, message_count, attachment_bytes)
+       VALUES ($1, $2, $3::date, 1, $4)
+       ON CONFLICT (tenant_id, user_id, period_month)
+       DO UPDATE SET
+         message_count = stoa_usage_monthly.message_count + 1,
+         attachment_bytes = stoa_usage_monthly.attachment_bytes + EXCLUDED.attachment_bytes`,
+      [tenantId, userId, period, attachmentBytes],
+    );
+  } catch (error) {
+    if (isPgMissingRelation(error, "stoa_usage_monthly")) {
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function recordAttachmentBytes(

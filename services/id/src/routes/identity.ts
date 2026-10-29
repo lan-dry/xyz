@@ -34,6 +34,10 @@ import {
   RegisterError,
   registerSelfServeOrganization,
   createEmailVerificationToken,
+  createPasswordResetToken,
+  resetPasswordWithToken,
+  resolveAuditContextForAccount,
+  setAccountPassword,
   verifyEmailWithToken,
   isEmailVerified,
   completeOrganizationOnboarding,
@@ -47,15 +51,32 @@ import {
   getClientIp,
   writeAuditEvent,
   getAccountPlatformRole,
+  canReadOrgConsole,
+  canWriteOrgConsole,
   type ConsoleSession,
   type OrgRole,
 } from "@salanor/platform-auth";
 import { sendInviteEmail } from "../email/send-invite.js";
 import { EmailDeliveryError } from "../email/email-delivery.js";
 import { sendEmailVerificationEmail } from "../email/send-email-verification.js";
+import { sendPasswordResetEmail } from "../email/send-password-reset.js";
+import {
+  resolveOrgTransactionalFrom,
+  resolveOrgTransactionalFromForAccount,
+} from "../email/org-transactional-from.js";
 import { getPool } from "../db/pool.js";
+import { generateScimBearerToken, hashScimToken } from "./scim.js";
 
 const consoleOrigin = process.env.CONSOLE_ORIGIN ?? "http://localhost:3000";
+
+/** Invite links: Stoa workspace when configured, else Aegis Console. */
+function inviteAcceptOrigin(): string {
+  return process.env.STOA_WORKSPACE_ORIGIN?.replace(/\/$/, "") ?? consoleOrigin;
+}
+
+function passwordResetOrigin(): string {
+  return inviteAcceptOrigin();
+}
 
 function serializeUser(session: ConsoleSession) {
   return {
@@ -77,10 +98,18 @@ async function requireSession(
   return resolveSession(getPool(), token);
 }
 
-function requireAdmin(session: ConsoleSession, organizationId: string): boolean {
-  return (
-    session.organizationId === organizationId && session.role === "admin"
-  );
+function requireOrgRead(
+  session: ConsoleSession,
+  organizationId: string,
+): boolean {
+  return canReadOrgConsole(session, organizationId);
+}
+
+function requireOrgWrite(
+  session: ConsoleSession,
+  organizationId: string,
+): boolean {
+  return canWriteOrgConsole(session, organizationId);
 }
 
 export const identityRoutes = new Hono();
@@ -341,7 +370,7 @@ identityRoutes.patch("/orgs/:orgId", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
   const orgId = c.req.param("orgId");
-  if (!requireAdmin(session, orgId)) {
+  if (!requireOrgWrite(session, orgId)) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -479,17 +508,23 @@ identityRoutes.get("/orgs/:orgId/members", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
   const orgId = c.req.param("orgId");
-  if (!requireAdmin(session, orgId)) {
+  if (!requireOrgRead(session, orgId)) {
     return c.json({ error: "Forbidden" }, 403);
   }
   const limit = Math.min(100, Math.max(1, Number(c.req.query("limit")) || 25));
   const page = Math.max(1, Number(c.req.query("page")) || 1);
   const offset = (page - 1) * limit;
+  const q = c.req.query("q")?.trim() || undefined;
+  const role = c.req.query("role")?.trim() || undefined;
+  const status = c.req.query("status")?.trim() || undefined;
   const { members, total } = await listMembersInOrg(getPool(), orgId, {
     limit,
     offset,
+    q,
+    role,
+    status,
   });
-  return c.json({ members, total, page, limit });
+  return c.json({ members, total, page, limit, q: q ?? null, role: role ?? null, status: status ?? null });
 });
 
 identityRoutes.patch("/orgs/:orgId/members/:membershipId", async (c) => {
@@ -499,7 +534,7 @@ identityRoutes.patch("/orgs/:orgId/members/:membershipId", async (c) => {
   }
   const orgId = c.req.param("orgId");
   const membershipId = c.req.param("membershipId");
-  if (!requireAdmin(session, orgId)) {
+  if (!requireOrgWrite(session, orgId)) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -564,7 +599,7 @@ identityRoutes.get("/orgs/:orgId/invitations", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
   const orgId = c.req.param("orgId");
-  if (!requireAdmin(session, orgId)) {
+  if (!requireOrgRead(session, orgId)) {
     return c.json({ error: "Forbidden" }, 403);
   }
   const invitations = await listPendingInvitations(getPool(), orgId);
@@ -577,7 +612,7 @@ identityRoutes.post("/orgs/:orgId/invitations", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
   const orgId = c.req.param("orgId");
-  if (!requireAdmin(session, orgId)) {
+  if (!requireOrgWrite(session, orgId)) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -588,8 +623,16 @@ identityRoutes.post("/orgs/:orgId/invitations", async (c) => {
     return c.json({ error: "Invalid JSON" }, 422);
   }
   const email = body.email?.trim();
-  const role = (body.role ?? "engineer") as OrgRole;
-  const allowed: OrgRole[] = ["admin", "engineer", "auditor", "viewer"];
+  const role = (body.role ?? "viewer") as OrgRole;
+  const allowed: OrgRole[] = [
+    "owner",
+    "admin",
+    "approver",
+    "engineer",
+    "developer",
+    "auditor",
+    "viewer",
+  ];
   if (!email) {
     return c.json({ error: "email required" }, 422);
   }
@@ -628,15 +671,19 @@ identityRoutes.post("/orgs/:orgId/invitations", async (c) => {
     });
     await client.query("COMMIT");
 
-    const inviteUrl = `${consoleOrigin}/invite?token=${encodeURIComponent(token)}`;
+    const inviteUrl = `${inviteAcceptOrigin()}/invite?token=${encodeURIComponent(token)}`;
     let emailDelivered = true;
     try {
+      const orgFrom = await resolveOrgTransactionalFrom(orgId);
       await sendInviteEmail({
         to: email,
         inviteUrl,
         organizationName: org.name,
         role,
         invitedByEmail: session.email,
+        fromAddress: orgFrom?.from,
+        replyTo: orgFrom?.replyTo,
+        organizationId: orgId,
       });
       await writeAuditEvent(getPool(), {
         organizationId: orgId,
@@ -676,7 +723,7 @@ identityRoutes.post("/orgs/:orgId/invitations", async (c) => {
         ? {}
         : {
             warning:
-              "Invitation created, but email could not be sent. Copy the link and share it manually, or use Resend.",
+              "Email could not be sent. Copy the link and share it.",
           }),
     });
   } catch (err) {
@@ -705,7 +752,7 @@ identityRoutes.post("/orgs/:orgId/invitations/:invitationId/resend", async (c) =
   }
   const orgId = c.req.param("orgId");
   const invitationId = c.req.param("invitationId");
-  if (!requireAdmin(session, orgId)) {
+  if (!requireOrgWrite(session, orgId)) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -745,15 +792,19 @@ identityRoutes.post("/orgs/:orgId/invitations/:invitationId/resend", async (c) =
     });
     await client.query("COMMIT");
 
-    const inviteUrl = `${consoleOrigin}/invite?token=${encodeURIComponent(token)}`;
+    const inviteUrl = `${inviteAcceptOrigin()}/invite?token=${encodeURIComponent(token)}`;
     let emailDelivered = true;
     try {
+      const orgFrom = await resolveOrgTransactionalFrom(orgId);
       await sendInviteEmail({
         to: rotated.email,
         inviteUrl,
         organizationName: org.name,
         role: rotated.role,
         invitedByEmail: session.email,
+        fromAddress: orgFrom?.from,
+        replyTo: orgFrom?.replyTo,
+        organizationId: orgId,
       });
       await writeAuditEvent(getPool(), {
         organizationId: orgId,
@@ -811,15 +862,12 @@ identityRoutes.delete("/invitations/:invitationId", async (c) => {
   if (!session) {
     return c.json({ error: "Unauthorized" }, 401);
   }
-  if (session.role !== "admin") {
+  const invitationId = c.req.param("invitationId");
+  const orgId = session.organizationId;
+  if (!requireOrgWrite(session, orgId)) {
     return c.json({ error: "Forbidden" }, 403);
   }
-  const invitationId = c.req.param("invitationId");
-  const revoked = await revokeInvitation(
-    getPool(),
-    session.organizationId,
-    invitationId,
-  );
+  const revoked = await revokeInvitation(getPool(), orgId, invitationId);
   if (!revoked) {
     return c.json({ error: "Not found" }, 404);
   }
@@ -831,6 +879,263 @@ identityRoutes.delete("/invitations/:invitationId", async (c) => {
     resourceId: invitationId,
   });
   return c.json({ ok: true });
+});
+
+identityRoutes.get("/orgs/:orgId/security", async (c) => {
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const orgId = c.req.param("orgId");
+  if (!requireOrgRead(session, orgId)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  const pool = getPool();
+  const org = await pool.query<{ slug: string; name: string }>(
+    `SELECT slug, name FROM organization WHERE organization_id = $1`,
+    [orgId],
+  );
+  const row = org.rows[0];
+  if (!row) {
+    return c.json({ error: "Not found" }, 404);
+  }
+  const sso = await pool.query<{
+    enabled: boolean;
+    jit_provision: boolean;
+    workos_organization_id: string;
+    updated_at: Date;
+  }>(
+    `SELECT enabled, jit_provision, workos_organization_id, updated_at
+     FROM organization_sso WHERE organization_id = $1`,
+    [orgId],
+  );
+  const ssoRow = sso.rows[0];
+  const { consoleOrigin, parseEnvWorkosOrgMap, workosEnabled } = await import(
+    "../auth/oauth-config.js"
+  );
+  const envMap = parseEnvWorkosOrgMap();
+  const slugKey = row.slug.toLowerCase();
+  const envMapWorkosOrgId = envMap[slugKey] ?? null;
+  const dbConfigured = Boolean(ssoRow?.enabled && ssoRow.workos_organization_id?.trim());
+  const envMapConfigured = Boolean(envMapWorkosOrgId?.trim());
+  const loginReady =
+    workosEnabled() && (dbConfigured || envMapConfigured);
+  let scimEnabled = false;
+  let scimUpdatedAt: string | null = null;
+  try {
+    const scim = await pool.query<{ enabled: boolean; updated_at: Date }>(
+      `SELECT enabled, updated_at FROM organization_scim WHERE organization_id = $1`,
+      [orgId],
+    );
+    scimEnabled = scim.rows[0]?.enabled ?? false;
+    scimUpdatedAt = scim.rows[0]?.updated_at.toISOString() ?? null;
+  } catch {
+    scimEnabled = false;
+  }
+  const apiPublic =
+    process.env.STOA_API_PUBLIC_URL?.replace(/\/$/, "") ??
+    process.env.SALANOR_ID_PUBLIC_URL?.replace(/\/$/, "") ??
+    process.env.SALANOR_ID_URL?.replace(/\/$/, "") ??
+    "http://127.0.0.1:8094";
+  const idPathPrefix =
+    process.env.STOA_ID_API_PREFIX?.replace(/\/$/, "") ?? "/v1/stoa/id";
+  const stoaOrigin =
+    process.env.STOA_WORKSPACE_ORIGIN?.replace(/\/$/, "") ??
+    "http://localhost:3004";
+  const consoleReturn = `${consoleOrigin().replace(/\/$/, "")}/aegis`;
+  const scimPrefix =
+    process.env.STOA_SCIM_PREFIX?.replace(/\/$/, "") ?? "/v1/stoa/scim";
+  const workosOrgId =
+    ssoRow?.workos_organization_id?.trim() || envMapWorkosOrgId || null;
+  const workosOrgIdHint = workosOrgId
+    ? workosOrgId.length > 8
+      ? `${workosOrgId.slice(0, 4)}…${workosOrgId.slice(-4)}`
+      : workosOrgId
+    : null;
+  let configSource: "organization_sso" | "env_map" | "none" = "none";
+  if (dbConfigured) {
+    configSource = "organization_sso";
+  } else if (envMapConfigured) {
+    configSource = "env_map";
+  }
+  const startQuery = `org=${encodeURIComponent(row.slug)}&return=${encodeURIComponent(consoleReturn)}`;
+  return c.json({
+    organization: { id: orgId, slug: row.slug, name: row.name },
+    sso: {
+      available: workosEnabled(),
+      configured: loginReady,
+      loginReady,
+      configSource,
+      database: {
+        present: Boolean(ssoRow),
+        enabled: ssoRow?.enabled ?? false,
+        jitProvision: ssoRow?.jit_provision ?? false,
+        workosOrganizationIdHint: ssoRow?.workos_organization_id
+          ? workosOrgIdHint
+          : null,
+        updatedAt: ssoRow?.updated_at.toISOString() ?? null,
+      },
+      envMap: {
+        configured: envMapConfigured,
+        note: envMapConfigured
+          ? `SSO_WORKOS_ORG_MAP includes slug "${row.slug}".`
+          : "No entry for this org slug in SSO_WORKOS_ORG_MAP.",
+      },
+      jitProvision: ssoRow?.jit_provision ?? false,
+      workosOrganizationIdHint: workosOrgIdHint,
+      startUrl: `${apiPublic}${idPathPrefix}/auth/sso/start?${startQuery}`,
+      workspaceStartUrl: `${apiPublic}${idPathPrefix}/auth/sso/start?org=${encodeURIComponent(row.slug)}&return=${encodeURIComponent(stoaOrigin)}`,
+    },
+    scim: {
+      enabled: scimEnabled,
+      baseUrl: `${apiPublic}${scimPrefix}`,
+      updatedAt: scimUpdatedAt,
+    },
+  });
+});
+
+identityRoutes.patch("/orgs/:orgId/sso", async (c) => {
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const orgId = c.req.param("orgId");
+  if (!requireOrgWrite(session, orgId)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  let body: {
+    enabled?: boolean;
+    jit_provision?: boolean;
+    workos_organization_id?: string;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+  const pool = getPool();
+  const org = await pool.query<{ slug: string }>(
+    `SELECT slug FROM organization WHERE organization_id = $1`,
+    [orgId],
+  );
+  if (!org.rows[0]) {
+    return c.json({ error: "Not found" }, 404);
+  }
+  const { parseEnvWorkosOrgMap, workosEnabled } = await import(
+    "../auth/oauth-config.js"
+  );
+  if (!workosEnabled()) {
+    return c.json(
+      {
+        error:
+          "WorkOS is not configured on this deployment (WORKOS_API_KEY and WORKOS_CLIENT_ID).",
+      },
+      503,
+    );
+  }
+  const existing = await pool.query<{
+    enabled: boolean;
+    jit_provision: boolean;
+    workos_organization_id: string;
+  }>(
+    `SELECT enabled, jit_provision, workos_organization_id FROM organization_sso WHERE organization_id = $1`,
+    [orgId],
+  );
+  const envFallback =
+    parseEnvWorkosOrgMap()[org.rows[0].slug.toLowerCase()] ?? null;
+  const workosOrgId =
+    body.workos_organization_id?.trim() ||
+    existing.rows[0]?.workos_organization_id?.trim() ||
+    envFallback?.trim() ||
+    "";
+  const enabled = body.enabled ?? existing.rows[0]?.enabled ?? false;
+  const jitProvision =
+    body.jit_provision ?? existing.rows[0]?.jit_provision ?? false;
+  const finalWorkosOrgId =
+    workosOrgId || existing.rows[0]?.workos_organization_id?.trim() || "";
+  if (enabled && !finalWorkosOrgId) {
+    return c.json(
+      {
+        error:
+          "workos_organization_id is required to enable SSO (or set SSO_WORKOS_ORG_MAP for this org slug).",
+      },
+      422,
+    );
+  }
+  if (!finalWorkosOrgId && !existing.rows[0]) {
+    return c.json({
+      ok: true,
+      message: "Provide workos_organization_id before saving SSO settings.",
+    });
+  }
+  await pool.query(
+    `INSERT INTO organization_sso (organization_id, workos_organization_id, enabled, jit_provision, updated_at)
+     VALUES ($1, $2, $3, $4, now())
+     ON CONFLICT (organization_id) DO UPDATE SET
+       workos_organization_id = COALESCE(NULLIF(EXCLUDED.workos_organization_id, ''), organization_sso.workos_organization_id),
+       enabled = EXCLUDED.enabled,
+       jit_provision = EXCLUDED.jit_provision,
+       updated_at = now()`,
+    [orgId, finalWorkosOrgId, enabled, jitProvision],
+  );
+  await writeAuditEvent(pool, {
+    organizationId: orgId,
+    membershipId: session.userId,
+    action: "sso.settings_updated",
+    resourceType: "organization",
+    resourceId: orgId,
+    metadata: {
+      enabled,
+      jit_provision: jitProvision,
+      workos_organization_id_set: Boolean(workosOrgId),
+    },
+  });
+  return c.json({ ok: true });
+});
+
+identityRoutes.post("/orgs/:orgId/scim/rotate-token", async (c) => {
+  const session = await requireSession(c);
+  if (!session) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  const orgId = c.req.param("orgId");
+  if (!requireOrgWrite(session, orgId)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  const token = generateScimBearerToken();
+  const hash = hashScimToken(token);
+  const pool = getPool();
+  try {
+    await pool.query(
+      `INSERT INTO organization_scim (organization_id, bearer_token_hash, enabled)
+       VALUES ($1, $2, true)
+       ON CONFLICT (organization_id) DO UPDATE
+         SET bearer_token_hash = EXCLUDED.bearer_token_hash,
+             enabled = true,
+             updated_at = now()`,
+      [orgId, hash],
+    );
+  } catch (error) {
+    console.error("[id] scim rotate", error);
+    return c.json(
+      {
+        error:
+          "SCIM storage not migrated. Run platform db:migrate (004_organization_scim).",
+      },
+      503,
+    );
+  }
+  await writeAuditEvent(getPool(), {
+    organizationId: orgId,
+    membershipId: session.userId,
+    action: "scim.token_rotated",
+    resourceType: "organization",
+    resourceId: orgId,
+  });
+  return c.json({
+    bearer_token: token,
+    message: "Copy this token now. It will not be shown again.",
+  });
 });
 
 identityRoutes.get("/invitations/preview", async (c) => {
@@ -855,6 +1160,9 @@ identityRoutes.post("/invitations/signup-accept", async (c) => {
   }
   if (!body.token || !body.password) {
     return c.json({ error: "token and password required" }, 422);
+  }
+  if (body.password.length < 10) {
+    return c.json({ error: "Password must be at least 10 characters" }, 422);
   }
 
   const preview = await previewInvitation(getPool(), body.token);
@@ -1005,6 +1313,91 @@ identityRoutes.get("/account/login-events", async (c) => {
   });
 });
 
+identityRoutes.post("/auth/forgot-password", async (c) => {
+  let body: { email?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+  const email = body.email?.trim();
+  if (!email) {
+    return c.json({ error: "email required" }, 422);
+  }
+
+  const client = await getPool().connect();
+  try {
+    const created = await createPasswordResetToken(client, email);
+    if (created) {
+      const resetUrl = `${passwordResetOrigin()}/reset-password?token=${encodeURIComponent(created.token)}`;
+      const orgFrom = await resolveOrgTransactionalFromForAccount(
+        created.accountId,
+      );
+      try {
+        await sendPasswordResetEmail({
+          to: email,
+          resetUrl,
+          fromAddress: orgFrom?.from.from,
+          replyTo: orgFrom?.from.replyTo,
+          organizationId: orgFrom?.orgId ?? null,
+        });
+      } catch (emailErr) {
+        console.error("[id] password reset email failed", emailErr);
+      }
+    }
+    return c.json({
+      ok: true,
+      message:
+        "If an account exists for that email, a reset link has been sent.",
+    });
+  } finally {
+    client.release();
+  }
+});
+
+identityRoutes.post("/auth/reset-password", async (c) => {
+  let body: { token?: string; password?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+  const token = body.token?.trim();
+  const password = body.password;
+  if (!token || !password) {
+    return c.json({ error: "token and password required" }, 422);
+  }
+  if (password.length < 10) {
+    return c.json({ error: "Password must be at least 10 characters" }, 422);
+  }
+
+  const client = await getPool().connect();
+  try {
+    const accountId = await resetPasswordWithToken(client, token, password);
+    if (!accountId) {
+      return c.json({ error: "Invalid or expired reset link" }, 422);
+    }
+    const ctx = await resolveAuditContextForAccount(client, accountId);
+    if (ctx) {
+      await auditConsoleEvent(
+        client,
+        {
+          organizationId: ctx.organizationId,
+          membershipId: ctx.membershipId,
+        },
+        {
+          action: "auth.password.reset",
+          resourceType: "account",
+          resourceId: accountId,
+        },
+      );
+    }
+    return c.json({ ok: true });
+  } finally {
+    client.release();
+  }
+});
+
 identityRoutes.post("/account/password", async (c) => {
   const session = await requireSession(c);
   if (!session) {
@@ -1019,8 +1412,8 @@ identityRoutes.post("/account/password", async (c) => {
   if (!body.current_password || !body.new_password) {
     return c.json({ error: "current_password and new_password required" }, 422);
   }
-  if (body.new_password.length < 8) {
-    return c.json({ error: "Password must be at least 8 characters" }, 422);
+  if (body.new_password.length < 10) {
+    return c.json({ error: "Password must be at least 10 characters" }, 422);
   }
 
   const row = await getPool().query<{ password_hash: string | null }>(
@@ -1032,7 +1425,6 @@ identityRoutes.post("/account/password", async (c) => {
     return c.json({ error: "Current password is incorrect" }, 401);
   }
 
-  const { setAccountPassword } = await import("@salanor/platform-auth");
   const pool = getPool();
   await setAccountPassword(pool, session.accountId, body.new_password);
   await auditConsoleEvent(
@@ -1152,8 +1544,11 @@ export async function buildMePayload(session: ConsoleSession) {
   if (!organization) {
     throw new Error("Organization not found for session");
   }
-  const staffRow = await getPool().query<{ email_verified_at: Date | null }>(
-    `SELECT email_verified_at FROM account WHERE account_id = $1`,
+  const staffRow = await getPool().query<{
+    email_verified_at: Date | null;
+    password_hash: string | null;
+  }>(
+    `SELECT email_verified_at, password_hash FROM account WHERE account_id = $1`,
     [session.accountId],
   );
   const platformRole = await getAccountPlatformRole(getPool(), session.accountId);
@@ -1169,6 +1564,7 @@ export async function buildMePayload(session: ConsoleSession) {
       /** True when account has any platform role (Ops access). */
       platform_staff: platformRole != null,
       email_verified: staffRow.rows[0]?.email_verified_at != null,
+      has_password: Boolean(staffRow.rows[0]?.password_hash),
     },
     user: serializeUser(session),
     organization,

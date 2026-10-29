@@ -1,5 +1,6 @@
 /**
- * Phase B smoke: provision org, set low monthly event cap, ingest until HTTP 402.
+ * Phase 6 smoke: provision org, set low monthly event cap, ingest past the meter.
+ * Soft overage: over-cap ingest must still return 201 with overage notice (never hard 402).
  *
  * Requires: Postgres migrated, aegis-api :8080, id :8091, PLATFORM_BOOTSTRAP_SECRET in .env
  */
@@ -208,20 +209,25 @@ for (let i = 1; i <= MONTHLY_CAP; i++) {
 }
 
 const over = buildEvent(orgId, agent.agent_id, agent.key_id, "over");
-const blocked = await ingestOnce({
+const overCap = await ingestOnce({
   event: over,
   privateKeyB64: agent.private_key_b64,
   keyId: agent.key_id,
   ingestApiKey: ingestKey,
-  label: `event ${MONTHLY_CAP + 1} (over cap)`,
+  label: `event ${MONTHLY_CAP + 1} (soft overage)`,
 });
 
-if (blocked.status !== 402) {
-  fail(`expected 402 on over-cap ingest, got ${blocked.status} ${JSON.stringify(blocked.body)}`);
+if (overCap.status !== 201) {
+  fail(
+    `expected 201 on over-cap ingest (soft overage), got ${overCap.status} ${JSON.stringify(overCap.body)}`,
+  );
 }
-if (blocked.body.code !== "events_limit") {
-  fail(`expected code events_limit, got ${String(blocked.body.code)}`);
+const overage = overCap.body.overage as { events?: boolean; notice?: string } | undefined;
+if (!overage?.events) {
+  fail(`expected body.overage.events=true, got ${JSON.stringify(overCap.body)}`);
 }
 
 console.log("\n=== PASSED ===");
-console.log(`Org ${slug} (${orgId}) blocked at ${MONTHLY_CAP} events/month with code events_limit.`);
+console.log(
+  `Org ${slug} (${orgId}) soft-overage at ${MONTHLY_CAP} events/month; recording continued with notice.`,
+);

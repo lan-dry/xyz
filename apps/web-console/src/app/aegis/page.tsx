@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, FileCheck, KeyRound, Shield, UserCheck } from "lucide-react";
+import { Activity, FileCheck, KeyRound, Percent, Shield, ShieldAlert, UserCheck } from "lucide-react";
 
 import {
   ConsolePage,
@@ -18,8 +19,33 @@ import { GovernanceInsightsPanel } from "@/components/console/governance-insight
 import { MetricSparkline, MetricTrend } from "@/components/console/metric-visuals";
 import { SystemStatusStrip } from "@/components/console/system-status-strip";
 import { consoleApi } from "@/lib/api";
+import {
+  environmentLabel,
+  readConsoleEnvironment,
+  type ConsoleEnvironment,
+} from "@/lib/console-environment";
 import { seriesFromTimestamps, sumSeriesFromTimestamps, trendPercent } from "@/lib/metric-series";
 import type { TraceSummary } from "@/lib/types";
+
+type OverviewMetrics = {
+  environment: string;
+  agent_count: number;
+  active_policy_count: number;
+  workflow_count: number;
+  pending_approvals: number;
+  policy_coverage_pct: number;
+  unverified_event_count: number;
+  events_24h: number;
+  traces_24h: number;
+  value_report_30d?: {
+    actions: number;
+    allowed: number;
+    approvals_requested: number;
+    stopped: number;
+    amount_stopped_usd: number;
+    avg_approval_seconds: number | null;
+  };
+};
 
 function DashboardStat({
   title,
@@ -69,9 +95,28 @@ function DashboardStat({
 }
 
 export default function AegisDashboardPage() {
+  const [environment, setEnvironment] = useState<ConsoleEnvironment>("production");
+
+  useEffect(() => {
+    setEnvironment(readConsoleEnvironment());
+    function onEnv(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail === "sandbox" || detail === "production") setEnvironment(detail);
+    }
+    window.addEventListener("salanor:console-environment", onEnv);
+    return () => window.removeEventListener("salanor:console-environment", onEnv);
+  }, []);
+
+  const overviewQuery = useQuery({
+    queryKey: ["console", "overview", environment],
+    queryFn: () =>
+      consoleApi<{ overview: OverviewMetrics }>(`/overview?environment=${environment}`),
+  });
+
   const tracesQuery = useQuery({
-    queryKey: ["console", "traces"],
-    queryFn: () => consoleApi<{ traces: TraceSummary[] }>("/traces"),
+    queryKey: ["console", "traces", environment],
+    queryFn: () =>
+      consoleApi<{ traces: TraceSummary[] }>(`/traces?environment=${environment}&limit=50`),
   });
 
   const approvalsQuery = useQuery({
@@ -85,12 +130,6 @@ export default function AegisDashboardPage() {
           request_preview: { summary?: string; fields: Array<{ key: string; value: string }> };
         }>;
       }>("/approvals?status=pending"),
-  });
-
-  const policiesQuery = useQuery({
-    queryKey: ["console", "policies"],
-    queryFn: () =>
-      consoleApi<{ policies: Array<{ status: string }> }>("/policies"),
   });
 
   const insightsQuery = useQuery({
@@ -113,13 +152,13 @@ export default function AegisDashboardPage() {
       }>("/insights"),
   });
 
+  const overview = overviewQuery.data?.overview;
   const traces = tracesQuery.data?.traces ?? [];
   const pendingApprovals = approvalsQuery.data?.approvals ?? [];
-  const pending = pendingApprovals.length;
+  const pending = overview?.pending_approvals ?? pendingApprovals.length;
   const blocked = traces.filter((t) => t.status === "blocked").length;
   const executing = traces.filter((t) => t.status === "executing").length;
-  const activePolicies =
-    policiesQuery.data?.policies.filter((p) => p.status === "active").length ?? 0;
+  const activePolicies = overview?.active_policy_count ?? 0;
   const recent = [...traces]
     .sort(
       (a, b) =>
@@ -137,22 +176,23 @@ export default function AegisDashboardPage() {
     traces.filter((t) => t.status === "blocked").map((t) => t.started_at),
   );
 
-  const loading = tracesQuery.isPending || approvalsQuery.isPending;
-  const error = tracesQuery.error || approvalsQuery.error;
+  const loading =
+    overviewQuery.isPending || tracesQuery.isPending || approvalsQuery.isPending;
+  const error = overviewQuery.error || tracesQuery.error || approvalsQuery.error;
 
   return (
     <ConsolePage>
       <PageHeader
-        title="Dashboard"
-        subtitle="Operational view of provenance, obligations, and policy for your organization."
+        title="Overview"
+        subtitle={`Operational view for ${environmentLabel(environment)}: coverage, seals, and what needs attention.`}
         actions={
           pending > 0 ? (
             <Link href="/aegis/approvals" className={`${ui.btn} ${ui.btnPrimary}`}>
               Review approvals ({pending})
             </Link>
           ) : (
-            <Link href="/aegis/traces" className={`${ui.btn} ${ui.btnPrimary}`}>
-              View all traces
+            <Link href="/aegis/live" className={`${ui.btn} ${ui.btnPrimary}`}>
+              Open live feed
             </Link>
           )
         }
@@ -166,6 +206,30 @@ export default function AegisDashboardPage() {
       {!loading && !error ? (
         <>
           <div className={ui.statGrid}>
+            <DashboardStat
+              title="Policy coverage"
+              value={overview?.policy_coverage_pct ?? 0}
+              icon={Percent}
+              hint={
+                <Link href="/aegis/workflows" className={ui.tableLink}>
+                  {overview?.agent_count ?? 0} agent(s) · workflows
+                </Link>
+              }
+              accent="var(--console-accent)"
+            />
+            <DashboardStat
+              title="Unverified events"
+              value={overview?.unverified_event_count ?? 0}
+              icon={ShieldAlert}
+              hint={
+                (overview?.unverified_event_count ?? 0) === 0
+                  ? "Healthy: all seals chain-valid"
+                  : "Investigate chain breaks"
+              }
+              accent={
+                (overview?.unverified_event_count ?? 0) > 0 ? "#c24141" : undefined
+              }
+            />
             <DashboardStat
               title="Pending approvals"
               value={pending}
@@ -181,7 +245,7 @@ export default function AegisDashboardPage() {
               }
             />
             <DashboardStat
-              title="Blocked traces"
+              title="Blocked cases"
               value={blocked}
               icon={Shield}
               hint="Awaiting human decision"
@@ -189,27 +253,12 @@ export default function AegisDashboardPage() {
               accent="#c24141"
             />
             <DashboardStat
-              title="Executing"
-              value={executing}
+              title="Last 24h"
+              value={overview?.events_24h ?? 0}
               icon={Activity}
-              hint="Approved, workflow side effects in progress"
-            />
-            <DashboardStat
-              title="Traces"
-              value={traces.length}
-              icon={Activity}
-              hint="Recorded agent workflows · 7-day trend"
-              sparkline={traceSparkline}
-              trendPct={traceTrend}
-            />
-            <DashboardStat
-              title="Signed events"
-              value={traces.reduce((n, t) => n + t.total_events, 0)}
-              icon={FileCheck}
-              hint="Across all traces · 7-day volume"
+              hint={`${overview?.traces_24h ?? 0} cases · ${executing} executing`}
               sparkline={eventSparkline}
               trendPct={eventTrend}
-              accent="var(--console-accent)"
             />
             <DashboardStat
               title="Active policies"
@@ -220,8 +269,66 @@ export default function AegisDashboardPage() {
                   Manage policies
                 </Link>
               }
+              sparkline={traceSparkline}
+              trendPct={traceTrend}
+            />
+            <DashboardStat
+              title="Amount stopped (30d)"
+              value={Math.round(overview?.value_report_30d?.amount_stopped_usd ?? 0)}
+              icon={FileCheck}
+              hint={
+                (overview?.value_report_30d?.stopped ?? 0) > 0
+                  ? `${overview?.value_report_30d?.stopped ?? 0} stopped action(s)`
+                  : "No stopped amounts this period"
+              }
+              accent="#c24141"
             />
           </div>
+
+          {overview?.value_report_30d ? (
+            <p
+              className={ui.cardHint}
+              style={{ margin: "1rem 0 0", maxWidth: "48rem" }}
+              role="status"
+            >
+              Last 30 days:{" "}
+              {overview.value_report_30d.actions.toLocaleString()} actions ·{" "}
+              {overview.value_report_30d.allowed.toLocaleString()} allowed ·{" "}
+              {overview.value_report_30d.approvals_requested.toLocaleString()} sent for
+              approval
+              {overview.value_report_30d.avg_approval_seconds != null
+                ? ` (avg ${Math.round(overview.value_report_30d.avg_approval_seconds / 60)} min)`
+                : ""}{" "}
+              · {overview.value_report_30d.stopped.toLocaleString()} stopped · $
+              {Math.round(overview.value_report_30d.amount_stopped_usd).toLocaleString()}{" "}
+              amount stopped.
+            </p>
+          ) : null}
+
+          <section
+            className={`${ui.card} ${ui.cardPad}`}
+            style={{ marginTop: "1.5rem" }}
+            aria-labelledby="coverage-limits-heading"
+          >
+            <h2 id="coverage-limits-heading" className={ui.panelTitle} style={{ marginTop: 0 }}>
+              Coverage and limits
+            </h2>
+            <p className={ui.cardHint} style={{ margin: "0 0 0.75rem", maxWidth: "48rem" }}>
+              Aegis records SDK and gateway traffic only. A seal proves what was said and
+              decided; it does not prove the decision was correct. Aegis does not decide what
+              is fraud. Your models and rules detect risk; Aegis enforces them and seals the
+              trail.
+            </p>
+            <p style={{ margin: 0 }}>
+              <Link href="/aegis/coverage" className={ui.tableLink}>
+                Open tool coverage
+              </Link>
+              {" · "}
+              <Link href="/aegis/get-started" className={ui.tableLink}>
+                What Aegis covers
+              </Link>
+            </p>
+          </section>
 
           {pending > 0 ? (
             <section className={`${ui.card} ${ui.cardPad}`} style={{ marginTop: "1.5rem" }}>
@@ -293,9 +400,14 @@ export default function AegisDashboardPage() {
                   </Link>
                 </li>
                 <li style={{ marginBottom: "0.75rem" }}>
-                  <Link href="/aegis/traces" className={ui.tableLink}>
-                    <Activity size={14} style={{ verticalAlign: "-2px" }} /> Browse
-                    traces
+                  <Link href="/aegis/live" className={ui.tableLink}>
+                    <Activity size={14} style={{ verticalAlign: "-2px" }} /> Live
+                    feed
+                  </Link>
+                </li>
+                <li style={{ marginBottom: "0.75rem" }}>
+                  <Link href="/aegis/workflows" className={ui.tableLink}>
+                    Workflows
                   </Link>
                 </li>
                 <li style={{ marginBottom: "0.75rem" }}>
@@ -311,8 +423,9 @@ export default function AegisDashboardPage() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/aegis/exports" className={ui.tableLink}>
-                    Compliance exports
+                  <Link href="/aegis/evidence" className={ui.tableLink}>
+                    <FileCheck size={14} style={{ verticalAlign: "-2px" }} />{" "}
+                    Evidence
                   </Link>
                 </li>
               </ul>

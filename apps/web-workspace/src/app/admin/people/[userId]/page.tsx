@@ -232,7 +232,9 @@ export default function AdminPersonPage() {
                   <strong>{m.role === "user" ? "Member" : "Assistant"}</strong>
                   {" · "}
                   {new Date(m.createdAt).toLocaleString()}
-                  {m.role === "user" && m.redactionManifest?.length
+                  {review.contentAccess !== "metadata" &&
+                  m.role === "user" &&
+                  m.redactionManifest?.length
                     ? ` · Withheld: ${m.redactionManifest
                         .map((e) => `${e.label} (${e.count})`)
                         .join(", ")}`

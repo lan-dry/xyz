@@ -7,6 +7,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { signAndIngest, type ApsEvent } from "@salanor/aegis";
+import { getDemoTargets } from "./demo-targets.mts";
 
 function loadEnvFile(): void {
   const root = resolve(import.meta.dirname, "../..");
@@ -27,11 +28,14 @@ function loadEnvFile(): void {
 
 loadEnvFile();
 
-const organizationId = "11111111-1111-4111-8111-111111111111";
-const agentId = "agent-dev-01";
-const keyId = "key-dev-01";
-const ingestKey = process.env.AEGIS_INGEST_DEV_KEY ?? "aegis_dev_local_change_me";
-const privateKeyB64 = process.env.DEV_SIGNING_PRIVATE_KEY_B64;
+const { organizationId, agentId, keyId } = await getDemoTargets();
+const ingestKey =
+  process.env.AEGIS_INGEST_API_KEY ??
+  process.env.AEGIS_INGEST_DEV_KEY ??
+  "aegis_dev_local_change_me";
+const privateKeyB64 =
+  process.env.AEGIS_SIGNING_PRIVATE_KEY_B64 ??
+  process.env.DEV_SIGNING_PRIVATE_KEY_B64;
 const apiBaseUrl = process.env.AEGIS_API_URL ?? "http://127.0.0.1:8080";
 
 if (!privateKeyB64) {
@@ -54,7 +58,7 @@ const event: ApsEvent = {
   key_id: keyId,
   emitted_at: new Date().toISOString(),
   actor_type: "agent",
-  actor_principal: "dev-agent",
+  actor_principal: "refund-operations-agent",
   action_kind: "tool_call",
   policy_decision: "allow",
   tool_name: "demo.echo",

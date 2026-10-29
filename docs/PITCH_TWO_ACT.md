@@ -2,7 +2,7 @@
 
 ## Act 1 — Automatic deny (5 min)
 
-**Story:** AI tries to move money → policy blocks it → safe reply → completed trace.
+**Story:** A retail support agent attempts a USD 249 refund. The active retail-consumer policy caps autonomous refunds at USD 200, so Aegis blocks it before the payment call.
 
 ```powershell
 pnpm pilot:ensure-policy
@@ -13,7 +13,7 @@ Open the printed trace URL. Show: red **Blocked: stripe…**, AI step cards, rep
 
 ## Act 2 — Human approve/deny (5 min)
 
-**Story:** Same ticket, but policy says “human must approve payment.”
+**Story:** Same customer context and amount, but the policy now requires a named human approval above USD 200.
 
 ```powershell
 pnpm pilot:ensure-approval-policy

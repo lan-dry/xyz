@@ -143,9 +143,11 @@ export async function postEvent(c: Context): Promise<Response> {
       }
     }
 
+    let ingestLimits;
     try {
-      await assertIngestWithinLimits(client, auth.organizationId);
+      ingestLimits = await assertIngestWithinLimits(client, auth.organizationId);
     } catch (error) {
+      // Soft event meters never 402; only suspended/missing org still hard-fail.
       if (error instanceof PlanLimitError) {
         return c.json(
           { error: error.message, code: error.code },
@@ -182,6 +184,14 @@ export async function postEvent(c: Context): Promise<Response> {
         event_hash: result.eventHash,
         chain_valid: result.chainValid,
         status: "created",
+        ...(ingestLimits.events_overage
+          ? {
+              overage: {
+                events: true,
+                notice: ingestLimits.overage_notice,
+              },
+            }
+          : {}),
       },
       201,
     );

@@ -2,24 +2,27 @@
 
 import Link from "next/link";
 import {
-  Bot,
-  MessageSquarePlus,
+  ArrowDown,
+  ArrowUp,
   Monitor,
   Moon,
-  Paperclip,
+  PanelLeft,
+  PanelLeftClose,
   Pencil,
   PenLine,
-  Send,
+  Plus,
   Shield,
   Sun,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { AttachmentProtectedChip } from "@/components/attachment-protected";
 import {
   AssistantActions,
   UserPrivacyStrip,
 } from "@/components/message-privacy";
+import { ModelPicker } from "@/components/model-picker";
 import { ThreadRowMenu } from "@/components/thread-row-menu";
 import { WorkspaceDlpPanel } from "@/components/workspace-dlp-panel";
 import {
@@ -53,6 +56,7 @@ import {
 import styles from "./workspace.module.css";
 
 const ACTIVE_THREAD_STORAGE_KEY = "stoa.workspace.activeThreadId";
+const SIDEBAR_COLLAPSED_KEY = "stoa.workspace.sidebarCollapsed";
 
 function formatSize(bytes: number): string {
   return bytes >= 1024 * 1024
@@ -75,7 +79,11 @@ export default function WorkspacePage() {
   const [error, setError] = useState<string | null>(null);
   const [dlpOpen, setDlpOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const stickToBottomRef = useRef(true);
+  const [showJumpDown, setShowJumpDown] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState<StoaAdminTheme>("light");
   const [themePreference, setThemePreference] =
     useState<StoaThemePreference>("system");
@@ -97,7 +105,44 @@ export default function WorkspacePage() {
   useEffect(() => {
     setThemePreference(readStoredThemePreference() ?? "system");
     setTheme(resolveTheme());
+    try {
+      setSidebarCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+    } catch {
+      /* ignore */
+    }
   }, []);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "l") {
+        return;
+      }
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      e.preventDefault();
+      toggleSidebar();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleSidebar]);
 
   const refreshAll = useCallback(async () => {
     const [me, modelList, threadList] = await Promise.all([
@@ -188,8 +233,28 @@ export default function WorkspacePage() {
   }, [activeId]);
 
   useEffect(() => {
+    if (!stickToBottomRef.current) {
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
+
+  function onMessagesScroll() {
+    const el = messagesRef.current;
+    if (!el) {
+      return;
+    }
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const nearBottom = distance < 80;
+    stickToBottomRef.current = nearBottom;
+    setShowJumpDown(!nearBottom && messages.length > 0);
+  }
+
+  function jumpToBottom() {
+    stickToBottomRef.current = true;
+    setShowJumpDown(false);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -308,6 +373,8 @@ export default function WorkspacePage() {
     }
     setRenamingThreadId(null);
     setEditingTitle(false);
+    stickToBottomRef.current = true;
+    setShowJumpDown(false);
     setActiveId(threadId);
   }
 
@@ -384,7 +451,7 @@ export default function WorkspacePage() {
   }
 
   async function handleSend() {
-    if (!activeId || busy || !chatReady) {
+    if (busy || !chatReady) {
       return;
     }
     if (!draft.trim() && pendingFiles.length === 0) {
@@ -394,6 +461,25 @@ export default function WorkspacePage() {
     setError(null);
     const content = draft;
     setDraft("");
+    let threadId = activeId;
+    try {
+      if (!threadId) {
+        const modelId = defaultModelId || models[0]?.id;
+        if (!modelId) {
+          throw new Error("No model available.");
+        }
+        const created = await createThread(modelId);
+        threadId = created.id;
+        setThreads((prev) => [created, ...prev]);
+        setActiveId(created.id);
+        setMessages([]);
+      }
+    } catch (e) {
+      setDraft(content);
+      setBusy(false);
+      setError(e instanceof Error ? e.message : String(e));
+      return;
+    }
     const optimistic: ChatMessage = {
       id: `temp-${Date.now()}`,
       role: "user",
@@ -404,7 +490,7 @@ export default function WorkspacePage() {
     setMessages((prev) => [...prev, optimistic]);
     try {
       const result = await sendMessage(
-        activeId,
+        threadId,
         content,
         pendingFiles.map((f) => f.id),
       );
@@ -415,7 +501,7 @@ export default function WorkspacePage() {
       ]);
       setThreads((prev) =>
         prev.map((t) =>
-          t.id === activeId
+          t.id === threadId
             ? {
                 ...t,
                 title: result.threadTitle,
@@ -429,9 +515,9 @@ export default function WorkspacePage() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-      if (activeId) {
+      if (threadId) {
         const [synced, threadList] = await Promise.all([
-          listMessages(activeId),
+          listMessages(threadId),
           listThreads(),
         ]);
         setMessages(synced);
@@ -496,121 +582,192 @@ export default function WorkspacePage() {
     );
   }
 
+  const userInitial = (
+    session?.user.displayName ??
+    session?.user.email ??
+    "?"
+  )
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+
   return (
-    <div className={styles.shell}>
-      <aside className={styles.sidebar}>
-        <div className={styles.brandRow}>
-          <div>
-            <span className={styles.logo}>Stoa</span>
-            <span className={styles.tag}>{session?.tenant.name ?? "…"}</span>
-          </div>
-        </div>
-        <button
-          type="button"
-          className={styles.newChatBtn}
-          disabled={!chatReady}
-          onClick={() => void handleNewChat()}
-        >
-          <MessageSquarePlus size={16} aria-hidden />
-          New chat
-        </button>
-        <ul className={styles.threadList}>
-          {threads.length === 0 ? (
-            <li className={styles.threadEmpty}>No chats yet</li>
-          ) : null}
-          {threads.map((t) => (
-            <li
-              key={t.id}
-              aria-current={t.id === activeId ? "page" : undefined}
-              className={
-                t.id === activeId ? styles.threadRowActive : styles.threadRow
-              }
+    <div
+      className={`${styles.shell} ${sidebarCollapsed ? styles.shellCollapsed : ""}`}
+    >
+      <aside
+        className={`${styles.sidebar} ${sidebarCollapsed ? styles.sidebarCollapsed : ""}`}
+        aria-label="Workspace navigation"
+      >
+        {sidebarCollapsed ? (
+          <>
+            <button
+              type="button"
+              className={styles.railBtn}
+              onClick={toggleSidebar}
+              title="Expand sidebar (Ctrl+L)"
+              aria-label="Expand sidebar"
+              aria-expanded={false}
             >
-              {renamingThreadId === t.id ? (
-                <input
-                  className={styles.threadRenameInput}
-                  value={sidebarTitleDraft}
-                  autoFocus
-                  maxLength={120}
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => setSidebarTitleDraft(e.target.value)}
-                  onBlur={() => void commitTitleRename(t.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void commitTitleRename(t.id);
-                    }
-                    if (e.key === "Escape") {
-                      setRenamingThreadId(null);
-                    }
-                  }}
-                />
-              ) : (
-                <button
-                  type="button"
-                  className={styles.threadItem}
-                  onDoubleClick={(e) => {
-                    e.preventDefault();
-                    startSidebarRename(t.id, t.title);
-                  }}
-                  onClick={() => selectThread(t.id)}
-                >
-                  <span className={styles.threadTitleText}>{t.title}</span>
-                </button>
-              )}
-              {renamingThreadId === t.id ? null : (
-                <ThreadRowMenu
-                  onRename={() => startSidebarRename(t.id, t.title)}
-                  onDelete={() => void handleDeleteThread(t.id)}
-                />
-              )}
-            </li>
-          ))}
-        </ul>
-        <div className={styles.sidebarFooter}>
-          <p className={styles.userName}>
-            {session?.user.displayName ?? session?.user.email ?? "…"}
-          </p>
-          <div className={styles.footerLinks}>
-            <Link href="/account" className={styles.footerLink}>
-              Account
+              <PanelLeft size={18} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className={styles.railBtn}
+              disabled={!chatReady}
+              onClick={() => void handleNewChat()}
+              title="New chat"
+              aria-label="New chat"
+            >
+              <Plus size={18} aria-hidden />
+            </button>
+            <div className={styles.railSpacer} />
+            <Link
+              href="/account"
+              className={styles.railAvatar}
+              title={session?.user.displayName ?? session?.user.email ?? "Account"}
+            >
+              {userInitial}
             </Link>
-            {isAdmin ? (
-              <Link href="/admin" className={styles.footerLink}>
-                Admin
-              </Link>
-            ) : null}
+          </>
+        ) : (
+          <>
+            <div className={styles.brandRow}>
+              <div>
+                <span className={styles.logo}>Workspace</span>
+                <span className={styles.tag}>
+                  {session?.tenant.name ?? "…"}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={styles.sidebarToggle}
+                onClick={toggleSidebar}
+                title="Collapse sidebar (Ctrl+L)"
+                aria-label="Collapse sidebar"
+                aria-expanded={true}
+              >
+                <PanelLeftClose size={17} aria-hidden />
+              </button>
+            </div>
             <button
               type="button"
-              className={styles.iconFooterBtn}
-              onClick={() => {
-                const pref = cycleThemePreference();
-                setThemePreference(pref);
-                setTheme(resolveTheme());
-              }}
+              className={styles.newChatBtn}
+              disabled={!chatReady}
+              onClick={() => void handleNewChat()}
             >
-              {themePreference === "system" ? (
-                <Monitor size={13} aria-hidden />
-              ) : theme === "dark" ? (
-                <Moon size={13} aria-hidden />
-              ) : (
-                <Sun size={13} aria-hidden />
-              )}
-              {themePreferenceLabel(themePreference)}
+              <Plus size={16} aria-hidden />
+              New chat
             </button>
-            <button
-              type="button"
-              className={styles.iconFooterBtn}
-              onClick={() => {
-                void idApi("/auth/logout", { method: "POST" }).finally(() => {
-                  router.replace("/login");
-                });
-              }}
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
+            <p className={styles.threadSectionLabel}>Chats</p>
+            <ul className={styles.threadList}>
+              {threads.length === 0 ? (
+                <li className={styles.threadEmpty}>No chats yet</li>
+              ) : null}
+              {threads.map((t) => (
+                <li
+                  key={t.id}
+                  aria-current={t.id === activeId ? "page" : undefined}
+                  className={
+                    t.id === activeId ? styles.threadRowActive : styles.threadRow
+                  }
+                >
+                  {renamingThreadId === t.id ? (
+                    <input
+                      className={styles.threadRenameInput}
+                      value={sidebarTitleDraft}
+                      autoFocus
+                      maxLength={120}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => setSidebarTitleDraft(e.target.value)}
+                      onBlur={() => void commitTitleRename(t.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void commitTitleRename(t.id);
+                        }
+                        if (e.key === "Escape") {
+                          setRenamingThreadId(null);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.threadItem}
+                      onDoubleClick={(e) => {
+                        e.preventDefault();
+                        startSidebarRename(t.id, t.title);
+                      }}
+                      onClick={() => selectThread(t.id)}
+                    >
+                      <span className={styles.threadTitleText}>{t.title}</span>
+                    </button>
+                  )}
+                  {renamingThreadId === t.id ? null : (
+                    <ThreadRowMenu
+                      onRename={() => startSidebarRename(t.id, t.title)}
+                      onDelete={() => void handleDeleteThread(t.id)}
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+            <div className={styles.sidebarFooter}>
+              <div className={styles.userBlock}>
+                <span className={styles.userAvatar} aria-hidden>
+                  {userInitial}
+                </span>
+                <div className={styles.userMeta}>
+                  <p className={styles.userName}>
+                    {session?.user.displayName ?? session?.user.email ?? "…"}
+                  </p>
+                  <div className={styles.footerLinks}>
+                    <Link href="/account" className={styles.footerLink}>
+                      Account
+                    </Link>
+                    {isAdmin ? (
+                      <Link href="/admin" className={styles.footerLink}>
+                        Admin
+                      </Link>
+                    ) : null}
+                    <button
+                      type="button"
+                      className={styles.iconFooterBtn}
+                      onClick={() => {
+                        const pref = cycleThemePreference();
+                        setThemePreference(pref);
+                        setTheme(resolveTheme());
+                      }}
+                    >
+                      {themePreference === "system" ? (
+                        <Monitor size={13} aria-hidden />
+                      ) : theme === "dark" ? (
+                        <Moon size={13} aria-hidden />
+                      ) : (
+                        <Sun size={13} aria-hidden />
+                      )}
+                      {themePreferenceLabel(themePreference)}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.iconFooterBtn}
+                      onClick={() => {
+                        void idApi("/auth/logout", { method: "POST" }).finally(
+                          () => {
+                            router.replace("/login");
+                          },
+                        );
+                      }}
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </aside>
 
       <main className={styles.main}>
@@ -621,20 +778,11 @@ export default function WorkspacePage() {
             <div className={styles.welcome}>
               <h1>How can I help?</h1>
               <p>
-                Personal and banking details are hidden before anything is sent
-                to the AI.
+                Ask anything. Sensitive details stay private before they leave
+                your organization.
               </p>
-              <div className={styles.welcomeActions}>
-                <button
-                  type="button"
-                  className={styles.newChatBtn}
-                  style={{ width: "auto", paddingInline: "1.25rem" }}
-                  disabled={!chatReady}
-                  onClick={() => void handleNewChat()}
-                >
-                  Start a conversation
-                </button>
-                {dlp ? (
+              {dlp ? (
+                <div className={styles.welcomeActions}>
                   <button
                     type="button"
                     className={styles.dlpChip}
@@ -643,11 +791,11 @@ export default function WorkspacePage() {
                     <Shield size={14} aria-hidden />
                     What stays private
                   </button>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
             </div>
-            {error ? (
-              <div className={styles.composerDock}>
+            <div className={`${styles.composerDock} ${styles.welcomeComposer}`}>
+              {error ? (
                 <div className={styles.errorPanel} role="alert">
                   <p>{error}</p>
                   <button
@@ -658,95 +806,139 @@ export default function WorkspacePage() {
                     Dismiss
                   </button>
                 </div>
-              </div>
-            ) : null}
-            {!chatReady ? (
-              <div className={styles.composerDock}>
-                <div
-                  className={`${styles.composerCard} ${styles.composerCardDisabled}`}
-                >
-                  <div className={styles.composerInputRow}>
-                    <textarea
-                      className={styles.composerInput}
-                      readOnly
-                      placeholder="Chat isn't available yet"
-                      rows={2}
+              ) : null}
+              <div
+                className={`${styles.composerCard} ${!chatReady ? styles.composerCardDisabled : ""}`}
+              >
+                <div className={styles.composerInputRow}>
+                  <textarea
+                    ref={textareaRef}
+                    className={styles.composerInput}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder={
+                      chatReady
+                        ? "How can I help you today?"
+                        : "Chat isn't available yet"
+                    }
+                    rows={1}
+                    disabled={busy || !chatReady}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        void handleSend();
+                      }
+                    }}
+                  />
+                </div>
+                <div className={styles.composerToolbar}>
+                  <div className={styles.composerActions}>
+                    <label className={styles.toolBtn} title="Attach file">
+                      <input
+                        type="file"
+                        hidden
+                        disabled={
+                          uploadBusy ||
+                          !session?.workspacePolicy?.allowAttachments ||
+                          !chatReady
+                        }
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleAttach(file);
+                          e.target.value = "";
+                        }}
+                      />
+                      <Plus size={18} aria-hidden />
+                    </label>
+                  </div>
+                  <div className={styles.composerTrailing}>
+                    <ModelPicker
+                      models={models}
+                      value={modelValue}
+                      disabled={!chatReady}
+                      onChange={(id) => void handleModelChange(id)}
                     />
+                    <button
+                      type="button"
+                      className={styles.sendRound}
+                      disabled={
+                        busy ||
+                        !chatReady ||
+                        (!draft.trim() && pendingFiles.length === 0)
+                      }
+                      title="Send"
+                      onClick={() => void handleSend()}
+                    >
+                      <ArrowUp size={16} aria-hidden />
+                    </button>
                   </div>
                 </div>
               </div>
-            ) : null}
+              <p className={styles.composerHint}>
+                {hintModelName ? `${hintModelName} · ` : ""}
+                Sensitive values stay private before the model sees your message.
+              </p>
+            </div>
           </div>
         ) : (
           <div className={styles.chatStage}>
-            <div className={styles.chatInner}>
-              <header className={styles.topBar}>
-                <div className={styles.topBarSpacer} aria-hidden />
-                <div className={styles.topBarCenter}>
-                  {editingTitle ? (
-                    <input
-                      className={styles.titleInput}
-                      value={titleDraft}
-                      autoFocus
-                      maxLength={120}
-                      onChange={(e) => setTitleDraft(e.target.value)}
-                      onBlur={() => void commitTitleRename()}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          void commitTitleRename();
-                        }
-                        if (e.key === "Escape") {
-                          setEditingTitle(false);
-                        }
-                      }}
+            <header className={styles.mainHeader}>
+              <div className={styles.mainHeaderStart}>
+                {editingTitle ? (
+                  <input
+                    className={styles.titleInput}
+                    value={titleDraft}
+                    autoFocus
+                    maxLength={120}
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    onBlur={() => void commitTitleRename()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void commitTitleRename();
+                      }
+                      if (e.key === "Escape") {
+                        setEditingTitle(false);
+                      }
+                    }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.titleRenameRow}
+                    title="Rename conversation"
+                    onClick={() => startHeaderRename()}
+                  >
+                    <span className={styles.topBarTitle}>
+                      {activeThread?.title ?? "Chat"}
+                    </span>
+                    <Pencil
+                      size={13}
+                      aria-hidden
+                      className={styles.titleRenameIcon}
                     />
-                  ) : (
-                    <div className={styles.titleRenameRow}>
-                      <span className={styles.topBarTitle}>
-                        {activeThread?.title ?? "Chat"}
-                      </span>
-                      <button
-                        type="button"
-                        className={styles.titleRenameIconBtn}
-                        title="Rename conversation"
-                        aria-label="Rename conversation"
-                        onClick={() => startHeaderRename()}
-                      >
-                        <Pencil size={16} aria-hidden />
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className={styles.topBarMeta}>
-                  {dlp ? (
-                    <button
-                      type="button"
-                      className={styles.dlpChip}
-                      onClick={() => setDlpOpen(true)}
-                    >
-                      <Shield size={12} aria-hidden />
-                      {dlp.profileLabel}
-                    </button>
-                  ) : null}
-                  {models.length > 0 ? (
-                    <select
-                      className={styles.modelSelect}
-                      value={modelValue}
-                      onChange={(e) => void handleModelChange(e.target.value)}
-                      disabled={!chatReady}
-                    >
-                      {models.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                </div>
-              </header>
+                  </button>
+                )}
+              </div>
+              {dlp ? (
+                <button
+                  type="button"
+                  className={styles.topBarPrivacy}
+                  onClick={() => setDlpOpen(true)}
+                  title={dlp.profileLabel}
+                  aria-label="Privacy settings"
+                >
+                  <Shield size={15} aria-hidden />
+                </button>
+              ) : null}
+            </header>
 
-              <div className={styles.messages}>
+            <div className={styles.chatInner}>
+              <div
+                className={styles.messages}
+                ref={messagesRef}
+                onScroll={onMessagesScroll}
+              >
                 {messages.length === 0 && !busy ? (
                   <div className={styles.emptyThread}>
                     <p className={styles.hintLine}>
@@ -844,17 +1036,17 @@ export default function WorkspacePage() {
                       ) : (
                         <div className={styles.msgUserBubbleWrap}>
                           {m.attachments && m.attachments.length > 0 ? (
-                            <ul className={styles.msgAttachments}>
+                            <div className={styles.msgAttachments}>
                               {m.attachments.map((a) => (
-                                <li key={a.id} className={styles.msgAttachment}>
-                                  <Paperclip size={12} aria-hidden />
-                                  {a.originalName}
-                                  <span style={{ opacity: 0.6 }}>
-                                    {formatSize(a.byteSize)}
-                                  </span>
-                                </li>
+                                <AttachmentProtectedChip
+                                  key={a.id}
+                                  attachment={a}
+                                  providerLabel={
+                                    hintModelName ?? "the model provider"
+                                  }
+                                />
                               ))}
-                            </ul>
+                            </div>
                           ) : null}
                           {m.content ? (
                             <div className={styles.msgUserInner}>{m.content}</div>
@@ -882,9 +1074,6 @@ export default function WorkspacePage() {
                     </div>
                   ) : (
                     <div key={m.id} className={styles.msgAssistant}>
-                      <div className={styles.assistantAvatar}>
-                        <Bot size={14} aria-hidden />
-                      </div>
                       <div className={styles.assistantBody}>
                         {m.content}
                         <AssistantActions
@@ -898,9 +1087,6 @@ export default function WorkspacePage() {
                 )}
                 {busy ? (
                   <div className={styles.msgAssistant}>
-                    <div className={styles.assistantAvatar}>
-                      <Bot size={14} aria-hidden />
-                    </div>
                     <div className={`${styles.assistantBody} ${styles.typing}`}>
                       Thinking…
                     </div>
@@ -911,6 +1097,17 @@ export default function WorkspacePage() {
             </div>
 
             <div className={styles.composerDock}>
+              {showJumpDown ? (
+                <button
+                  type="button"
+                  className={styles.jumpDown}
+                  onClick={jumpToBottom}
+                  title="Jump to latest"
+                  aria-label="Jump to latest"
+                >
+                  <ArrowDown size={16} aria-hidden />
+                </button>
+              ) : null}
               {error ? (
                 <div className={styles.errorPanel} role="alert">
                   <p>{error}</p>
@@ -927,13 +1124,16 @@ export default function WorkspacePage() {
                 className={`${styles.composerCard} ${!chatReady ? styles.composerCardDisabled : ""}`}
               >
                 {pendingFiles.length > 0 ? (
-                  <ul className={styles.attachList}>
+                  <div className={styles.attachList}>
                     {pendingFiles.map((f) => (
-                      <li key={f.id}>
-                        {f.originalName} ({formatSize(f.byteSize)})
-                      </li>
+                      <AttachmentProtectedChip
+                        key={f.id}
+                        attachment={f}
+                        providerLabel={hintModelName ?? "the model provider"}
+                        compact
+                      />
                     ))}
-                  </ul>
+                  </div>
                 ) : null}
                 <div className={styles.composerInputRow}>
                   <textarea
@@ -943,7 +1143,7 @@ export default function WorkspacePage() {
                     onChange={(e) => setDraft(e.target.value)}
                     placeholder={
                       chatReady
-                        ? "Message Stoa…"
+                        ? "Ask a follow-up…"
                         : "Chat isn't available yet"
                     }
                     rows={1}
@@ -955,6 +1155,8 @@ export default function WorkspacePage() {
                       }
                     }}
                   />
+                </div>
+                <div className={styles.composerToolbar}>
                   <div className={styles.composerActions}>
                     <label className={styles.toolBtn} title="Attach file">
                       <input
@@ -973,8 +1175,16 @@ export default function WorkspacePage() {
                           e.target.value = "";
                         }}
                       />
-                      <Paperclip size={18} aria-hidden />
+                      <Plus size={18} aria-hidden />
                     </label>
+                  </div>
+                  <div className={styles.composerTrailing}>
+                    <ModelPicker
+                      models={models}
+                      value={modelValue}
+                      disabled={!chatReady}
+                      onChange={(id) => void handleModelChange(id)}
+                    />
                     <button
                       type="button"
                       className={styles.sendRound}
@@ -986,16 +1196,22 @@ export default function WorkspacePage() {
                       title="Send"
                       onClick={() => void handleSend()}
                     >
-                      <Send size={16} aria-hidden />
+                      <ArrowUp size={16} aria-hidden />
                     </button>
                   </div>
                 </div>
               </div>
-              {session?.workspacePolicy?.allowAttachments ? (
-                <p className={styles.composerHint}>
-                  Files up to {session.workspacePolicy.maxFileMb} MB
-                </p>
-              ) : null}
+              <p className={styles.composerHint}>
+                {hintModelName ? `${hintModelName}` : ""}
+                {hintModelName && session?.workspacePolicy?.allowAttachments
+                  ? " · "
+                  : ""}
+                {session?.workspacePolicy?.allowAttachments
+                  ? `Files up to ${session.workspacePolicy.maxFileMb} MB`
+                  : hintModelName
+                    ? ""
+                    : "Workspace can make mistakes. Check important details."}
+              </p>
             </div>
           </div>
         )}

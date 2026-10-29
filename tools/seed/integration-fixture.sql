@@ -21,7 +21,12 @@ VALUES (
   'default',
   'Pilot Demo Agent'
 )
-ON CONFLICT (agent_id) DO NOTHING;
+ON CONFLICT (agent_id) DO UPDATE SET
+  organization_id = EXCLUDED.organization_id,
+  did = EXCLUDED.did,
+  slug = EXCLUDED.slug,
+  display_name = EXCLUDED.display_name,
+  active = true;
 
 INSERT INTO signing_key (
   key_id,
@@ -40,6 +45,8 @@ VALUES (
   now()
 )
 ON CONFLICT (key_id) DO UPDATE SET
+  agent_id = EXCLUDED.agent_id,
+  organization_id = EXCLUDED.organization_id,
   public_key_b64 = EXCLUDED.public_key_b64,
   kms_provider = EXCLUDED.kms_provider,
   revoked = false,
@@ -62,6 +69,7 @@ VALUES (
   true
 )
 ON CONFLICT (key_id) DO UPDATE SET
+  organization_id = EXCLUDED.organization_id,
   key_hash = EXCLUDED.key_hash,
   key_prefix = EXCLUDED.key_prefix,
   active = EXCLUDED.active,
@@ -79,6 +87,8 @@ VALUES (
   now()
 )
 ON CONFLICT (policy_id) DO UPDATE SET
+  organization_id = EXCLUDED.organization_id,
+  name = EXCLUDED.name,
   status = 'active',
   activated_at = EXCLUDED.activated_at;
 

@@ -7,7 +7,22 @@ export function resolveSiteOrigin(): string {
 
   if (fromEnv) {
     const withScheme = fromEnv.startsWith("http") ? fromEnv : `https://${fromEnv}`;
-    return withScheme.replace(/\/$/, "");
+    const normalized = withScheme.replace(/\/$/, "");
+    const isProduction =
+      process.env.VERCEL_ENV === "production" ||
+      process.env.NODE_ENV === "production";
+    try {
+      const hostname = new URL(normalized).hostname.toLowerCase();
+      const isLocal =
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname === "::1";
+      if (!(isProduction && isLocal)) {
+        return normalized;
+      }
+    } catch {
+      // Invalid configuration falls through to the canonical public origin.
+    }
   }
 
   return "https://www.salanor.com";

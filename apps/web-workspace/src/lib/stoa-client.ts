@@ -81,6 +81,13 @@ export type MessageAttachment = {
   originalName: string;
   mimeType: string;
   byteSize: number;
+  /** Redacted text the model receives (when available). */
+  textExtract?: string | null;
+  scanDetail?: string | null;
+  hasRedactedPreview?: boolean;
+  textExtractAvailable?: boolean;
+  readyForModel?: boolean;
+  scanStatus?: string;
 };
 
 export type ProviderKind = "openai_compat" | "anthropic" | "google";
@@ -290,6 +297,13 @@ export type AdminSettings = {
       fromName: string | null;
       fromAddress: string | null;
       replyTo: string | null;
+      delivery: "platform" | "smtp";
+      smtpHost: string | null;
+      smtpPort: number;
+      smtpSecure: boolean;
+      smtpUser: string | null;
+      smtpPassword: string | null;
+      smtpPasswordSet: boolean;
     };
   };
   enabledModels: StoaModel[];
@@ -465,6 +479,32 @@ export async function uploadAttachment(file: File): Promise<MessageAttachment> {
     attachment: MessageAttachment & { scanStatus: string };
   };
   return data.attachment;
+}
+
+/** Protected payload the model receives for a file (owner only). */
+export async function fetchAttachmentProtected(attachmentId: string): Promise<{
+  attachmentId: string;
+  originalName: string;
+  mimeType: string;
+  byteSize: number;
+  scanDetail: string | null;
+  textExtract: string | null;
+  hasRedactedPreview: boolean;
+  modelReceives: string;
+}> {
+  const data = await parseJson<{
+    protected: {
+      attachmentId: string;
+      originalName: string;
+      mimeType: string;
+      byteSize: number;
+      scanDetail: string | null;
+      textExtract: string | null;
+      hasRedactedPreview: boolean;
+      modelReceives: string;
+    };
+  }>(await stoaFetch(`attachments/${attachmentId}/protected`));
+  return data.protected;
 }
 
 export async function fetchAdminUsage(): Promise<{
@@ -836,7 +876,18 @@ export async function saveAdminSettings(input: {
     siemStreamAuditEvents?: boolean;
     exportSigningSecret?: string | null;
   };
-  email?: Partial<AdminSettings["settings"]["email"]>;
+  email?: {
+    fromName?: string | null;
+    fromAddress?: string | null;
+    replyTo?: string | null;
+    delivery?: "platform" | "smtp";
+    smtpHost?: string | null;
+    smtpPort?: number;
+    smtpSecure?: boolean;
+    smtpUser?: string | null;
+    /** Omit or leave empty to keep the saved password. Pass null to clear. */
+    smtpPassword?: string | null;
+  };
 }): Promise<AdminSettings> {
   return parseJson(
     await stoaFetch("admin/settings", {

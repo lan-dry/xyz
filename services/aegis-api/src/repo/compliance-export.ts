@@ -17,7 +17,13 @@ export type ComplianceExportRow = {
   byte_size: string | null;
 };
 
-const BUNDLE_TYPES = new Set(["soc2", "eu_ai_act", "combined"]);
+const BUNDLE_TYPES = new Set([
+  "soc2",
+  "eu_ai_act",
+  "nist_ai_rmf",
+  "bnr_local",
+  "combined",
+]);
 
 export function isValidBundleType(value: string): boolean {
   return BUNDLE_TYPES.has(value);
@@ -122,4 +128,18 @@ export async function markExportFailed(
     `UPDATE compliance_export SET status = 'expired' WHERE export_id = $1`,
     [exportId],
   );
+}
+
+export async function deleteComplianceExport(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  exportId: string,
+): Promise<ComplianceExportRow | null> {
+  const result = await client.query<ComplianceExportRow>(
+    `DELETE FROM compliance_export
+     WHERE organization_id = $1 AND export_id = $2
+     RETURNING *`,
+    [organizationId, exportId],
+  );
+  return result.rows[0] ?? null;
 }

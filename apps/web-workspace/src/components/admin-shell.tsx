@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
   Building2,
+  Check,
   FileBarChart,
   LayoutDashboard,
   Moon,
@@ -21,7 +22,7 @@ import {
   Monitor,
   Network,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AdminReadOnlyBanner } from "@/components/admin-read-only-banner";
 import { siteManagerOnly as isSiteManagerOnly } from "@/lib/admin-session";
@@ -29,16 +30,25 @@ import { siteManagerOnly as isSiteManagerOnly } from "@/lib/admin-session";
 import {
   SIDEBAR_COLLAPSED_KEY,
   applyTheme,
-  cycleThemePreference,
+  persistThemePreference,
   readStoredThemePreference,
   resolveTheme,
-  themePreferenceLabel,
   type StoaAdminTheme,
   type StoaThemePreference,
 } from "@/lib/stoa-admin-theme";
-import { fetchSession, type SessionInfo } from "@/lib/stoa-client";
+import { useAdminSession } from "@/hooks/use-admin-session";
 
 import styles from "./admin-shell.module.css";
+
+const THEME_OPTIONS: {
+  id: StoaThemePreference;
+  label: string;
+  icon: LucideIcon;
+}[] = [
+  { id: "system", label: "System", icon: Monitor },
+  { id: "light", label: "Light", icon: Sun },
+  { id: "dark", label: "Dark", icon: Moon },
+];
 
 const NAV: {
   href: string;
@@ -68,14 +78,29 @@ function navActive(pathname: string, href: string, exact?: boolean): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function siteManagerAllowedPath(pathname: string): boolean {
+  return (
+    pathname === "/admin/sites" ||
+    pathname.startsWith("/admin/sites/") ||
+    pathname.startsWith("/admin/people/")
+  );
+}
+
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [session, setSession] = useState<SessionInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const sessionQuery = useAdminSession();
+  const session = sessionQuery.data ?? null;
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState<StoaAdminTheme>("light");
   const [themePreference, setThemePreference] =
     useState<StoaThemePreference>("system");
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const themeMenuRef = useRef<HTMLDivElement>(null);
+  const accessDenied =
+    session != null &&
+    !session.adminConsole?.canAccess &&
+    !session.isAdmin;
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
@@ -99,15 +124,25 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    fetchSession()
-      .then((me) => {
-        setSession(me);
-        if (!me.adminConsole?.canAccess && !me.isAdmin) {
-          setError("You don't have access to administration.");
-        }
-      })
-      .catch((e: Error) => setError(e.message));
-  }, []);
+    if (!themeMenuOpen) return;
+    function onPointerDown(event: MouseEvent) {
+      if (
+        themeMenuRef.current &&
+        !themeMenuRef.current.contains(event.target as Node)
+      ) {
+        setThemeMenuOpen(false);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setThemeMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [themeMenuOpen]);
 
   function toggleSidebar() {
     const next = !collapsed;
@@ -115,10 +150,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
   }
 
-  function onThemeToggle() {
-    const pref = cycleThemePreference();
+  function setThemeChoice(pref: StoaThemePreference) {
+    persistThemePreference(pref);
     setThemePreference(pref);
     setTheme(resolveTheme());
+    setThemeMenuOpen(false);
   }
 
   const navItems = useMemo(() => {
@@ -132,16 +168,34 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     return NAV;
   }, [session]);
 
-  if (error) {
+  useEffect(() => {
+    if (!session || !isSiteManagerOnly(session)) {
+      return;
+    }
+    if (!siteManagerAllowedPath(pathname)) {
+      router.replace("/admin/sites");
+    }
+  }, [session, pathname, router]);
+
+  if (sessionQuery.isError) {
     return (
       <div className={styles.denied}>
-        <p>{error}</p>
+        <p>{(sessionQuery.error as Error).message}</p>
         <Link href="/">Back to workspace</Link>
       </div>
     );
   }
 
-  if (!session?.adminConsole?.canAccess && !session?.isAdmin) {
+  if (accessDenied) {
+    return (
+      <div className={styles.denied}>
+        <p>You don&apos;t have access to administration.</p>
+        <Link href="/">Back to workspace</Link>
+      </div>
+    );
+  }
+
+  if (!session) {
     return <p className={styles.loading}>Loading administration…</p>;
   }
 
@@ -153,7 +207,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className={`${styles.brand} ${collapsed ? styles.brandCollapsed : ""}`}>
           {!collapsed ? (
             <div className={styles.brandText}>
-              <span className={styles.logo}>Stoa</span>
+              <span className={styles.logo}>Workspace</span>
               <span className={styles.tag}>Administration</span>
             </div>
           ) : null}
@@ -196,25 +250,56 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <p className={styles.muted}>{session.user.email}</p>
             </>
           ) : null}
-          <div className={styles.footerActions}>
+          <div className={styles.footerActions} ref={themeMenuRef}>
+            {themeMenuOpen ? (
+              <div
+                className={styles.themeMenu}
+                role="menu"
+                aria-label="Theme"
+              >
+                {THEME_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  const selected = themePreference === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={selected}
+                      className={
+                        selected ? styles.themeMenuItemActive : styles.themeMenuItem
+                      }
+                      onClick={() => setThemeChoice(option.id)}
+                    >
+                      <Icon size={14} aria-hidden />
+                      <span>{option.label}</span>
+                      {selected ? (
+                        <Check size={14} className={styles.themeCheck} aria-hidden />
+                      ) : (
+                        <span className={styles.themeCheckSpacer} aria-hidden />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
             <button
               type="button"
               className={styles.iconBtn}
-              onClick={onThemeToggle}
-              aria-label={`Theme: ${themePreferenceLabel(themePreference)}. Press to cycle.`}
-              title={`Theme: ${themePreferenceLabel(themePreference)}`}
+              onClick={() => setThemeMenuOpen((open) => !open)}
+              aria-label="Theme"
+              aria-expanded={themeMenuOpen}
+              aria-haspopup="menu"
+              title="Theme"
             >
               {themePreference === "system" ? (
                 <Monitor size={16} />
               ) : theme === "dark" ? (
-                <Sun size={16} />
-              ) : (
                 <Moon size={16} />
+              ) : (
+                <Sun size={16} />
               )}
             </button>
-            <Link href="/" className={styles.back} title="Workspace">
-              {collapsed ? "←" : "← Workspace"}
-            </Link>
           </div>
         </div>
       </aside>

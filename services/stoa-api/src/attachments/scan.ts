@@ -5,7 +5,16 @@ import {
   clamAvRequired,
   scanBufferWithClamAv,
 } from "./clamav.js";
+import {
+  extractPlainText,
+  mimeNeedsTextExtract,
+} from "./extract-text.js";
 import { detectMime, mimeAllowed } from "./mime.js";
+import {
+  isLikelyScannedPdf,
+  redactScannedPdfForUpstream,
+} from "./pdf-redact.js";
+import { redactImageForUpstream } from "./pixel-redact.js";
 
 export type ScanInput = {
   buffer: Buffer;
@@ -21,11 +30,22 @@ export type ScanResult =
       status: "clean";
       mimeType: string;
       textExtract: string | null;
+      /** Cleaned PNG (OCR + black boxes). Model still gets textExtract only. */
+      redactedImage: Buffer | null;
       detail: string;
     }
   | { status: "blocked"; detail: string };
 
 const BLOCKED_NAME = /\.(exe|bat|cmd|ps1|sh|dll|msi|scr|js|vbs)$/i;
+
+function toWithheldPlaceholders(text: string): string {
+  return text.replace(/\[([A-Z][A-Z0-9_]*?)_\d+\]/g, "[$1_WITHHELD]");
+}
+
+function imageOcrEnabled(): boolean {
+  // Default on. Set STOA_ATTACHMENT_OCR=0 to disable image uploads to AI.
+  return process.env.STOA_ATTACHMENT_OCR !== "0";
+}
 
 export async function scanAttachment(input: ScanInput): Promise<ScanResult> {
   if (input.buffer.length > input.maxBytes) {
@@ -74,25 +94,104 @@ export async function scanAttachment(input: ScanInput): Promise<ScanResult> {
     }
   }
 
-  let textExtract: string | null = null;
-  if (mimeType.startsWith("text/") || mimeType === "application/csv") {
-    const raw = input.buffer.toString("utf8").slice(0, 200_000);
-    const redacted = await redactForUpstream(
-      raw,
-      { profile: input.dlpProfile },
-      { timeoutMs: 60_000 },
-    );
-    textExtract = redacted.text.replace(
-      /\[([A-Z][A-Z0-9_]*?)_\d+\]/g,
-      "[$1_WITHHELD]",
-    );
+  if (!mimeNeedsTextExtract(mimeType)) {
+    return {
+      status: "blocked",
+      detail:
+        "Only text, CSV, PDF, Word (.docx), or images can be sent to the model after privacy review.",
+    };
   }
 
   const avNote = clamAvConfigured() ? " ClamAV: clean." : "";
+
+  if (mimeType.startsWith("image/")) {
+    if (!imageOcrEnabled()) {
+      return {
+        status: "blocked",
+        detail:
+          "Image AI processing is disabled (STOA_ATTACHMENT_OCR=0). Upload PDF, DOCX, or TXT.",
+      };
+    }
+    const pixel = await redactImageForUpstream(input.buffer, input.dlpProfile);
+    if ("error" in pixel) {
+      return { status: "blocked", detail: pixel.error };
+    }
+    return {
+      status: "clean",
+      mimeType,
+      textExtract: pixel.redactedText,
+      redactedImage: pixel.redactedPng,
+      detail: `OCR + pixel redaction (${pixel.boxesPainted} region(s) covered). Model receives redacted text only.${avNote}`,
+    };
+  }
+
+  if (mimeType === "application/pdf") {
+    const extracted = await extractPlainText(input.buffer, mimeType);
+    if (extracted.ok && !isLikelyScannedPdf(extracted.text)) {
+      const redacted = await redactForUpstream(
+        extracted.text,
+        { profile: input.dlpProfile },
+        { timeoutMs: 60_000 },
+      );
+      const textExtract = toWithheldPlaceholders(redacted.text);
+      const redactNote =
+        redacted.redactionCount > 0
+          ? ` Redacted ${redacted.redactionCount} sensitive item(s) before AI.`
+          : " Privacy scan found no matched patterns.";
+      return {
+        status: "clean",
+        mimeType,
+        textExtract,
+        redactedImage: null,
+        detail: `Extracted via ${extracted.method}.${redactNote}${avNote}`,
+      };
+    }
+
+    if (!imageOcrEnabled()) {
+      return {
+        status: "blocked",
+        detail:
+          "This PDF looks scanned (little or no text). Enable OCR (default) or upload a text PDF / DOCX / TXT.",
+      };
+    }
+
+    const scanned = await redactScannedPdfForUpstream(
+      input.buffer,
+      input.dlpProfile,
+    );
+    if ("error" in scanned) {
+      return { status: "blocked", detail: scanned.error };
+    }
+    return {
+      status: "clean",
+      mimeType,
+      textExtract: scanned.redactedText,
+      redactedImage: scanned.redactedPng,
+      detail: `Scanned PDF: OCR + pixel redaction on ${scanned.pagesProcessed} page(s), ${scanned.boxesPainted} region(s) covered. Model receives redacted text only.${avNote}`,
+    };
+  }
+
+  const extracted = await extractPlainText(input.buffer, mimeType);
+  if (!extracted.ok) {
+    return { status: "blocked", detail: extracted.reason };
+  }
+
+  const redacted = await redactForUpstream(
+    extracted.text,
+    { profile: input.dlpProfile },
+    { timeoutMs: 60_000 },
+  );
+  const textExtract = toWithheldPlaceholders(redacted.text);
+  const redactNote =
+    redacted.redactionCount > 0
+      ? ` Redacted ${redacted.redactionCount} sensitive item(s) before AI.`
+      : " Privacy scan found no matched patterns.";
+
   return {
     status: "clean",
     mimeType,
     textExtract,
-    detail: `Passed type, size, and content heuristics.${avNote}`,
+    redactedImage: null,
+    detail: `Extracted via ${extracted.method}.${redactNote}${avNote}`,
   };
 }

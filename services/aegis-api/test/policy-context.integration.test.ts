@@ -16,20 +16,42 @@ describe("payload-context", () => {
         amount_usd: 5000,
       },
     });
-    expect(ctx).toEqual({
-      segment: "VIP",
-      account_type: "corporate",
-      beneficiary: "ACME Ltd",
-    });
+    expect(ctx.segment).toBe("vip");
+    expect(ctx.account_type).toBe("corporate");
+    expect(ctx.beneficiary).toBe("ACME Ltd");
   });
 
   it("matches when clause on segment", () => {
     expect(
-      matchesPolicyWhen({ segment: "VIP" }, { segment: "VIP", beneficiary: "x" }),
+      matchesPolicyWhen({ segment: "VIP" }, { segment: "vip", beneficiary: "x" }),
     ).toBe(true);
     expect(
-      matchesPolicyWhen({ segment: "VIP" }, { segment: "retail", beneficiary: "x" }),
+      matchesPolicyWhen({ segment: "VIP" }, { segment: "standard", beneficiary: "x" }),
     ).toBe(false);
+  });
+
+  it("matches merchant age thresholds", () => {
+    expect(
+      matchesPolicyWhen({ merchant_age_days_lt: 30 }, { merchant_age_days: 12 }),
+    ).toBe(true);
+    expect(
+      matchesPolicyWhen({ merchant_age_days_lt: 30 }, { merchant_age_days: 30 }),
+    ).toBe(false);
+    expect(
+      matchesPolicyWhen({ merchant_age_days_lte: 30 }, { merchant_age_days: 30 }),
+    ).toBe(true);
+  });
+
+  it("reads merchant_age_days from payload", () => {
+    const ctx = payloadContextFromPayload({
+      request_payload: {
+        merchant_id: "merchant-4417",
+        merchant_age_days: 12,
+        amount_usd: 2500,
+      },
+    });
+    expect(ctx.beneficiary).toBe("merchant-4417");
+    expect(ctx.merchant_age_days).toBe(12);
   });
 });
 
@@ -93,5 +115,33 @@ describe("evaluateRulesWithConditions contextual", () => {
       payload: { request_payload: { recipient: "ACME", amount_usd: 10 } },
     });
     expect(ok.decision).toBe("allow");
+  });
+
+  it("KYC tool rule only holds when risk_tier is high", async () => {
+    const mockClient = {} as never;
+    const rule: PolicyRuleInput = {
+      rule_id: "rule_kyc_high_risk_hold",
+      tool_pattern: "kyc.merchant.approve",
+      decision: "allow_with_obligation",
+      priority: 100,
+      conditions: {
+        rule_type: "tool",
+        when: { risk_tier: "high" },
+      },
+    };
+
+    const high = await evaluateRulesWithConditions(mockClient, "pol_kyc", [rule], {
+      toolName: "kyc.merchant.approve",
+      organizationId: "org",
+      payload: { risk_tier: "high" },
+    });
+    expect(high.decision).toBe("allow_with_obligation");
+
+    const low = await evaluateRulesWithConditions(mockClient, "pol_kyc", [rule], {
+      toolName: "kyc.merchant.approve",
+      organizationId: "org",
+      payload: { risk_tier: "low" },
+    });
+    expect(low.decision).toBe("allow");
   });
 });

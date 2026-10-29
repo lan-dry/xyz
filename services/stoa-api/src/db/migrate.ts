@@ -31,6 +31,10 @@ const MIGRATIONS = [
     version: "010_display_without_plaintext",
     file: "010_display_without_plaintext.sql",
   },
+  {
+    version: "011_attachment_redacted_image",
+    file: "011_attachment_redacted_image.sql",
+  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {

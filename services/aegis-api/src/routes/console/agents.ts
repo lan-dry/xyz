@@ -15,7 +15,10 @@ import {
 } from "../../middleware/console-session.js";
 import { enableWorkflowBridgeForAgent } from "../../workflows/bridge.js";
 import {
+  listSigningKeyRotations,
+  recordSigningKeyRotation,
   registerByokSigningKey,
+  revokeSigningKey,
 } from "../../repo/signing-keys.js";
 import { validateEd25519PublicKey } from "../../crypto/signing-provider.js";
 
@@ -23,9 +26,12 @@ export const agentRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
 agentRoutes.get("/agents", requireConsoleSession, async (c) => {
   const orgId = c.get("consoleSession").organizationId;
+  const envRaw = c.req.query("environment")?.trim();
+  const environment =
+    envRaw === "sandbox" || envRaw === "production" ? envRaw : undefined;
   const client = await getPool().connect();
   try {
-    const agents = await listAgentsForOrganization(client, orgId);
+    const agents = await listAgentsForOrganization(client, orgId, environment);
 
     // Direct DB check — stale platform-auth builds omitted bridge_enabled in SELECT,
     // so the Console never flipped from "Enable" to "on" after a successful enable.
@@ -58,6 +64,7 @@ agentRoutes.get("/agents", requireConsoleSession, async (c) => {
           display_name: a.display_name,
           did: a.did,
           active: a.active,
+          environment: a.environment ?? "production",
           created_at: a.created_at.toISOString(),
           workflow_bridge_enabled: bridgeAgentIds.has(a.agent_id),
           signing_keys,
@@ -75,12 +82,19 @@ agentRoutes.post("/agents", requireConsoleSession, async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  let body: { display_name?: string; slug?: string };
+  let body: {
+    display_name?: string;
+    slug?: string;
+    environment?: string;
+  };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ error: "Invalid JSON" }, 422);
   }
+
+  const environment =
+    body.environment === "sandbox" ? "sandbox" : "production";
 
   const client = await getPool().connect();
   try {
@@ -94,6 +108,7 @@ agentRoutes.post("/agents", requireConsoleSession, async (c) => {
       organizationSlug: orgSlug,
       slug: body.slug,
       displayName: body.display_name,
+      environment,
       auditActorId: session.userId,
     });
 
@@ -203,6 +218,61 @@ agentRoutes.post("/agents/:agentId/keys/byok", requireConsoleSession, async (c) 
   }
 });
 
+/** Phase 2 kill switch — suspended agents are denied on next evaluate/tool call. */
+agentRoutes.post("/agents/:agentId/suspend", requireConsoleSession, async (c) => {
+  const session = c.get("consoleSession");
+  if (session.role !== "admin" && session.role !== "owner") {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  const agentId = c.req.param("agentId");
+  const client = await getPool().connect();
+  try {
+    const result = await client.query<{ agent_id: string; active: boolean }>(
+      `UPDATE agent SET active = false
+       WHERE organization_id = $1 AND agent_id = $2
+       RETURNING agent_id, active`,
+      [session.organizationId, agentId],
+    );
+    if (!result.rows[0]) {
+      return c.json({ error: "Agent not found" }, 404);
+    }
+    return c.json({
+      agent_id: result.rows[0].agent_id,
+      active: result.rows[0].active,
+      message: "Agent suspended. Next tool calls are stopped and recorded.",
+    });
+  } finally {
+    client.release();
+  }
+});
+
+agentRoutes.post("/agents/:agentId/unsuspend", requireConsoleSession, async (c) => {
+  const session = c.get("consoleSession");
+  if (session.role !== "admin" && session.role !== "owner") {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  const agentId = c.req.param("agentId");
+  const client = await getPool().connect();
+  try {
+    const result = await client.query<{ agent_id: string; active: boolean }>(
+      `UPDATE agent SET active = true
+       WHERE organization_id = $1 AND agent_id = $2
+       RETURNING agent_id, active`,
+      [session.organizationId, agentId],
+    );
+    if (!result.rows[0]) {
+      return c.json({ error: "Agent not found" }, 404);
+    }
+    return c.json({
+      agent_id: result.rows[0].agent_id,
+      active: result.rows[0].active,
+      message: "Agent active again.",
+    });
+  } finally {
+    client.release();
+  }
+});
+
 agentRoutes.post("/agents/:agentId/workflow-bridge", requireConsoleSession, async (c) => {
   const session = c.get("consoleSession");
   if (session.role !== "admin") {
@@ -248,3 +318,102 @@ agentRoutes.post("/agents/:agentId/workflow-bridge", requireConsoleSession, asyn
     client.release();
   }
 });
+
+/** Rotate Workflow Bridge signing key and record history (Phase 6.5). */
+agentRoutes.post(
+  "/agents/:agentId/workflow-bridge/rotate",
+  requireConsoleSession,
+  async (c) => {
+    const session = c.get("consoleSession");
+    if (session.role !== "admin" && session.role !== "owner") {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    const agentId = c.req.param("agentId");
+    if (!agentId) return c.json({ error: "agentId required" }, 422);
+
+    const client = await getPool().connect();
+    try {
+      const orgSlug = await getOrganizationSlug(client, session.organizationId);
+      if (!orgSlug) return c.json({ error: "Organization not found" }, 404);
+
+      const rotated = await enableWorkflowBridgeForAgent(client, {
+        organizationId: session.organizationId,
+        organizationSlug: orgSlug,
+        agentId,
+        forceRotate: true,
+      });
+
+      const rotationId = await recordSigningKeyRotation(client, {
+        organizationId: session.organizationId,
+        agentId,
+        previousKeyId: rotated.previous_key_id ?? null,
+        newKeyId: rotated.key_id,
+        reason: "workflow_bridge_rotate",
+        actorMembershipId: session.userId,
+      });
+
+      return c.json({
+        rotation_id: rotationId,
+        agent_id: rotated.agent_id,
+        previous_key_id: rotated.previous_key_id ?? null,
+        new_key_id: rotated.key_id,
+        public_key_b64: rotated.public_key_b64,
+        message: "Bridge signing key rotated. Previous key revoked; rotation recorded.",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Rotation failed";
+      const status = message.includes("not configured")
+        ? 503
+        : message.includes("not found")
+          ? 404
+          : 500;
+      return c.json({ error: message }, status);
+    } finally {
+      client.release();
+    }
+  },
+);
+
+agentRoutes.get("/signing-key-rotations", requireConsoleSession, async (c) => {
+  const orgId = c.get("consoleSession").organizationId;
+  try {
+    const rotations = await listSigningKeyRotations(getPool(), orgId, 50);
+    return c.json({
+      rotations: rotations.map((r) => ({
+        ...r,
+        created_at: r.created_at.toISOString(),
+      })),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("signing_key_rotation") || message.includes("does not exist")) {
+      return c.json(
+        {
+          error: "Key rotation history requires migration 010. Run: pnpm db:migrate",
+          rotations: [],
+        },
+        503,
+      );
+    }
+    throw error;
+  }
+});
+
+agentRoutes.post(
+  "/agents/:agentId/keys/:keyId/revoke",
+  requireConsoleSession,
+  async (c) => {
+    const session = c.get("consoleSession");
+    if (session.role !== "admin" && session.role !== "owner") {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    const agentId = c.req.param("agentId");
+    const keyId = c.req.param("keyId");
+    if (!agentId || !keyId) {
+      return c.json({ error: "agentId and keyId required" }, 422);
+    }
+    const ok = await revokeSigningKey(getPool(), session.organizationId, keyId);
+    if (!ok) return c.json({ error: "Key not found or already revoked" }, 404);
+    return c.json({ key_id: keyId, revoked: true });
+  },
+);

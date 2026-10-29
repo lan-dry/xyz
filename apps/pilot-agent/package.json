@@ -6,17 +6,25 @@
   "scripts": {
     "pilot": "tsx src/index.ts",
     "pilot:approval": "tsx src/index.ts approval",
+    "pilot:approval:gold": "tsx src/index.ts approval-gold",
     "pilot:resume": "tsx src/index.ts resume",
+    "pilot:payout": "tsx src/index.ts payout",
+    "pilot:risk-score": "tsx src/index.ts risk-score",
+    "pilot:manipulated": "tsx src/index.ts manipulated",
+    "pilot:resume:payout": "tsx src/index.ts resume-payout",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@salanor/aegis": "workspace:*",
-    "dotenv": "^16.4.7"
+    "@salanor/db-url": "workspace:*",
+    "dotenv": "^16.4.7",
+    "pg": "^8.16.0"
   },
   "devDependencies": {
     "@salanor/config": "workspace:*",
     "@types/node": "^22.15.21",
+    "@types/pg": "^8.15.4",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }

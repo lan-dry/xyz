@@ -116,7 +116,7 @@ export const TRUST_FEATURES: TrustFeature[] = [
     feature: "SOC 2 Type II certification",
     status: "roadmap",
     notes:
-      "Export bundle includes control-mapping-soc2.json and soc2-type1-report.json. Formal Salanor audit target Q4 2026.",
+      "Export bundle includes control-mapping-soc2.json and soc2-readiness-summary.json (readiness mapping, not a CPA attestation). Formal Salanor audit target Q4 2026.",
   },
   {
     id: "fedramp",

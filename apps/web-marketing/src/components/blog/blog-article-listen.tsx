@@ -34,6 +34,33 @@ function blockPlainText(el: Element): string {
   return (el.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
+const SPEECH_CHUNK_MAX = 1_400;
+
+function nextSpeechChunk(
+  text: string,
+  fromChar: number,
+): { text: string; start: number; end: number } | null {
+  let start = Math.max(0, fromChar);
+  while (start < text.length && /\s/.test(text[start] ?? "")) start += 1;
+  if (start >= text.length) return null;
+
+  const hardEnd = Math.min(text.length, start + SPEECH_CHUNK_MAX);
+  let end = hardEnd;
+  if (hardEnd < text.length) {
+    const slice = text.slice(start, hardEnd);
+    const sentenceEnd = Math.max(
+      slice.lastIndexOf(". "),
+      slice.lastIndexOf("! "),
+      slice.lastIndexOf("? "),
+    );
+    const wordEnd = slice.lastIndexOf(" ");
+    const localEnd = sentenceEnd >= 500 ? sentenceEnd + 1 : wordEnd;
+    if (localEnd > 0) end = start + localEnd;
+  }
+
+  return { text: text.slice(start, end), start, end };
+}
+
 function IconPlay() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -63,6 +90,7 @@ export function BlogArticleListen({ slug, title, contentHtml }: Props) {
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
   const [charIndex, setCharIndex] = useState(0);
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [speechError, setSpeechError] = useState<string | null>(null);
 
   const proseRef = useRef<HTMLDivElement>(null);
   const blockRangesRef = useRef<{ el: Element; start: number; end: number }[]>([]);
@@ -103,6 +131,7 @@ export function BlogArticleListen({ slug, title, contentHtml }: Props) {
   const playbackWallStart = useRef<number | null>(null);
   const tickRef = useRef<number | null>(null);
   const boundaryCharRef = useRef(0);
+  const speechRunRef = useRef(0);
 
   const persistPosition = useCallback(
     (index: number) => {
@@ -148,6 +177,7 @@ export function BlogArticleListen({ slug, title, contentHtml }: Props) {
   }, [slug]);
 
   const cancelSpeech = useCallback(() => {
+    speechRunRef.current += 1;
     window.speechSynthesis?.cancel();
     utteranceRef.current = null;
     playbackWallStart.current = null;
@@ -157,58 +187,88 @@ export function BlogArticleListen({ slug, title, contentHtml }: Props) {
     (fromChar: number, resumeEvent: boolean) => {
       if (!plainText) return;
       cancelSpeech();
-      const text = plainText.slice(Math.max(0, fromChar));
-      if (!text.trim()) return;
+      const runId = speechRunRef.current;
+      let firstChunk = true;
+      setSpeechError(null);
 
-      startCharRef.current = fromChar;
-      boundaryCharRef.current = fromChar;
-      playbackWallStart.current = Date.now();
+      const speakChunk = (chunkStart: number) => {
+        if (runId !== speechRunRef.current) return;
+        const chunk = nextSpeechChunk(plainText, chunkStart);
+        if (!chunk) return;
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-US";
-      utterance.rate = speed;
-      utterance.onstart = () => {
-        listenStartedAt.current = Date.now();
+        startCharRef.current = chunk.start;
+        boundaryCharRef.current = chunk.start;
         playbackWallStart.current = Date.now();
-        setState("playing");
-        if (!resumeEvent) {
-          void sendBlogEngagement({ slug, event: "listen_start" });
-        } else {
-          void sendBlogEngagement({ slug, event: "listen_resume" });
-        }
+
+        const utterance = new SpeechSynthesisUtterance(chunk.text);
+        utterance.lang = "en-US";
+        utterance.rate = speed;
+        const voices = window.speechSynthesis.getVoices();
+        utterance.voice =
+          voices.find((voice) => voice.lang.toLowerCase().startsWith("en")) ??
+          null;
+        utterance.onstart = () => {
+          if (runId !== speechRunRef.current) return;
+          listenStartedAt.current = Date.now();
+          playbackWallStart.current = Date.now();
+          setState("playing");
+          if (firstChunk) {
+            firstChunk = false;
+            void sendBlogEngagement({
+              slug,
+              event: resumeEvent ? "listen_resume" : "listen_start",
+            });
+          }
+        };
+        utterance.onend = () => {
+          if (runId !== speechRunRef.current) return;
+          flushListenSeconds();
+          if (chunk.end < totalChars) {
+            boundaryCharRef.current = chunk.end;
+            setCharIndex(chunk.end);
+            persistPosition(chunk.end);
+            speakChunk(chunk.end);
+            return;
+          }
+          setState("idle");
+          setCharIndex(totalChars);
+          setElapsedSec(estimatedTotalSec);
+          persistPosition(0);
+          playbackWallStart.current = null;
+          void sendBlogEngagement({
+            slug,
+            event: "listen_complete",
+            valueNum: Math.round(accumulatedSec.current),
+          });
+          accumulatedSec.current = 0;
+        };
+        utterance.onerror = (event) => {
+          if (
+            runId !== speechRunRef.current ||
+            event.error === "canceled" ||
+            event.error === "interrupted"
+          ) {
+            return;
+          }
+          flushListenSeconds();
+          setState("idle");
+          setSpeechError(
+            "Audio could not start. Check this tab's sound permission and try again.",
+          );
+        };
+        utterance.onboundary = (event) => {
+          if (event.charLength > 0 && totalChars > 0) {
+            const absolute = chunk.start + event.charIndex;
+            boundaryCharRef.current = absolute;
+            setCharIndex(absolute);
+            persistPosition(absolute);
+          }
+        };
+        utteranceRef.current = utterance;
+        window.speechSynthesis.speak(utterance);
       };
-      utterance.onpause = () => {
-        /* UI pause is handled in pause(); browsers often never fire this. */
-      };
-      utterance.onresume = () => {
-        listenStartedAt.current = Date.now();
-        playbackWallStart.current = Date.now();
-        setState("playing");
-      };
-      utterance.onend = () => {
-        flushListenSeconds();
-        setState("idle");
-        setCharIndex(totalChars);
-        setElapsedSec(estimatedTotalSec);
-        persistPosition(0);
-        playbackWallStart.current = null;
-        void sendBlogEngagement({
-          slug,
-          event: "listen_complete",
-          valueNum: Math.round(accumulatedSec.current),
-        });
-        accumulatedSec.current = 0;
-      };
-      utterance.onboundary = (e) => {
-        if (e.charLength > 0 && totalChars > 0) {
-          const absolute = startCharRef.current + e.charIndex;
-          boundaryCharRef.current = absolute;
-          setCharIndex(absolute);
-          persistPosition(absolute);
-        }
-      };
-      utteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+
+      speakChunk(Math.max(0, fromChar));
     },
     [
       plainText,
@@ -425,7 +485,12 @@ export function BlogArticleListen({ slug, title, contentHtml }: Props) {
         />
         {showResumeHint ? (
           <p className={styles.listenResumeHint}>
-            Saved position — press Play to continue where you left off.
+            Saved position. Press Play to continue where you left off.
+          </p>
+        ) : null}
+        {speechError ? (
+          <p className={styles.listenResumeHint} role="alert">
+            {speechError}
           </p>
         ) : null}
       </div>

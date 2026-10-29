@@ -92,6 +92,7 @@ export type AgentSummary = {
   display_name: string | null;
   did: string;
   active: boolean;
+  environment?: "production" | "sandbox" | string;
   created_at: string;
   /** True when a non-revoked Workflow Bridge signing key exists for this agent. */
   workflow_bridge_enabled?: boolean;

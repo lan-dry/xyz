@@ -68,9 +68,10 @@ async function main() {
   run("pnpm", ["db:seed:bootstrap"]);
   run("pnpm", ["db:local:pilot-fixture"]);
   console.log("\n=== RESET COMPLETE ===");
-  console.log("Sign in: BOOTSTRAP_ADMIN_EMAIL + password on :3003 and :3000 (salanor-platform).");
+  console.log("Sign in: BOOTSTRAP_ADMIN_EMAIL + password on :3003 (Ops) and :3000 (Console).");
+  console.log("Customer demo org: Northwind Payments (switch org in Console after login).");
   console.log("Next: pnpm dev   (in one terminal)");
-  console.log("      pnpm pilot:agent   (in another, after dev is up)");
+  console.log("      pnpm pilot:ensure-policy && pnpm pilot:agent   (after API is up)");
 }
 
 main().catch((e) => {

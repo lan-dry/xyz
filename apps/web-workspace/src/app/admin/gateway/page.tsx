@@ -99,7 +99,7 @@ export default function AdminGatewayPage() {
       <header className={ui.pageHeader}>
         <h1 className={ui.pageTitle}>API keys</h1>
         <p className={ui.pageSubtitle}>
-          For internal systems that call AI models through Stoa. The same data
+          For internal systems that call AI models through Workspace. The same data
           protection, limits and audit log apply.
         </p>
       </header>

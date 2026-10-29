@@ -90,6 +90,16 @@ export {
   type ConsoleAuditActor,
 } from "./console-audit.js";
 export {
+  canDecideApprovals,
+  canReadOrgConsole,
+  canWriteOrgConsole,
+  isOrgConsoleReadOnly,
+  normalizeOrgRole,
+  ORG_APPROVER_ROLES,
+  ORG_CONSOLE_READ_ROLES,
+  ORG_CONSOLE_WRITE_ROLES,
+} from "./org-console-access.js";
+export {
   acceptInvitation,
   acceptInvitationWithNewAccount,
   accountExistsForEmail,
@@ -155,6 +165,7 @@ export {
   assertCanUseComplianceSchedule,
   assertIngestWithinLimits,
   assertOrgActiveForIngest,
+  type IngestLimitResult,
   getMonthlyEventCount,
   getOrgPlanContext,
   getOrgPlanUsageSummary,

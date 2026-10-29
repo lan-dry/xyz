@@ -12,7 +12,10 @@
     "verify-plan-limit": "tsx verify-plan-limit-402.mts",
     "ensure-pilot-policy": "tsx ensure-pilot-policy.mts",
     "ensure-pilot-approval-policy": "tsx ensure-pilot-approval-policy.mts",
-    "test": "tsx --test pilot-explain.test.mts",
+    "ensure-beneficiary-match-policy": "tsx ensure-beneficiary-match-policy.mts",
+    "pilot-spine-smoke": "tsx pilot-spine-smoke.mts",
+    "demo-operator": "tsx demo-operator.mts",
+    "test": "tsx --test pilot-explain.test.mts verify-tamper-sample.test.mts",
     "dev-delete-accounts": "tsx dev-delete-accounts.mts"
   },
   "exports": {

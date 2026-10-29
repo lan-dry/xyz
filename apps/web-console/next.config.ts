@@ -25,6 +25,8 @@ function isUsableBackendUrl(url: string): boolean {
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@salanor/ui"],
+  // API routes only (never client). External avoids bundling Node SDK into webpack.
+  serverExternalPackages: ["@salanor/aegis"],
   async redirects() {
     return [
       {

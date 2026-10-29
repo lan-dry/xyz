@@ -1,9 +1,12 @@
-import Link from "next/link";
+"use client";
 
-import { EventPhaseBadge } from "@/components/console/event-phase-badge";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+
 import { StatusBadge, ui } from "@/components/console/console-ui";
 import { TruncatedId } from "@/components/console/truncated-id";
-import { eventPhaseHint } from "@/lib/event-phase";
+import { isBookkeepingAction } from "@/lib/outcome-vocab";
+import { stepTitlePlain } from "@/lib/case-story";
 import type { EventDetail, SpanTreeNode } from "@/lib/types";
 
 type SpanTimelineEvent = SpanTreeNode["events"][number] & {
@@ -13,21 +16,25 @@ type SpanTimelineEvent = SpanTreeNode["events"][number] & {
 import styles from "./span-tree-panel.module.css";
 
 function SpanEventRow({ event }: { event: SpanTimelineEvent }) {
+  const title = stepTitlePlain(
+    event.action_kind,
+    event.tool_name,
+    event.policy_decision,
+  );
   return (
     <li className={styles.eventRow}>
-      <EventPhaseBadge actionKind={event.action_kind} />
       <Link
         href={`/aegis/events/${encodeURIComponent(event.event_id)}`}
-        className={`${ui.tableLink}`}
+        className={ui.tableLink}
         style={{ fontWeight: 500, fontSize: "0.875rem" }}
       >
-        #{event.sequence_num} {event.action_kind}
+        {title}
       </Link>
       <StatusBadge status={event.policy_decision} />
-      {event.tool_name ? (
-        <span className={`mono ${styles.eventMeta}`}>{event.tool_name}</span>
-      ) : null}
-      <span className={styles.eventMeta} title={eventPhaseHint(event.action_kind)}>
+      <span className={styles.eventMeta} title={event.emitted_at}>
+        {new Date(event.emitted_at).toLocaleTimeString()}
+      </span>
+      <span className={styles.eventMeta} title="Technical id: Show details">
         <TruncatedId value={event.event_id} head={6} tail={4} />
       </span>
       {event.chain_valid === false ? <StatusBadge status="failed" /> : null}
@@ -35,7 +42,26 @@ function SpanEventRow({ event }: { event: SpanTimelineEvent }) {
   );
 }
 
+function spanPlainLabel(node: SpanTreeNode): string {
+  const kinds = node.events.map((e) => e.action_kind);
+  if (kinds.includes("policy_decision") && node.events.some((e) => e.tool_name?.includes("stripe"))) {
+    return "Payment tool";
+  }
+  if (kinds.includes("llm_invocation")) return "Agent decision";
+  if (node.events.some((e) => e.tool_name?.includes("trace.start"))) return "Ticket intake";
+  if (node.events.some((e) => e.tool_name?.includes("trace.complete"))) return "Session complete";
+  return node.label?.replace(/^aegis\./, "") || "Step";
+}
+
 function SpanNode({ node, depth }: { node: SpanTreeNode; depth: number }) {
+  const meaningful = node.events.filter(
+    (e) => !isBookkeepingAction(e.action_kind, e.tool_name),
+  );
+  const bookkeeping = node.events.filter((e) =>
+    isBookkeepingAction(e.action_kind, e.tool_name),
+  );
+  const showEvents = meaningful.length > 0 ? meaningful : node.events;
+
   return (
     <div
       style={{
@@ -50,36 +76,67 @@ function SpanNode({ node, depth }: { node: SpanTreeNode; depth: number }) {
             flexWrap: "wrap",
             gap: "0.5rem 1rem",
             alignItems: "baseline",
-            marginBottom: node.events.length ? "0.5rem" : 0,
+            marginBottom: showEvents.length ? "0.5rem" : 0,
           }}
         >
-          <strong>{node.label ?? "Span"}</strong>
-          <TruncatedId value={node.span_id} head={8} tail={6} />
+          <strong>{spanPlainLabel(node)}</strong>
           <StatusBadge status={node.status} />
           <span style={{ fontSize: "0.8125rem", color: "var(--console-fg-subtle)" }}>
-            {node.events.length} atomic event(s)
+            {showEvents.length} step(s)
             {node.child_spans.length
-              ? ` · ${node.child_spans.length} nested span(s)`
+              ? ` · ${node.child_spans.length} nested`
               : ""}
           </span>
         </div>
-        {node.events.length > 0 ? (
+        {showEvents.length > 0 ? (
           <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-            {node.events.map((e) => (
+            {showEvents.map((e) => (
               <SpanEventRow key={e.event_id} event={e} />
             ))}
           </ul>
         ) : (
           <p className={styles.eventMeta} style={{ margin: 0 }}>
-            No events linked to this span yet.
+            No steps linked here yet.
           </p>
         )}
+        {bookkeeping.length > 0 && meaningful.length > 0 ? (
+          <details style={{ marginTop: "0.65rem" }}>
+            <summary
+              style={{
+                cursor: "pointer",
+                fontSize: "0.75rem",
+                color: "var(--console-fg-subtle)",
+              }}
+            >
+              System steps ({bookkeeping.length})
+            </summary>
+            <ul style={{ margin: "0.5rem 0 0", padding: 0, listStyle: "none" }}>
+              {bookkeeping.map((e) => (
+                <SpanEventRow key={e.event_id} event={e} />
+              ))}
+            </ul>
+          </details>
+        ) : null}
       </div>
       {node.child_spans.map((child) => (
         <SpanNode key={child.span_id} node={child} depth={depth + 1} />
       ))}
     </div>
   );
+}
+
+function partitionOrphans(orphanEvents: Array<EventDetail | SpanTimelineEvent>) {
+  const bookkeeping: SpanTimelineEvent[] = [];
+  const followUp: SpanTimelineEvent[] = [];
+  for (const e of orphanEvents) {
+    const row = e as SpanTimelineEvent;
+    if (isBookkeepingAction(row.action_kind, row.tool_name)) {
+      bookkeeping.push(row);
+    } else {
+      followUp.push(row);
+    }
+  }
+  return { bookkeeping, followUp };
 }
 
 export function SpanTreePanel({
@@ -89,33 +146,59 @@ export function SpanTreePanel({
   tree: SpanTreeNode[];
   orphanEvents?: EventDetail[] | SpanTimelineEvent[];
 }) {
+  const [showSystem, setShowSystem] = useState(false);
+  const { bookkeeping, followUp } = useMemo(
+    () => partitionOrphans(orphanEvents),
+    [orphanEvents],
+  );
+
   if (tree.length === 0 && orphanEvents.length === 0) {
     return null;
   }
 
   return (
     <section style={{ marginBottom: "1.5rem" }}>
-      <h2 className={ui.panelTitle}>Trace timeline</h2>
+      <h2 className={ui.panelTitle}>Timeline of steps</h2>
       <p className={styles.intro}>
-        A <strong>trace</strong> is one agent session. <strong>Spans</strong> group steps (tool
-        calls and policy decisions). Each row below is an atomic <strong>event</strong>: input,
-        output, policy, or governance. Every event is signed and chained (Ed25519, APS-1).
+        Meaningful steps in order. Bookkeeping (case opened / closed) is folded under System
+        steps. Every step is sealed: open an id only when you need the raw record.
       </p>
       {tree.map((node) => (
         <SpanNode key={node.span_id} node={node} depth={0} />
       ))}
-      {orphanEvents.length > 0 ? (
+      {followUp.length > 0 ? (
         <div className={styles.orphanSection}>
           <h3 className={ui.panelTitle} style={{ fontSize: "0.9375rem" }}>
-            Events without a span
+            Approval and outcome
           </h3>
           <div className={`${ui.card} ${ui.cardPad}`}>
             <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-              {orphanEvents.map((e) => (
+              {followUp.map((e) => (
                 <SpanEventRow key={e.event_id} event={e} />
               ))}
             </ul>
           </div>
+        </div>
+      ) : null}
+      {bookkeeping.length > 0 ? (
+        <div className={styles.orphanSection}>
+          <button
+            type="button"
+            className={`${ui.btn} ${ui.btnGhost}`}
+            style={{ fontSize: "0.8125rem", padding: "0.25rem 0.5rem" }}
+            onClick={() => setShowSystem((v) => !v)}
+          >
+            {showSystem ? "Hide" : "Show"} system steps ({bookkeeping.length})
+          </button>
+          {showSystem ? (
+            <div className={`${ui.card} ${ui.cardPad}`} style={{ marginTop: "0.5rem" }}>
+              <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                {bookkeeping.map((e) => (
+                  <SpanEventRow key={e.event_id} event={e} />
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

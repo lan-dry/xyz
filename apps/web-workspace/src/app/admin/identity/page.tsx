@@ -9,9 +9,9 @@ import ui from "@/components/admin-ui.module.css";
 import { idApi } from "@/lib/id-api";
 import type { MeResponse } from "@/lib/id-types";
 import { adminCanWrite } from "@/lib/admin-session";
+import { useAdminSession } from "@/hooks/use-admin-session";
 import {
   fetchAdminSettings,
-  fetchSession,
   saveAdminSettings,
 } from "@/lib/stoa-client";
 
@@ -35,6 +35,12 @@ export default function AdminIdentityPage() {
   const [emailFromName, setEmailFromName] = useState("");
   const [emailFromAddress, setEmailFromAddress] = useState("");
   const [emailReplyTo, setEmailReplyTo] = useState("");
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [smtpSecure, setSmtpSecure] = useState(false);
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpPasswordSet, setSmtpPasswordSet] = useState(false);
   const [emailSaveMsg, setEmailSaveMsg] = useState<string | null>(null);
 
   const meQuery = useQuery({
@@ -84,13 +90,11 @@ export default function AdminIdentityPage() {
     },
   });
 
-  const stoaSession = useQuery({
-    queryKey: ["stoa", "me"],
-    queryFn: fetchSession,
-  });
+  const stoaSession = useAdminSession();
   const settingsQuery = useQuery({
     queryKey: ["stoa", "admin", "settings"],
     queryFn: fetchAdminSettings,
+    staleTime: 30_000,
   });
 
   useEffect(() => {
@@ -101,19 +105,35 @@ export default function AdminIdentityPage() {
     setEmailFromName(email.fromName ?? "");
     setEmailFromAddress(email.fromAddress ?? "");
     setEmailReplyTo(email.replyTo ?? "");
+    setSmtpHost(email.smtpHost ?? "");
+    setSmtpPort(String(email.smtpPort ?? 587));
+    setSmtpSecure(email.smtpSecure === true);
+    setSmtpUser(email.smtpUser ?? "");
+    setSmtpPassword("");
+    setSmtpPasswordSet(email.smtpPasswordSet === true);
   }, [settingsQuery.data?.settings.email]);
 
   const saveEmail = useMutation({
-    mutationFn: () =>
-      saveAdminSettings({
-        email: {
-          fromName: emailFromName.trim() || null,
-          fromAddress: emailFromAddress.trim() || null,
-          replyTo: emailReplyTo.trim() || null,
-        },
-      }),
+    mutationFn: () => {
+      const port = Number(smtpPort);
+      const email: Parameters<typeof saveAdminSettings>[0]["email"] = {
+        fromName: emailFromName.trim() || null,
+        fromAddress: emailFromAddress.trim() || null,
+        replyTo: emailReplyTo.trim() || null,
+        delivery: "smtp",
+        smtpHost: smtpHost.trim() || null,
+        smtpPort: Number.isFinite(port) ? port : 587,
+        smtpSecure,
+        smtpUser: smtpUser.trim() || null,
+      };
+      if (smtpPassword.trim()) {
+        email.smtpPassword = smtpPassword.trim();
+      }
+      return saveAdminSettings({ email });
+    },
     onSuccess: () => {
       setEmailSaveMsg("Email settings saved.");
+      setSmtpPassword("");
       void queryClient.invalidateQueries({
         queryKey: ["stoa", "admin", "settings"],
       });
@@ -199,13 +219,17 @@ export default function AdminIdentityPage() {
               <EmptyStatePanel
                 icon={KeyRound}
                 title="Not enabled"
-                description="Contact Salanor to enable single sign-on."
+                description="Staff sign in with your bank's Entra ID or Okta instead of a Workspace password. Contact Salanor to turn this on for your tenant."
               />
             )}
           </div>
 
           <div className={ui.card} style={{ gridColumn: "1 / -1" }}>
             <p className={ui.cardLabel}>User sync</p>
+            <p className={ui.metaMuted} style={{ marginBottom: "0.75rem" }}>
+              Let Entra ID or Okta create and deactivate Workspace users automatically
+              (SCIM). Separate from SSO, which is how people sign in.
+            </p>
             <p className={ui.metaMuted}>
               Sync URL:{" "}
               <span className={ui.mono}>{securityQuery.data.scim.baseUrl}/v2</span>
@@ -257,11 +281,12 @@ export default function AdminIdentityPage() {
                   : "Generate token"}
             </button>
             <p className={ui.metaMuted} style={{ marginTop: "1rem" }}>
-              Use this URL and token in Entra ID or Okta.
+              Paste this URL and token into your identity provider&apos;s SCIM
+              provisioning settings.
             </p>
           </div>
 
-          <div className={ui.card}>
+          <div className={ui.card} style={{ gridColumn: "1 / -1" }}>
             <p className={ui.cardLabel}>
               <Mail
                 size={14}
@@ -269,9 +294,12 @@ export default function AdminIdentityPage() {
               />
               Email sender
             </p>
-            <p className={ui.metaMuted}>
-              Sender details for invitation and password emails.
+            <p className={ui.metaMuted} style={{ marginBottom: "0.85rem" }}>
+              Invitation and password emails send through your mail server
+              (Microsoft 365, Google Workspace, or any host with SMTP). From
+              address stays on your domain.
             </p>
+
             <label className={ui.field}>
               From name
               <input
@@ -301,6 +329,109 @@ export default function AdminIdentityPage() {
                 placeholder="it-helpdesk@yourcompany.com"
               />
             </label>
+
+            <label className={ui.field}>
+              SMTP host
+              <input
+                value={smtpHost}
+                disabled={!canWrite}
+                onChange={(e) => setSmtpHost(e.target.value)}
+                placeholder="smtp.office365.com"
+                autoComplete="off"
+              />
+            </label>
+            <div className={ui.policyTwoCol} style={{ marginBottom: "0.75rem" }}>
+              <label className={ui.field} style={{ marginBottom: 0 }}>
+                Port
+                <input
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={smtpPort}
+                  disabled={!canWrite}
+                  onChange={(e) => setSmtpPort(e.target.value)}
+                />
+                <span className={ui.fieldHint}>
+                  Usually 587 (STARTTLS) or 465 (SSL).
+                </span>
+              </label>
+              <ul className={ui.checkList} style={{ alignSelf: "end" }}>
+                <li>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={smtpSecure}
+                      disabled={!canWrite}
+                      onChange={(e) => setSmtpSecure(e.target.checked)}
+                    />
+                    Use SSL (port 465)
+                  </label>
+                </li>
+              </ul>
+            </div>
+            <label className={ui.field}>
+              SMTP username
+              <input
+                value={smtpUser}
+                disabled={!canWrite}
+                onChange={(e) => setSmtpUser(e.target.value)}
+                placeholder="notifications@yourcompany.com"
+                autoComplete="off"
+              />
+            </label>
+            <label className={ui.field}>
+              SMTP password
+              <input
+                type="password"
+                value={smtpPassword}
+                disabled={!canWrite}
+                onChange={(e) => setSmtpPassword(e.target.value)}
+                placeholder={
+                  smtpPasswordSet
+                    ? "Saved. Type a new password to replace it."
+                    : "App password or mailbox password"
+                }
+                autoComplete="new-password"
+              />
+            </label>
+            {canWrite && smtpPasswordSet ? (
+              <button
+                type="button"
+                className={`${ui.btn} ${ui.btnSecondary}`}
+                style={{ marginBottom: "0.75rem" }}
+                disabled={saveEmail.isPending}
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      "Remove the saved SMTP password? Outgoing mail will fail until you set a new one.",
+                    )
+                  ) {
+                    return;
+                  }
+                  void saveAdminSettings({
+                    email: { smtpPassword: null },
+                  })
+                    .then(() => {
+                      setSmtpPasswordSet(false);
+                      setEmailSaveMsg("SMTP password removed.");
+                      void queryClient.invalidateQueries({
+                        queryKey: ["stoa", "admin", "settings"],
+                      });
+                    })
+                    .catch((err: unknown) => {
+                      setEmailSaveMsg(null);
+                      window.alert(
+                        err instanceof Error
+                          ? err.message
+                          : "Could not remove SMTP password.",
+                      );
+                    });
+                }}
+              >
+                Remove SMTP password
+              </button>
+            ) : null}
+
             {saveEmail.isError ? (
               <div className={ui.alertError}>
                 {(saveEmail.error as Error).message}

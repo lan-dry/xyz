@@ -22,6 +22,9 @@ export const SAMPLE_TICKET = {
   message:
     "Hi — my AI assistant double-charged my card $249 for the Pro plan. Please refund one charge immediately. Order ORD-2026-4410.",
   refund_amount_usd: 249,
+  customer_segment: "standard",
+  account_type: "consumer",
+  beneficiary: "customer-jordan-4410",
 };
 
 export type ScenarioResult = {
@@ -139,6 +142,9 @@ export async function runSupportRefundScenario(
       amountUsd: SAMPLE_TICKET.refund_amount_usd,
       customerEmail: SAMPLE_TICKET.customer_email,
       orderId: SAMPLE_TICKET.order_id,
+      customerSegment: SAMPLE_TICKET.customer_segment,
+      accountType: SAMPLE_TICKET.account_type,
+      beneficiary: SAMPLE_TICKET.beneficiary,
       upstreamUrl: url,
       triggerSource: "llm_refund_workflow",
       triggerReason: `After classifying ticket ${SAMPLE_TICKET.ticket_id} as refund-related`,

@@ -4,9 +4,17 @@ import { migrateUp } from "../src/db/migrate.js";
 import { applyIntegrationFixture } from "./integration-fixture.js";
 
 const databaseUrl = process.env.DATABASE_URL;
-const describeIfDb = databaseUrl ? describe : describe.skip;
+/**
+ * DROP SCHEMA is destructive. Never run against a developer’s lived-in local DB
+ * unless explicitly opted in (CI / throwaway Postgres).
+ */
+const allowDestructive =
+  process.env.AEGIS_ALLOW_DESTRUCTIVE_MIGRATE_TEST === "1" ||
+  process.env.CI === "true";
+const describeIfDb =
+  databaseUrl && allowDestructive ? describe : describe.skip;
 
-describeIfDb("migrations", () => {
+describeIfDb("migrations (destructive; AEGIS_ALLOW_DESTRUCTIVE_MIGRATE_TEST=1)", () => {
   afterAll(async () => {
     await migrateUp();
     await applyIntegrationFixture(getPool());

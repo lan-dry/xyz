@@ -213,7 +213,7 @@ function InviteAcceptForm() {
         <>
           <h2 style={{ marginTop: 0 }}>Join organization</h2>
           <p className={styles.sub}>
-            Accept to access Stoa for <strong>{inv.organization_name}</strong>.
+            Accept to access Workspace for <strong>{inv.organization_name}</strong>.
           </p>
           {error ? <p className={styles.error}>{error}</p> : null}
           <button
@@ -250,7 +250,7 @@ function InviteShell({
   return (
     <div className={styles.shell}>
       <div className={styles.panel} style={{ width: "min(480px, 100%)" }}>
-        <h1>Stoa</h1>
+        <h1>Workspace</h1>
         <p className={styles.sub}>
           {inv
             ? `Invitation to ${inv.organization_name}`

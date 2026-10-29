@@ -437,10 +437,9 @@ CONSOLE_PUBLIC_URL=https://app.salanor.com
 | `DEV_SIGNING_PRIVATE_KEY_B64` | Yes* | Platform signing until BYOK per org |
 | `AEGIS_BRIDGE_MASTER_KEY` | Yes | Workflow Bridge (n8n) |
 | `COMPLIANCE_EXPORT_DIR` | Yes | `/data/compliance-exports` |
-| `RESEND_API_KEY` | Yes | Approval emails |
-| `INVITE_EMAIL_FROM` | Yes | e.g. `Salanor <invites@salanor.com>` |
-| `APPROVAL_NOTIFY_EMAIL` | Recommended | Comma-separated |
-| `APPROVAL_SLACK_WEBHOOK_URL` | Optional | |
+| `RESEND_API_KEY` | Yes | Approval emails to active org admins |
+| `INVITE_EMAIL_FROM` | Yes | e.g. `Salanor <invites@salanor.com>` (verified in Resend) |
+| `APPROVAL_SLACK_WEBHOOK_URL` | Optional | Deploy-wide fallback; prefer per-org Governance webhook |
 | `TWILIO_ACCOUNT_SID` | Optional | SMS approvals |
 | `TWILIO_AUTH_TOKEN` | Optional | |
 | `TWILIO_FROM_NUMBER` | Optional | |

@@ -7,8 +7,8 @@ import { QueryProvider } from "@/components/query-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Stoa",
-  description: "Stoa workspace by Salanor",
+  title: "Salanor Workspace",
+  description: "Governed staff chat by Salanor",
 };
 
 export default function RootLayout({

@@ -4,6 +4,7 @@ import {
   type GovernanceSettings,
 } from "../repo/governance-settings.js";
 import { buildRequestPreview } from "./request-preview.js";
+import { signApprovalActionToken } from "./action-token.js";
 
 export type ApprovalNotifyContext = {
   organizationId: string;
@@ -52,29 +53,27 @@ async function enrichFromEvent(
   };
 }
 
+/**
+ * Email recipients for pending approvals: active org admins only.
+ * Same people who can Approve/Reject in Console (org write roles).
+ * Never use a global env override: that breaks multi-tenant orgs.
+ */
 async function listApproverEmails(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
 ): Promise<string[]> {
-  const override = process.env.APPROVAL_NOTIFY_EMAIL?.trim();
-  if (override) {
-    return override
-      .split(",")
-      .map((e) => e.trim())
-      .filter(Boolean);
-  }
-
   const result = await client.query<{ email: string }>(
     `SELECT DISTINCT a.email
      FROM membership m
      JOIN account a ON a.account_id = m.account_id
      WHERE m.organization_id = $1
-       AND m.role = 'admin'
+       AND lower(m.role) IN ('admin', 'owner')
        AND m.status = 'active'
-       AND a.email IS NOT NULL`,
+       AND a.email IS NOT NULL
+       AND length(trim(a.email)) > 0`,
     [organizationId],
   );
-  return result.rows.map((r) => r.email).filter(Boolean);
+  return result.rows.map((r) => r.email.trim()).filter(Boolean);
 }
 
 function approvalConsoleUrl(approvalId: string): string {
@@ -103,9 +102,124 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function slackActionUrl(
+  organizationId: string,
+  approvalId: string,
+  decision: "approved" | "rejected",
+  ttlHours: number,
+): string {
+  const origin = (process.env.CONSOLE_ORIGIN ?? "http://localhost:3000").replace(
+    /\/$/,
+    "",
+  );
+  const exp = Date.now() + Math.max(ttlHours, 1) * 60 * 60 * 1000;
+  const token = signApprovalActionToken({
+    approvalId,
+    organizationId,
+    decision,
+    exp,
+  });
+  return `${origin}/aegis/approvals/act?token=${encodeURIComponent(token)}`;
+}
+
+async function sendTeamsApproval(
+  webhookUrl: string,
+  input: {
+    organizationId: string;
+    approvalId: string;
+    orgName: string;
+    toolName: string;
+    approveUrl: string;
+    ttlHours: number;
+    requestSummary?: string;
+    amountUsd?: number;
+    recipient?: string;
+  },
+): Promise<void> {
+  const approveBtn = slackActionUrl(
+    input.organizationId,
+    input.approvalId,
+    "approved",
+    input.ttlHours,
+  );
+  const declineBtn = slackActionUrl(
+    input.organizationId,
+    input.approvalId,
+    "rejected",
+    input.ttlHours,
+  );
+  const facts: Array<{ name: string; value: string }> = [
+    { name: "Tool", value: input.toolName },
+  ];
+  if (input.amountUsd != null) {
+    facts.push({ name: "Amount", value: `$${input.amountUsd.toLocaleString()} USD` });
+  }
+  if (input.recipient) {
+    facts.push({ name: "Recipient", value: input.recipient });
+  }
+  if (input.requestSummary) {
+    facts.push({ name: "Summary", value: input.requestSummary });
+  }
+  facts.push({ name: "Expires", value: ttlLabel(input.ttlHours) });
+
+  const response = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: "message",
+      attachments: [
+        {
+          contentType: "application/vnd.microsoft.card.adaptive",
+          contentUrl: null,
+          content: {
+            $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
+            type: "AdaptiveCard",
+            version: "1.4",
+            body: [
+              {
+                type: "TextBlock",
+                text: `Ask a person · ${input.orgName}`,
+                weight: "Bolder",
+                size: "Medium",
+              },
+              {
+                type: "FactSet",
+                facts,
+              },
+            ],
+            actions: [
+              {
+                type: "Action.OpenUrl",
+                title: "Approve",
+                url: approveBtn,
+              },
+              {
+                type: "Action.OpenUrl",
+                title: "Decline",
+                url: declineBtn,
+              },
+              {
+                type: "Action.OpenUrl",
+                title: "Open in Console",
+                url: input.approveUrl,
+              },
+            ],
+          },
+        },
+      ],
+    }),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Teams webhook failed (${response.status}): ${body}`);
+  }
+}
+
 async function sendSlackApproval(
   webhookUrl: string,
   input: {
+    organizationId: string;
+    approvalId: string;
     orgName: string;
     toolName: string;
     traceId: string;
@@ -117,11 +231,11 @@ async function sendSlackApproval(
   },
 ): Promise<void> {
   const lines = [
-    `*Approval required* (${input.orgName})`,
-    `Tool: \`${input.toolName}\``,
+    `*Ask a person* · ${input.orgName}`,
+    `Action: Customer refund / \`${input.toolName}\``,
   ];
   if (input.amountUsd != null) {
-    lines.push(`Amount: $${input.amountUsd.toLocaleString()} USD`);
+    lines.push(`Amount: *$${input.amountUsd.toLocaleString()} USD*`);
   }
   if (input.recipient) {
     lines.push(`Recipient: ${input.recipient}`);
@@ -130,15 +244,52 @@ async function sendSlackApproval(
     lines.push(input.requestSummary);
   }
   lines.push(
-    `Trace: \`${input.traceId}\``,
     `Expires in ${ttlLabel(input.ttlHours)}`,
-    `<${input.approveUrl}|Review in Salanor Console>`,
+    `<${input.approveUrl}|Open in Console>`,
+  );
+
+  const approveBtn = slackActionUrl(
+    input.organizationId,
+    input.approvalId,
+    "approved",
+    input.ttlHours,
+  );
+  const declineBtn = slackActionUrl(
+    input.organizationId,
+    input.approvalId,
+    "rejected",
+    input.ttlHours,
   );
 
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: lines.join("\n") }),
+    body: JSON.stringify({
+      text: lines.join("\n"),
+      blocks: [
+        {
+          type: "section",
+          text: { type: "mrkdwn", text: lines.join("\n") },
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: { type: "plain_text", text: "Approve", emoji: true },
+              style: "primary",
+              url: approveBtn,
+            },
+            {
+              type: "button",
+              text: { type: "plain_text", text: "Decline", emoji: true },
+              style: "danger",
+              url: declineBtn,
+            },
+          ],
+        },
+      ],
+    }),
   });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -146,7 +297,45 @@ async function sendSlackApproval(
   }
 }
 
+/** Public HTTPS origin for email images (clients cannot load localhost). */
+function emailAssetOrigin(): string {
+  const raw =
+    process.env.EMAIL_ASSET_ORIGIN?.trim() ||
+    process.env.MARKETING_PUBLIC_ORIGIN?.trim() ||
+    "https://www.salanor.com";
+  return raw.replace(/\/$/, "");
+}
+
+/** Inline CID: privacy-blocking clients (Zoho, etc.) still show attached marks. */
+const EMAIL_LOGO_CID = "salanor-logo";
+
+function emailLogoAttachment(): {
+  path: string;
+  filename: string;
+  content_id: string;
+} {
+  return {
+    path: `${emailAssetOrigin()}/salanor-mark-white.png`,
+    filename: "salanor-mark-white.png",
+    content_id: EMAIL_LOGO_CID,
+  };
+}
+
+function emailDetailRow(
+  label: string,
+  valueHtml: string,
+  opts?: { last?: boolean },
+): string {
+  const border = opts?.last ? "" : "border-bottom:1px solid #e8eceb;";
+  return `<tr>
+  <td style="padding:12px 16px;${border}width:128px;vertical-align:top;font-size:13px;line-height:1.4;color:#5c6b68;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">${escapeHtml(label)}</td>
+  <td style="padding:12px 16px;${border}vertical-align:top;font-size:14px;line-height:1.45;color:#0a0c0b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">${valueHtml}</td>
+</tr>`;
+}
+
 function approvalEmailHtml(input: {
+  organizationId: string;
+  approvalId: string;
   orgName: string;
   toolName: string;
   approveUrl: string;
@@ -155,63 +344,149 @@ function approvalEmailHtml(input: {
   amountUsd?: number;
   recipient?: string;
 }): string {
+  const logoUrl = `cid:${EMAIL_LOGO_CID}`;
+  const approveAct = slackActionUrl(
+    input.organizationId,
+    input.approvalId,
+    "approved",
+    input.ttlHours,
+  );
+  const declineAct = slackActionUrl(
+    input.organizationId,
+    input.approvalId,
+    "rejected",
+    input.ttlHours,
+  );
+
   const rows: string[] = [];
   rows.push(
-    `<tr><td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#64748b;width:120px;">Tool</td><td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;"><code style="font-size:14px;">${escapeHtml(input.toolName)}</code></td></tr>`,
+    emailDetailRow(
+      "Action",
+      `<span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;color:#0a0c0b;">${escapeHtml(input.toolName)}</span>`,
+    ),
   );
   if (input.amountUsd != null) {
     rows.push(
-      `<tr><td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#64748b;">Amount</td><td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;font-weight:600;">$${escapeHtml(input.amountUsd.toLocaleString())} USD</td></tr>`,
+      emailDetailRow(
+        "Amount",
+        `<strong style="font-size:15px;font-weight:600;">$${escapeHtml(input.amountUsd.toLocaleString())} USD</strong>`,
+      ),
     );
   }
   if (input.recipient) {
-    rows.push(
-      `<tr><td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#64748b;">Recipient</td><td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;">${escapeHtml(input.recipient)}</td></tr>`,
-    );
+    rows.push(emailDetailRow("Recipient", escapeHtml(input.recipient)));
   }
   if (input.requestSummary) {
-    rows.push(
-      `<tr><td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;color:#64748b;">Summary</td><td style="padding:10px 14px;border-bottom:1px solid #e2e8f0;">${escapeHtml(input.requestSummary)}</td></tr>`,
-    );
+    rows.push(emailDetailRow("Summary", escapeHtml(input.requestSummary)));
   }
   rows.push(
-    `<tr><td style="padding:10px 14px;color:#64748b;">Expires</td><td style="padding:10px 14px;">${escapeHtml(ttlLabel(input.ttlHours))}</td></tr>`,
+    emailDetailRow("Expires in", escapeHtml(ttlLabel(input.ttlHours)), {
+      last: true,
+    }),
   );
+
+  const amountBit =
+    input.amountUsd != null
+      ? `$${input.amountUsd.toLocaleString()} · `
+      : "";
+  const preheader = `${amountBit}${input.toolName} in ${input.orgName} is waiting for your decision.`;
 
   return `<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <div style="max-width:560px;margin:32px auto;padding:0 16px;">
-    <div style="background:#fff;border-radius:8px;border:1px solid #e2e8f0;overflow:hidden;">
-      <div style="background:#0f766e;padding:20px 24px;">
-        <p style="margin:0;font-size:13px;color:#99f6e4;text-transform:uppercase;letter-spacing:0.05em;">Salanor Aegis</p>
-        <h1 style="margin:8px 0 0;font-size:22px;color:#fff;font-weight:600;">Approval required</h1>
-      </div>
-      <div style="padding:24px;">
-        <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#334155;">
-          A governed action in <strong>${escapeHtml(input.orgName)}</strong> is blocked until an administrator approves or rejects it.
-        </p>
-        <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:6px;margin:0 0 24px;font-size:14px;">
-          ${rows.join("")}
-        </table>
-        <a href="${escapeHtml(input.approveUrl)}" style="display:inline-block;background:#0f766e;color:#ffffff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Review in Console</a>
-        <p style="margin:24px 0 0;font-size:13px;color:#64748b;line-height:1.5;">
-          The workflow stays paused until you decide. If no action is taken, the request expires automatically.
-        </p>
-      </div>
-    </div>
-    <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;text-align:center;">
-      Salanor Aegis · Agent governance console
-    </p>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>Approval required</title>
+</head>
+<body style="margin:0;padding:0;background:#eef2f1;-webkit-font-smoothing:antialiased;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    ${escapeHtml(preheader)}
   </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef2f1;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background:#ffffff;border:1px solid #d9e0de;border-radius:4px;overflow:hidden;">
+          <tr>
+            <td style="background:#0d3535;padding:22px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="vertical-align:middle;padding-right:12px;">
+                    <img src="${escapeHtml(logoUrl)}" width="28" height="28" alt="" style="display:block;border:0;width:28px;height:28px;" />
+                  </td>
+                  <td style="vertical-align:middle;">
+                    <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;color:#43c2a9;">SALANOR</p>
+                    <p style="margin:2px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:rgba(255,255,255,0.72);">Aegis</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="height:3px;background:#43c2a9;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td style="padding:28px 28px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <h1 style="margin:0 0 12px;font-size:22px;line-height:1.25;font-weight:600;color:#0a0c0b;">Action needs your approval</h1>
+              <p style="margin:0 0 22px;font-size:15px;line-height:1.55;color:#3d4a47;">
+                An agent in <strong style="color:#0a0c0b;">${escapeHtml(input.orgName)}</strong> requested a governed action. It stays paused until you approve or decline.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f8f7;border:1px solid #e0e6e4;border-radius:4px;margin:0 0 24px;">
+                ${rows.join("")}
+              </table>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px;">
+                <tr>
+                  <td style="padding-right:10px;padding-bottom:10px;">
+                    <a href="${escapeHtml(approveAct)}" style="display:inline-block;background:#0d3535;color:#ffffff;padding:12px 22px;border-radius:4px;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;line-height:1;">Approve</a>
+                  </td>
+                  <td style="padding-right:10px;padding-bottom:10px;">
+                    <a href="${escapeHtml(declineAct)}" style="display:inline-block;background:#ffffff;color:#0a0c0b;padding:11px 20px;border-radius:4px;border:1px solid #c5cecb;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;line-height:1;">Decline</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:4px 0 0;font-size:13px;line-height:1.5;color:#5c6b68;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                Prefer the full case? <a href="${escapeHtml(input.approveUrl)}" style="color:#0d3535;font-weight:600;text-decoration:underline;">Open in Console</a>
+              </p>
+              <p style="margin:20px 0 0;font-size:12px;line-height:1.5;color:#7a8a86;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                If nobody decides, this request expires automatically after ${escapeHtml(ttlLabel(input.ttlHours))}.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 28px 24px;border-top:1px solid #e8eceb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <p style="margin:0;font-size:12px;line-height:1.5;color:#7a8a86;">
+                You’re receiving this because you’re an administrator of ${escapeHtml(input.orgName)}.
+              </p>
+              <p style="margin:8px 0 0;font-size:12px;line-height:1.5;color:#9aa8a4;">
+                Salanor Aegis · Agent governance
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
+}
+
+function approvalEmailSubject(input: {
+  orgName: string;
+  toolName: string;
+  amountUsd?: number;
+}): string {
+  if (input.amountUsd != null) {
+    return `[${input.orgName}] Approve $${input.amountUsd.toLocaleString()} · ${input.toolName}`;
+  }
+  return `[${input.orgName}] Approval needed · ${input.toolName}`;
 }
 
 async function sendApprovalEmail(
   to: string,
   input: {
+    organizationId: string;
+    approvalId: string;
     orgName: string;
     toolName: string;
     approveUrl: string;
@@ -223,8 +498,8 @@ async function sendApprovalEmail(
 ): Promise<void> {
   const from =
     process.env.INVITE_EMAIL_FROM ?? "Salanor <invites@notifications.salanor.com>";
-  const subject = `Approval required: ${input.toolName}`;
-  const detailLines: string[] = [`Tool: ${input.toolName}`];
+  const subject = approvalEmailSubject(input);
+  const detailLines: string[] = [`Action: ${input.toolName}`];
   if (input.amountUsd != null) {
     detailLines.push(`Amount: $${input.amountUsd.toLocaleString()} USD`);
   }
@@ -235,11 +510,13 @@ async function sendApprovalEmail(
     detailLines.push(`Summary: ${input.requestSummary}`);
   }
   const bodyText = [
-    `Approval required in ${input.orgName}`,
+    `Action needs your approval in ${input.orgName}`,
     "",
     ...detailLines,
     "",
-    `Review and decide: ${input.approveUrl}`,
+    `Approve: ${slackActionUrl(input.organizationId, input.approvalId, "approved", input.ttlHours)}`,
+    `Decline: ${slackActionUrl(input.organizationId, input.approvalId, "rejected", input.ttlHours)}`,
+    `Console: ${input.approveUrl}`,
     "",
     `Expires in ${ttlLabel(input.ttlHours)} if not decided.`,
   ].join("\n");
@@ -247,10 +524,13 @@ async function sendApprovalEmail(
   console.log("\n[aegis-api] Approval notification email");
   console.log(`  To:     ${to}`);
   console.log(`  Tool:   ${input.toolName}`);
-  console.log(`  Review: ${input.approveUrl}\n`);
+  console.log(`  Review: ${input.approveUrl}`);
 
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
+    console.log(
+      "  Delivery: skipped (RESEND_API_KEY not set: console log only)\n",
+    );
     return;
   }
 
@@ -266,13 +546,16 @@ async function sendApprovalEmail(
       subject,
       text: bodyText,
       html: approvalEmailHtml(input),
+      attachments: [emailLogoAttachment()],
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text().catch(() => "");
+    console.log(`  Delivery: Resend failed (${response.status})\n`);
     throw new Error(`Email delivery failed (${response.status}): ${errText}`);
   }
+  console.log("  Delivery: sent via Resend\n");
 }
 
 async function sendPagerDutyApproval(
@@ -374,6 +657,8 @@ async function dispatchNotifications(
     "";
 
   const payload = {
+    organizationId: enriched.organizationId,
+    approvalId: enriched.approvalId,
     orgName: org.name,
     toolName: enriched.toolName,
     traceId: enriched.traceId,
@@ -386,9 +671,26 @@ async function dispatchNotifications(
 
   if (slackUrl) {
     try {
-      await sendSlackApproval(slackUrl, payload);
+      await sendSlackApproval(slackUrl, {
+        ...payload,
+        organizationId: enriched.organizationId,
+        approvalId: enriched.approvalId,
+      });
     } catch (err) {
       console.error("[aegis-api] approval Slack notify failed:", err);
+    }
+  }
+
+  const teamsUrl = notify.teams_webhook_url?.trim() || "";
+  if (teamsUrl) {
+    try {
+      await sendTeamsApproval(teamsUrl, {
+        ...payload,
+        organizationId: enriched.organizationId,
+        approvalId: enriched.approvalId,
+      });
+    } catch (err) {
+      console.error("[aegis-api] approval Teams notify failed:", err);
     }
   }
 

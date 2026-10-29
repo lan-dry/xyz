@@ -1,11 +1,12 @@
 /**
- * Ensure your Console org has active deny rule for stripe.paymentIntents.create.
- * Org: CLI arg or AEGIS_ORGANIZATION_ID from .env (Console → Settings → Organization).
+ * Ensure your pilot org denies retail consumer refunds above USD 200.
+ * Org: CLI arg, valid AEGIS_ORGANIZATION_ID, or Northwind from DATABASE_URL.
  */
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { normalizePostgresDatabaseUrl } from "@salanor/db-url";
 
+import { getDemoTargets } from "./demo-targets.mts";
 import { loadEnvFile } from "./load-env.mts";
 import { resolveOrganizationSlug } from "./resolve-org-id.mts";
 
@@ -17,65 +18,59 @@ if (!dbUrl) {
   process.exit(1);
 }
 
-const orgId = process.argv[2]?.trim() || process.env.AEGIS_ORGANIZATION_ID?.trim();
-if (!orgId) {
-  console.error(
-    "Set AEGIS_ORGANIZATION_ID in .env (Console → Settings → Organization) or pass org UUID as first argument.",
-  );
-  process.exit(1);
-}
-
 const pool = new pg.Pool({
   connectionString: normalizePostgresDatabaseUrl(dbUrl),
 });
-try {
-  const slug = await resolveOrganizationSlug(orgId);
-  const orgCheck = await pool.query(`SELECT 1 FROM organization WHERE organization_id = $1`, [
-    orgId,
-  ]);
-  if (!orgCheck.rows[0]) {
-    console.error(`Organization not found: ${orgId}`);
-    process.exit(1);
+
+async function resolvePilotOrgId(): Promise<string> {
+  const fromArg = process.argv[2]?.trim();
+  const fromEnv = process.env.AEGIS_ORGANIZATION_ID?.trim();
+  for (const candidate of [fromArg, fromEnv]) {
+    if (!candidate) continue;
+    const orgCheck = await pool.query(
+      `SELECT 1 FROM organization WHERE organization_id = $1`,
+      [candidate],
+    );
+    if (orgCheck.rows[0]) return candidate;
+    console.warn(`Ignoring unknown organization_id ${candidate} (not in database)`);
   }
+  const targets = await getDemoTargets();
+  return targets.organizationId;
+}
+
+try {
+  const orgId = await resolvePilotOrgId();
+  const slug = await resolveOrganizationSlug(orgId);
 
   await pool.query(
     `DELETE FROM policy_rule pr
      USING policy p
      WHERE pr.policy_id = p.policy_id
        AND p.organization_id = $1
-       AND pr.tool_pattern = 'stripe.paymentIntents.create'
-       AND pr.decision = 'allow_with_obligation'`,
+       AND pr.tool_pattern = 'stripe.paymentIntents.create'`,
     [orgId],
   );
-
-  const existing = await pool.query(
-    `SELECT pr.rule_id
-     FROM policy p
-     JOIN policy_rule pr ON pr.policy_id = p.policy_id
-     WHERE p.organization_id = $1
-       AND p.status = 'active'
-       AND pr.tool_pattern = 'stripe.paymentIntents.create'
-       AND pr.decision = 'deny'`,
-    [orgId],
-  );
-  if (existing.rows.length > 0) {
-    console.log(`OK  Org ${slug} already has active deny rule for stripe.paymentIntents.create`);
-    process.exit(0);
-  }
 
   const slugPart = slug.replace(/[^a-z0-9-]/g, "-").slice(0, 24);
   const policyId = `pol_${slugPart}_${orgId.replace(/-/g, "").slice(0, 8)}`;
-  const ruleId = `rule_deny_stripe_${randomUUID().replace(/-/g, "").slice(0, 8)}`;
+  const ruleId = `rule_deny_retail_refund_${randomUUID().replace(/-/g, "").slice(0, 8)}`;
 
   await pool.query(
     `INSERT INTO policy (policy_id, organization_id, name, version, status, activated_at)
-     VALUES ($1, $2, 'Default', 1, 'active', now())
-     ON CONFLICT (policy_id) DO UPDATE SET status = 'active', activated_at = now()`,
+     VALUES ($1, $2, 'Retail refund controls', 1, 'active', now())
+     ON CONFLICT (policy_id) DO UPDATE SET
+       name = EXCLUDED.name,
+       status = 'active',
+       activated_at = now()`,
     [policyId, orgId],
   );
   await pool.query(
-    `INSERT INTO policy_rule (rule_id, policy_id, tool_pattern, decision, priority)
-     VALUES ($1, $2, 'stripe.paymentIntents.create', 'deny', 100)`,
+    `INSERT INTO policy_rule (
+       rule_id, policy_id, tool_pattern, decision, priority, conditions
+     ) VALUES (
+       $1, $2, 'stripe.paymentIntents.create', 'deny', 200,
+       '{"rule_type":"max_per_tx","max_amount_usd":200,"when":{"segment":"retail","account_type":"consumer"}}'::jsonb
+     )`,
     [ruleId, policyId],
   );
 
@@ -90,7 +85,8 @@ try {
     ]);
   }
 
-  console.log(`OK  Added deny policy ${policyId} for org ${slug} (${orgId})`);
+  console.log(`OK  Added contextual retail-refund policy ${policyId} for org ${slug} (${orgId})`);
+  console.log("    Retail consumer refunds above USD 200 are denied; other contexts are allowed.");
   console.log("    Run: pnpm pilot:agent");
 } finally {
   await pool.end();

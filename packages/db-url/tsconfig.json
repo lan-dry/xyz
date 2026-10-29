@@ -1,5 +1,5 @@
 {
-  "extends": "@salanor/config/typescript/base.json",
+  "extends": "../config/typescript/base.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist"
