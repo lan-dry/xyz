@@ -60,7 +60,6 @@ function VerifyForm() {
     if (qOrg && qEvent) {
       void runVerify(qOrg, qEvent);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when query present
   }, [searchParams]);
 
   async function runVerify(slug: string, evt: string) {
