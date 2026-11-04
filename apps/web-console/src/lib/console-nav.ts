@@ -37,7 +37,7 @@ export const AEGIS_NAV: ConsoleNavItem[] = [
   { href: "/aegis/coverage", label: "Coverage", icon: PieChart },
   { href: "/aegis/incidents", label: "Incidents", icon: AlertTriangle },
   { href: "/aegis/evidence", label: "Receipts", icon: FileCheck },
-  { href: "/verify", label: "Verify", icon: ShieldCheck, external: true },
+  { href: "/aegis/verify", label: "Verify", icon: ShieldCheck },
   { href: "/aegis/integrations", label: "Integrations", icon: Plug },
   { href: "/aegis/settings", label: "Settings", icon: Settings },
 ];
@@ -48,7 +48,9 @@ export const PLATFORM_OPS_NAV: ConsoleNavItem[] = [
 
 export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/aegis") return pathname === "/aegis";
-  if (href === "/verify") return pathname.startsWith("/verify");
+  if (href === "/aegis/verify") {
+    return pathname === "/aegis/verify" || pathname.startsWith("/verify");
+  }
   if (href === "/aegis/live") {
     return (
       pathname === "/aegis/live" ||

@@ -44,6 +44,11 @@ const nextConfig: NextConfig = {
         destination: "/aegis/policies",
         permanent: false,
       },
+      {
+        source: "/coverage",
+        destination: "/aegis/coverage",
+        permanent: false,
+      },
     ];
   },
   async rewrites() {
