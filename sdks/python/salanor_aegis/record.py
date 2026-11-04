@@ -22,6 +22,7 @@ __all__ = [
     "record_provenance_claim",
     "record_decision",
     "record_data_access",
+    "record_anomaly_signal",
     "start_span",
     "end_span",
 ]
@@ -214,15 +215,36 @@ def record_decision(
 def record_data_access(
     ctx: RecordContext,
     *,
-    operation: str,
+    operation: str = "read",
     resource: str,
     fields: list[str] | None = None,
+    fields_accessed: list[str] | None = None,
     classification: str | None = None,
+    sensitivity: str | None = None,
+    volume_bytes: int | None = None,
+    source: str | None = None,
     parent_event_id: str | None = None,
     options: RecordOptions,
 ) -> str:
     if operation not in ("read", "write"):
         raise ValueError("operation must be 'read' or 'write'")
+    accessed = fields_accessed if fields_accessed is not None else (fields or [])
+    sens = sensitivity or classification
+    payload: dict[str, Any] = {
+        "operation": operation,
+        "resource": resource,
+        "fields_accessed": accessed,
+        "fields": accessed,
+        "data_touched": accessed,
+        "action": f"{operation}_{resource}",
+    }
+    if sens:
+        payload["sensitivity"] = sens
+        payload["classification"] = sens
+    if volume_bytes is not None:
+        payload["volume_bytes"] = volume_bytes
+    if source:
+        payload["source"] = source
     event: dict[str, Any] = {
         "schema_version": 1,
         "event_id": new_event_id(),
@@ -236,16 +258,53 @@ def record_data_access(
         "action_kind": "data_access",
         "policy_decision": "allow",
         "tool_name": f"aegis.data.{operation}",
-        "payload": {
-            "operation": operation,
-            "resource": resource,
-            "fields": fields or [],
-            "classification": classification,
-            "action": f"{operation}_{resource}",
-        },
+        "payload": payload,
     }
     if parent_event_id:
         event["parent_event_id"] = parent_event_id
+    return _ingest_event(event, options)
+
+
+def record_anomaly_signal(
+    ctx: RecordContext,
+    *,
+    type: str,
+    reason: str,
+    severity: str,
+    linked_event_id: str | None = None,
+    parent_event_id: str | None = None,
+    require_approval: bool = False,
+    options: RecordOptions,
+) -> str:
+    if severity not in ("low", "medium", "high"):
+        raise ValueError("severity must be low, medium, or high")
+    decision = "allow_with_obligation" if require_approval else "allow"
+    payload: dict[str, Any] = {
+        "type": type,
+        "reason": reason,
+        "severity": severity,
+        "action": "anomaly_signal",
+    }
+    if linked_event_id:
+        payload["linked_event_id"] = linked_event_id
+    event: dict[str, Any] = {
+        "schema_version": 1,
+        "event_id": new_event_id(),
+        "organization_id": ctx.organization_id,
+        "trace_id": ctx.trace_id,
+        "agent_id": ctx.agent_id,
+        "key_id": ctx.key_id,
+        "emitted_at": _utc_now_iso(),
+        "actor_type": "agent",
+        "actor_principal": ctx.actor_principal,
+        "action_kind": "anomaly_signal",
+        "policy_decision": decision,
+        "tool_name": "aegis.anomaly.signal",
+        "payload": payload,
+    }
+    parent = parent_event_id or linked_event_id
+    if parent:
+        event["parent_event_id"] = parent
     return _ingest_event(event, options)
 
 

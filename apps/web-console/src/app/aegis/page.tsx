@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Activity, FileCheck, KeyRound, Percent, Shield, ShieldAlert, UserCheck } from "lucide-react";
 
+import { EmptyStatePanel } from "@/components/console/empty-state-panel";
 import {
   ConsolePage,
-  EmptyState,
   ErrorAlert,
   LoadingBlock,
   PageHeader,
@@ -434,12 +434,20 @@ export default function AegisDashboardPage() {
             <section>
               <h2 className={ui.panelTitle}>Recent traces</h2>
               {recent.length === 0 ? (
-                <div className={ui.tableWrap}>
-                  <EmptyState
-                    title="No traces yet"
-                    description="Create an ingest API key, then send signed APS-1 events from your runtime or automation workflow."
-                  />
-                </div>
+                <EmptyStatePanel
+                  title="Connect an agent or create a policy"
+                  description="Once a governed action runs, you will see plain-language cases here with a clear receipt — what happened, what data was seen, and whether a person approved."
+                  action={
+                    <Link href="/aegis/agents" className={`${ui.btn} ${ui.btnPrimary}`}>
+                      Connect an agent
+                    </Link>
+                  }
+                  secondary={
+                    <Link href="/aegis/policies" className={`${ui.btn} ${ui.btnGhost}`}>
+                      Create a policy
+                    </Link>
+                  }
+                />
               ) : (
                 <div className={ui.tableWrap}>
                   <table className={ui.table}>

@@ -54,6 +54,8 @@ type PolicyWhenForm = {
   segment: string;
   accountType: string;
   beneficiary: string;
+  productType: string;
+  sensitivity: string;
 };
 
 type PolicyFormState = {
@@ -70,6 +72,8 @@ const EMPTY_WHEN: PolicyWhenForm = {
   segment: "",
   accountType: "",
   beneficiary: "",
+  productType: "",
+  sensitivity: "",
 };
 
 const DEFAULT_FORM: PolicyFormState = {
@@ -81,6 +85,63 @@ const DEFAULT_FORM: PolicyFormState = {
   blockedBeneficiaries: "",
   when: EMPTY_WHEN,
 };
+
+const POLICY_TEMPLATES: Array<{
+  id: string;
+  label: string;
+  blurb: string;
+  form: PolicyFormState;
+}> = [
+  {
+    id: "payment",
+    label: "Payment limit",
+    blurb: "Stop payments above a fixed USD amount. Add a customer tier in “when” if needed.",
+    form: {
+      name: "Payment amount ceiling",
+      toolPattern: "stripe.paymentIntents.create",
+      decision: "deny",
+      ruleType: "max_per_tx",
+      maxAmountUsd: "5000",
+      blockedBeneficiaries: "",
+      when: EMPTY_WHEN,
+    },
+  },
+  {
+    id: "refund",
+    label: "Refund by customer tier",
+    blurb: "Ask a person for Standard-tier refunds above $200. Uses customer context, not a flat global cap.",
+    form: {
+      name: "Refund — Standard tier hold",
+      toolPattern: "stripe.paymentIntents.create",
+      decision: "allow_with_obligation",
+      ruleType: "max_per_tx",
+      maxAmountUsd: "200",
+      blockedBeneficiaries: "",
+      when: {
+        ...EMPTY_WHEN,
+        segment: "standard",
+        accountType: "consumer",
+      },
+    },
+  },
+  {
+    id: "data_access",
+    label: "Sensitive data access",
+    blurb: "Ask a person when an agent reads high-sensitivity customer fields.",
+    form: {
+      name: "Sensitive data access hold",
+      toolPattern: "aegis.data.*",
+      decision: "allow_with_obligation",
+      ruleType: "tool",
+      maxAmountUsd: "10000",
+      blockedBeneficiaries: "",
+      when: {
+        ...EMPTY_WHEN,
+        sensitivity: "high",
+      },
+    },
+  },
+];
 
 function parseListInput(raw: string): string[] {
   return raw
@@ -94,6 +155,8 @@ function buildWhenPayload(when: PolicyWhenForm): Record<string, string> | undefi
   if (when.segment.trim()) payload.segment = when.segment.trim();
   if (when.accountType.trim()) payload.account_type = when.accountType.trim();
   if (when.beneficiary.trim()) payload.beneficiary = when.beneficiary.trim();
+  if (when.productType.trim()) payload.product_type = when.productType.trim();
+  if (when.sensitivity.trim()) payload.sensitivity = when.sensitivity.trim();
   return Object.keys(payload).length > 0 ? payload : undefined;
 }
 
@@ -105,6 +168,8 @@ function whenFromConditions(
     segment: typeof when.segment === "string" ? when.segment : "",
     accountType: typeof when.account_type === "string" ? when.account_type : "",
     beneficiary: typeof when.beneficiary === "string" ? when.beneficiary : "",
+    productType: typeof when.product_type === "string" ? when.product_type : "",
+    sensitivity: typeof when.sensitivity === "string" ? when.sensitivity : "",
   };
 }
 
@@ -114,6 +179,8 @@ function whenSummary(when: Record<string, unknown> | undefined): string | null {
   if (form.segment) parts.push(`segment=${form.segment}`);
   if (form.accountType) parts.push(`account=${form.accountType}`);
   if (form.beneficiary) parts.push(`beneficiary=${form.beneficiary}`);
+  if (form.productType) parts.push(`product=${form.productType}`);
+  if (form.sensitivity) parts.push(`sensitivity=${form.sensitivity}`);
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
@@ -121,7 +188,7 @@ function buildRulesPayload(form: PolicyFormState) {
   const when = buildWhenPayload(form.when);
   const conditions =
     form.ruleType === "tool"
-      ? { rule_type: "tool" }
+      ? { rule_type: "tool", ...(when ? { when } : {}) }
       : form.ruleType === "blocked_beneficiary"
         ? {
             rule_type: "blocked_beneficiary",
@@ -590,81 +657,108 @@ export default function PoliciesPage() {
             </p>
           </>
         )}
-        {form.ruleType !== "tool" ? (
-          <fieldset
+        <fieldset
+          style={{
+            marginTop: "1rem",
+            border: "1px solid var(--console-border)",
+            borderRadius: "0.5rem",
+            padding: "0.75rem 1rem",
+          }}
+        >
+          <legend
             style={{
-              marginTop: "1rem",
-              border: "1px solid var(--console-border)",
-              borderRadius: "0.5rem",
-              padding: "0.75rem 1rem",
+              fontSize: "0.8125rem",
+              fontWeight: 600,
+              padding: "0 0.25rem",
             }}
           >
-            <legend
-              style={{
-                fontSize: "0.8125rem",
-                fontWeight: 600,
-                padding: "0 0.25rem",
-              }}
-            >
-              Apply only when (optional)
-            </legend>
-            <label className={ui.field} style={{ marginTop: "0.5rem" }}>
-              Client segment
-              <input
-                className={ui.input}
-                value={form.when.segment}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    when: { ...f.when, segment: e.target.value },
-                  }))
-                }
-                placeholder="VIP, retail"
-              />
-            </label>
-            <label className={ui.field} style={{ marginTop: "0.75rem" }}>
-              Account type
-              <input
-                className={ui.input}
-                value={form.when.accountType}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    when: { ...f.when, accountType: e.target.value },
-                  }))
-                }
-                placeholder="corporate, retail"
-              />
-            </label>
-            <label className={ui.field} style={{ marginTop: "0.75rem" }}>
-              Beneficiary (context filter)
-              <input
-                className={ui.input}
-                value={form.when.beneficiary}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    when: { ...f.when, beneficiary: e.target.value },
-                  }))
-                }
-                placeholder="Only for this payee context"
-              />
-            </label>
-            <p
-              style={{
-                margin: "0.5rem 0 0",
-                fontSize: "0.8125rem",
-                color: "var(--console-fg-muted)",
-                lineHeight: 1.5,
-              }}
-            >
-              Send matching fields from your workflow Set node (
-              <code className="mono">segment</code>,{" "}
-              <code className="mono">account_type</code>,{" "}
-              <code className="mono">beneficiary</code>).
-            </p>
-          </fieldset>
-        ) : null}
+            Apply only when (optional)
+          </legend>
+          <label className={ui.field} style={{ marginTop: "0.5rem" }}>
+            Customer tier
+            <input
+              className={ui.input}
+              value={form.when.segment}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  when: { ...f.when, segment: e.target.value },
+                }))
+              }
+              placeholder="standard, gold, VIP"
+            />
+          </label>
+          <label className={ui.field} style={{ marginTop: "0.75rem" }}>
+            Account type
+            <input
+              className={ui.input}
+              value={form.when.accountType}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  when: { ...f.when, accountType: e.target.value },
+                }))
+              }
+              placeholder="corporate, consumer"
+            />
+          </label>
+          <label className={ui.field} style={{ marginTop: "0.75rem" }}>
+            Product type
+            <input
+              className={ui.input}
+              value={form.when.productType}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  when: { ...f.when, productType: e.target.value },
+                }))
+              }
+              placeholder="refund, payout, support"
+            />
+          </label>
+          <label className={ui.field} style={{ marginTop: "0.75rem" }}>
+            Data sensitivity
+            <input
+              className={ui.input}
+              value={form.when.sensitivity}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  when: { ...f.when, sensitivity: e.target.value },
+                }))
+              }
+              placeholder="low, medium, high"
+            />
+          </label>
+          <label className={ui.field} style={{ marginTop: "0.75rem" }}>
+            Beneficiary (context filter)
+            <input
+              className={ui.input}
+              value={form.when.beneficiary}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  when: { ...f.when, beneficiary: e.target.value },
+                }))
+              }
+              placeholder="Only for this payee context"
+            />
+          </label>
+          <p
+            style={{
+              margin: "0.5rem 0 0",
+              fontSize: "0.8125rem",
+              color: "var(--console-fg-muted)",
+              lineHeight: 1.5,
+            }}
+          >
+            Rules can use customer context, not only a fixed amount. Send matching
+            fields with the action (
+            <code className="mono">segment</code>,{" "}
+            <code className="mono">product_type</code>,{" "}
+            <code className="mono">sensitivity</code>).
+          </p>
+        </fieldset>
         <p
           style={{
             marginTop: "1rem",
@@ -875,21 +969,25 @@ export default function PoliciesPage() {
       {!policiesQuery.isLoading && !hasPolicies ? (
         <EmptyStatePanel
           icon={Shield}
-          title="No policies yet"
+          title="Create your first policy for payments or data access"
           description={
             <>
-              Create a <strong>draft</strong>, review rules, then <strong>Activate</strong>.
-              You can activate multiple policies at once; their rules combine at runtime.
+              Start from a ready-made template (payment, refund, or data access), review the
+              draft, then <strong>Activate</strong>. Rules can use customer context such as
+              tier — not only a flat amount.
             </>
           }
           action={
             <button
               type="button"
               className={`${ui.btn} ${ui.btnPrimary}`}
-              onClick={() => setCreateOpen(true)}
+              onClick={() => {
+                resetForm();
+                setCreateOpen(true);
+              }}
             >
               <Plus size={16} aria-hidden />
-              Create policy
+              Create your first policy
             </button>
           }
         />
@@ -1042,7 +1140,7 @@ export default function PoliciesPage() {
       <Modal
         open={createOpen}
         title="Create policy draft"
-        description="Drafts can be edited or deleted before activation."
+        description="Pick a template or start blank. Rules can use customer context (tier, product type), not only a fixed amount."
         closeOnOverlayClick={false}
         onClose={() => {
           if (!createPolicy.isPending) setCreateOpen(false);
@@ -1070,6 +1168,48 @@ export default function PoliciesPage() {
           </>
         }
       >
+        <div style={{ marginBottom: "1rem" }}>
+          <p
+            style={{
+              margin: "0 0 0.5rem",
+              fontSize: "0.8125rem",
+              color: "var(--console-fg-muted)",
+            }}
+          >
+            Ready-made templates
+          </p>
+          <div style={{ display: "grid", gap: "0.5rem" }}>
+            {POLICY_TEMPLATES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`${ui.btn} ${ui.btnSecondary}`}
+                style={{
+                  textAlign: "left",
+                  display: "block",
+                  height: "auto",
+                  padding: "0.65rem 0.85rem",
+                  whiteSpace: "normal",
+                }}
+                onClick={() => setForm({ ...t.form, when: { ...t.form.when } })}
+              >
+                <strong style={{ display: "block", marginBottom: "0.2rem" }}>
+                  {t.label}
+                </strong>
+                <span style={{ fontSize: "0.75rem", color: "var(--console-fg-muted)" }}>
+                  {t.blurb}
+                </span>
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnGhost}`}
+              onClick={() => setForm({ ...DEFAULT_FORM, when: { ...EMPTY_WHEN } })}
+            >
+              Start from a blank form
+            </button>
+          </div>
+        </div>
         <PolicyFormFields />
         {createPolicy.isError ? (
           <ErrorAlert message={(createPolicy.error as Error).message} />

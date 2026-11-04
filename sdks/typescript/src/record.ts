@@ -241,18 +241,37 @@ export async function recordDecision(
   return ingestEvent(event, options);
 }
 
+export type DataAccessSensitivity = "low" | "medium" | "high";
+export type DataAccessSource = "tool_result" | "retrieval" | "api" | string;
+
 /** Data read/write boundary for audit (PII, stores, files). */
 export async function recordDataAccess(
   ctx: RecordContext,
   input: {
-    operation: "read" | "write";
+    operation?: "read" | "write";
     resource: string;
+    /** Preferred: fields the agent actually saw. */
+    fieldsAccessed?: string[];
+    /** @deprecated Prefer fieldsAccessed */
     fields?: string[];
+    sensitivity?: DataAccessSensitivity;
+    /** @deprecated Prefer sensitivity */
     classification?: string;
+    volumeBytes?: number;
+    source?: DataAccessSource;
     parentEventId?: string;
   },
   options: RecordOptions,
 ): Promise<string> {
+  const operation = input.operation ?? "read";
+  const fieldsAccessed = input.fieldsAccessed ?? input.fields ?? [];
+  const sensitivity =
+    input.sensitivity ??
+    (input.classification === "high" ||
+    input.classification === "medium" ||
+    input.classification === "low"
+      ? input.classification
+      : undefined);
   const event: ApsEvent = {
     schema_version: 1,
     event_id: newEventId(),
@@ -265,14 +284,64 @@ export async function recordDataAccess(
     actor_principal: ctx.actorPrincipal,
     action_kind: "data_access",
     policy_decision: "allow",
-    tool_name: `aegis.data.${input.operation}`,
+    tool_name: `aegis.data.${operation}`,
     parent_event_id: input.parentEventId,
     payload: {
-      operation: input.operation,
+      operation,
       resource: input.resource,
-      fields: input.fields ?? [],
-      classification: input.classification,
-      action: `${input.operation}_${input.resource}`,
+      fields_accessed: fieldsAccessed,
+      fields: fieldsAccessed,
+      data_touched: fieldsAccessed,
+      ...(sensitivity ? { sensitivity, classification: sensitivity } : {}),
+      ...(input.volumeBytes != null ? { volume_bytes: input.volumeBytes } : {}),
+      ...(input.source ? { source: input.source } : {}),
+      action: `${operation}_${input.resource}`,
+    },
+  };
+  return ingestEvent(event, options);
+}
+
+export type AnomalySignalType =
+  | "prompt_injection_indicator"
+  | "unexpected_tool"
+  | "sensitive_data_exfiltration"
+  | string;
+
+/** Potential prompt injection or unexpected agent behavior. */
+export async function recordAnomalySignal(
+  ctx: RecordContext,
+  input: {
+    type: AnomalySignalType;
+    reason: string;
+    severity: "low" | "medium" | "high";
+    linkedEventId?: string;
+    parentEventId?: string;
+    /** When true, seals as allow_with_obligation (Ask a person). */
+    requireApproval?: boolean;
+  },
+  options: RecordOptions,
+): Promise<string> {
+  const decision = input.requireApproval ? "allow_with_obligation" : "allow";
+  const event: ApsEvent = {
+    schema_version: 1,
+    event_id: newEventId(),
+    organization_id: ctx.organizationId,
+    trace_id: ctx.traceId,
+    agent_id: ctx.agentId,
+    key_id: ctx.keyId,
+    emitted_at: new Date().toISOString(),
+    actor_type: "agent",
+    actor_principal: ctx.actorPrincipal,
+    action_kind: "anomaly_signal",
+    policy_decision: decision,
+    tool_name: "aegis.anomaly.signal",
+    parent_event_id: input.parentEventId ?? input.linkedEventId,
+    payload: {
+      type: input.type,
+      reason: input.reason,
+      severity: input.severity,
+      ...(input.linkedEventId ? { linked_event_id: input.linkedEventId } : {}),
+      action: "anomaly_signal",
     },
   };
   return ingestEvent(event, options);

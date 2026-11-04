@@ -11,6 +11,7 @@
     "pilot:payout": "tsx src/index.ts payout",
     "pilot:risk-score": "tsx src/index.ts risk-score",
     "pilot:manipulated": "tsx src/index.ts manipulated",
+    "pilot:data-access": "tsx src/index.ts data-access",
     "pilot:resume:payout": "tsx src/index.ts resume-payout",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

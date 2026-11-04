@@ -22,6 +22,8 @@ export function eventPhase(actionKind: string): EventPhase {
       return "governance";
     case "human_approval":
       return "approval";
+    case "anomaly_signal":
+      return "audit";
     default:
       return "audit";
   }
@@ -59,7 +61,9 @@ export function eventPhaseHint(actionKind: string): string {
     case "decision":
       return "Agent or system decision record";
     case "data_access":
-      return "Read or write to governed data";
+      return "What customer data was read";
+    case "anomaly_signal":
+      return "Unexpected or risky behaviour flagged";
     case "human_approval":
       return "Human approve / deny";
     default:

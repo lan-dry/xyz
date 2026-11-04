@@ -8,7 +8,10 @@ import { parseConditions } from "./amount.js";
 import { evaluateRulesWithConditions } from "./evaluate-conditions.js";
 import { evaluateWithOpa } from "./evaluate-opa.js";
 import type { PolicyRuleInput } from "./evaluate-rules.js";
-import { payloadContextFromPayload } from "./payload-context.js";
+import {
+  evaluationContextFromPayload,
+  payloadContextFromPayload,
+} from "./payload-context.js";
 
 export type EvaluateInput = {
   organizationId: string;
@@ -25,6 +28,8 @@ export type EvaluateOutput = {
   engine: "opa" | "rules";
   decision_layer?: "ceiling" | "contextual" | "override" | "default" | "agent";
   signals?: Record<string, unknown>;
+  /** Exact business context evaluated (tier, product, patterns, …). */
+  evaluation_context?: Record<string, unknown>;
 };
 
 function rulesNeedConditionEngine(rules: PolicyRuleInput[]): boolean {
@@ -53,7 +58,9 @@ function rulesNeedConditionEngine(rules: PolicyRuleInput[]): boolean {
           when.beneficiaries?.length ||
           when.merchant_age_days_lt != null ||
           when.merchant_age_days_lte != null ||
-          when.risk_tier),
+          when.risk_tier ||
+          when.product_type ||
+          when.sensitivity),
     );
   });
 }
@@ -255,6 +262,7 @@ async function applyScoreBandsAndSignalFallback(
     }
   }
 
+  const evaluation_context = evaluationContextFromPayload(input.payload);
   return {
     ...base,
     decision,
@@ -263,5 +271,8 @@ async function applyScoreBandsAndSignalFallback(
     policy_id,
     rule_id,
     ...(Object.keys(signals).length > 0 ? { signals } : {}),
+    ...(Object.keys(evaluation_context).length > 0
+      ? { evaluation_context }
+      : {}),
   };
 }

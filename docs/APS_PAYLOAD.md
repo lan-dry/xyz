@@ -28,7 +28,34 @@ Policies can enforce:
 
 Both amount rules require `amount_usd` (or `amount`) in the payload at ingest/evaluate time (top-level or under `request_payload`).
 
-Context fields for `when`: `segment`, `account_type`, `beneficiary` (also reads `recipient`, `client_segment`, etc.).
+Context fields for `when`: `segment` (customer tier), `account_type`, `beneficiary` (also reads `recipient`, `client_segment`, etc.), `risk_tier`, `product_type`, `sensitivity` (for data-access rules).
+
+Policy decision events should also seal `evaluation_context` (tier, product_type, previous_pattern, sensitivity, fields_accessed, risk fields) so receipts show more than a flat amount check.
+
+## `data_access` payload
+
+| Field | Example | Purpose |
+|-------|---------|---------|
+| `resource` | `customer.profile` | What was read/written |
+| `fields_accessed` | `["email","national_id"]` | Fields seen |
+| `sensitivity` | `high` | `low` \| `medium` \| `high` |
+| `volume_bytes` | `4096` | Optional size |
+| `source` | `retrieval` | `tool_result` \| `retrieval` \| `api` |
+
+SDK: `recordDataAccess()` / `record_data_access()`.
+
+## `anomaly_signal` payload
+
+| Field | Example | Purpose |
+|-------|---------|---------|
+| `type` | `prompt_injection_indicator` | Signal class |
+| `reason` | Human-readable why | Receipt copy |
+| `severity` | `high` | `low` \| `medium` \| `high` |
+| `linked_event_id` | `evt_…` | Related step |
+
+SDK: `recordAnomalySignal()` / `record_anomaly_signal()`. Use `requireApproval: true` to seal as Ask a person.
+
+Demo: `pnpm pilot:agent:data-access`.
 
 ## Human approval preview (send these in workflow payload)
 

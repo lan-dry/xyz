@@ -10,6 +10,7 @@ const ACTION_KINDS = new Set([
   "provenance_claim",
   "decision",
   "data_access",
+  "anomaly_signal",
 ]);
 const POLICY_DECISIONS = new Set([
   "allow",
@@ -73,6 +74,11 @@ export function parseApsEvent(body: unknown): ApsEvent {
     throw new IngestValidationError("payload must be an object");
   }
 
+  assertActionPayload(
+    event.action_kind as string,
+    event.payload as Record<string, unknown>,
+  );
+
   const emittedAt = new Date(event.emitted_at as string);
   if (Number.isNaN(emittedAt.getTime())) {
     throw new IngestValidationError("emitted_at must be RFC 3339");
@@ -93,5 +99,66 @@ export function assertOrganizationMatch(
     throw new IngestValidationError(
       "organization_id does not match ingest API key scope",
     );
+  }
+}
+
+const SENSITIVITY = new Set(["low", "medium", "high"]);
+
+/** Soft shape checks for newer APS kinds (does not reject unknown extra fields). */
+function assertActionPayload(
+  actionKind: string,
+  payload: Record<string, unknown>,
+): void {
+  if (actionKind === "data_access") {
+    if (typeof payload.resource !== "string" || !payload.resource.trim()) {
+      throw new IngestValidationError(
+        "data_access payload.resource must be a non-empty string",
+      );
+    }
+    const fields = payload.fields_accessed ?? payload.fields ?? payload.data_touched;
+    if (fields !== undefined && !Array.isArray(fields)) {
+      throw new IngestValidationError(
+        "data_access payload.fields_accessed must be an array of strings",
+      );
+    }
+    if (
+      payload.sensitivity !== undefined &&
+      (typeof payload.sensitivity !== "string" ||
+        !SENSITIVITY.has(payload.sensitivity))
+    ) {
+      throw new IngestValidationError(
+        "data_access payload.sensitivity must be low, medium, or high",
+      );
+    }
+    if (
+      payload.volume_bytes !== undefined &&
+      (typeof payload.volume_bytes !== "number" ||
+        !Number.isFinite(payload.volume_bytes))
+    ) {
+      throw new IngestValidationError(
+        "data_access payload.volume_bytes must be a number",
+      );
+    }
+  }
+
+  if (actionKind === "anomaly_signal") {
+    if (typeof payload.type !== "string" || !payload.type.trim()) {
+      throw new IngestValidationError(
+        "anomaly_signal payload.type must be a non-empty string",
+      );
+    }
+    if (typeof payload.reason !== "string" || !payload.reason.trim()) {
+      throw new IngestValidationError(
+        "anomaly_signal payload.reason must be a non-empty string",
+      );
+    }
+    if (
+      typeof payload.severity !== "string" ||
+      !SENSITIVITY.has(payload.severity)
+    ) {
+      throw new IngestValidationError(
+        "anomaly_signal payload.severity must be low, medium, or high",
+      );
+    }
   }
 }

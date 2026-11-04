@@ -1,9 +1,10 @@
 "use client";
 
-import { Bot, Copy, KeyRound, Plus } from "lucide-react";
+import { Bot, KeyRound, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { CopyButton } from "@/components/console/copy-button";
 import { EmptyStatePanel } from "@/components/console/empty-state-panel";
 import { Modal } from "@/components/console/modal";
 import {
@@ -145,10 +146,6 @@ export default function AgentsPage() {
 
   const agents = agentsQuery.data?.agents ?? [];
 
-  async function copyText(text: string) {
-    await navigator.clipboard.writeText(text);
-  }
-
   return (
     <ConsolePage>
       <PageHeader
@@ -176,14 +173,12 @@ export default function AgentsPage() {
             This private key cannot be retrieved again. Store it in a secrets manager.
           </p>
           <pre className={ui.pre}>{JSON.stringify(createdCreds, null, 2)}</pre>
-          <button
-            type="button"
-            className={`${ui.btn} ${ui.btnSecondary}`}
-            style={{ marginTop: "0.75rem" }}
-            onClick={() => void copyText(JSON.stringify(createdCreds, null, 2))}
-          >
-            <Copy size={14} aria-hidden /> Copy JSON
-          </button>
+          <div style={{ marginTop: "0.75rem" }}>
+            <CopyButton
+              text={JSON.stringify(createdCreds, null, 2)}
+              label="Copy JSON"
+            />
+          </div>
         </div>
       ) : null}
 
@@ -221,8 +216,20 @@ export default function AgentsPage() {
       {!agentsQuery.isPending && agents.length === 0 ? (
         <EmptyStatePanel
           icon={Bot}
-          title="No agents yet"
-          description="Create an agent to get agent_id, key_id, and a signing key pair for the Aegis SDK."
+          title="Connect an agent or workflow"
+          description="Create an agent to get credentials for the Aegis SDK. Once connected, every governed action leaves a signed receipt."
+          action={
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              onClick={() => {
+                setCreatedCreds(null);
+                setModalOpen(true);
+              }}
+            >
+              Create your first agent
+            </button>
+          }
         />
       ) : null}
 
@@ -342,7 +349,10 @@ export default function AgentsPage() {
       <Modal
         open={modalOpen}
         title="Create agent"
-        onClose={() => setModalOpen(false)}
+        closeOnOverlayClick={false}
+        onClose={() => {
+          if (!createAgent.isPending) setModalOpen(false);
+        }}
       >
         <form
           className={ui.formGrid}

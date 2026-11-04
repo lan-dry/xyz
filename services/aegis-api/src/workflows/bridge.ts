@@ -63,6 +63,7 @@ export type PolicyGateCapture = {
   engine?: string;
   decision_layer?: string;
   signals?: Record<string, unknown>;
+  evaluation_context?: Record<string, unknown>;
 };
 
 function policyGateStep(
@@ -86,6 +87,10 @@ function policyGateStep(
       ...(gate.decision_layer ? { decision_layer: gate.decision_layer } : {}),
       ...(gate.signals && Object.keys(gate.signals).length > 0
         ? { signals: gate.signals }
+        : {}),
+      ...(gate.evaluation_context &&
+      Object.keys(gate.evaluation_context).length > 0
+        ? { evaluation_context: gate.evaluation_context }
         : {}),
       investor_summary: denied
         ? `Denied ${gate.tool_name}: ${gate.reason}`
@@ -757,10 +762,14 @@ export async function recordPolicyGateAsTrace(
     ruleId: string | null;
     reason: string;
     engine?: string;
+    decision_layer?: string;
+    signals?: Record<string, unknown>;
+    evaluation_context?: Record<string, unknown>;
     externalSystem?: string;
     externalWorkflowId?: string;
     externalExecutionId?: string;
     actorPrincipal?: string;
+    requestPayload?: Record<string, unknown>;
   },
 ): Promise<{
   trace_id: string;
@@ -788,14 +797,22 @@ export async function recordPolicyGateAsTrace(
     summary: denied
       ? `Blocked ${input.toolName} by ${input.ruleId ?? "policy"}: ${input.reason}`
       : `Allowed ${input.toolName}: ${input.reason}`,
-    steps: [policyGateStep({
-      tool_name: input.toolName,
-      decision: input.decision,
-      policy_id: input.policyId,
-      rule_id: input.ruleId,
-      reason: input.reason,
-      engine: input.engine,
-    })],
+    steps: [
+      policyGateStep(
+        {
+          tool_name: input.toolName,
+          decision: input.decision,
+          policy_id: input.policyId,
+          rule_id: input.ruleId,
+          reason: input.reason,
+          engine: input.engine,
+          decision_layer: input.decision_layer,
+          signals: input.signals,
+          evaluation_context: input.evaluation_context,
+        },
+        input.requestPayload,
+      ),
+    ],
     actorPrincipal: input.actorPrincipal ?? "workflow:n8n",
   });
 }
@@ -813,6 +830,9 @@ export async function recordPolicyObligationGate(
     ruleId: string | null;
     reason: string;
     engine?: string;
+    decision_layer?: string;
+    signals?: Record<string, unknown>;
+    evaluation_context?: Record<string, unknown>;
     externalSystem?: string;
     externalWorkflowId?: string;
     externalExecutionId?: string;
@@ -850,6 +870,9 @@ export async function recordPolicyObligationGate(
           rule_id: input.ruleId,
           reason: input.reason,
           engine: input.engine,
+          decision_layer: input.decision_layer,
+          signals: input.signals,
+          evaluation_context: input.evaluation_context,
         },
         input.requestPayload,
         {

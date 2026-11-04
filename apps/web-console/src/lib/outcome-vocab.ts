@@ -128,6 +128,10 @@ export function actionKindPlain(actionKind: string, toolName?: string | null): s
       return "Approved by a person";
     case "result":
       return "Outcome";
+    case "data_access":
+      return "Data looked at";
+    case "anomaly_signal":
+      return "Flagged behaviour";
     default:
       return actionKind;
   }

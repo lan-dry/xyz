@@ -110,7 +110,13 @@ export async function postEvent(c: Context): Promise<Response> {
     // Result events after wrapFetchResume are signed allow; obligation was satisfied at approval time.
     const skipObligationRecheck =
       event.action_kind === "result" || event.action_kind === "human_approval";
-    if (toolName && event.action_kind !== "policy_decision" && !skipObligationRecheck) {
+    if (
+      toolName &&
+      event.action_kind !== "policy_decision" &&
+      event.action_kind !== "anomaly_signal" &&
+      event.action_kind !== "data_access" &&
+      !skipObligationRecheck
+    ) {
       const policyPayload = enrichProvenancePayload({
         payload: event.payload as Record<string, unknown>,
         toolName,

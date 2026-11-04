@@ -10,6 +10,7 @@ export { enrichProvenancePayload } from "./enrich-payload.js";
 export {
   endSpan,
   newTraceId,
+  recordAnomalySignal,
   recordDataAccess,
   recordDecision,
   recordLlmInvocation,
@@ -17,6 +18,9 @@ export {
   recordTraceStart,
   recordTraceComplete,
   startSpan,
+  type AnomalySignalType,
+  type DataAccessSensitivity,
+  type DataAccessSource,
   type RecordContext,
   type RecordOptions,
 } from "./record.js";
@@ -29,6 +33,7 @@ export {
   evaluatePolicyViaApi,
   evaluateToolPolicyLocal,
   getApprovalStatusViaApi,
+  requestApprovalViaApi,
   wrapFetch,
   wrapFetchResume,
   drainSignedEventBuffer,

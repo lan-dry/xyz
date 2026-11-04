@@ -567,11 +567,43 @@ export async function decideApproval(
   }
 
   if (finalizedApprove) {
-    await client.query(
-      `UPDATE trace SET status = 'executing'
-       WHERE trace_id = $1 AND organization_id = $2 AND status = 'blocked'`,
-      [detail.trace_id, organizationId],
+    // Payment/tool gates resume via HTTP deferred_request → executing.
+    // Audit-only holds (aegis://… or missing URL) have nothing to resume → completed.
+    const deferred = await client.query<{ payload: unknown }>(
+      `SELECT payload FROM event
+       WHERE organization_id = $1 AND event_id = $2`,
+      [organizationId, detail.event_id],
     );
+    const rawPayload = deferred.rows[0]?.payload;
+    const payloadObj =
+      rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload)
+        ? (rawPayload as Record<string, unknown>)
+        : null;
+    const deferredReq =
+      payloadObj?.deferred_request &&
+      typeof payloadObj.deferred_request === "object" &&
+      !Array.isArray(payloadObj.deferred_request)
+        ? (payloadObj.deferred_request as { url?: unknown })
+        : null;
+    const deferredUrl =
+      typeof deferredReq?.url === "string" ? deferredReq.url.trim() : "";
+    const resumable =
+      deferredUrl.startsWith("http://") || deferredUrl.startsWith("https://");
+
+    if (resumable) {
+      await client.query(
+        `UPDATE trace SET status = 'executing'
+         WHERE trace_id = $1 AND organization_id = $2 AND status = 'blocked'`,
+        [detail.trace_id, organizationId],
+      );
+    } else {
+      await client.query(
+        `UPDATE trace SET status = 'completed', ended_at = now()
+         WHERE trace_id = $1 AND organization_id = $2
+           AND status IN ('blocked', 'executing')`,
+        [detail.trace_id, organizationId],
+      );
+    }
   } else if (finalizedReject) {
     await client.query(
       `UPDATE trace SET status = 'failed', ended_at = now()

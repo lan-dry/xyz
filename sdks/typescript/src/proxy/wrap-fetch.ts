@@ -165,6 +165,10 @@ export async function wrapFetch(
     ...(evaluation.signals && Object.keys(evaluation.signals).length > 0
       ? { signals: evaluation.signals }
       : {}),
+    ...(evaluation.evaluation_context &&
+    Object.keys(evaluation.evaluation_context).length > 0
+      ? { evaluation_context: evaluation.evaluation_context }
+      : {}),
   };
 
   if (decision === "allow_with_obligation") {

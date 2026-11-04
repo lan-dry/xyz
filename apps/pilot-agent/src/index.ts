@@ -14,6 +14,7 @@ import {
   runMerchantPayoutScenario,
 } from "./scenario-merchant-payout.js";
 import { runManipulatedRefundScenario } from "./scenario-manipulated-refund.js";
+import { runDataAccessAnomalyScenario } from "./scenario-data-access-anomaly.js";
 
 const repoRoot = resolve(fileURLToPath(new URL(".", import.meta.url)), "../../..");
 
@@ -48,6 +49,15 @@ async function main() {
 
   if (mode === "manipulated") {
     const result = await runManipulatedRefundScenario(pilotConfig);
+    await publishProofs();
+    console.log(JSON.stringify({ ok: true, ...result }, null, 2));
+    return;
+  }
+
+  if (mode === "data-access" || mode === "anomaly") {
+    const result = await runDataAccessAnomalyScenario(pilotConfig, {
+      requireApproval: true,
+    });
     await publishProofs();
     console.log(JSON.stringify({ ok: true, ...result }, null, 2));
     return;

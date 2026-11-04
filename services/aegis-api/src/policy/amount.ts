@@ -39,6 +39,10 @@ export type PolicyWhen = {
   merchant_age_days_lte?: number;
   /** Match when payload risk_tier equals this value (e.g. high). */
   risk_tier?: string;
+  /** Match when payload product_type equals this value (e.g. refund, payout). */
+  product_type?: string;
+  /** Match when payload sensitivity equals this value (data_access: low|medium|high). */
+  sensitivity?: string;
 };
 
 /** Claude §12.3 — evaluation layer. Ceilings win over contextual; overrides last. */

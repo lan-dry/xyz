@@ -109,6 +109,9 @@ export async function postPolicyEvaluate(c: Context): Promise<Response> {
           ruleId: result.rule_id,
           reason: result.reason,
           engine: result.engine,
+          decision_layer: result.decision_layer,
+          signals: result.signals,
+          evaluation_context: result.evaluation_context,
           externalSystem: body.external_system ?? "n8n",
           externalWorkflowId: body.external_workflow_id,
           externalExecutionId: body.external_execution_id,
@@ -161,9 +164,13 @@ export async function postPolicyEvaluate(c: Context): Promise<Response> {
         ruleId: result.rule_id,
         reason: result.reason,
         engine: result.engine,
+        decision_layer: result.decision_layer,
+        signals: result.signals,
+        evaluation_context: result.evaluation_context,
         externalSystem: body.external_system ?? "n8n",
         externalWorkflowId: body.external_workflow_id,
         externalExecutionId: body.external_execution_id,
+        requestPayload: body.payload,
       });
       await client.query("COMMIT");
 

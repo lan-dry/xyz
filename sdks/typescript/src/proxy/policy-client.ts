@@ -8,6 +8,7 @@ export type PolicyEvaluateResult = {
   engine?: string;
   decision_layer?: "ceiling" | "contextual" | "override" | "default" | "agent";
   signals?: Record<string, unknown>;
+  evaluation_context?: Record<string, unknown>;
 };
 
 export async function evaluatePolicyViaApi(

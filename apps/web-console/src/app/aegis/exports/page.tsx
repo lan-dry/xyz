@@ -437,8 +437,21 @@ export default function ExportsPage() {
           {!loading && exports.length === 0 ? (
             <EmptyStatePanel
               icon={FileArchive}
-              title="No exports yet"
-              description="Use the forms above to create a one-time export or enable the monthly schedule."
+              title="Create your first evidence pack"
+              description="Export a downloadable ZIP of sealed receipts for auditors. Start with a one-time Evidence pack above, or turn on the monthly schedule."
+              action={
+                <button
+                  type="button"
+                  className={`${ui.btn} ${ui.btnPrimary}`}
+                  onClick={() => {
+                    setBundleType("combined");
+                    setRunNow(true);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  Prepare an export
+                </button>
+              }
             />
           ) : null}
 

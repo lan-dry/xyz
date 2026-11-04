@@ -1,11 +1,12 @@
 # Salanor — Documentation index
 
-**Version:** 1.0 · **May 2026**
+**Version:** 1.1 · **November 2026**
 
 Read in this order for execution:
 
 | # | Document | Purpose |
 |---|----------|--------|
+| 0 | **`SALANOR-PLATFORM-REQUIREMENTS-AND-SPECIFICATION.md`** | **Canonical platform PRD + SRS (v2.0):** Aegis, Workspace, identity, billing, deploy, LIVE/PARTIAL/ROADMAP |
 | 1 | **`PROJECT.md`** | Constitution: vision, repos, toolchain, Definition of Done, links to authoritative specs |
 | 2 | **`INFRASTRUCTURE_DECISIONS.md`** | Locked hosting: Neon + Auth.js (`@salanor/auth`) + Vercel + Aegis backends; portability rules |
 | 2a | **`PRODUCTION_DEPLOY.md`** | **Production runbook:** Neon + Fly.io + Vercel, env vars, deploy order, handoff guide |
@@ -32,5 +33,10 @@ External authoritative inputs:
 - **`Aegis_Product_Specification.pdf`** — product MVP + roadmap wording
 - **`Salanor_Website_Specification.pdf`** — public site copy + IA + stack + CMS schema
 - **`Salanor_Website_Design.pdf`** — visuals/layout only (not copy source)
+
+**Superseded / historical (do not treat as current platform scope):**
+
+- `PRD-Platform-Requirements-and-Specification-v1.md` — retail/ops-hub + WooCommerce vision
+- `Technical-Stack-Specification-v1.md` — NestJS hub stack draft
 
 **Change control:** Bump doc version + changelog line when altering locked decisions.

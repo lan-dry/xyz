@@ -11,6 +11,12 @@ export type PayloadContext = {
   merchant_age_days?: number;
   /** Optional risk tier label from KYC / scoring (e.g. high, medium, low). */
   risk_tier?: string;
+  /** Product / workflow type (e.g. refund, payout, kyc). */
+  product_type?: string;
+  /** Prior pattern label when supplied by the agent (e.g. first_refund_30d). */
+  previous_pattern?: string;
+  /** Data-access sensitivity (low | medium | high). */
+  sensitivity?: string;
   /** Optional external risk score from customer models (§12.5). */
   risk_score?: number;
   risk_score_source?: string;
@@ -111,6 +117,23 @@ export function payloadContextFromPayload(
       "riskTier",
       "kyc_risk_tier",
       "risk_level",
+    ])?.toLowerCase(),
+    product_type: readString(src, [
+      "product_type",
+      "productType",
+      "workflow_type",
+      "action_type",
+    ])?.toLowerCase(),
+    previous_pattern: readString(src, [
+      "previous_pattern",
+      "prior_pattern",
+      "pattern",
+      "history_flag",
+    ]),
+    sensitivity: readString(src, [
+      "sensitivity",
+      "classification",
+      "data_sensitivity",
     ])?.toLowerCase(),
     risk_score: readNumber(riskNested ?? src, ["value", "score", "risk_score"]),
     risk_score_source: readString(riskNested ?? src, [
@@ -219,5 +242,51 @@ export function matchesPolicyWhen(
       return false;
     }
   }
+  if (when.product_type) {
+    if (
+      !ctx.product_type ||
+      ctx.product_type.toLowerCase() !== when.product_type.toLowerCase()
+    ) {
+      return false;
+    }
+  }
+  if (when.sensitivity) {
+    if (
+      !ctx.sensitivity ||
+      ctx.sensitivity.toLowerCase() !== when.sensitivity.toLowerCase()
+    ) {
+      return false;
+    }
+  }
   return true;
+}
+
+/** Compact context sealed onto policy_decision events for auditors. */
+export function evaluationContextFromPayload(
+  payload: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const ctx = payloadContextFromPayload(payload);
+  const out: Record<string, unknown> = {};
+  if (ctx.segment) out.customer_tier = ctx.segment;
+  if (ctx.account_type) out.account_type = ctx.account_type;
+  if (ctx.beneficiary) out.beneficiary = ctx.beneficiary;
+  if (ctx.customer_on_file) out.customer_on_file = ctx.customer_on_file;
+  if (ctx.merchant_age_days != null) out.merchant_age_days = ctx.merchant_age_days;
+  if (ctx.risk_tier) out.risk_tier = ctx.risk_tier;
+  if (ctx.product_type) out.product_type = ctx.product_type;
+  if (ctx.previous_pattern) out.previous_pattern = ctx.previous_pattern;
+  if (ctx.sensitivity) out.sensitivity = ctx.sensitivity;
+  if (ctx.risk_score != null) out.risk_score = ctx.risk_score;
+  if (ctx.risk_model_name) out.risk_model_name = ctx.risk_model_name;
+  if (ctx.risk_model_version) out.risk_model_version = ctx.risk_model_version;
+  const fields =
+    (Array.isArray(payload?.fields_accessed) && payload?.fields_accessed) ||
+    (Array.isArray(payload?.fields) && payload?.fields) ||
+    (Array.isArray(payload?.data_touched) && payload?.data_touched) ||
+    null;
+  if (fields) {
+    out.fields_accessed = fields.filter((f): f is string => typeof f === "string");
+  }
+  if (typeof payload?.resource === "string") out.resource = payload.resource;
+  return out;
 }

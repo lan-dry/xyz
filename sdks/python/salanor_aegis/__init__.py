@@ -8,6 +8,7 @@ from salanor_aegis.policy import PolicyDeniedError, PolicyEvaluateResult, enforc
 from salanor_aegis.span import merge_span_payload, new_span_id, span_payload
 from salanor_aegis.record import (
     end_span,
+    record_anomaly_signal,
     record_data_access,
     record_decision,
     record_llm_invocation,
@@ -35,6 +36,7 @@ __all__ = [
     "new_event_id",
     "new_span_id",
     "new_trace_id",
+    "record_anomaly_signal",
     "record_data_access",
     "record_decision",
     "record_llm_invocation",

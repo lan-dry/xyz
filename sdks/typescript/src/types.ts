@@ -9,6 +9,7 @@ export type ActionKind =
   | "provenance_claim"
   | "decision"
   | "data_access"
+  | "anomaly_signal"
   | "span_start"
   | "span_end";
 

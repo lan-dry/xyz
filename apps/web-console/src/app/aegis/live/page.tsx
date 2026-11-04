@@ -221,16 +221,23 @@ export default function LiveFeedPage() {
       {traces.length === 0 && !isLoading && !error ? (
         <EmptyStatePanel
           mark={<AegisMark />}
-          title={hasFilters ? "No rows match" : "No activity yet"}
+          title={hasFilters ? "No rows match" : "Connect an agent or workflow"}
           description={
             hasFilters
               ? "Try clearing filters or switch environment."
-              : "Live feed fills when agents ingest signed events in this environment."
+              : "Once an agent runs a governed action, you will see plain-language cards here — what happened, whether it was allowed, and a link to the receipt."
           }
           action={
             hasFilters ? undefined : (
-              <Link href="/aegis/get-started" className={`${ui.btn} ${ui.btnPrimary}`}>
-                Get started
+              <Link href="/aegis/agents" className={`${ui.btn} ${ui.btnPrimary}`}>
+                Connect an agent
+              </Link>
+            )
+          }
+          secondary={
+            hasFilters ? undefined : (
+              <Link href="/aegis/get-started" className={`${ui.btn} ${ui.btnGhost}`}>
+                Open get started
               </Link>
             )
           }
@@ -238,50 +245,77 @@ export default function LiveFeedPage() {
       ) : null}
 
       {traces.length > 0 || (data && total > 0) ? (
-        <div className={ui.tableWrap} style={{ opacity: isFetching ? 0.85 : 1 }}>
-          <table className={ui.table}>
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>What happened</th>
-                <th>Agent</th>
-                <th>Outcome</th>
-                <th>Steps</th>
-                <th>Case ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {traces.map((t) => {
-                const row = listSentenceFromTrace(t);
-                return (
-                  <tr
-                    key={t.trace_id}
-                    style={{
-                      cursor: "pointer",
-                      background:
-                        selectedId === t.trace_id
-                          ? "color-mix(in srgb, var(--console-accent) 12%, transparent)"
-                          : undefined,
-                    }}
-                    onClick={() => setSelectedId(t.trace_id)}
+        <div style={{ opacity: isFetching ? 0.85 : 1, display: "grid", gap: "0.75rem" }}>
+          {traces.map((t) => {
+            const row = listSentenceFromTrace(t);
+            const statusLabel =
+              row.outcome.kind === "ask_person"
+                ? "Paused for approval"
+                : row.outcome.kind === "stop" || row.outcome.kind === "failed"
+                  ? "Flagged"
+                  : row.outcome.chip === "Allowed" || row.outcome.kind === "allow"
+                    ? "Allowed"
+                    : row.outcome.chip;
+            return (
+              <article
+                key={t.trace_id}
+                className={`${ui.card} ${ui.cardPad}`}
+                style={{
+                  cursor: "pointer",
+                  borderColor:
+                    selectedId === t.trace_id
+                      ? "var(--console-accent)"
+                      : undefined,
+                }}
+                onClick={() => setSelectedId(t.trace_id)}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "0.75rem",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <div style={{ flex: "1 1 16rem" }}>
+                    <div style={{ marginBottom: "0.4rem" }}>
+                      <OutcomeChip chip={statusLabel} kind={row.outcome.kind} />
+                      <span
+                        style={{
+                          marginLeft: "0.65rem",
+                          fontSize: "0.75rem",
+                          color: "var(--console-fg-subtle)",
+                        }}
+                      >
+                        {new Date(t.started_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: "0.9375rem" }}>
+                      {row.sentence}
+                    </p>
+                    <p
+                      style={{
+                        margin: "0.35rem 0 0",
+                        fontSize: "0.75rem",
+                        color: "var(--console-fg-muted)",
+                      }}
+                    >
+                      Agent <span className="mono">{t.agent_id}</span> · {t.total_events}{" "}
+                      step{t.total_events === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/aegis/traces/${encodeURIComponent(t.trace_id)}`}
+                    className={`${ui.btn} ${ui.btnPrimary}`}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <td>{new Date(t.started_at).toLocaleString()}</td>
-                    <td style={{ fontWeight: 500 }}>{row.sentence}</td>
-                    <td className="mono" style={{ fontSize: "0.8125rem" }}>
-                      {t.agent_id}
-                    </td>
-                    <td>
-                      <OutcomeChip chip={row.outcome.chip} kind={row.outcome.kind} />
-                    </td>
-                    <td>{t.total_events}</td>
-                    <td className="mono" style={{ fontSize: "0.75rem", opacity: 0.85 }}>
-                      {t.trace_id.slice(0, 12)}…
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    View receipt
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
           <ConsolePagination
             total={total}
             limit={limit}
@@ -319,7 +353,7 @@ export default function LiveFeedPage() {
               href={`/aegis/traces/${encodeURIComponent(selected.trace_id)}`}
               className={`${ui.btn} ${ui.btnPrimary}`}
             >
-              Open full case
+              View receipt
             </Link>
           </div>
         ) : null}

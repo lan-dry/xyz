@@ -43,6 +43,7 @@
     "pilot:agent:resume": "pnpm --filter @salanor/pilot-agent pilot:resume",
     "pilot:agent:payout": "pnpm --filter @salanor/pilot-agent pilot:payout",
     "pilot:agent:manipulated": "pnpm --filter @salanor/pilot-agent pilot:manipulated",
+    "pilot:agent:data-access": "pnpm --filter @salanor/pilot-agent pilot:data-access",
     "pilot:agent:resume:payout": "pnpm --filter @salanor/pilot-agent pilot:resume:payout",
     "pilot:spine-smoke": "pnpm --filter @salanor/demo-tools pilot-spine-smoke",
     "pilot:publish-proofs": "pnpm --filter aegis-api witness:batch",
