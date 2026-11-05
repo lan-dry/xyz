@@ -6,6 +6,7 @@ import type { BlogPost } from "./types";
 export type BlogAuthorDisplay = {
   name: string;
   role: string | null;
+  bio: string | null;
   photoUrl: string | null;
   linkedinUrl: string | null;
   xUrl: string | null;
@@ -15,6 +16,7 @@ export type BlogAuthorDisplay = {
 type BylineRow = {
   byline_name: string | null;
   byline_title: string | null;
+  byline_bio: string | null;
   byline_photo_url: string | null;
   byline_linkedin_url: string | null;
   byline_x_url: string | null;
@@ -28,6 +30,7 @@ function fallbackFromPost(post: BlogPost): BlogAuthorDisplay {
   return {
     name: post.authorName,
     role: post.authorRole,
+    bio: null,
     photoUrl: null,
     linkedinUrl: null,
     xUrl: null,
@@ -39,6 +42,7 @@ function rowToDisplay(row: BylineRow, post: BlogPost): BlogAuthorDisplay {
   return {
     name: row.byline_name?.trim() || post.authorName,
     role: row.byline_title?.trim() || post.authorRole,
+    bio: row.byline_bio?.trim() || null,
     photoUrl: row.byline_photo_url?.trim() || null,
     linkedinUrl: row.byline_linkedin_url?.trim() || null,
     xUrl: row.byline_x_url?.trim() || null,
@@ -64,7 +68,7 @@ export async function resolveBlogAuthorDisplay(post: BlogPost): Promise<BlogAuth
     if (accountId && UUID_RE.test(accountId)) {
       const byId = await pool.query<BylineRow>(
         `SELECT
-           byline_name, byline_title, byline_photo_url,
+           byline_name, byline_title, byline_bio, byline_photo_url,
            byline_linkedin_url, byline_x_url, byline_instagram_url
          FROM account
          WHERE account_id = $1::uuid AND active = true
@@ -77,7 +81,7 @@ export async function resolveBlogAuthorDisplay(post: BlogPost): Promise<BlogAuth
     if (email) {
       const byEmail = await pool.query<BylineRow>(
         `SELECT
-           byline_name, byline_title, byline_photo_url,
+           byline_name, byline_title, byline_bio, byline_photo_url,
            byline_linkedin_url, byline_x_url, byline_instagram_url
          FROM account
          WHERE lower(trim(email)) = $1 AND active = true

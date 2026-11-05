@@ -3,6 +3,17 @@
   gap: 0.75rem;
 }
 
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.fieldLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--console-fg);
+}
+
 .formGrid2 {
   display: grid;
   gap: 0.75rem;

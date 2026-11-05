@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@salanor/db-url": "workspace:*",
+    "@salanor/marketing-blog": "workspace:*",
     "@salanor/platform-auth": "workspace:*",
     "@salanor/plan-display": "workspace:*",
     "gray-matter": "^4.0.3",

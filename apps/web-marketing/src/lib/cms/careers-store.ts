@@ -44,7 +44,20 @@ function pool(): pg.Pool | null {
   });
 }
 
-export async function listOpenRoles(): Promise<Omit<OpenRolePublic, "summary" | "summaryHtml" | "requirements" | "requirementsHtml">[]> {
+function plainPreview(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/[#>*_`[\]]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export type OpenRoleListItem = Omit<
+  OpenRolePublic,
+  "summary" | "summaryHtml" | "requirements" | "requirementsHtml"
+> & { summary: string };
+
+export async function listOpenRoles(): Promise<OpenRoleListItem[]> {
   const p = pool();
   if (!p) return [];
   try {
@@ -65,6 +78,7 @@ export async function listOpenRoles(): Promise<Omit<OpenRolePublic, "summary" | 
       seniority: r.seniority,
       employmentType: r.employment_type,
       compensationRange: r.compensation_range,
+      summary: plainPreview(r.summary),
       postedAt: r.posted_at.toISOString(),
       closesAt: r.closes_at?.toISOString() ?? null,
       status: r.status,

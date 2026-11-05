@@ -19,29 +19,27 @@ export default async function CareersPage() {
     <MarketingPage
       label="Careers"
       title="Open roles"
-      lead="We hire senior engineers across platform, cryptography, and developer experience."
+      lead="Open roles across platform, cryptography, and developer experience."
     >
       {roles.length === 0 ? (
-        <p>
-          No open roles listed right now. Send your portfolio to{" "}
-          <a href="mailto:careers@salanor.com" style={{ color: "var(--teal-bright)" }}>
-            careers@salanor.com
-          </a>{" "}
-          or use the{" "}
-          <Link href="/contact" style={{ color: "var(--teal-bright)", textDecoration: "none" }}>
-            contact form
-          </Link>
-          .
-        </p>
+        <div className={styles.empty}>
+          <p className={styles.emptyTitle}>No open roles right now</p>
+          <p className={styles.emptyLead}>
+            Send a note to{" "}
+            <a href="mailto:careers@salanor.com">careers@salanor.com</a>
+            {" "}or use the <Link href="/contact">contact form</Link>.
+          </p>
+        </div>
       ) : (
-        <ul className={styles.grid} style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        <ul className={styles.roleList}>
           {roles.map((role) => (
             <li key={role.id}>
-              <Link href={`/careers/${role.slug}`} className={styles.card} style={{ display: "block", textDecoration: "none" }}>
+              <Link href={`/careers/${role.slug}`} className={styles.roleCard}>
                 <p className={styles.cardMeta}>
                   {role.team} · {role.location} · {role.employmentType.replace(/_/g, " ")}
                 </p>
                 <h2 className={styles.cardTitle}>{role.title}</h2>
+                {role.summary ? <p className={styles.roleSummary}>{role.summary}</p> : null}
                 {role.compensationRange ? (
                   <p className={styles.cardExcerpt}>{role.compensationRange}</p>
                 ) : null}

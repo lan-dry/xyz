@@ -191,6 +191,9 @@ importers:
       '@salanor/db-url':
         specifier: workspace:*
         version: link:../../packages/db-url
+      '@salanor/marketing-blog':
+        specifier: workspace:*
+        version: link:../../packages/marketing-blog
       '@salanor/plan-display':
         specifier: workspace:*
         version: link:../../packages/plan-display
@@ -455,9 +458,18 @@ importers:
 
   packages/marketing-blog:
     dependencies:
+      '@salanor/db-url':
+        specifier: workspace:*
+        version: link:../db-url
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      marked:
+        specifier: ^15.0.12
+        version: 15.0.12
+      pg:
+        specifier: ^8.16.0
+        version: 8.21.0
     devDependencies:
       '@salanor/config':
         specifier: workspace:*
@@ -465,6 +477,9 @@ importers:
       '@types/node':
         specifier: ^22.15.21
         version: 22.19.19
+      '@types/pg':
+        specifier: ^8.15.4
+        version: 8.20.0
       typescript:
         specifier: ^5.8.3
         version: 5.9.3

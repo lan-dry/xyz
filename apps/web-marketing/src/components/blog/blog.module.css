@@ -152,6 +152,10 @@
   line-height: 1.65;
   margin: 0;
   flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .cardTags {
@@ -172,8 +176,25 @@
 .empty {
   grid-column: 1 / -1;
   text-align: center;
-  padding: 4rem 1rem;
+  padding: 3.5rem 2rem;
   color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.emptyTitle {
+  margin: 0 0 0.5rem;
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.emptyLead {
+  margin: 0 auto;
+  max-width: 36rem;
+  line-height: 1.6;
 }
 
 /* ——— Article ——— */
@@ -236,8 +257,9 @@
 .articleExcerpt {
   font-size: 1.25rem;
   color: var(--text-muted);
-  line-height: 1.65;
-  margin: 0 0 1.5rem;
+  line-height: 1.7;
+  margin: 0 0 1.75rem;
+  max-width: 40rem;
 }
 
 .articleMetaRow {
@@ -294,16 +316,44 @@
   text-decoration: underline;
 }
 
+.authorCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.authorCard .authorAvatar,
+.authorCard .authorAvatarImg {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
 .authorName {
   display: block;
+  margin: 0;
   color: var(--text);
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 1rem;
 }
 
 .authorRole {
   display: block;
-  font-size: 0.8125rem;
+  margin: 0.15rem 0 0;
+  font-size: 0.875rem;
   color: var(--text-dim);
+}
+
+.authorBio {
+  margin: 0.55rem 0 0;
+  max-width: 40rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--text-muted);
 }
 
 .coverHero {
@@ -566,11 +616,46 @@
   gap: 1rem;
 }
 
+.roleList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.roleCard {
+  display: block;
+  padding: 1.25rem 1.35rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+}
+
+.roleCard:hover {
+  border-color: var(--border-bright);
+}
+
+.roleSummary {
+  margin: 0.65rem 0 0;
+  color: var(--text-muted);
+  line-height: 1.6;
+  font-size: 0.9375rem;
+}
+
 /* ——— Prose ——— */
 .prose {
-  font-size: 1.0625rem;
-  line-height: 1.8;
-  color: var(--text-muted);
+  font-size: 1.125rem;
+  line-height: 1.75;
+  color: var(--text);
+  max-width: 42rem;
+}
+
+.prose p,
+.prose li {
+  color: var(--text);
 }
 
 .prose > *:first-child {
@@ -587,17 +672,19 @@
 }
 
 .prose h2 {
-  font-size: 1.65rem;
-  margin: 2.5rem 0 1rem;
+  font-size: 1.75rem;
+  margin: 2.75rem 0 0.85rem;
+  line-height: 1.25;
 }
 
 .prose h3 {
-  font-size: 1.25rem;
-  margin: 2rem 0 0.75rem;
+  font-size: 1.3rem;
+  margin: 2.15rem 0 0.65rem;
+  line-height: 1.3;
 }
 
 .prose p {
-  margin: 0 0 1.25rem;
+  margin: 0 0 1.35rem;
 }
 
 .prose ul,

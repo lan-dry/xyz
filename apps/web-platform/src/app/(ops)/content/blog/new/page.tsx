@@ -19,7 +19,7 @@ export default async function OpsContentBlogNewPage() {
   return (
     <ContentPageShell
       title="New blog post"
-      subtitle="Creates the same Markdown file as editing in Cursor."
+      subtitle="Saved to the database as a draft. Publish it from the edit page when it is ready."
       actions={
         <Link href="/content/blog" className={`${ui.btn} ${ui.btnGhost}`}>
           All posts

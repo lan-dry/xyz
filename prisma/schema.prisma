@@ -58,9 +58,14 @@ model MarketingBlogPost {
   title                String
   excerpt              String    @default("")
   contentHtml          String    @default("") @map("content_html")
+  bodyMarkdown         String    @default("") @map("body_markdown")
   coverImageUrl        String?   @map("cover_image_url")
   authorName           String    @default("Landry Bougang") @map("author_name")
   authorRole           String?   @map("author_role")
+  authorAccountId      String?   @map("author_account_id") @db.Uuid
+  authorEmail          String?   @map("author_email")
+  createdByEmail       String?   @map("created_by_email")
+  lastEditedByEmail    String?   @map("last_edited_by_email")
   tags                 String[]  @default([])
   status               String    @default("draft")
   publishedAt          DateTime? @map("published_at") @db.Timestamptz(6)

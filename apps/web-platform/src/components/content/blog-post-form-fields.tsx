@@ -88,7 +88,7 @@ export function BlogPostFormFields({
       <div className={`${forms.formGrid3} ${forms.formGrid2}`}>
         <select name="status" defaultValue={defaults?.status ?? "draft"} className={ui.select}>
           <option value="draft">draft (unpublished)</option>
-          <option value="published">published</option>
+          <option value="published">published or scheduled</option>
         </select>
         <input
           name="publishedAt"

@@ -43,6 +43,12 @@ export default async function OpsContentBlogEditPage({
           <Link href="/content/blog" className={`${ui.btn} ${ui.btnGhost}`}>
             All posts
           </Link>
+          <a
+            href={`/content/blog/${encodeURIComponent(post.slug)}/export`}
+            className={`${ui.btn} ${ui.btnGhost}`}
+          >
+            Export Markdown
+          </a>
           {post.status === "published" ? (
             <a
               href={`${PUBLIC_BLOG_ORIGIN}/blog/${post.slug}`}
@@ -58,7 +64,7 @@ export default async function OpsContentBlogEditPage({
     >
       {sp.saved === "1" ? (
         <div className={`${ui.alert} ${ui.alertSuccess}`} style={{ marginBottom: "1rem" }}>
-          Saved. Push/merge and deploy marketing for www to update.
+          Saved to the database. The public site reads this record. A scheduled date stays off the site until that time.
         </div>
       ) : null}
 
@@ -117,7 +123,7 @@ export default async function OpsContentBlogEditPage({
           </p>
         ) : (
           <p style={{ color: "var(--console-fg-muted)" }}>
-            No authorAccountId in frontmatter yet — save once from Ops to link byline to your account UUID.
+            Save once to link the byline to your account. The public page then uses your profile photo, role, and bio.
           </p>
         )}
         {post.createdByEmail ? <p>Created in ops by {post.createdByEmail}</p> : null}
@@ -152,7 +158,7 @@ export default async function OpsContentBlogEditPage({
             Save
           </button>
           <p style={{ fontSize: "0.75rem", color: "var(--console-fg-muted)" }}>
-            Set status to draft to unpublish (hidden on /blog).
+            Draft stays hidden. Published with a future date is scheduled and appears on the public site at that time. Set status to draft to unpublish.
           </p>
         </form>
       ) : (

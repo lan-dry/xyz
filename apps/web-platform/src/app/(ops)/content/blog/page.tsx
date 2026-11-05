@@ -21,7 +21,7 @@ export default async function OpsContentBlogPage() {
   return (
     <ContentPageShell
       title="Blog"
-      subtitle="Markdown in Git — same files as Cursor. Live on www after merge and marketing deploy."
+      subtitle="Posts are stored in the database. Publish or set a future date to schedule. The public site reads this record."
       actions={
         canWrite ? (
           <Link href="/content/blog/new" className={`${ui.btn} ${ui.btnPrimary}`}>
@@ -35,7 +35,7 @@ export default async function OpsContentBlogPage() {
       {posts.length === 0 ? (
         <EmptyStatePanel
           title="No blog posts yet"
-          description="Create a post or add a .md file under apps/web-marketing/content/blog."
+          description="Create a post here. It is saved to the database and shown on the public site when published."
         />
       ) : (
         <div className={ui.tableWrap}>
@@ -60,7 +60,13 @@ export default async function OpsContentBlogPage() {
                       <div style={{ fontWeight: 500 }}>{post.title}</div>
                       <div style={{ fontSize: "0.75rem", color: "var(--console-fg-muted)" }}>{post.slug}</div>
                     </td>
-                    <td>{post.status}</td>
+                    <td>
+                      {post.status === "published" &&
+                      post.publishedAt &&
+                      new Date(post.publishedAt).getTime() > Date.now()
+                        ? "scheduled"
+                        : post.status}
+                    </td>
                     <td>{post.authorName}</td>
                     <td>{s?.views ?? "—"}</td>
                     <td>{s?.listenStarts ?? "—"}</td>

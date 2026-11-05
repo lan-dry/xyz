@@ -6,7 +6,13 @@ export type {
   BlogPostStatus,
 } from "./types";
 export { githubWriteEnabled } from "./github";
-export { listMarketingBlogPosts, getMarketingBlogPostBySlug } from "./read";
+export {
+  getStoredBlogPostBySlug,
+  listStoredBlogPosts,
+  type StoredBlogPost,
+} from "./db";
+export { ensureBlogDatabase, listMarketingBlogPosts, getMarketingBlogPostBySlug } from "./read";
+export { serializeBlogMarkdown } from "./serialize";
 export { extractBlogMediaPaths, blogMediaFilenameFromPublicPath } from "./media-paths";
 export {
   deleteMarketingBlogMedia,

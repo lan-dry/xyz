@@ -6,7 +6,7 @@ import {
 
 import { getPrisma } from "@/lib/prisma";
 
-/** Every `/blog/media/…` path still referenced by Git blog, DB research, careers, or legacy DB blog. */
+/** Every `/blog/media/…` path still referenced by a database blog post, research, careers, or a byline photo. */
 export async function collectReferencedBlogMediaPaths(): Promise<Set<string>> {
   const refs = new Set<string>();
 
@@ -14,8 +14,8 @@ export async function collectReferencedBlogMediaPaths(): Promise<Set<string>> {
     for (const p of extractBlogMediaPaths(...texts)) refs.add(p);
   };
 
-  const gitPosts = await listMarketingBlogPosts();
-  for (const post of gitPosts) {
+  const posts = await listMarketingBlogPosts();
+  for (const post of posts) {
     add(post.bodyMarkdown, post.coverImageUrl);
   }
 

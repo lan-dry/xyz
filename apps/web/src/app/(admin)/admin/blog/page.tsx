@@ -30,7 +30,7 @@ export default async function AdminBlogPage() {
     <section className="space-y-6">
       <AdminPageHeader
         title="Blog"
-        subtitle="Markdown in Git — same files as Cursor. Published posts appear on the marketing site after deploy."
+        subtitle="Posts are stored in the database. The public site reads that record."
         actions={
           <>
             {!canWrite ? <AdminReadOnlyBadge /> : null}
@@ -49,7 +49,7 @@ export default async function AdminBlogPage() {
       {posts.length === 0 ? (
         <AdminEmptyState
           title="No blog posts yet"
-          description="Create a post here or add a .md file under apps/web-marketing/content/blog."
+          description="Create a post here. It is saved to the database."
         />
       ) : (
         <AdminDataTable>

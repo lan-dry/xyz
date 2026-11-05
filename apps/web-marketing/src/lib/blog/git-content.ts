@@ -84,11 +84,13 @@ function parseFile(filePath: string): BlogPost | null {
   };
 }
 
+/**
+ * @deprecated Git markdown is not the production source.
+ * The reader stays only for debugging. It turns on when BLOG_CONTENT_GIT=1.
+ * Public pages and Platform Ops read Postgres instead.
+ */
 export function gitBlogContentEnabled(): boolean {
-  if (process.env.BLOG_CONTENT_GIT?.trim() === "0") return false;
-  const dir = contentDir();
-  if (!existsSync(dir)) return false;
-  return readdirSync(dir).some((name) => name.endsWith(".md") && name.toLowerCase() !== "readme.md");
+  return process.env.BLOG_CONTENT_GIT?.trim() === "1";
 }
 
 function loadAllFromGit(): BlogPost[] {

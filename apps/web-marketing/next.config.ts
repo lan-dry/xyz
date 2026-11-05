@@ -9,7 +9,12 @@ const consoleUrl =
     : "http://localhost:3000");
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@salanor/db-url", "@salanor/plan-display", "@salanor/platform-auth"],
+  transpilePackages: [
+    "@salanor/db-url",
+    "@salanor/marketing-blog",
+    "@salanor/plan-display",
+    "@salanor/platform-auth",
+  ],
   async headers() {
     return [
       {

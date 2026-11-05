@@ -33,16 +33,34 @@ export function CareerRoleFormFields({
   return (
     <>
       <div className={forms.formGrid2}>
-        <input name="title" defaultValue={defaults?.title ?? ""} placeholder="Role title" className={ui.input} required />
-        <input name="slug" defaultValue={defaults?.slug ?? ""} placeholder="slug (URL)" className={ui.input} required />
-        <input name="team" defaultValue={defaults?.team ?? ""} placeholder="Team" className={ui.input} required />
-        <input name="location" defaultValue={defaults?.location ?? "Remote"} placeholder="Location" className={ui.input} required />
-        <input name="seniority" defaultValue={defaults?.seniority ?? ""} placeholder="Seniority" className={ui.input} required />
-        <select name="employmentType" defaultValue={defaults?.employmentType ?? "full_time"} className={ui.select}>
-          <option value="full_time">Full time</option>
-          <option value="part_time">Part time</option>
-          <option value="contract">Contract</option>
-        </select>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Role title</span>
+          <input name="title" defaultValue={defaults?.title ?? ""} className={ui.input} required />
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>URL slug</span>
+          <input name="slug" defaultValue={defaults?.slug ?? ""} className={ui.input} required />
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Team</span>
+          <input name="team" defaultValue={defaults?.team ?? ""} className={ui.input} required />
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Location</span>
+          <input name="location" defaultValue={defaults?.location ?? "Remote"} className={ui.input} required />
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Seniority</span>
+          <input name="seniority" defaultValue={defaults?.seniority ?? ""} className={ui.input} required />
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Employment type</span>
+          <select name="employmentType" defaultValue={defaults?.employmentType ?? "full_time"} className={ui.select}>
+            <option value="full_time">Full time</option>
+            <option value="part_time">Part time</option>
+            <option value="contract">Contract</option>
+          </select>
+        </label>
       </div>
       <CmsMarkdownField
         name="summary"

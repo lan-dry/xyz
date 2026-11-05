@@ -31,7 +31,10 @@ export default async function BlogPage() {
       <div className={styles.grid}>
         {posts.length === 0 ? (
           <div className={styles.empty}>
-            <p>No articles yet. Check back soon.</p>
+            <p className={styles.emptyTitle}>No articles published yet</p>
+            <p className={styles.emptyLead}>
+              Notes on governed automation and operational controls will appear here.
+            </p>
           </div>
         ) : (
           posts.map((post) => <BlogCard key={post.id} post={post} />)

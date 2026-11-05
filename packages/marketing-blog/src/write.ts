@@ -17,6 +17,7 @@ import {
   blogPostFilePath,
   localContentAvailable,
 } from "./paths";
+import { blogDatabaseConfigured, saveStoredBlogPost } from "./db";
 import { serializeBlogMarkdown } from "./serialize";
 import type { BlogEditorContext, BlogPostSaveInput } from "./types";
 
@@ -70,7 +71,26 @@ async function writePostGithub(
   return { slug };
 }
 
+/**
+ * Writes the post to Postgres. Git files are not updated.
+ * `writePostLocal` / `writePostGithub` remain only so an operator can export or debug;
+ * they are not the production save path.
+ */
 export async function saveMarketingBlogPost(
+  input: BlogPostSaveInput,
+  ctx: BlogEditorContext,
+  options?: { previousSlug?: string | null },
+): Promise<{ slug: string }> {
+  if (!blogDatabaseConfigured()) {
+    throw new Error(
+      "Blog posts are stored in Postgres. Set DATABASE_URL, then run pnpm db:migrate.",
+    );
+  }
+  return saveStoredBlogPost(input, ctx, options?.previousSlug);
+}
+
+/** @deprecated Git is not the production source. Kept for manual export/debug only. */
+export async function saveMarketingBlogPostToGit(
   input: BlogPostSaveInput,
   ctx: BlogEditorContext,
   options?: { previousSlug?: string | null },
@@ -80,7 +100,7 @@ export async function saveMarketingBlogPost(
   }
   if (!githubWriteEnabled()) {
     throw new Error(
-      "Blog save requires local repo checkout or BLOG_GITHUB_TOKEN (GitHub Contents API).",
+      "Git export requires a local repo checkout or BLOG_GITHUB_TOKEN (GitHub Contents API).",
     );
   }
   return writePostGithub(input, ctx, options?.previousSlug);

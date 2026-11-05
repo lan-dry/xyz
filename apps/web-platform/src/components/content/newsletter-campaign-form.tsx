@@ -12,24 +12,33 @@ export function NewsletterCampaignForm() {
       <p style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem", color: "var(--console-fg-muted)" }}>
         Confirmed subscribers only. Test, then send now or schedule (UTC stored; use your local picker).
       </p>
-      <input name="subject" placeholder="Email subject" className={ui.input} required />
-      <input
-        name="previewText"
-        placeholder="Preview line (inbox snippet, optional)"
-        className={ui.input}
-      />
-      <label style={{ fontSize: "0.8125rem", fontWeight: 500, display: "grid", gap: "0.35rem" }}>
-        Schedule send (optional)
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Subject</span>
+        <input name="subject" placeholder="What the reader sees in the inbox" className={ui.input} required />
+      </label>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Preview line</span>
+        <input
+          name="previewText"
+          placeholder="Optional inbox snippet"
+          className={ui.input}
+        />
+      </label>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Schedule send (optional)</span>
         <input name="scheduledAt" type="datetime-local" className={ui.input} />
       </label>
-      <textarea
-        name="bodyMarkdown"
-        rows={14}
-        className={ui.textarea}
-        placeholder="## Heading&#10;&#10;Your update in Markdown…"
-        required
-        style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.8125rem" }}
-      />
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Body</span>
+        <textarea
+          name="bodyMarkdown"
+          rows={14}
+          className={ui.textarea}
+          placeholder="## Heading&#10;&#10;Your update in Markdown…"
+          required
+          style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.8125rem" }}
+        />
+      </label>
       <CmsFormSubmit label="Save" pendingLabel="Saving…" />
     </form>
   );

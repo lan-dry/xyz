@@ -5,16 +5,17 @@ import { normalizePostgresDatabaseUrl } from "@salanor/db-url";
 import pg from "pg";
 
 import {
-  getGitBlogPostById,
-  getGitBlogPostBySlug,
-  gitBlogContentEnabled,
-  listGitBlogPosts as listGitBlogPosts,
-} from "./git-content";
+  ensureBlogDatabase,
+  getStoredBlogPostBySlug,
+  listStoredBlogPosts,
+  type StoredBlogPost,
+} from "@salanor/marketing-blog";
+
 import { sanitizeBlogHtml } from "./sanitize";
 import type { BlogPost, BlogPostInput, BlogPostListItem, BlogPostStatus } from "./types";
 import { readingTimeMinutes, slugify } from "./utils";
 
-/** Legacy DB/JSON write path only (Git is the production source). */
+/** JSON file fallback when DATABASE_URL is unset. Postgres is the production source. */
 type BlogPublisherContext = {
   userId: string;
   email: string;
@@ -70,6 +71,31 @@ function blogDataFile(): string {
 function toIso(value: Date | string | null): string | null {
   if (!value) return null;
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+function fromStored(row: StoredBlogPost): BlogPost {
+  const contentHtml = sanitizeBlogHtml(row.contentHtml);
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    excerpt: row.excerpt ?? "",
+    contentHtml,
+    coverImageUrl: row.coverImageUrl,
+    authorName: row.authorName,
+    authorRole: row.authorRole,
+    authorAccountId: row.authorAccountId,
+    authorEmail: row.authorEmail,
+    tags: row.tags ?? [],
+    status: row.status,
+    publishedAt: row.publishedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    seoTitle: row.seoTitle,
+    seoDescription: row.seoDescription,
+    readingTimeMinutes: readingTimeMinutes(contentHtml),
+    lastPublishedByEmail: row.lastEditedByEmail,
+  };
 }
 
 function mapRow(row: BlogRow): BlogPost {
@@ -228,28 +254,14 @@ export async function listBlogPosts(options?: {
   const status = options?.status ?? (options?.includeDrafts ? "all" : "published");
   const tag = options?.tag?.trim().toLowerCase();
 
-  if (gitBlogContentEnabled()) {
-    return listGitBlogPosts({ status, tag, includeDrafts: options?.includeDrafts });
-  }
-
   if (useDatabase()) {
-    const params: unknown[] = [];
-    const clauses: string[] = [];
-    if (status !== "all") {
-      params.push(status);
-      clauses.push(`status = $${params.length}`);
-    }
-    if (tag) {
-      params.push(tag);
-      clauses.push(`EXISTS (SELECT 1 FROM unnest(tags) t WHERE lower(t) = $${params.length})`);
-    }
-    const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
-    const result = await getPool().query<BlogRow>(
-      `SELECT * FROM marketing_blog_posts ${where}
-       ORDER BY COALESCE(published_at, created_at) DESC`,
-      params,
-    );
-    return result.rows.map((row) => toListItem(mapRow(row)));
+    await ensureBlogDatabase();
+    const rows = await listStoredBlogPosts({
+      status: status === "all" ? "all" : status,
+      tag,
+      liveOnly: status === "published",
+    });
+    return rows.map((row) => toListItem(fromStored(row)));
   }
 
   let posts = readFilePosts();
@@ -267,28 +279,24 @@ export async function listBlogPosts(options?: {
   return posts.map(toListItem);
 }
 
+export function isBlogPostLive(post: Pick<BlogPost, "status" | "publishedAt">): boolean {
+  if (post.status !== "published") return false;
+  if (!post.publishedAt) return true;
+  return new Date(post.publishedAt).getTime() <= Date.now();
+}
+
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
-  if (gitBlogContentEnabled()) {
-    return getGitBlogPostBySlug(slug);
+  if (useDatabase()) {
+    await ensureBlogDatabase();
+    const row = await getStoredBlogPostBySlug(slug);
+    return row ? fromStored(row) : null;
   }
 
-  if (useDatabase()) {
-    const result = await getPool().query<BlogRow>(
-      `SELECT * FROM marketing_blog_posts WHERE slug = $1 LIMIT 1`,
-      [slug],
-    );
-    const row = result.rows[0];
-    return row ? mapRow(row) : null;
-  }
   const post = readFilePosts().find((p) => p.slug === slug);
   return post ?? null;
 }
 
 export async function getBlogPostById(id: string): Promise<BlogPost | null> {
-  if (gitBlogContentEnabled()) {
-    return getGitBlogPostById(id);
-  }
-
   if (useDatabase()) {
     const result = await getPool().query<BlogRow>(
       `SELECT * FROM marketing_blog_posts WHERE id = $1 LIMIT 1`,

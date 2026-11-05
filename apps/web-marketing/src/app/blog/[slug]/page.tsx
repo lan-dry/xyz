@@ -10,7 +10,7 @@ import { BlogShare } from "@/components/blog/blog-share";
 import { BlogToc } from "@/components/blog/blog-toc";
 import styles from "@/components/blog/blog.module.css";
 import { resolveBlogAuthorDisplay } from "@/lib/blog/author-byline";
-import { getBlogPostBySlug, listBlogPosts } from "@/lib/blog/store";
+import { getBlogPostBySlug, isBlogPostLive, listBlogPosts } from "@/lib/blog/store";
 import { extractTableOfContents, formatBlogDate } from "@/lib/blog/utils";
 import { absoluteBlogOgImage } from "@/lib/blog/og-image";
 import { SITE_ORIGIN } from "@/lib/site-origin";
@@ -30,7 +30,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
-  if (!post || post.status !== "published") {
+  if (!post || !isBlogPostLive(post)) {
     return { title: "Article not found" };
   }
   const ogImage = absoluteBlogOgImage(post.coverImageUrl);
@@ -59,7 +59,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BlogArticlePage({ params }: Props) {
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
-  if (!post || post.status !== "published") notFound();
+  if (!post || !isBlogPostLive(post)) notFound();
 
   const toc = extractTableOfContents(post.contentHtml);
   const all = await listBlogPosts({ status: "published" });
@@ -95,26 +95,29 @@ export default async function BlogArticlePage({ params }: Props) {
               <h1 className={styles.articleTitle}>{post.title}</h1>
               {post.excerpt ? <p className={styles.articleExcerpt}>{post.excerpt}</p> : null}
               <div className={styles.articleMetaRow}>
-                <div className={styles.authorBlock}>
-                  {author.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={author.photoUrl} alt="" className={styles.authorAvatarImg} />
-                  ) : (
-                    <div className={styles.authorAvatar}>{initials}</div>
-                  )}
-                  <div>
-                    <span className={styles.authorName}>{author.name}</span>
-                    {author.role ? <span className={styles.authorRole}>{author.role}</span> : null}
-                    <BlogAuthorSocial
-                      linkedinUrl={author.linkedinUrl}
-                      xUrl={author.xUrl}
-                      instagramUrl={author.instagramUrl}
-                    />
-                  </div>
-                </div>
                 <span>{formatBlogDate(post.publishedAt ?? post.createdAt)}</span>
                 <span>{post.readingTimeMinutes} min read</span>
               </div>
+              <aside className={styles.authorCard}>
+                {author.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={author.photoUrl} alt="" className={styles.authorAvatarImg} />
+                ) : (
+                  <div className={styles.authorAvatar} aria-hidden>
+                    {initials}
+                  </div>
+                )}
+                <div>
+                  <p className={styles.authorName}>{author.name}</p>
+                  {author.role ? <p className={styles.authorRole}>{author.role}</p> : null}
+                  {author.bio ? <p className={styles.authorBio}>{author.bio}</p> : null}
+                  <BlogAuthorSocial
+                    linkedinUrl={author.linkedinUrl}
+                    xUrl={author.xUrl}
+                    instagramUrl={author.instagramUrl}
+                  />
+                </div>
+              </aside>
             </header>
 
             {post.coverImageUrl ? (
