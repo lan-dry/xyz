@@ -744,3 +744,204 @@ export function smsDeliveryAvailable(): boolean {
       process.env.TWILIO_FROM_NUMBER?.trim(),
   );
 }
+
+const ANOMALY_NOTIFY_DELAY_MS = 2500;
+const GENERIC_FLAG = "Suspicious behaviour flagged — review required";
+
+function receiptConsoleUrl(traceId: string): string {
+  const origin = (process.env.CONSOLE_ORIGIN ?? "http://localhost:3000").replace(
+    /\/$/,
+    "",
+  );
+  return `${origin}/aegis/traces/${encodeURIComponent(traceId)}`;
+}
+
+export type AnomalyFlagContext = {
+  organizationId: string;
+  traceId: string;
+  eventId: string;
+  agentId: string;
+  severity: string;
+  reason: string;
+  policyDecision: string;
+};
+
+/**
+ * One email (and Slack, if configured) when a case is first flagged
+ * at medium or high severity. Skipped when an approval notification
+ * is already the notice for this case.
+ */
+export function notifyAnomalyFlagged(
+  client: pg.Pool | pg.PoolClient,
+  ctx: AnomalyFlagContext,
+): void {
+  const severity = ctx.severity.trim().toLowerCase();
+  if (severity !== "high" && severity !== "medium") return;
+  if (ctx.policyDecision === "allow_with_obligation") return;
+
+  setTimeout(() => {
+    void deliverAnomalyFlag(client, ctx).catch((err) => {
+      console.error("[aegis-api] anomaly flag notify failed:", err);
+    });
+  }, ANOMALY_NOTIFY_DELAY_MS);
+}
+
+async function deliverAnomalyFlag(
+  client: pg.Pool | pg.PoolClient,
+  ctx: AnomalyFlagContext,
+): Promise<void> {
+  const earlier = await client.query(
+    `SELECT 1
+     FROM event
+     WHERE organization_id = $1
+       AND trace_id = $2
+       AND action_kind = 'anomaly_signal'
+       AND event_id <> $3
+       AND lower(COALESCE(payload->>'severity', '')) IN ('high', 'medium')
+     LIMIT 1`,
+    [ctx.organizationId, ctx.traceId, ctx.eventId],
+  );
+  if (earlier.rowCount) return;
+
+  const approvalAlready = await client.query(
+    `SELECT 1
+     FROM approval a
+     JOIN event ev
+       ON ev.event_id = a.event_id
+      AND ev.organization_id = a.organization_id
+     WHERE ev.organization_id = $1
+       AND ev.trace_id = $2
+     LIMIT 1`,
+    [ctx.organizationId, ctx.traceId],
+  );
+  if (approvalAlready.rowCount) return;
+
+  const obligation = await client.query(
+    `SELECT 1
+     FROM event
+     WHERE organization_id = $1
+       AND trace_id = $2
+       AND policy_decision = 'allow_with_obligation'
+     LIMIT 1`,
+    [ctx.organizationId, ctx.traceId],
+  );
+  if (obligation.rowCount) return;
+
+  const org = await loadOrgMeta(client, ctx.organizationId);
+  if (!org) return;
+  const governance = await getGovernanceSettings(client, ctx.organizationId);
+  const agent = await client.query<{ name: string }>(
+    `SELECT COALESCE(NULLIF(display_name, ''), slug, agent_id) AS name
+     FROM agent
+     WHERE organization_id = $1 AND agent_id = $2
+     LIMIT 1`,
+    [ctx.organizationId, ctx.agentId],
+  );
+  const agentName = agent.rows[0]?.name ?? ctx.agentId;
+  const flagged = ctx.reason.trim() || GENERIC_FLAG;
+  const receiptUrl = receiptConsoleUrl(ctx.traceId);
+  const notify = governance.notifications;
+  const slackUrl =
+    notify.slack_webhook_url?.trim() ||
+    process.env.APPROVAL_SLACK_WEBHOOK_URL?.trim() ||
+    "";
+
+  if (slackUrl) {
+    try {
+      const response = await fetch(slackUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: [
+            `*Needs attention* · ${org.name}`,
+            `Agent: ${agentName}`,
+            `Flagged: ${flagged}`,
+            `Status: Needs attention`,
+            `<${receiptUrl}|Open receipt>`,
+          ].join("\n"),
+        }),
+      });
+      if (!response.ok) {
+        console.error(
+          `[aegis-api] anomaly Slack notify failed (${response.status})`,
+        );
+      }
+    } catch (err) {
+      console.error("[aegis-api] anomaly Slack notify failed:", err);
+    }
+  }
+
+  if (!notify.email_enabled) return;
+  const emails = await listApproverEmails(client, ctx.organizationId);
+  for (const email of emails) {
+    try {
+      await sendAnomalyEmail(email, {
+        orgName: org.name,
+        agentName,
+        flagged,
+        receiptUrl,
+      });
+    } catch (err) {
+      console.error(`[aegis-api] anomaly email to ${email} failed:`, err);
+    }
+  }
+}
+
+async function sendAnomalyEmail(
+  to: string,
+  input: {
+    orgName: string;
+    agentName: string;
+    flagged: string;
+    receiptUrl: string;
+  },
+): Promise<void> {
+  const from =
+    process.env.INVITE_EMAIL_FROM ?? "Salanor <invites@notifications.salanor.com>";
+  const subject = `[${input.orgName}] Needs attention · ${input.agentName}`;
+  const text = [
+    `Needs attention in ${input.orgName}`,
+    "",
+    `Agent: ${input.agentName}`,
+    `Flagged: ${input.flagged}`,
+    `Status: Needs attention`,
+    `Receipt: ${input.receiptUrl}`,
+  ].join("\n");
+  const html = `<!DOCTYPE html><html><body style="font-family:Segoe UI,sans-serif;color:#0f172a;line-height:1.5">
+<p><strong>Needs attention</strong> in ${escapeHtml(input.orgName)}</p>
+<p>Agent: ${escapeHtml(input.agentName)}<br/>
+Flagged: ${escapeHtml(input.flagged)}<br/>
+Status: Needs attention</p>
+<p><a href="${escapeHtml(input.receiptUrl)}">Open the receipt</a></p>
+</body></html>`;
+
+  console.log("\n[aegis-api] Anomaly notification email");
+  console.log(`  To:      ${to}`);
+  console.log(`  Agent:   ${input.agentName}`);
+  console.log(`  Receipt: ${input.receiptUrl}`);
+
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    console.log("  Delivery: skipped (RESEND_API_KEY not set: console log only)\n");
+    return;
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject,
+      text,
+      html,
+    }),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Resend failed (${response.status}): ${body}`);
+  }
+}

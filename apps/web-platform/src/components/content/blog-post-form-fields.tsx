@@ -42,105 +42,125 @@ export function BlogPostFormFields({
 
   return (
     <>
-      <input
-        name="title"
-        defaultValue={defaults?.title ?? ""}
-        placeholder="Title"
-        className={ui.input}
-        required
-      />
-      <input
-        name="slug"
-        defaultValue={defaults?.slug ?? ""}
-        placeholder="slug (URL)"
-        className={ui.input}
-        required
-      />
-      <textarea
-        name="excerpt"
-        defaultValue={defaults?.excerpt ?? ""}
-        placeholder="Excerpt"
-        rows={2}
-        className={ui.textarea}
-        required
-      />
-      <div className={forms.formGrid2}>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Title</span>
+        <input name="title" defaultValue={defaults?.title ?? ""} className={ui.input} required />
+      </label>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Slug</span>
         <input
-          name="authorName"
-          defaultValue={defaults?.authorName ?? defaultAuthorName ?? ""}
-          placeholder="Public author name"
+          name="slug"
+          defaultValue={defaults?.slug ?? ""}
+          placeholder="governed-refunds"
           className={ui.input}
           required
         />
-        <input
-          name="authorRole"
-          defaultValue={defaults?.authorRole ?? ""}
-          placeholder="Author role (optional)"
-          className={ui.input}
+      </label>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Excerpt</span>
+        <textarea
+          name="excerpt"
+          defaultValue={defaults?.excerpt ?? ""}
+          rows={3}
+          className={ui.textarea}
+          required
         />
-      </div>
-      <input
-        name="tags"
-        defaultValue={defaults?.tags?.join(", ") ?? ""}
-        placeholder="Tags (comma-separated labels — shown on the article, not used as site filters)"
-        className={ui.input}
-      />
-      <div className={`${forms.formGrid3} ${forms.formGrid2}`}>
-        <select name="status" defaultValue={defaults?.status ?? "draft"} className={ui.select}>
-          <option value="draft">draft (unpublished)</option>
-          <option value="published">published or scheduled</option>
-        </select>
-        <input
-          name="publishedAt"
-          type="datetime-local"
-          defaultValue={publishedLocal}
-          className={ui.input}
-        />
-        <input
-          name="coverImageUrl"
-          value={coverImageUrl}
-          onChange={(e) => setCoverImageUrl(e.target.value)}
-          placeholder="Cover image URL (/blog/media/…)"
-          className={ui.input}
-        />
-      </div>
-      <BlogMediaUpload onUploaded={(path) => setCoverImageUrl(path)} />
-      <details style={{ fontSize: "0.8125rem", color: "var(--console-fg-muted)" }}>
-        <summary style={{ cursor: "pointer", fontWeight: 500, color: "var(--console-fg)" }}>
-          SEO (optional)
-        </summary>
-        <div style={{ marginTop: "0.5rem", display: "grid", gap: "0.5rem" }}>
-          <input name="seoTitle" defaultValue={defaults?.seoTitle ?? ""} placeholder="SEO title" className={ui.input} />
-          <textarea
-            name="seoDescription"
-            defaultValue={defaults?.seoDescription ?? ""}
-            placeholder="SEO description"
-            rows={2}
-            className={ui.textarea}
-          />
-        </div>
-      </details>
-      <label style={{ fontSize: "0.8125rem", fontWeight: 500 }}>
-        Body (Markdown)
+      </label>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Body</span>
         <textarea
           name="bodyMarkdown"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          rows={18}
+          rows={22}
           className={ui.textarea}
-          style={{ marginTop: "0.35rem", fontFamily: "ui-monospace, monospace", fontSize: "0.8125rem" }}
+          style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.875rem", minHeight: "22rem" }}
           required
         />
+        <span className={forms.hint}>Markdown is supported. Headings, lists, and links render on the public article.</span>
       </label>
       <BlogMediaUpload
         onUploaded={(path) => {
           setBody((prev) => `${prev.trimEnd()}\n\n![Image](${path})\n`);
         }}
       />
+      <div className={forms.formGrid2}>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Author name</span>
+          <input
+            name="authorName"
+            defaultValue={defaults?.authorName ?? defaultAuthorName ?? ""}
+            className={ui.input}
+            required
+          />
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Author role</span>
+          <input
+            name="authorRole"
+            defaultValue={defaults?.authorRole ?? ""}
+            className={ui.input}
+          />
+        </label>
+      </div>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Tags</span>
+        <input
+          name="tags"
+          defaultValue={defaults?.tags?.join(", ") ?? ""}
+          placeholder="governance, payments"
+          className={ui.input}
+        />
+        <span className={forms.hint}>Comma-separated. Shown on the article.</span>
+      </label>
+      <div className={forms.formGrid2}>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Status</span>
+          <select name="status" defaultValue={defaults?.status ?? "draft"} className={ui.select}>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+          </select>
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Publish date</span>
+          <input
+            name="publishedAt"
+            type="datetime-local"
+            defaultValue={publishedLocal}
+            className={ui.input}
+          />
+          <span className={forms.hint}>A future date keeps the post off the public site until then.</span>
+        </label>
+      </div>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Cover image</span>
+        <input
+          name="coverImageUrl"
+          value={coverImageUrl}
+          onChange={(e) => setCoverImageUrl(e.target.value)}
+          placeholder="/blog/media/…"
+          className={ui.input}
+        />
+      </label>
+      <BlogMediaUpload onUploaded={(path) => setCoverImageUrl(path)} />
+      <details className={forms.seo}>
+        <summary>SEO</summary>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>SEO title</span>
+          <input name="seoTitle" defaultValue={defaults?.seoTitle ?? ""} className={ui.input} />
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>SEO description</span>
+          <textarea
+            name="seoDescription"
+            defaultValue={defaults?.seoDescription ?? ""}
+            rows={3}
+            className={ui.textarea}
+          />
+        </label>
+      </details>
       {defaultAuthorEmail ? (
-        <p style={{ fontSize: "0.75rem", color: "var(--console-fg-muted)" }}>
-          Saves authorAccountId (stable Salanor account) plus editor audit ({defaultAuthorEmail}).
-        </p>
+        <p className={forms.hint}>Saved under your account ({defaultAuthorEmail}).</p>
       ) : null}
     </>
   );

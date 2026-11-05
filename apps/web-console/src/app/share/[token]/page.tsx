@@ -13,10 +13,11 @@ type ShareReceiptResponse = {
     organization_name: string;
     organization_slug: string;
   };
-  receipt: {
+    receipt: {
     event_id: string;
     trace_id: string;
     agent_id: string;
+    agent_name?: string;
     action_kind: string;
     policy_decision: string;
     tool_name: string | null;
@@ -32,6 +33,14 @@ type ShareReceiptResponse = {
   verification: {
     status: "valid" | "pending" | "unavailable";
     detail: string;
+  };
+  story?: {
+    what_happened: string;
+    data_seen: string | null;
+    policy_decision: string;
+    policy_reason: string | null;
+    anomaly: string | null;
+    status: string;
   };
   error?: string;
 };
@@ -78,10 +87,11 @@ export default function ShareReceiptPage() {
     <main className={styles.page}>
       <div className={styles.inner}>
         <p className={styles.eyebrow}>Salanor Aegis · Shared receipt</p>
-        <h1 className={styles.title}>Sealed receipt</h1>
+        <h1 className={styles.title}>
+          {data?.story?.what_happened ?? "Shared receipt"}
+        </h1>
         <p className={styles.lead}>
-          Read-only view of a signed governance step. No Console login required.
-          This link expires.
+          Read-only record of what this agent did. No console login required.
         </p>
 
         {query.isPending ? (
@@ -106,66 +116,78 @@ export default function ShareReceiptPage() {
               {new Date(data.share.expires_at).toLocaleString()}
             </p>
 
-            <section className={styles.card} aria-labelledby="action-heading">
-              <h2 id="action-heading" className={styles.cardTitle}>
-                Action
+            <p className={styles.statusRow}>
+              <span className={`${styles.badge} ${verifyClass}`}>
+                {data.verification.status === "valid"
+                  ? "Verified"
+                  : data.verification.status === "pending"
+                    ? "Verification pending"
+                    : "Verification unavailable"}
+              </span>
+              <span className={styles.metaInline}>{data.verification.detail}</span>
+            </p>
+
+            {data.story?.anomaly ? (
+              <div className={styles.attention} role="status">
+                <strong>Needs attention</strong>
+                <p>{data.story.anomaly}</p>
+              </div>
+            ) : null}
+
+            <section className={styles.card} aria-labelledby="happened-heading">
+              <h2 id="happened-heading" className={styles.cardTitle}>
+                What happened
               </h2>
-              <dl className={styles.dl}>
-                <div>
-                  <dt className={styles.dt}>What</dt>
-                  <dd className={styles.dd}>
-                    {data.receipt.tool_name ?? data.receipt.action_kind}
-                  </dd>
-                </div>
-                {data.receipt.amount_usd != null ? (
-                  <div>
-                    <dt className={styles.dt}>Amount</dt>
-                    <dd className={styles.dd}>
-                      ${data.receipt.amount_usd.toLocaleString()} USD
-                    </dd>
-                  </div>
-                ) : null}
-                <div>
-                  <dt className={styles.dt}>When</dt>
-                  <dd className={styles.dd}>
-                    {new Date(data.receipt.emitted_at).toLocaleString()}
-                  </dd>
-                </div>
-              </dl>
+              <p className={styles.prose}>
+                {data.story?.what_happened ??
+                  data.receipt.tool_name ??
+                  data.receipt.action_kind}
+              </p>
+              <p className={styles.metaInline}>
+                {data.receipt.agent_name ?? data.receipt.agent_id}
+                {" · "}
+                {new Date(data.receipt.emitted_at).toLocaleString()}
+                {data.story?.status ? ` · ${data.story.status}` : ""}
+              </p>
+            </section>
+
+            <section className={styles.card} aria-labelledby="data-heading">
+              <h2 id="data-heading" className={styles.cardTitle}>
+                What data was seen
+              </h2>
+              <p className={styles.prose}>
+                {data.story?.data_seen ??
+                  "No field-level data access was recorded on this case."}
+              </p>
+              {data.receipt.amount_usd != null ? (
+                <p className={styles.metaInline}>
+                  Amount ${data.receipt.amount_usd.toLocaleString()} USD
+                </p>
+              ) : null}
             </section>
 
             <section className={styles.card} aria-labelledby="policy-heading">
               <h2 id="policy-heading" className={styles.cardTitle}>
-                Policy
+                Policy decision
               </h2>
-              <dl className={styles.dl}>
-                <div>
-                  <dt className={styles.dt}>Outcome</dt>
-                  <dd className={styles.dd}>
-                    <span className={styles.badge}>
-                      {outcomeLabel(data.receipt.policy_decision)}
-                    </span>
-                  </dd>
-                </div>
-                {data.receipt.reason ? (
-                  <div>
-                    <dt className={styles.dt}>Why</dt>
-                    <dd className={styles.dd}>{data.receipt.reason}</dd>
-                  </div>
-                ) : null}
-                {data.receipt.approver ? (
-                  <div>
-                    <dt className={styles.dt}>Approver</dt>
-                    <dd className={styles.dd}>{data.receipt.approver}</dd>
-                  </div>
-                ) : null}
-              </dl>
+              <p className={styles.prose}>
+                <span className={styles.badge}>
+                  {data.story?.policy_decision ??
+                    outcomeLabel(data.receipt.policy_decision)}
+                </span>
+              </p>
+              {data.story?.policy_reason || data.receipt.reason ? (
+                <p className={styles.prose}>
+                  {data.story?.policy_reason ?? data.receipt.reason}
+                </p>
+              ) : null}
+              {data.receipt.approver ? (
+                <p className={styles.metaInline}>Approver {data.receipt.approver}</p>
+              ) : null}
             </section>
 
-            <section className={styles.card} aria-labelledby="proof-heading">
-              <h2 id="proof-heading" className={styles.cardTitle}>
-                Proof
-              </h2>
+            <details className={styles.technical}>
+              <summary>Technical details</summary>
               <dl className={styles.dl}>
                 <div>
                   <dt className={styles.dt}>Chain</dt>
@@ -179,17 +201,14 @@ export default function ShareReceiptPage() {
                     {data.receipt.event_hash}
                   </dd>
                 </div>
-                <div>
-                  <dt className={styles.dt}>Public verification</dt>
-                  <dd className={styles.dd}>
-                    <span className={verifyClass}>
-                      {data.verification.status}
-                    </span>
-                    <span style={{ display: "block", marginTop: "0.35rem" }}>
-                      {data.verification.detail}
-                    </span>
-                  </dd>
-                </div>
+                {data.receipt.prev_event_hash ? (
+                  <div>
+                    <dt className={styles.dt}>Previous hash</dt>
+                    <dd className={`${styles.dd} ${styles.mono}`}>
+                      {data.receipt.prev_event_hash}
+                    </dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt className={styles.dt}>Case ID</dt>
                   <dd className={`${styles.dd} ${styles.mono}`}>
@@ -197,7 +216,7 @@ export default function ShareReceiptPage() {
                   </dd>
                 </div>
               </dl>
-            </section>
+            </details>
 
             <p className={styles.footer}>
               Access is logged. Do not forward after the expiry time. Org{" "}

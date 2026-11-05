@@ -170,20 +170,14 @@ export default function TraceDetailPage() {
             fails verification.
           </div>
 
-          {story.anomalyReason ? (
-            <div
-              className={`${ui.card} ${ui.cardPad}`}
-              style={{
-                marginBottom: "1rem",
-                borderColor: "#c24141",
-              }}
-            >
+          {story.flagSummary ? (
+            <div className={`${ui.alert} ${ui.alertError}`} role="status">
               <strong style={{ display: "block", marginBottom: "0.35rem" }}>
                 Needs attention
                 {story.anomalySeverity ? ` · ${story.anomalySeverity}` : ""}
               </strong>
               <p style={{ margin: 0, fontSize: "0.9375rem", lineHeight: 1.5 }}>
-                {story.headline}
+                {story.flagSummary}
               </p>
             </div>
           ) : null}
@@ -286,17 +280,15 @@ export default function TraceDetailPage() {
               <p style={{ margin: "0 0 0.5rem", fontSize: "0.875rem" }}>
                 {story.attempted}
               </p>
-              {story.anomalyReason ? (
+              {story.flagSummary ? (
                 <p
                   style={{
                     margin: 0,
                     fontSize: "0.875rem",
-                    color: "var(--console-fg-muted)",
+                    lineHeight: 1.5,
                   }}
                 >
-                  Flagged behaviour
-                  {story.anomalySeverity ? ` (${story.anomalySeverity})` : ""}:{" "}
-                  {story.anomalyReason}
+                  {story.flagSummary}
                 </p>
               ) : null}
             </section>

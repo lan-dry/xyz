@@ -10,7 +10,13 @@
 .inner {
   max-width: 40rem;
   margin: 0 auto;
-  padding: 2.5rem 1.25rem 4rem;
+  padding: 2rem 1rem 3rem;
+}
+
+@media (min-width: 640px) {
+  .inner {
+    padding: 2.5rem 1.25rem 4rem;
+  }
 }
 
 .eyebrow {
@@ -121,4 +127,65 @@
   margin-top: 2rem;
   font-size: 0.75rem;
   color: #475569;
+}
+
+.prose {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: #e8ede9;
+}
+
+.statusRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.metaInline {
+  margin: 0.65rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #94a3b8;
+}
+
+.attention {
+  margin: 0 0 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: rgba(127, 29, 29, 0.35);
+  color: #fee2e2;
+}
+
+.attention strong {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.attention p {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.technical {
+  margin-top: 0.5rem;
+  border: 1px solid #1e2924;
+  border-radius: 10px;
+  background: #121614;
+  padding: 0.85rem 1rem 1rem;
+}
+
+.technical summary {
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.technical .dl {
+  margin-top: 0.85rem;
 }

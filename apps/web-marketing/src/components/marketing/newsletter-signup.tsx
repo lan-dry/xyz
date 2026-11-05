@@ -50,8 +50,8 @@ export function NewsletterSignup({ layout = "compact" }: Props) {
         </>
       ) : null}
       <form onSubmit={onSubmit} className={formClass}>
-        <label className="sr-only" htmlFor="newsletter-email">
-          Email
+        <label className={styles.label} htmlFor="newsletter-email">
+          Email address
         </label>
         <input
           id="newsletter-email"

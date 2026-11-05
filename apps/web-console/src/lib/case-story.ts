@@ -34,6 +34,8 @@ export type CaseStory = {
   dataSensitivity: string | null;
   anomalyReason: string | null;
   anomalySeverity: string | null;
+  /** Shown whenever an anomaly was recorded, including when no reason was given. */
+  flagSummary: string | null;
   attempted: string;
   policyReason: string | null;
   policyId: string | null;
@@ -87,6 +89,8 @@ function readSentence(fields: string[]): string {
   return `Read ${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}.`;
 }
 
+const GENERIC_FLAG = "Suspicious behaviour flagged — review required";
+
 function anomalyLead(type: string | null, reason: string): string {
   if (type === "prompt_injection_indicator") {
     return `Possible prompt injection detected: ${reason}`;
@@ -123,6 +127,7 @@ function collectFromEvents(events: CaseEventLike[]) {
   let anomalyReason: string | null = null;
   let anomalySeverity: string | null = null;
   let anomalyType: string | null = null;
+  let anomalyFlagged = false;
   let subject: string | null = null;
   let hasPolicyDecision = false;
   let obligation = false;
@@ -159,6 +164,7 @@ function collectFromEvents(events: CaseEventLike[]) {
       str(p?.trigger_detail);
 
     if (e.action_kind === "anomaly_signal") {
+      anomalyFlagged = true;
       anomalyReason = str(p?.reason) ?? anomalyReason;
       anomalySeverity = str(p?.severity) ?? anomalySeverity;
       anomalyType = str(p?.type) ?? anomalyType;
@@ -225,6 +231,7 @@ function collectFromEvents(events: CaseEventLike[]) {
     anomalyReason,
     anomalySeverity,
     anomalyType,
+    anomalyFlagged,
     subject,
     hasPolicyDecision,
     evaluationContext,
@@ -292,7 +299,7 @@ export function buildCaseStory(
     pendingApproval: waitingForPerson,
     deniedEvents: meta.deniedEvents,
     hasPolicyDecision: c.hasPolicyDecision,
-    anomaly: Boolean(c.anomalyReason) && !waitingForPerson && !c.denied,
+    anomaly: c.anomalyFlagged && !waitingForPerson && !c.denied,
   });
   if (waitingForPerson) {
     outcome = {
@@ -300,7 +307,7 @@ export function buildCaseStory(
       label: "Needs approval",
       chip: "Needs approval",
     };
-  } else if (c.anomalyReason && !c.denied) {
+  } else if (c.anomalyFlagged && !c.denied) {
     outcome = {
       kind: "failed",
       label: "Flagged — needs attention",
@@ -309,21 +316,23 @@ export function buildCaseStory(
   }
 
   const action = actionNoun(c.toolLabel, c.amountUsd, {
-    anomaly: Boolean(c.anomalyReason),
+    anomaly: c.anomalyFlagged,
     dataAccess: c.dataTouched.length > 0,
     subject: c.subject,
   });
   const refBit = c.reference ? ` for ${c.reference}` : "";
 
   const seen = readSentence(c.dataTouched);
-  const flagLine = c.anomalyReason
-    ? anomalyLead(c.anomalyType, c.anomalyReason)
+  const flagLine = c.anomalyFlagged
+    ? c.anomalyReason
+      ? anomalyLead(c.anomalyType, c.anomalyReason)
+      : GENERIC_FLAG
     : null;
 
   let headline: string;
-  if (c.anomalyReason && c.denied) {
+  if (flagLine && c.denied) {
     headline = `Stopped. ${flagLine}`;
-  } else if (c.anomalyReason && waitingForPerson) {
+  } else if (flagLine && waitingForPerson) {
     headline = `${flagLine} Needs approval before this can continue.`;
   } else if (c.denied) {
     const reasonLower = (c.ruleReason ?? "").toLowerCase();
@@ -476,6 +485,7 @@ export function buildCaseStory(
     dataSensitivity: c.dataSensitivity,
     anomalyReason: c.anomalyReason,
     anomalySeverity: c.anomalySeverity,
+    flagSummary: flagLine,
     attempted,
     policyReason: c.ruleReason,
     policyId: c.policyId,
@@ -509,7 +519,9 @@ export function listSentenceFromTrace(t: {
   const seen = readSentence(fields);
   const flagLine = t.preview_anomaly_reason
     ? anomalyLead(t.preview_anomaly_type ?? null, t.preview_anomaly_reason)
-    : null;
+    : t.preview_anomaly_type
+      ? GENERIC_FLAG
+      : null;
   const outcome = outcomeFromTraceStatus(t.status, {
     pendingApproval: needsPerson,
     deniedEvents: t.denied_events,
@@ -554,7 +566,7 @@ export function stepTitlePlain(
   if (actionKind === "data_access" && seen) return seen.replace(/\.$/, "");
   if (actionKind === "anomaly_signal") {
     const reason = str(p?.reason);
-    return reason ? anomalyLead(str(p?.type), reason) : "Flagged behaviour";
+    return reason ? anomalyLead(str(p?.type), reason) : GENERIC_FLAG;
   }
   const subject =
     str(p?.task) ??

@@ -62,40 +62,53 @@ export function ResearchFormFields({ defaults, byline, researchId }: Props) {
           </Link>
         </p>
       ) : null}
-      <input name="title" defaultValue={defaults?.title ?? ""} placeholder="Title" className={ui.input} required />
-      <input
-        name="slug"
-        defaultValue={defaults?.slug ?? ""}
-        placeholder="slug (URL, lowercase)"
-        className={ui.input}
-        required
-        pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-        title="Lowercase letters, numbers, and hyphens only"
-      />
-      <textarea
-        name="excerpt"
-        defaultValue={defaults?.excerpt ?? ""}
-        placeholder="Dek / summary (plain text for cards and SEO)"
-        rows={2}
-        className={ui.textarea}
-        required
-      />
-      <div className={forms.formGrid2}>
-        <select name="track" defaultValue={defaults?.track ?? "policy"} className={ui.select} required>
-          {TRACKS.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Title</span>
+        <input name="title" defaultValue={defaults?.title ?? ""} className={ui.input} required />
+      </label>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Slug</span>
         <input
-          name="readingMinutes"
-          type="number"
-          min={1}
-          defaultValue={defaults?.readingMinutes ?? 8}
+          name="slug"
+          defaultValue={defaults?.slug ?? ""}
           className={ui.input}
-          title="Estimated reading time (minutes)"
+          required
+          pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+          title="Lowercase letters, numbers, and hyphens only"
         />
+      </label>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Excerpt</span>
+        <textarea
+          name="excerpt"
+          defaultValue={defaults?.excerpt ?? ""}
+          rows={3}
+          className={ui.textarea}
+          required
+        />
+        <span className={forms.hint}>Plain text for cards and search results.</span>
+      </label>
+      <div className={forms.formGrid2}>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Track</span>
+          <select name="track" defaultValue={defaults?.track ?? "policy"} className={ui.select} required>
+            {TRACKS.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Reading time (minutes)</span>
+          <input
+            name="readingMinutes"
+            type="number"
+            min={1}
+            defaultValue={defaults?.readingMinutes ?? 8}
+            className={ui.input}
+          />
+        </label>
       </div>
       <CmsMediaUrlField
         name="heroImageUrl"
@@ -112,24 +125,26 @@ export function ResearchFormFields({ defaults, byline, researchId }: Props) {
         excludeResearchId={researchId}
       />
       <div className={forms.formGrid2}>
-        <select name="status" defaultValue={defaults?.status ?? "draft"} className={ui.select}>
-          <option value="draft">draft</option>
-          <option value="scheduled">scheduled</option>
-          <option value="published">published</option>
-        </select>
-        <label style={{ fontSize: "0.8125rem", fontWeight: 500, display: "grid", gap: "0.35rem" }}>
-          Publish date &amp; time
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Status</span>
+          <select name="status" defaultValue={defaults?.status ?? "draft"} className={ui.select}>
+            <option value="draft">Draft</option>
+            <option value="scheduled">Scheduled</option>
+            <option value="published">Published</option>
+          </select>
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Publish date</span>
           <input
             name="publishedAt"
             type="datetime-local"
             defaultValue={publishedLocal}
             className={ui.input}
-            title="When the piece goes live on www/research (required for scheduled; defaults to now when you set status to published)."
           />
         </label>
       </div>
-      <p style={{ fontSize: "0.75rem", color: "var(--console-fg-muted)", margin: "-0.25rem 0 0" }}>
-        Publishing requires a byline. Drafts do not appear on www/research.
+      <p className={forms.hint}>
+        Publishing requires a byline. Drafts stay off the public research page. A future publish date schedules the piece.
       </p>
       <CmsMarkdownField
         name="body"

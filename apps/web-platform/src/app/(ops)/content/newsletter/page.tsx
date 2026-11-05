@@ -92,7 +92,7 @@ export default async function OpsContentNewsletterPage() {
         <EmptyStatePanel
           icon={Mail}
           title="No campaigns yet"
-          description="Create a draft with New campaign, send a test, then schedule or send."
+          description="Write a short update, send yourself a test, then schedule it or send it."
         />
       ) : null}
 
@@ -149,7 +149,7 @@ export default async function OpsContentNewsletterPage() {
             <EmptyStatePanel
               icon={Users}
               title="No subscribers yet"
-              description="Footer signup on www after migrate."
+              description="Confirmed signups from the public site will appear here."
             />
           ) : (
             <div className={ui.tableWrap}>

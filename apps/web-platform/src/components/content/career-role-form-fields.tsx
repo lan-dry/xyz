@@ -77,20 +77,33 @@ export function CareerRoleFormFields({
         openRoleId={openRoleId}
       />
       <div className={forms.formGrid3}>
-        <input
-          name="compensationRange"
-          defaultValue={defaults?.compensationRange ?? ""}
-          placeholder="Compensation (optional)"
-          className={ui.input}
-        />
-        <select name="status" defaultValue={defaults?.status ?? "draft"} className={ui.select}>
-          <option value="draft">draft (hidden on www)</option>
-          <option value="open">open</option>
-          <option value="closed">closed</option>
-        </select>
-        <input name="postedAt" type="datetime-local" defaultValue={postedLocal} className={ui.input} />
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Compensation</span>
+          <input
+            name="compensationRange"
+            defaultValue={defaults?.compensationRange ?? ""}
+            placeholder="Optional"
+            className={ui.input}
+          />
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Status</span>
+          <select name="status" defaultValue={defaults?.status ?? "draft"} className={ui.select}>
+            <option value="draft">Draft</option>
+            <option value="open">Open</option>
+            <option value="closed">Closed</option>
+          </select>
+        </label>
+        <label className={forms.field}>
+          <span className={forms.fieldLabel}>Posted</span>
+          <input name="postedAt" type="datetime-local" defaultValue={postedLocal} className={ui.input} />
+        </label>
       </div>
-      <input name="closesAt" type="datetime-local" defaultValue={closesLocal} placeholder="Closes at" className={ui.input} />
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Closes</span>
+        <input name="closesAt" type="datetime-local" defaultValue={closesLocal} className={ui.input} />
+        <span className={forms.hint}>Leave blank if the role stays open. Drafts stay off the public careers page.</span>
+      </label>
     </>
   );
 }

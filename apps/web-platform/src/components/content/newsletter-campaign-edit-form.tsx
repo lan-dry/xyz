@@ -45,36 +45,36 @@ export function NewsletterCampaignEditForm({
       <p style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem", color: "var(--console-fg-muted)" }}>
         Updates content and schedule. Saving with a future schedule sets status to scheduled; clear schedule for draft.
       </p>
-      <input
-        name="subject"
-        defaultValue={defaults.subject}
-        placeholder="Email subject"
-        className={ui.input}
-        required
-      />
-      <input
-        name="previewText"
-        defaultValue={defaults.previewText ?? ""}
-        placeholder="Preview line (optional)"
-        className={ui.input}
-      />
-      <label style={{ fontSize: "0.8125rem", fontWeight: 500, display: "grid", gap: "0.35rem" }}>
-        Schedule send (optional, UTC)
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Subject</span>
+        <input name="subject" defaultValue={defaults.subject} className={ui.input} required />
+      </label>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Preview line</span>
+        <input name="previewText" defaultValue={defaults.previewText ?? ""} className={ui.input} />
+      </label>
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Schedule send</span>
         <input
           name="scheduledAt"
           type="datetime-local"
           defaultValue={toDatetimeLocal(defaults.scheduledAt)}
           className={ui.input}
         />
+        <span className={forms.hint}>Optional. A future time marks the campaign as scheduled.</span>
       </label>
-      <textarea
-        name="bodyMarkdown"
-        rows={14}
-        className={ui.textarea}
-        defaultValue={defaults.bodyMarkdown ?? ""}
-        required
-        style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.8125rem" }}
-      />
+      <label className={forms.field}>
+        <span className={forms.fieldLabel}>Body</span>
+        <textarea
+          name="bodyMarkdown"
+          rows={16}
+          className={ui.textarea}
+          defaultValue={defaults.bodyMarkdown ?? ""}
+          required
+          style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.875rem", minHeight: "16rem" }}
+        />
+        <span className={forms.hint}>Markdown is supported.</span>
+      </label>
       <CmsFormSubmit label="Save changes" pendingLabel="Saving…" />
     </form>
   );

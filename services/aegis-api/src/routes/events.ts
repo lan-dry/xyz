@@ -14,6 +14,7 @@ import {
 } from "@salanor/platform-auth";
 import { resolveIngestKey } from "../auth/ingest-key.js";
 import { getPool } from "../db/pool.js";
+import { notifyAnomalyFlagged } from "../approvals/notify.js";
 import { persistSignedEvent } from "../ingest/persist.js";
 import { evaluateToolPolicy } from "../policy/evaluate.js";
 import { exportEventToSiemDestinations } from "../siem/export.js";
@@ -182,6 +183,23 @@ export async function postEvent(c: Context): Promise<Response> {
     void exportEventToSiemDestinations(pool, event).catch((err) => {
       console.error("siem export error", err);
     });
+
+    if (event.action_kind === "anomaly_signal") {
+      const payload =
+        event.payload && typeof event.payload === "object"
+          ? (event.payload as Record<string, unknown>)
+          : {};
+      const severity = typeof payload.severity === "string" ? payload.severity : "";
+      notifyAnomalyFlagged(pool, {
+        organizationId: event.organization_id,
+        traceId: event.trace_id,
+        eventId: event.event_id,
+        agentId: event.agent_id,
+        severity,
+        reason: typeof payload.reason === "string" ? payload.reason : "",
+        policyDecision: event.policy_decision,
+      });
+    }
 
     return c.json(
       {
