@@ -11,10 +11,8 @@ const repoRoot = path.join(appDir, "../..");
 const nextConfig: NextConfig = {
   outputFileTracingRoot: repoRoot,
   outputFileTracingIncludes: {
-    "/**": [
-      "../../node_modules/.prisma/client/**/*",
-      "../../node_modules/.prisma/client/libquery_engine-*",
-    ],
+    "/*": ["./generated/prisma/*"],
+    "/**": ["./generated/prisma/*"],
   },
   transpilePackages: ["@salanor/db-url", "@salanor/marketing-blog"],
   serverExternalPackages: ["@prisma/client", "prisma", "pg"],

@@ -112,28 +112,15 @@ export default async function OpsContentBlogEditPage({
         </div>
       ) : null}
 
-      <div className={`${ui.card} ${ui.cardPad}`} style={{ marginBottom: "1rem", fontSize: "0.8125rem" }}>
-        <p>
-          <strong>Public byline:</strong> {post.authorName}
-          {post.authorRole ? ` · ${post.authorRole}` : ""}
-        </p>
-        {post.authorAccountId ? (
-          <p>
-            Author account: <span className="mono">{post.authorAccountId}</span> (stable if email changes)
-          </p>
-        ) : (
-          <p style={{ color: "var(--console-fg-muted)" }}>
-            Save once to link the byline to your account. The public page then uses your profile photo, role, and bio.
-          </p>
-        )}
-        {post.createdByEmail ? <p>Created in ops by {post.createdByEmail}</p> : null}
-        {post.lastEditedByEmail ? (
-          <p>
-            Last edited by {post.lastEditedByEmail}
-            {post.lastEditedAt ? ` · ${new Date(post.lastEditedAt).toLocaleString()}` : ""}
-          </p>
-        ) : null}
-      </div>
+      <p className={forms.hint} style={{ marginBottom: "1rem" }}>
+        The public article uses{" "}
+        <Link href="/content/authors" className={ui.tableLink}>
+          My public profile
+        </Link>
+        {post.lastEditedByEmail
+          ? `. Last edited by ${post.lastEditedByEmail}${post.lastEditedAt ? ` · ${new Date(post.lastEditedAt).toLocaleString()}` : ""}.`
+          : "."}
+      </p>
 
       {canWrite ? (
         <form action={updateBlogPost.bind(null, post.slug)} className={`${ui.card} ${ui.cardPad} ${forms.formCard}`}>
@@ -142,8 +129,6 @@ export default async function OpsContentBlogEditPage({
               title: post.title,
               slug: post.slug,
               excerpt: post.excerpt,
-              authorName: post.authorName,
-              authorRole: post.authorRole,
               tags: post.tags,
               status: post.status,
               publishedAt: post.publishedAt,

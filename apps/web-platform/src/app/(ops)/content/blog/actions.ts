@@ -12,6 +12,11 @@ import { redirect } from "next/navigation";
 
 import { assertPlatformSessionAction } from "@/lib/platform-server-session";
 import { gcUnreferencedBlogMedia } from "@/lib/cms-media-gc";
+import { getPrisma } from "@/lib/prisma";
+import {
+  assertPublicProfileComplete,
+  getResearchBylineForAccount,
+} from "@/lib/research-author";
 
 function parseTags(raw: FormDataEntryValue | null): string[] {
   if (typeof raw !== "string" || !raw.trim()) return [];
@@ -32,15 +37,18 @@ function parsePublishedAt(raw: FormDataEntryValue | null, status: BlogPostStatus
   return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
 }
 
-function inputFromForm(formData: FormData): BlogPostSaveInput {
+function inputFromForm(
+  formData: FormData,
+  author: { authorName: string; authorRole: string | null },
+): BlogPostSaveInput {
   const status = parseStatus(formData.get("status"));
   return {
     title: String(formData.get("title") ?? "").trim(),
     slug: String(formData.get("slug") ?? "").trim().toLowerCase(),
     excerpt: String(formData.get("excerpt") ?? "").trim(),
     bodyMarkdown: String(formData.get("bodyMarkdown") ?? ""),
-    authorName: String(formData.get("authorName") ?? "").trim(),
-    authorRole: String(formData.get("authorRole") ?? "").trim() || null,
+    authorName: author.authorName,
+    authorRole: author.authorRole,
     tags: parseTags(formData.get("tags")),
     status,
     publishedAt: parsePublishedAt(formData.get("publishedAt"), status),
@@ -50,12 +58,30 @@ function inputFromForm(formData: FormData): BlogPostSaveInput {
   };
 }
 
+async function authorFromProfile(accountId: string, email: string, displayName: string | null) {
+  const prisma = getPrisma();
+  if (!prisma) throw new Error("Database not configured");
+  const profile = await getResearchBylineForAccount(prisma, accountId);
+  const authorName =
+    profile?.name?.trim() ||
+    displayName?.trim() ||
+    email.split("@")[0]?.trim() ||
+    email;
+  return {
+    authorName,
+    authorRole: profile?.role?.trim() || null,
+    profile,
+  };
+}
+
 export async function createBlogPost(formData: FormData) {
   const session = await assertPlatformSessionAction("platform:content.write");
-  const input = inputFromForm(formData);
-  if (!input.title || !input.slug || !input.excerpt || !input.authorName) {
+  const author = await authorFromProfile(session.account_id, session.email, session.display_name);
+  const input = inputFromForm(formData, author);
+  if (!input.title || !input.slug || !input.excerpt) {
     throw new Error("Missing required blog fields");
   }
+  if (input.status === "published") assertPublicProfileComplete(author.profile);
 
   const existing = await getMarketingBlogPostBySlug(input.slug);
   if (existing) throw new Error("A post with this slug already exists");
@@ -76,10 +102,12 @@ export async function updateBlogPost(previousSlug: string, formData: FormData) {
   const prior = await getMarketingBlogPostBySlug(previousSlug);
   if (!prior) throw new Error("Post not found");
 
-  const input = inputFromForm(formData);
-  if (!input.title || !input.slug || !input.excerpt || !input.authorName) {
+  const author = await authorFromProfile(session.account_id, session.email, session.display_name);
+  const input = inputFromForm(formData, author);
+  if (!input.title || !input.slug || !input.excerpt) {
     throw new Error("Missing required blog fields");
   }
+  if (input.status === "published") assertPublicProfileComplete(author.profile);
 
   if (input.slug !== previousSlug) {
     const collision = await getMarketingBlogPostBySlug(input.slug);

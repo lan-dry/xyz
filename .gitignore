@@ -12,6 +12,7 @@ out/
 
 # build
 dist/
+apps/web-platform/generated/
 *.tsbuildinfo
 
 # env

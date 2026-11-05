@@ -30,6 +30,7 @@
     "demo:review-normal": "pnpm --filter @salanor/demo-tools ingest-review-normal",
     "demo:review-injected": "pnpm --filter @salanor/demo-tools ingest-review-injected",
     "demo:verify-chain": "pnpm --filter @salanor/demo-tools verify-chain",
+    "demo:clear-cases": "pnpm --filter @salanor/demo-tools exec tsx clear-org-cases.mts",
     "demo:proxy": "pnpm --filter @salanor/demo-tools proxy-fetch",
     "demo:full-system": "pnpm --filter @salanor/demo-tools full-system",
     "pilot:e2e": "node tools/scripts/e2e-onboarding.mjs",

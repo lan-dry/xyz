@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { BlogMediaUpload } from "@/components/content/blog-media-upload";
@@ -12,8 +13,6 @@ type Props = {
     title?: string;
     slug?: string;
     excerpt?: string;
-    authorName?: string;
-    authorRole?: string | null;
     tags?: string[];
     status?: "draft" | "published";
     publishedAt?: string | null;
@@ -21,14 +20,12 @@ type Props = {
     seoDescription?: string | null;
     coverImageUrl?: string | null;
   };
-  defaultAuthorName?: string;
   defaultAuthorEmail?: string;
   bodyMarkdown: string;
 };
 
 export function BlogPostFormFields({
   defaults,
-  defaultAuthorName,
   defaultAuthorEmail,
   bodyMarkdown,
 }: Props) {
@@ -84,25 +81,13 @@ export function BlogPostFormFields({
           setBody((prev) => `${prev.trimEnd()}\n\n![Image](${path})\n`);
         }}
       />
-      <div className={forms.formGrid2}>
-        <label className={forms.field}>
-          <span className={forms.fieldLabel}>Author name</span>
-          <input
-            name="authorName"
-            defaultValue={defaults?.authorName ?? defaultAuthorName ?? ""}
-            className={ui.input}
-            required
-          />
-        </label>
-        <label className={forms.field}>
-          <span className={forms.fieldLabel}>Author role</span>
-          <input
-            name="authorRole"
-            defaultValue={defaults?.authorRole ?? ""}
-            className={ui.input}
-          />
-        </label>
-      </div>
+      <p className={forms.hint}>
+        The public byline is{" "}
+        <Link href="/content/authors" className={ui.tableLink}>
+          My public profile
+        </Link>
+        . Name, title, photo, and links are not entered on this form.
+      </p>
       <label className={forms.field}>
         <span className={forms.fieldLabel}>Tags</span>
         <input
