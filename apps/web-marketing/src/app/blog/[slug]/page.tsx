@@ -22,9 +22,13 @@ type Props = {
 };
 
 export async function generateStaticParams() {
-  const { getPublishedBlogSlugs } = await import("@/lib/blog/store");
-  const slugs = await getPublishedBlogSlugs();
-  return slugs.map(({ slug }) => ({ slug }));
+  try {
+    const { getPublishedBlogSlugs } = await import("@/lib/blog/store");
+    const slugs = await getPublishedBlogSlugs();
+    return slugs.map(({ slug }) => ({ slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

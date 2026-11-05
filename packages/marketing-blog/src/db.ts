@@ -90,6 +90,17 @@ function explainDbError(err: unknown): never {
   throw err;
 }
 
+/** Build machines often have no database. A refused connection must not fail `next build`. */
+function isUnreachableDatabase(err: unknown): boolean {
+  const code = (err as { code?: string }).code;
+  return (
+    code === "ECONNREFUSED" ||
+    code === "ENOTFOUND" ||
+    code === "ETIMEDOUT" ||
+    code === "EAI_AGAIN"
+  );
+}
+
 function toIso(value: Date | string | null | undefined): string | null {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
@@ -200,6 +211,7 @@ export async function backfillBlogFromMarkdown(posts: BlogMarkdownPost[]): Promi
     }
   } catch (err) {
     backfillChecked = false;
+    if (isUnreachableDatabase(err)) return;
     explainDbError(err);
   }
 }
@@ -236,6 +248,7 @@ export async function listStoredBlogPosts(options?: {
     );
     return result.rows.map(mapRow);
   } catch (err) {
+    if (isUnreachableDatabase(err)) return [];
     explainDbError(err);
   }
 }
@@ -249,6 +262,7 @@ export async function getStoredBlogPostBySlug(slug: string): Promise<StoredBlogP
     const row = result.rows[0];
     return row ? mapRow(row) : null;
   } catch (err) {
+    if (isUnreachableDatabase(err)) return null;
     explainDbError(err);
   }
 }

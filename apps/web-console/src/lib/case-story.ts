@@ -71,7 +71,7 @@ function money(n: number): string {
 
 function humanField(field: string): string {
   return field
-    .replace(/[.\-]+/g, " ")
+    .replace(/[.-]+/g, " ")
     .replace(/_/g, " ")
     .replace(/\s+/g, " ")
     .trim()
