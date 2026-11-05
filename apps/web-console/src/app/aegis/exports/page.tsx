@@ -189,7 +189,7 @@ export default function ExportsPage() {
     <ConsolePage>
       <PageHeader
         title="Evidence"
-        subtitle="Tamper-evident audit bundles (SOC 2, EU AI Act, NIST AI RMF, BNR local) plus Risk Approval Pack for pilot sign-off."
+        subtitle="Evidence archive for a period, and a Risk Approval Pack for sign-off."
         actions={
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
             <button

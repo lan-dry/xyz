@@ -887,6 +887,66 @@ async function deliverAnomalyFlag(
   }
 }
 
+/**
+ * The From domain (notifications.salanor.com) needs SPF and DKIM, and ideally
+ * DMARC, or inboxes show “sender couldn’t be verified”.
+ */
+function anomalyEmailHtml(input: {
+  orgName: string;
+  agentName: string;
+  flagged: string;
+  receiptUrl: string;
+}): string {
+  const logoUrl = `cid:${EMAIL_LOGO_CID}`;
+  const rows = [
+    emailDetailRow("Agent", escapeHtml(input.agentName)),
+    emailDetailRow("Flagged", escapeHtml(input.flagged)),
+    emailDetailRow("Status", "Needs attention", { last: true }),
+  ].join("");
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Needs attention</title>
+</head>
+<body style="margin:0;padding:0;background:#eef2f1;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef2f1;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:560px;background:#ffffff;border:1px solid #d9e0de;border-radius:4px;">
+          <tr>
+            <td style="background:#0d3535;padding:22px 28px;">
+              <img src="${escapeHtml(logoUrl)}" width="28" height="28" alt="Salanor" style="display:inline-block;border:0;width:28px;height:28px;vertical-align:middle;" />
+              <span style="display:inline-block;margin-left:10px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.04em;color:#43c2a9;vertical-align:middle;">SALANOR</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="height:3px;background:#43c2a9;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td style="padding:28px 28px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <h1 style="margin:0 0 8px;font-size:22px;line-height:1.25;font-weight:600;color:#0a0c0b;">Needs attention</h1>
+              <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#3d4a47;">A case in ${escapeHtml(input.orgName)} was flagged.</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f8f7;border:1px solid #e0e6e4;border-radius:4px;margin:0 0 24px;">
+                ${rows}
+              </table>
+              <a href="${escapeHtml(input.receiptUrl)}" style="display:inline-block;background:#0d3535;color:#ffffff;padding:12px 22px;border-radius:4px;text-decoration:none;font-size:14px;font-weight:600;">Open the receipt</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 28px 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <p style="margin:0;font-size:12px;line-height:1.5;color:#7a8a86;">Salanor Aegis · This is an automated alert. Do not reply.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 async function sendAnomalyEmail(
   to: string,
   input: {
@@ -905,15 +965,12 @@ async function sendAnomalyEmail(
     `Agent: ${input.agentName}`,
     `Flagged: ${input.flagged}`,
     `Status: Needs attention`,
-    `Receipt: ${input.receiptUrl}`,
+    "",
+    `Open the receipt: ${input.receiptUrl}`,
+    "",
+    "Salanor Aegis · This is an automated alert. Do not reply.",
   ].join("\n");
-  const html = `<!DOCTYPE html><html><body style="font-family:Segoe UI,sans-serif;color:#0f172a;line-height:1.5">
-<p><strong>Needs attention</strong> in ${escapeHtml(input.orgName)}</p>
-<p>Agent: ${escapeHtml(input.agentName)}<br/>
-Flagged: ${escapeHtml(input.flagged)}<br/>
-Status: Needs attention</p>
-<p><a href="${escapeHtml(input.receiptUrl)}">Open the receipt</a></p>
-</body></html>`;
+  const html = anomalyEmailHtml(input);
 
   console.log("\n[aegis-api] Anomaly notification email");
   console.log(`  To:      ${to}`);
@@ -938,6 +995,7 @@ Status: Needs attention</p>
       subject,
       text,
       html,
+      attachments: [emailLogoAttachment()],
     }),
   });
   if (!response.ok) {

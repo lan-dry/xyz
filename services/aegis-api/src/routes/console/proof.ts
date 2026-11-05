@@ -90,7 +90,7 @@ proofRoutes.get("/risk-approval-pack", requireConsoleSession, async (c) => {
     pilot_limits: {
       pending_approvals: Number(pending.rows[0]?.count ?? 0),
       score_bands: bands,
-      note: "Customer models detect risk; Aegis enforces bands and seals the trail.",
+      note: "Score bands decide when a case is allowed, paused for a person, or stopped. Each decision is sealed.",
     },
     active_policies: policies.rows,
     sample_receipts: receipts.rows.map((r) => ({
@@ -102,7 +102,7 @@ proofRoutes.get("/risk-approval-pack", requireConsoleSession, async (c) => {
     })),
     sign_off: {
       statement:
-        "Risk committee acknowledges sealed APS-1 receipts, active policy versions, and score bands above for this pilot.",
+        "The risk committee acknowledges the receipts, active policies, and score bands in this pack.",
       fields: ["name", "role", "date", "signature"],
     },
   };

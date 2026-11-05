@@ -58,6 +58,7 @@ type TraceStep = {
 function storyFromTrace(steps: TraceStep[]): {
   what_happened: string;
   data_seen: string | null;
+  fields: string[];
   policy_decision: string;
   policy_reason: string | null;
   anomaly: string | null;
@@ -81,6 +82,10 @@ function storyFromTrace(steps: TraceStep[]): {
     pushFieldNames(fields, payload.fields_accessed);
     pushFieldNames(fields, payload.data_touched);
     pushFieldNames(fields, payload.fields);
+    const context = payload.evaluation_context;
+    if (context && typeof context === "object" && !Array.isArray(context)) {
+      pushFieldNames(fields, (context as Record<string, unknown>).fields_accessed);
+    }
     subject =
       textOf(payload, "task") ??
       textOf(payload, "subject") ??
@@ -121,15 +126,13 @@ function storyFromTrace(steps: TraceStep[]): {
         ? "Needs approval"
         : "Allowed";
 
-  const what =
-    anomaly ??
-    dataSeen?.replace(/\.$/, "") ??
-    subject ??
-    "Recorded action";
+  const labels = [...new Set(fields.map(humanField).filter(Boolean))];
+  const what = subject ?? (anomaly ? "This case was flagged." : "This case was recorded.");
 
   return {
     what_happened: what,
     data_seen: dataSeen,
+    fields: labels,
     policy_decision: policyLabel,
     policy_reason: policyReason,
     anomaly,

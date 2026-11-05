@@ -150,7 +150,7 @@ export function ResearchFormFields({ defaults, byline, researchId }: Props) {
         name="body"
         label="Research document (Markdown)"
         defaultValue={defaults?.body ?? ""}
-        rows={22}
+        rows={14}
         researchId={researchId}
         hint="Full paper-style content: sections, figures, code, citations. Renders like blog articles on www."
       />

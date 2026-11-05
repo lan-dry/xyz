@@ -71,7 +71,7 @@ function verifyBanner(v: VerifyResult["verification"]): {
       title: "Seal intact · witness inclusion pending",
       className: ui.alertInfo,
       inclusionLabel: "pending",
-      note: "The signature chain is intact. Merkle inclusion proofs are added by the witness batch. This is not a tamper signal.",
+      note: "The signature chain is intact. Witness inclusion is still pending.",
     };
   }
   return {

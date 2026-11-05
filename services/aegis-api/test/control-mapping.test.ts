@@ -67,7 +67,7 @@ describe("control mapping", () => {
     });
 
     expect(report.report_type).toBe("soc2_readiness_summary");
-    expect(report.disclaimer.toLowerCase()).toContain("not a soc 2");
+    expect(report.disclaimer.toLowerCase()).toContain("evidence in this archive");
     expect(report.control_summary.evidence_missing).toBeGreaterThan(0);
     expect(report.recommendations.length).toBeGreaterThan(0);
     expect(report.overall_status).toBe("fail");

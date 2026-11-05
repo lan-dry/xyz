@@ -120,8 +120,8 @@ export async function buildComplianceZip(input: {
       input.context.witnessRoots.length > 0 &&
       eventsWithSig === input.events.length &&
       input.events.length > 0
-        ? "This ZIP packages the sealed operational record (signed events + signed checkpoints). It supports audit reconstruction. It does not certify regulatory conformity, and it does not include an external public anchor."
-        : "Partial cryptographic coverage. Use for internal reconstruction. Do not present unsigned events or checkpoints as non-repudiation against database admins.",
+        ? "Signed events and checkpoints for this period."
+        : "Some events or checkpoints in this period are not signed.",
   };
 
   const baseArtifacts = [

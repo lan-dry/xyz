@@ -41,6 +41,7 @@ type ShareReceiptResponse = {
     policy_reason: string | null;
     anomaly: string | null;
     status: string;
+    fields?: string[];
   };
   error?: string;
 };
@@ -155,10 +156,15 @@ export default function ShareReceiptPage() {
               <h2 id="data-heading" className={styles.cardTitle}>
                 What data was seen
               </h2>
-              <p className={styles.prose}>
-                {data.story?.data_seen ??
-                  "No field-level data access was recorded on this case."}
-              </p>
+              {data.story?.fields && data.story.fields.length > 0 ? (
+                <ul className={styles.fieldList}>
+                  {data.story.fields.map((field) => (
+                    <li key={field}>{field}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={styles.prose}>No fields were recorded on this case.</p>
+              )}
               {data.receipt.amount_usd != null ? (
                 <p className={styles.metaInline}>
                   Amount ${data.receipt.amount_usd.toLocaleString()} USD

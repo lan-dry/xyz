@@ -217,50 +217,29 @@ export default function TraceDetailPage() {
               <h2 className={ui.panelTitle}>What data was seen</h2>
               {story.dataTouched.length > 0 ? (
                 <>
-                  <p style={{ margin: "0 0 0.65rem", fontSize: "0.9375rem" }}>
-                    {story.dataTouched.length === 1
-                      ? `Read ${story.dataTouched[0]}.`
-                      : story.dataTouched.length === 2
-                        ? `Read ${story.dataTouched[0]} and ${story.dataTouched[1]}.`
-                        : `Read ${story.dataTouched.slice(0, -1).join(", ")}, and ${story.dataTouched[story.dataTouched.length - 1]}.`}
-                  </p>
-                  {story.dataSensitivity ? (
-                    <p
-                      style={{
-                        margin: "0 0 0.65rem",
-                        fontSize: "0.8125rem",
-                        color: "var(--console-fg-muted)",
-                      }}
-                    >
-                      Sensitivity:{" "}
-                      <strong style={{ color: "var(--console-fg)" }}>
-                        {story.dataSensitivity}
-                      </strong>
-                      <span> — set by the system that recorded the read.</span>
-                    </p>
-                  ) : null}
                   <ul
                     style={{
-                      margin: "0 0 0.75rem",
+                      margin: story.dataSensitivity ? "0 0 0.65rem" : 0,
                       paddingLeft: "1.1rem",
-                      fontSize: "0.875rem",
+                      fontSize: "0.9375rem",
+                      lineHeight: 1.5,
                     }}
                   >
                     {story.dataTouched.map((field) => (
                       <li key={field}>{field.replace(/_/g, " ")}</li>
                     ))}
                   </ul>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "0.8125rem",
-                      color: "var(--console-fg-muted)",
-                    }}
-                  >
-                    Accurate only if the agent (or SDK wrapper) called{" "}
-                    <code className="mono">recordDataAccess</code> with the fields it
-                    actually read.
-                  </p>
+                  {story.dataSensitivity ? (
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "0.8125rem",
+                        color: "var(--console-fg-muted)",
+                      }}
+                    >
+                      Sensitivity: {story.dataSensitivity}
+                    </p>
+                  ) : null}
                 </>
               ) : (
                 <p
@@ -270,27 +249,16 @@ export default function TraceDetailPage() {
                     color: "var(--console-fg-muted)",
                   }}
                 >
-                  No field-level data-access events were recorded on this case.
+                  No fields were recorded on this case.
                 </p>
               )}
             </section>
 
             <section className={`${ui.card} ${ui.cardPad}`}>
               <h2 className={ui.panelTitle}>What was attempted</h2>
-              <p style={{ margin: "0 0 0.5rem", fontSize: "0.875rem" }}>
+              <p style={{ margin: 0, fontSize: "0.875rem", lineHeight: 1.5 }}>
                 {story.attempted}
               </p>
-              {story.flagSummary ? (
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "0.875rem",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {story.flagSummary}
-                </p>
-              ) : null}
             </section>
 
             <section className={`${ui.card} ${ui.cardPad}`}>
@@ -309,14 +277,7 @@ export default function TraceDetailPage() {
                     color: "var(--console-fg-muted)",
                   }}
                 >
-                  Rule set id: <code className="mono">{story.policyId}</code>
-                  {story.policyId === "pol-data-access-demo" ? (
-                    <>
-                      {" "}
-                      (demo seal from the pilot script — not a live Policies-page
-                      rule yet)
-                    </>
-                  ) : null}
+                  Rule: <code className="mono">{story.policyId}</code>
                 </p>
               ) : null}
               {story.evaluationContext &&

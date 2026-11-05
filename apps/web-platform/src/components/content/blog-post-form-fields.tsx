@@ -58,7 +58,7 @@ export function BlogPostFormFields({
         <textarea
           name="excerpt"
           defaultValue={defaults?.excerpt ?? ""}
-          rows={3}
+          rows={2}
           className={ui.textarea}
           required
         />
@@ -69,12 +69,11 @@ export function BlogPostFormFields({
           name="bodyMarkdown"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          rows={22}
-          className={ui.textarea}
-          style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.875rem", minHeight: "22rem" }}
+          rows={12}
+          className={`${ui.textarea} ${forms.body}`}
           required
         />
-        <span className={forms.hint}>Markdown is supported. Headings, lists, and links render on the public article.</span>
+        <span className={forms.hint}>Markdown is supported.</span>
       </label>
       <BlogMediaUpload
         onUploaded={(path) => {

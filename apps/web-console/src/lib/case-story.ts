@@ -91,6 +91,12 @@ function readSentence(fields: string[]): string {
 
 const GENERIC_FLAG = "Suspicious behaviour flagged — review required";
 
+function endSentence(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return "";
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
 function anomalyLead(type: string | null, reason: string): string {
   if (type === "prompt_injection_indicator") {
     return `Possible prompt injection detected: ${reason}`;
@@ -331,9 +337,9 @@ export function buildCaseStory(
 
   let headline: string;
   if (flagLine && c.denied) {
-    headline = `Stopped. ${flagLine}`;
+    headline = `Stopped. ${endSentence(flagLine)}`;
   } else if (flagLine && waitingForPerson) {
-    headline = `${flagLine} Needs approval before this can continue.`;
+    headline = `${endSentence(flagLine)} Needs approval before this can continue.`;
   } else if (c.denied) {
     const reasonLower = (c.ruleReason ?? "").toLowerCase();
     if (reasonLower.includes("does not match the customer on record")) {
@@ -372,17 +378,6 @@ export function buildCaseStory(
           ? c.subject
           : action;
 
-  const layerBit =
-    c.decisionLayer === "ceiling"
-      ? "Layer: hard ceiling."
-      : c.decisionLayer === "contextual"
-        ? "Layer: contextual rule."
-        : c.decisionLayer === "override"
-          ? "Layer: time-boxed override."
-          : c.decisionLayer === "agent"
-            ? "Layer: agent kill switch."
-            : null;
-
   const contextBits: string[] = [];
   if (c.evaluationContext) {
     const tier = str(c.evaluationContext.customer_tier);
@@ -394,57 +389,39 @@ export function buildCaseStory(
   }
   const contextLine =
     contextBits.length > 0
-      ? ` Context used for the rule: ${contextBits.join(", ")}.`
+      ? `Based on ${contextBits.join(", ")}.`
       : "";
 
   let whyDetail: string;
   if (c.denied) {
-    whyDetail = [
-      c.ruleReason ?? "A policy rule stopped this action.",
-      layerBit,
-      c.policyId ? `Rule set: ${c.policyId}.` : null,
-      contextLine.trim() || null,
-    ]
+    whyDetail = [endSentence(c.ruleReason ?? "A rule stopped this action."), contextLine.trim() || null]
       .filter(Boolean)
       .join(" ");
   } else if (c.obligation) {
     whyDetail = [
-      c.ruleReason ?? "A rule required a person before this could run.",
-      layerBit,
+      endSentence(c.ruleReason ?? "A person had to approve this first."),
       c.approver
-        ? `Decision: ${c.approvalDecision ?? "recorded"} by ${c.approver}.`
+        ? `${c.approvalDecision === "rejected" ? "Declined" : "Approved"} by ${c.approver}.`
         : waitingForPerson
-          ? "No decision yet — open Approvals."
+          ? "No decision yet."
           : null,
-      contextLine.trim() || null,
     ]
       .filter(Boolean)
       .join(" ");
   } else if (flagLine) {
-    whyDetail = [
-      flagLine,
-      c.ruleReason,
-      "This case needs a person to look at it.",
-    ]
-      .filter(Boolean)
-      .join(" ");
+    whyDetail = endSentence(c.ruleReason ?? "Recorded for review.");
   } else {
-    whyDetail = [
-      c.ruleReason ??
-        "Policy allowed this path automatically. The sealed record still shows what was evaluated.",
-      layerBit,
-      contextLine.trim() || null,
-    ]
-      .filter(Boolean)
-      .join(" ");
+    whyDetail = endSentence(c.ruleReason ?? "A rule allowed this.");
   }
+
+  const whatDetail = [seen ? endSentence(seen) : null, flagLine ? endSentence(flagLine) : null]
+    .filter(Boolean)
+    .join(" ");
 
   const fourAnswers: CaseFourAnswers = {
     whatHappened: {
       title: "What happened?",
-      detail: [headline, seen && !headline.includes(seen.replace(/\.$/, "")) ? seen : null]
-        .filter(Boolean)
-        .join(" "),
+      detail: whatDetail || endSentence(headline),
     },
     who: {
       title: "Who did it, and for whom?",
@@ -466,15 +443,11 @@ export function buildCaseStory(
       title: "Can the record be trusted?",
       detail:
         "Every step is sealed in an append-only chain. Changing a field after the fact breaks verification.",
-      verifiedHint: "Verified: open Technical details or Verify for the cryptographic check.",
+      verifiedHint: "Open Technical details to check the seal.",
     },
   };
 
-  const attempted = flagLine
-    ? [flagLine, seen || null].filter(Boolean).join(" ")
-    : seen
-      ? seen
-      : `${action}${refBit}`;
+  const attempted = seen || `${action}${refBit}`;
 
   return {
     headline,

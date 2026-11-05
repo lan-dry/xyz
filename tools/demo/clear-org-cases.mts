@@ -2,8 +2,12 @@
  * Delete one organization's cases (traces, events, approvals, share links).
  * Leaves the org, agents, keys, and policies in place.
  *
- * Usage: pnpm demo:clear-cases -- northwind-payments
- * Uses DATABASE_URL from the repo .env. That is the local database unless you override it.
+ * Usage:
+ *   pnpm demo:clear-cases -- northwind-payments
+ *   pnpm demo:clear-cases -- --production salanor-platform
+ *
+ * Without --production this uses DATABASE_URL (local).
+ * With --production it uses DATABASE_URL_UNPOOLED from the repo .env.
  */
 import pg from "pg";
 import { normalizePostgresDatabaseUrl } from "@salanor/db-url";
@@ -12,17 +16,42 @@ import { loadEnvFile } from "./load-env.mts";
 
 loadEnvFile();
 
+const production = process.argv.includes("--production");
 const slug = process.argv.slice(2).find((arg) => !arg.startsWith("--"))?.trim();
 if (!slug) {
-  console.error("Usage: pnpm demo:clear-cases -- <organization-slug>");
+  console.error("Usage: pnpm demo:clear-cases -- [--production] <organization-slug>");
   process.exit(1);
 }
 
-const dbUrl = process.env.DATABASE_URL?.trim();
+function stripQuotes(value: string | undefined): string {
+  const trimmed = value?.trim() ?? "";
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+const dbUrl = stripQuotes(
+  production ? process.env.DATABASE_URL_UNPOOLED : process.env.DATABASE_URL,
+);
 if (!dbUrl) {
-  console.error("DATABASE_URL missing in .env");
+  console.error(
+    production ? "DATABASE_URL_UNPOOLED missing in .env" : "DATABASE_URL missing in .env",
+  );
   process.exit(1);
 }
+
+let host = "unknown";
+try {
+  host = new URL(dbUrl).hostname;
+} catch {
+  console.error("Database URL in .env is not valid. Check the quotes around it.");
+  process.exit(1);
+}
+console.log(production ? `Production database ${host}` : `Local database ${host}`);
 
 const pool = new pg.Pool({
   connectionString: normalizePostgresDatabaseUrl(dbUrl),
@@ -36,7 +65,11 @@ try {
   );
   const row = org.rows[0];
   if (!row) {
-    console.error(`No organization with slug ${slug}`);
+    const known = await client.query<{ slug: string }>(
+      `SELECT slug FROM organization ORDER BY slug`,
+    );
+    const slugs = known.rows.map((item) => item.slug).join(", ") || "(none)";
+    console.error(`No organization with slug ${slug}. On this database: ${slugs}`);
     process.exit(1);
   }
 

@@ -98,8 +98,7 @@ export function ExportsHelpPanel({
             witness proofs. No framework “pass/fail” maps.
           </li>
           <li>
-            <strong>SOC 2 / EU AI Act / NIST / BNR maps</strong>: draft internal mappings
-            only. Do not show to external reviewers until counsel-reviewed.
+            <strong>SOC 2, EU AI Act, NIST, and BNR maps</strong> included when you choose that bundle.
           </li>
         </ul>
       </section>

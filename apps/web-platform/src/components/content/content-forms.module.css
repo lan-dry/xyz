@@ -1,6 +1,6 @@
 .formCard {
   display: grid;
-  gap: 1rem;
+  gap: 0.65rem;
 }
 
 .field {
@@ -10,8 +10,14 @@
 
 .hint {
   font-size: 0.75rem;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--console-fg-muted);
+}
+
+.body {
+  min-height: 12rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
 }
 
 .seo {

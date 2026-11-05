@@ -136,6 +136,16 @@
   color: #e8ede9;
 }
 
+.fieldList {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: #e8ede9;
+}
+
 .statusRow {
   display: flex;
   flex-wrap: wrap;

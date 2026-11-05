@@ -32,11 +32,10 @@ export function NewsletterCampaignForm() {
         <span className={forms.fieldLabel}>Body</span>
         <textarea
           name="bodyMarkdown"
-          rows={16}
-          className={ui.textarea}
+          rows={12}
+          className={`${ui.textarea} ${forms.body}`}
           placeholder={"## Heading\n\nYour update…"}
           required
-          style={{ fontFamily: "ui-monospace, monospace", fontSize: "0.875rem", minHeight: "16rem" }}
         />
         <span className={forms.hint}>Markdown is supported.</span>
       </label>
