@@ -248,14 +248,7 @@ export default function LiveFeedPage() {
         <div style={{ opacity: isFetching ? 0.85 : 1, display: "grid", gap: "0.75rem" }}>
           {traces.map((t) => {
             const row = listSentenceFromTrace(t);
-            const statusLabel =
-              row.outcome.kind === "ask_person"
-                ? "Paused for approval"
-                : row.outcome.kind === "stop" || row.outcome.kind === "failed"
-                  ? "Flagged"
-                  : row.outcome.chip === "Allowed" || row.outcome.kind === "allow"
-                    ? "Allowed"
-                    : row.outcome.chip;
+            const statusLabel = row.outcome.chip;
             return (
               <article
                 key={t.trace_id}

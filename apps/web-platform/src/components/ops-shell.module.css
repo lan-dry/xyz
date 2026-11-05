@@ -1,8 +1,9 @@
 .shell {
   display: flex;
   width: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
   max-height: 100dvh;
+  min-height: 0;
   overflow: hidden;
   background: var(--console-bg);
 }
@@ -11,7 +12,8 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   width: var(--console-sidebar-w);
-  height: 100%;
+  align-self: stretch;
+  height: auto;
   flex-shrink: 0;
   min-height: 0;
   overflow: hidden;
@@ -28,12 +30,25 @@
 
 .brand {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 0.35rem;
   padding: 0 0.375rem 0.75rem;
   border-bottom: 1px solid var(--console-border);
   margin-bottom: 0.25rem;
+  min-width: 0;
+}
+
+.brandCollapsed {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+  border-bottom: none;
+}
+
+.brandCollapsed .collapseBtn {
+  min-width: 2.25rem;
+  min-height: 2.25rem;
 }
 
 .brandRow {
@@ -88,12 +103,6 @@
 
 .sidebarCollapsed .brandText {
   display: none;
-}
-
-.sidebarCollapsed .brand {
-  justify-content: center;
-  border-bottom: none;
-  padding-bottom: 0.5rem;
 }
 
 .sidebarScroll {

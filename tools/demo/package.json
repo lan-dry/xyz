@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "ingest-one-event": "tsx ingest-one-event.mts",
+    "ingest-review-normal": "tsx ingest-review-cases.mts normal",
+    "ingest-review-injected": "tsx ingest-review-cases.mts injected",
     "verify-chain": "tsx verify-chain.mts",
     "verify-inclusion": "tsx verify-inclusion.mts",
     "proxy-fetch": "tsx proxy-fetch.mts",

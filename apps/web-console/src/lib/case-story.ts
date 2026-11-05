@@ -71,9 +71,40 @@ function money(n: number): string {
 
 function humanField(field: string): string {
   return field
+    .replace(/[.\-]+/g, " ")
     .replace(/_/g, " ")
-    .replace(/\bemail\b/i, "email")
-    .replace(/\busd\b/i, "USD");
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\bid\b/gi, "ID")
+    .replace(/\busd\b/gi, "USD");
+}
+
+function readSentence(fields: string[]): string {
+  const labels = [...new Set(fields.map(humanField).filter(Boolean))];
+  if (labels.length === 0) return "";
+  if (labels.length === 1) return `Read ${labels[0]}.`;
+  if (labels.length === 2) return `Read ${labels[0]} and ${labels[1]}.`;
+  return `Read ${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}.`;
+}
+
+function anomalyLead(type: string | null, reason: string): string {
+  if (type === "prompt_injection_indicator") {
+    return `Possible prompt injection detected: ${reason}`;
+  }
+  if (type === "sensitive_data_exfiltration") {
+    return `Possible attempt to take extra customer data: ${reason}`;
+  }
+  if (type === "unexpected_tool") {
+    return `Unexpected action detected: ${reason}`;
+  }
+  return `Flagged: ${reason}`;
+}
+
+function pushFields(target: string[], value: unknown) {
+  if (!Array.isArray(value)) return;
+  for (const f of value) {
+    if (typeof f === "string" && f.trim()) target.push(f.trim());
+  }
 }
 
 function collectFromEvents(events: CaseEventLike[]) {
@@ -91,6 +122,9 @@ function collectFromEvents(events: CaseEventLike[]) {
   let dataSensitivity: string | null = null;
   let anomalyReason: string | null = null;
   let anomalySeverity: string | null = null;
+  let anomalyType: string | null = null;
+  let subject: string | null = null;
+  let hasPolicyDecision = false;
   let obligation = false;
   let denied = false;
   let allowedPayment = false;
@@ -104,20 +138,30 @@ function collectFromEvents(events: CaseEventLike[]) {
 
     ticketId = ticketId ?? str(p?.ticket_id);
     orderId = orderId ?? str(p?.order_id);
-    const touched = p?.fields_accessed ?? p?.data_touched ?? p?.fields;
-    if (Array.isArray(touched)) {
-      for (const f of touched) {
-        if (typeof f === "string") dataTouched.push(f);
-      }
+    pushFields(dataTouched, p?.fields_accessed);
+    pushFields(dataTouched, p?.data_touched);
+    pushFields(dataTouched, p?.fields);
+    const ecEarly = p?.evaluation_context;
+    if (ecEarly && typeof ecEarly === "object" && !Array.isArray(ecEarly)) {
+      pushFields(dataTouched, (ecEarly as Record<string, unknown>).fields_accessed);
     }
     dataSensitivity =
       dataSensitivity ??
       str(p?.sensitivity) ??
       str(p?.classification);
+    subject =
+      subject ??
+      str(p?.task) ??
+      str(p?.subject) ??
+      str(p?.email_subject) ??
+      str(p?.summary) ??
+      str(p?.business_context) ??
+      str(p?.trigger_detail);
 
     if (e.action_kind === "anomaly_signal") {
       anomalyReason = str(p?.reason) ?? anomalyReason;
       anomalySeverity = str(p?.severity) ?? anomalySeverity;
+      anomalyType = str(p?.type) ?? anomalyType;
       if (e.policy_decision === "allow_with_obligation") obligation = true;
       if (e.policy_decision === "deny") denied = true;
     }
@@ -139,6 +183,7 @@ function collectFromEvents(events: CaseEventLike[]) {
       if (ec && typeof ec === "object" && !Array.isArray(ec)) {
         evaluationContext = ec as Record<string, unknown>;
       }
+      hasPolicyDecision = true;
       if (e.policy_decision === "deny") denied = true;
       if (e.policy_decision === "allow_with_obligation") obligation = true;
       if (e.policy_decision === "allow" && e.tool_name?.includes("stripe")) {
@@ -179,6 +224,9 @@ function collectFromEvents(events: CaseEventLike[]) {
     dataSensitivity,
     anomalyReason,
     anomalySeverity,
+    anomalyType,
+    subject,
+    hasPolicyDecision,
     evaluationContext,
     obligation,
     denied,
@@ -190,7 +238,7 @@ function collectFromEvents(events: CaseEventLike[]) {
 function actionNoun(
   toolLabel: string | null,
   amountUsd: number | null,
-  opts?: { anomaly?: boolean; dataAccess?: boolean },
+  opts?: { anomaly?: boolean; dataAccess?: boolean; subject?: string | null },
 ): string {
   const tool = toolLabel ?? "";
   if (opts?.anomaly && opts?.dataAccess) {
@@ -202,6 +250,9 @@ function actionNoun(
   if (opts?.dataAccess || tool.includes("aegis.data.")) {
     return "Data access";
   }
+  if (opts?.subject && (tool.startsWith("demo.") || tool.includes("trace.") || !tool)) {
+    return opts.subject;
+  }
   if (tool.includes("paymentIntents") || tool.includes("refund")) {
     return amountUsd != null ? `Refund of ${money(amountUsd)}` : "Refund";
   }
@@ -210,6 +261,9 @@ function actionNoun(
   }
   if (tool.includes("anomaly")) {
     return "Flagged agent behaviour";
+  }
+  if (tool.startsWith("demo.")) {
+    return opts?.subject ?? "Recorded action";
   }
   if (tool) {
     return amountUsd != null
@@ -237,17 +291,19 @@ export function buildCaseStory(
   let outcome = outcomeFromTraceStatus(meta.status, {
     pendingApproval: waitingForPerson,
     deniedEvents: meta.deniedEvents,
+    hasPolicyDecision: c.hasPolicyDecision,
+    anomaly: Boolean(c.anomalyReason) && !waitingForPerson && !c.denied,
   });
   if (waitingForPerson) {
     outcome = {
       kind: "ask_person",
-      label: "Waiting for a person",
-      chip: "Paused for approval",
+      label: "Needs approval",
+      chip: "Needs approval",
     };
-  } else if (c.anomalyReason && !c.denied && outcome.kind === "allow") {
+  } else if (c.anomalyReason && !c.denied) {
     outcome = {
       kind: "failed",
-      label: "Flagged behaviour recorded",
+      label: "Flagged — needs attention",
       chip: "Flagged",
     };
   }
@@ -255,14 +311,20 @@ export function buildCaseStory(
   const action = actionNoun(c.toolLabel, c.amountUsd, {
     anomaly: Boolean(c.anomalyReason),
     dataAccess: c.dataTouched.length > 0,
+    subject: c.subject,
   });
   const refBit = c.reference ? ` for ${c.reference}` : "";
 
+  const seen = readSentence(c.dataTouched);
+  const flagLine = c.anomalyReason
+    ? anomalyLead(c.anomalyType, c.anomalyReason)
+    : null;
+
   let headline: string;
   if (c.anomalyReason && c.denied) {
-    headline = `Stopped after flagged behaviour: ${c.anomalyReason}`;
+    headline = `Stopped. ${flagLine}`;
   } else if (c.anomalyReason && waitingForPerson) {
-    headline = `${action}${refBit} flagged (${c.anomalySeverity ?? "risk"}) — waiting for a person. ${c.anomalyReason}`;
+    headline = `${flagLine} Needs approval before this can continue.`;
   } else if (c.denied) {
     const reasonLower = (c.ruleReason ?? "").toLowerCase();
     if (reasonLower.includes("does not match the customer on record")) {
@@ -278,20 +340,28 @@ export function buildCaseStory(
       : "";
     headline = `${action}${refBit} was approved by ${who} and completed${when}.`;
   } else if (waitingForPerson) {
-    headline = `${action}${refBit} is waiting for a person to approve.`;
+    headline = `${action}${refBit} needs approval.`;
   } else if (c.obligation && c.approvalDecision === "rejected") {
     headline = `${action}${refBit} was declined by ${c.approver ?? "a person"}.`;
-  } else if (c.anomalyReason) {
-    headline = `${action}${refBit} was flagged: ${c.anomalyReason}`;
-  } else if (outcome.kind === "allow" || meta.status === "completed") {
-    headline = `${action}${refBit} completed. Every step is sealed.`;
+  } else if (flagLine) {
+    headline = flagLine;
+  } else if (seen && !c.amountUsd) {
+    headline = seen.replace(/\.$/, "");
+  } else if (outcome.kind === "allow" || meta.status === "completed" || c.hasPolicyDecision) {
+    headline = `${action}${refBit} completed.`;
   } else {
     headline = `${action}${refBit}. ${outcome.label}.`;
   }
 
-  const listSentence = c.reference
-    ? `${action} for ${c.reference}`
-    : `${action} · ${meta.agentId}`;
+  const listSentence = flagLine
+    ? flagLine
+    : seen
+      ? seen.replace(/\.$/, "")
+      : c.reference
+        ? `${action} for ${c.reference}`
+        : c.subject
+          ? c.subject
+          : action;
 
   const layerBit =
     c.decisionLayer === "ceiling"
@@ -304,11 +374,6 @@ export function buildCaseStory(
             ? "Layer: agent kill switch."
             : null;
 
-  const sensBit = c.dataSensitivity ? ` (sensitivity: ${c.dataSensitivity})` : "";
-  const dataLine =
-    c.dataTouched.length > 0
-      ? `Data the AI saw${sensBit}: ${c.dataTouched.map(humanField).join(", ")}.`
-      : "No customer data field labels were recorded on AI steps.";
   const contextBits: string[] = [];
   if (c.evaluationContext) {
     const tier = str(c.evaluationContext.customer_tier);
@@ -346,9 +411,18 @@ export function buildCaseStory(
     ]
       .filter(Boolean)
       .join(" ");
+  } else if (flagLine) {
+    whyDetail = [
+      flagLine,
+      c.ruleReason,
+      "This case needs a person to look at it.",
+    ]
+      .filter(Boolean)
+      .join(" ");
   } else {
     whyDetail = [
-      "Policy allowed this path automatically. The sealed record still shows what was evaluated.",
+      c.ruleReason ??
+        "Policy allowed this path automatically. The sealed record still shows what was evaluated.",
       layerBit,
       contextLine.trim() || null,
     ]
@@ -359,7 +433,9 @@ export function buildCaseStory(
   const fourAnswers: CaseFourAnswers = {
     whatHappened: {
       title: "What happened?",
-      detail: `${headline} ${dataLine}`,
+      detail: [headline, seen && !headline.includes(seen.replace(/\.$/, "")) ? seen : null]
+        .filter(Boolean)
+        .join(" "),
     },
     who: {
       title: "Who did it, and for whom?",
@@ -385,9 +461,11 @@ export function buildCaseStory(
     },
   };
 
-  const attempted = c.anomalyReason
-    ? `${action}${refBit}${c.dataTouched.length ? ` after reading ${c.dataTouched.map(humanField).join(", ")}` : ""}`
-    : `${action}${refBit}`;
+  const attempted = flagLine
+    ? [flagLine, seen || null].filter(Boolean).join(" ")
+    : seen
+      ? seen
+      : `${action}${refBit}`;
 
   return {
     headline,
@@ -419,20 +497,44 @@ export function listSentenceFromTrace(t: {
   denied_events: number;
   pending_approval?: boolean;
   total_events: number;
+  has_policy_decision?: boolean;
+  needs_person?: boolean;
+  preview_fields?: string[];
+  preview_anomaly_reason?: string | null;
+  preview_anomaly_type?: string | null;
+  preview_subject?: string | null;
 }): { sentence: string; outcome: OutcomeDisplay } {
+  const needsPerson = Boolean(t.pending_approval || t.needs_person || t.status === "blocked");
+  const fields = t.preview_fields ?? [];
+  const seen = readSentence(fields);
+  const flagLine = t.preview_anomaly_reason
+    ? anomalyLead(t.preview_anomaly_type ?? null, t.preview_anomaly_reason)
+    : null;
   const outcome = outcomeFromTraceStatus(t.status, {
-    pendingApproval: t.pending_approval,
+    pendingApproval: needsPerson,
     deniedEvents: t.denied_events,
+    hasPolicyDecision: t.has_policy_decision,
+    anomaly: Boolean(flagLine) && !needsPerson && t.denied_events === 0,
   });
   let sentence: string;
-  if (t.pending_approval || t.status === "blocked") {
-    sentence = `Action waiting for a person · ${t.agent_id}`;
+  if (flagLine && needsPerson) {
+    sentence = `${flagLine} Needs approval.`;
+  } else if (flagLine) {
+    sentence = flagLine;
+  } else if (needsPerson) {
+    sentence = seen
+      ? `${seen.replace(/\.$/, "")} — needs approval`
+      : "Needs approval before this can continue";
   } else if (t.denied_events > 0) {
-    sentence = `Risky action stopped · ${t.agent_id}`;
-  } else if (t.status === "completed") {
-    sentence = `Completed run · ${t.total_events} sealed step(s) · ${t.agent_id}`;
+    sentence = seen ? `Stopped. ${seen}` : "Stopped by a rule";
+  } else if (seen) {
+    sentence = seen.replace(/\.$/, "");
+  } else if (t.preview_subject) {
+    sentence = t.preview_subject;
+  } else if (t.status === "completed" || t.has_policy_decision) {
+    sentence = "Completed";
   } else {
-    sentence = `${outcome.label} · ${t.agent_id}`;
+    sentence = outcome.label;
   }
   return { sentence, outcome };
 }
@@ -441,11 +543,33 @@ export function stepTitlePlain(
   actionKind: string,
   toolName: string | null,
   policyDecision: string,
+  payload?: unknown,
 ): string {
+  const p = payloadRecord(payload);
+  const fields: string[] = [];
+  pushFields(fields, p?.fields_accessed);
+  pushFields(fields, p?.data_touched);
+  pushFields(fields, p?.fields);
+  const seen = readSentence(fields);
+  if (actionKind === "data_access" && seen) return seen.replace(/\.$/, "");
+  if (actionKind === "anomaly_signal") {
+    const reason = str(p?.reason);
+    return reason ? anomalyLead(str(p?.type), reason) : "Flagged behaviour";
+  }
+  const subject =
+    str(p?.task) ??
+    str(p?.subject) ??
+    str(p?.email_subject) ??
+    str(p?.summary) ??
+    str(p?.business_context);
+  if (subject && actionKind === "tool_call" && !toolName?.includes("trace.")) {
+    return subject;
+  }
   const base = actionKindPlain(actionKind, toolName);
   if (actionKind === "policy_decision") {
     const o = outcomeFromPolicyDecision(policyDecision);
-    return `${base}: ${o.chip}`;
+    const reason = str(p?.reason);
+    return reason ? `Rule check: ${reason}` : `${base}: ${o.chip}`;
   }
   if (actionKind === "human_approval") {
     const o = outcomeFromPolicyDecision(policyDecision);

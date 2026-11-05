@@ -27,6 +27,8 @@
     "db:push:web": "prisma db push",
     "db:migrate:web": "prisma migrate dev",
     "demo:ingest": "pnpm --filter @salanor/demo-tools ingest-one-event",
+    "demo:review-normal": "pnpm --filter @salanor/demo-tools ingest-review-normal",
+    "demo:review-injected": "pnpm --filter @salanor/demo-tools ingest-review-injected",
     "demo:verify-chain": "pnpm --filter @salanor/demo-tools verify-chain",
     "demo:proxy": "pnpm --filter @salanor/demo-tools proxy-fetch",
     "demo:full-system": "pnpm --filter @salanor/demo-tools full-system",

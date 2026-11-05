@@ -117,6 +117,12 @@ export type TraceSummary = {
   total_events: number;
   denied_events: number;
   pending_approval?: boolean;
+  has_policy_decision?: boolean;
+  needs_person?: boolean;
+  preview_fields?: string[];
+  preview_anomaly_reason?: string | null;
+  preview_anomaly_type?: string | null;
+  preview_subject?: string | null;
   root_event_id?: string | null;
   root_event_hash?: string | null;
   chain_root_hash?: string;

@@ -28,7 +28,11 @@ function loadEnvFile(): void {
 
 loadEnvFile();
 
-const { organizationId, agentId, keyId } = await getDemoTargets();
+const targets = await getDemoTargets();
+const organizationId =
+  process.env.AEGIS_ORGANIZATION_ID?.trim() || targets.organizationId;
+const agentId = process.env.DEMO_AGENT_ID?.trim() || targets.agentId;
+const keyId = process.env.DEMO_KEY_ID?.trim() || targets.keyId;
 const ingestKey =
   process.env.AEGIS_INGEST_API_KEY ??
   process.env.AEGIS_INGEST_DEV_KEY ??
@@ -64,6 +68,10 @@ const event: ApsEvent = {
   tool_name: "demo.echo",
   payload: { message: "Stage 3 ingest demo", idempotency_key: idempotencyKey },
 };
+
+console.error(
+  `POST ${apiBaseUrl} org=${organizationId} agent=${agentId} key=${keyId}`,
+);
 
 const result = await signAndIngest(
   event,

@@ -170,6 +170,24 @@ export default function TraceDetailPage() {
             fails verification.
           </div>
 
+          {story.anomalyReason ? (
+            <div
+              className={`${ui.card} ${ui.cardPad}`}
+              style={{
+                marginBottom: "1rem",
+                borderColor: "#c24141",
+              }}
+            >
+              <strong style={{ display: "block", marginBottom: "0.35rem" }}>
+                Needs attention
+                {story.anomalySeverity ? ` · ${story.anomalySeverity}` : ""}
+              </strong>
+              <p style={{ margin: 0, fontSize: "0.9375rem", lineHeight: 1.5 }}>
+                {story.headline}
+              </p>
+            </div>
+          ) : null}
+
           <CaseFourAnswersPanel answers={story.fourAnswers} />
 
           <p
@@ -205,6 +223,13 @@ export default function TraceDetailPage() {
               <h2 className={ui.panelTitle}>What data was seen</h2>
               {story.dataTouched.length > 0 ? (
                 <>
+                  <p style={{ margin: "0 0 0.65rem", fontSize: "0.9375rem" }}>
+                    {story.dataTouched.length === 1
+                      ? `Read ${story.dataTouched[0]}.`
+                      : story.dataTouched.length === 2
+                        ? `Read ${story.dataTouched[0]} and ${story.dataTouched[1]}.`
+                        : `Read ${story.dataTouched.slice(0, -1).join(", ")}, and ${story.dataTouched[story.dataTouched.length - 1]}.`}
+                  </p>
                   {story.dataSensitivity ? (
                     <p
                       style={{
@@ -217,11 +242,7 @@ export default function TraceDetailPage() {
                       <strong style={{ color: "var(--console-fg)" }}>
                         {story.dataSensitivity}
                       </strong>
-                      <span>
-                        {" "}
-                        (declared by the agent when it recorded the read — Aegis does
-                        not auto-classify content)
-                      </span>
+                      <span> — set by the system that recorded the read.</span>
                     </p>
                   ) : null}
                   <ul
@@ -436,7 +457,13 @@ export default function TraceDetailPage() {
           </section>
 
           {hasTimeline ? (
-            <SpanTreePanel tree={data.span_tree ?? []} orphanEvents={orphanEvents} />
+            <SpanTreePanel
+              tree={data.span_tree ?? []}
+              orphanEvents={orphanEvents}
+              payloadByEventId={Object.fromEntries(
+                data.events.map((e) => [e.event_id, e.payload]),
+              )}
+            />
           ) : data.events.length === 0 ? (
             <div className={ui.tableWrap}>
               <EmptyState title="No steps in this case" />

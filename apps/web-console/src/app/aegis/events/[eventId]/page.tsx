@@ -137,7 +137,12 @@ export default function EventDetailPage() {
   const p = e ? payloadRecord(e.payload_enriched ?? e.payload) : null;
   const outcome = e ? outcomeFromPolicyDecision(e.policy_decision) : null;
   const title = e
-    ? stepTitlePlain(e.action_kind, e.tool_name, e.policy_decision)
+    ? stepTitlePlain(
+        e.action_kind,
+        e.tool_name,
+        e.policy_decision,
+        e.payload_enriched ?? e.payload,
+      )
     : eventId;
   const provenance = e
     ? buildEventProvenance({

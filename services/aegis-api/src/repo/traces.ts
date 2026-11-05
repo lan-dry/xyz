@@ -12,6 +12,12 @@ export type TraceSummary = {
   root_event_id: string | null;
   root_event_hash: string | null;
   pending_approval: boolean;
+  has_policy_decision: boolean;
+  needs_person: boolean;
+  preview_fields: string[] | null;
+  preview_anomaly_reason: string | null;
+  preview_anomaly_type: string | null;
+  preview_subject: string | null;
 };
 
 export type TraceListFilters = {
@@ -54,7 +60,96 @@ const TRACE_SELECT = `
              AND a.organization_id = t.organization_id
              AND a.status = 'pending'
              AND (a.expires_at IS NULL OR a.expires_at > now())
-         ) AS pending_approval
+         ) AS pending_approval,
+         EXISTS (
+           SELECT 1 FROM event e
+           WHERE e.trace_id = t.trace_id
+             AND e.organization_id = t.organization_id
+             AND e.action_kind = 'policy_decision'
+         ) AS has_policy_decision,
+         (
+           EXISTS (
+             SELECT 1 FROM event e
+             WHERE e.trace_id = t.trace_id
+               AND e.organization_id = t.organization_id
+               AND e.policy_decision = 'allow_with_obligation'
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM event e
+             WHERE e.trace_id = t.trace_id
+               AND e.organization_id = t.organization_id
+               AND e.action_kind = 'human_approval'
+           )
+         ) AS needs_person,
+         (
+           SELECT e.payload->>'reason'
+           FROM event e
+           WHERE e.trace_id = t.trace_id
+             AND e.organization_id = t.organization_id
+             AND e.action_kind = 'anomaly_signal'
+           ORDER BY e.sequence_num DESC
+           LIMIT 1
+         ) AS preview_anomaly_reason,
+         (
+           SELECT e.payload->>'type'
+           FROM event e
+           WHERE e.trace_id = t.trace_id
+             AND e.organization_id = t.organization_id
+             AND e.action_kind = 'anomaly_signal'
+           ORDER BY e.sequence_num DESC
+           LIMIT 1
+         ) AS preview_anomaly_type,
+         (
+           SELECT COALESCE(
+             NULLIF(e.payload->>'task', ''),
+             NULLIF(e.payload->>'subject', ''),
+             NULLIF(e.payload->>'email_subject', ''),
+             NULLIF(e.payload->>'summary', ''),
+             NULLIF(e.payload->>'business_context', ''),
+             NULLIF(e.payload->>'trigger_detail', '')
+           )
+           FROM event e
+           WHERE e.trace_id = t.trace_id
+             AND e.organization_id = t.organization_id
+             AND COALESCE(
+               NULLIF(e.payload->>'task', ''),
+               NULLIF(e.payload->>'subject', ''),
+               NULLIF(e.payload->>'email_subject', ''),
+               NULLIF(e.payload->>'summary', ''),
+               NULLIF(e.payload->>'business_context', ''),
+               NULLIF(e.payload->>'trigger_detail', '')
+             ) IS NOT NULL
+           ORDER BY e.sequence_num DESC
+           LIMIT 1
+         ) AS preview_subject,
+         (
+           SELECT COALESCE(jsonb_agg(DISTINCT x), '[]'::jsonb)
+           FROM event e
+           CROSS JOIN LATERAL (
+             SELECT jsonb_array_elements_text(arr) AS x
+             FROM (
+               SELECT CASE
+                 WHEN jsonb_typeof(e.payload->'fields_accessed') = 'array'
+                   THEN e.payload->'fields_accessed' ELSE '[]'::jsonb END AS arr
+               UNION ALL
+               SELECT CASE
+                 WHEN jsonb_typeof(e.payload->'data_touched') = 'array'
+                   THEN e.payload->'data_touched' ELSE '[]'::jsonb END
+               UNION ALL
+               SELECT CASE
+                 WHEN jsonb_typeof(e.payload->'fields') = 'array'
+                   THEN e.payload->'fields' ELSE '[]'::jsonb END
+               UNION ALL
+               SELECT CASE
+                 WHEN jsonb_typeof(e.payload->'evaluation_context'->'fields_accessed') = 'array'
+                   THEN e.payload->'evaluation_context'->'fields_accessed' ELSE '[]'::jsonb END
+             ) src
+           ) elems
+           WHERE e.trace_id = t.trace_id
+             AND e.organization_id = t.organization_id
+             AND x IS NOT NULL
+             AND btrim(x) <> ''
+         ) AS preview_fields
   FROM trace t
   LEFT JOIN event re
     ON re.event_id = t.root_event_id

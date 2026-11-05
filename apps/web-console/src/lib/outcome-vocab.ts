@@ -49,14 +49,26 @@ export function outcomeFromPolicyDecision(decision: string): OutcomeDisplay {
 /** Map a trace/case lifecycle status to UI wording. */
 export function outcomeFromTraceStatus(
   status: string,
-  opts?: { pendingApproval?: boolean; deniedEvents?: number },
+  opts?: {
+    pendingApproval?: boolean;
+    deniedEvents?: number;
+    hasPolicyDecision?: boolean;
+    anomaly?: boolean;
+  },
 ): OutcomeDisplay {
   const s = status.trim().toLowerCase();
   if (s === "blocked" || opts?.pendingApproval) {
     return {
       kind: "ask_person",
-      label: "Waiting for a person",
-      chip: "Ask a person",
+      label: "Needs approval",
+      chip: "Needs approval",
+    };
+  }
+  if (opts?.anomaly && (opts.deniedEvents ?? 0) === 0 && s !== "failed") {
+    return {
+      kind: "failed",
+      label: "Flagged — needs attention",
+      chip: "Flagged",
     };
   }
   if (s === "failed" || s === "expired") {
@@ -67,7 +79,10 @@ export function outcomeFromTraceStatus(
     };
   }
   if (s === "executing" || s === "running") {
-    return { kind: "running", label: "Approved: workflow in progress", chip: "Running" };
+    if (opts?.hasPolicyDecision) {
+      return { kind: "allow", label: "Completed", chip: "Completed" };
+    }
+    return { kind: "running", label: "Still in progress", chip: "Running" };
   }
   if (s === "completed") {
     if ((opts?.deniedEvents ?? 0) > 0) {
@@ -77,7 +92,7 @@ export function outcomeFromTraceStatus(
         chip: "Stopped",
       };
     }
-    return { kind: "allow", label: "Completed", chip: "Allowed" };
+    return { kind: "allow", label: "Completed", chip: "Completed" };
   }
   return { kind: "neutral", label: status, chip: status };
 }
@@ -117,7 +132,8 @@ export function actionKindPlain(actionKind: string, toolName?: string | null): s
     case "tool_call":
       if (tool?.includes("trace.start")) return "Case opened";
       if (tool?.includes("trace.complete")) return "Case closed";
-      return tool ? `System action: ${shortTool(tool)}` : "System action";
+      if (tool?.startsWith("demo.")) return "Recorded action";
+      return tool ? shortTool(tool) : "Recorded action";
     case "llm_invocation":
       return "The AI reviewed";
     case "decision":

@@ -142,25 +142,27 @@ export function OpsShell({
         className={`${shell.sidebar} ${collapsed ? shell.sidebarCollapsed : ""}`}
         aria-label="Platform navigation"
       >
-        <div className={shell.brand}>
-          <div className={shell.brandRow}>
-            <NextImage
-              src={
-                theme === "dark"
-                  ? "/salanor-mark-white.png"
-                  : "/salanor-mark-primary.png"
-              }
-              alt=""
-              width={28}
-              height={28}
-              className={shell.brandMark}
-              priority
-            />
-            <div className={shell.brandText}>
-              <p className={shell.brandEyebrow}>Salanor internal</p>
-              <p className={shell.brandName}>Platform Ops</p>
+        <div className={`${shell.brand} ${collapsed ? shell.brandCollapsed : ""}`}>
+          {collapsed ? null : (
+            <div className={shell.brandRow}>
+              <NextImage
+                src={
+                  theme === "dark"
+                    ? "/salanor-mark-white.png"
+                    : "/salanor-mark-primary.png"
+                }
+                alt=""
+                width={28}
+                height={28}
+                className={shell.brandMark}
+                priority
+              />
+              <div className={shell.brandText}>
+                <p className={shell.brandEyebrow}>Salanor internal</p>
+                <p className={shell.brandName}>Platform Ops</p>
+              </div>
             </div>
-          </div>
+          )}
           <button
             type="button"
             className={shell.collapseBtn}
@@ -168,7 +170,7 @@ export function OpsShell({
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
         </div>
         <div className={shell.sidebarScroll}>

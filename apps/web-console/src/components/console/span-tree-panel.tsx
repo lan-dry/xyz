@@ -15,11 +15,18 @@ type SpanTimelineEvent = SpanTreeNode["events"][number] & {
 
 import styles from "./span-tree-panel.module.css";
 
-function SpanEventRow({ event }: { event: SpanTimelineEvent }) {
+function SpanEventRow({
+  event,
+  payload,
+}: {
+  event: SpanTimelineEvent;
+  payload?: unknown;
+}) {
   const title = stepTitlePlain(
     event.action_kind,
     event.tool_name,
     event.policy_decision,
+    payload,
   );
   return (
     <li className={styles.eventRow}>
@@ -53,7 +60,15 @@ function spanPlainLabel(node: SpanTreeNode): string {
   return node.label?.replace(/^aegis\./, "") || "Step";
 }
 
-function SpanNode({ node, depth }: { node: SpanTreeNode; depth: number }) {
+function SpanNode({
+  node,
+  depth,
+  payloadByEventId,
+}: {
+  node: SpanTreeNode;
+  depth: number;
+  payloadByEventId?: Record<string, unknown>;
+}) {
   const meaningful = node.events.filter(
     (e) => !isBookkeepingAction(e.action_kind, e.tool_name),
   );
@@ -91,7 +106,11 @@ function SpanNode({ node, depth }: { node: SpanTreeNode; depth: number }) {
         {showEvents.length > 0 ? (
           <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
             {showEvents.map((e) => (
-              <SpanEventRow key={e.event_id} event={e} />
+              <SpanEventRow
+                key={e.event_id}
+                event={e}
+                payload={payloadByEventId?.[e.event_id]}
+              />
             ))}
           </ul>
         ) : (
@@ -112,14 +131,23 @@ function SpanNode({ node, depth }: { node: SpanTreeNode; depth: number }) {
             </summary>
             <ul style={{ margin: "0.5rem 0 0", padding: 0, listStyle: "none" }}>
               {bookkeeping.map((e) => (
-                <SpanEventRow key={e.event_id} event={e} />
+                <SpanEventRow
+                  key={e.event_id}
+                  event={e}
+                  payload={payloadByEventId?.[e.event_id]}
+                />
               ))}
             </ul>
           </details>
         ) : null}
       </div>
       {node.child_spans.map((child) => (
-        <SpanNode key={child.span_id} node={child} depth={depth + 1} />
+        <SpanNode
+          key={child.span_id}
+          node={child}
+          depth={depth + 1}
+          payloadByEventId={payloadByEventId}
+        />
       ))}
     </div>
   );
@@ -142,9 +170,11 @@ function partitionOrphans(orphanEvents: Array<EventDetail | SpanTimelineEvent>) 
 export function SpanTreePanel({
   tree,
   orphanEvents = [],
+  payloadByEventId,
 }: {
   tree: SpanTreeNode[];
   orphanEvents?: EventDetail[] | SpanTimelineEvent[];
+  payloadByEventId?: Record<string, unknown>;
 }) {
   const [showSystem, setShowSystem] = useState(false);
   const { bookkeeping, followUp } = useMemo(
@@ -164,7 +194,12 @@ export function SpanTreePanel({
         steps. Every step is sealed: open an id only when you need the raw record.
       </p>
       {tree.map((node) => (
-        <SpanNode key={node.span_id} node={node} depth={0} />
+        <SpanNode
+          key={node.span_id}
+          node={node}
+          depth={0}
+          payloadByEventId={payloadByEventId}
+        />
       ))}
       {followUp.length > 0 ? (
         <div className={styles.orphanSection}>
@@ -174,7 +209,14 @@ export function SpanTreePanel({
           <div className={`${ui.card} ${ui.cardPad}`}>
             <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
               {followUp.map((e) => (
-                <SpanEventRow key={e.event_id} event={e} />
+                <SpanEventRow
+                  key={e.event_id}
+                  event={e}
+                  payload={
+                    payloadByEventId?.[e.event_id] ??
+                    ("payload" in e ? e.payload : undefined)
+                  }
+                />
               ))}
             </ul>
           </div>
@@ -194,7 +236,14 @@ export function SpanTreePanel({
             <div className={`${ui.card} ${ui.cardPad}`} style={{ marginTop: "0.5rem" }}>
               <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
                 {bookkeeping.map((e) => (
-                  <SpanEventRow key={e.event_id} event={e} />
+                  <SpanEventRow
+                    key={e.event_id}
+                    event={e}
+                    payload={
+                      payloadByEventId?.[e.event_id] ??
+                      ("payload" in e ? e.payload : undefined)
+                    }
+                  />
                 ))}
               </ul>
             </div>

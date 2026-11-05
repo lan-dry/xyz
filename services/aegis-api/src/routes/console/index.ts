@@ -91,6 +91,13 @@ function serializeTrace(row: TraceSummary) {
     ended_at: row.ended_at?.toISOString() ?? null,
     total_events: row.total_events,
     denied_events: row.denied_events,
+    pending_approval: row.pending_approval,
+    has_policy_decision: row.has_policy_decision,
+    needs_person: row.needs_person,
+    preview_fields: Array.isArray(row.preview_fields) ? row.preview_fields : [],
+    preview_anomaly_reason: row.preview_anomaly_reason,
+    preview_anomaly_type: row.preview_anomaly_type,
+    preview_subject: row.preview_subject,
     root_event_id: row.root_event_id,
     root_event_hash: row.root_event_hash,
     chain_root_hash: computeChainRootHash({
