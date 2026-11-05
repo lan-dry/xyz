@@ -260,7 +260,10 @@ importers:
     dependencies:
       '@prisma/client':
         specifier: 6.3.1
-        version: 6.3.1(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3)
+        version: 6.3.1(prisma@7.8.0(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3)
+      '@salanor/db-url':
+        specifier: workspace:*
+        version: link:../../packages/db-url
       '@salanor/marketing-blog':
         specifier: workspace:*
         version: link:../../packages/marketing-blog
@@ -279,6 +282,9 @@ importers:
       next:
         specifier: ^15.3.3
         version: 15.5.18(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0)
+      pg:
+        specifier: ^8.16.0
+        version: 8.21.0
       react:
         specifier: ^19.1.0
         version: 19.2.6
@@ -412,7 +418,7 @@ importers:
         version: 0.37.2(nodemailer@6.10.1)
       '@auth/prisma-adapter':
         specifier: ^2.7.4
-        version: 2.11.2(@prisma/client@6.3.1(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3))(nodemailer@6.10.1)
+        version: 2.11.2(@prisma/client@6.3.1(prisma@7.8.0(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3))(nodemailer@6.10.1)
       next:
         specifier: ^15.0.0
         version: 15.5.18(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(babel-plugin-macros@3.1.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.100.0)
@@ -445,7 +451,7 @@ importers:
     dependencies:
       '@prisma/client':
         specifier: 6.3.1
-        version: 6.3.1(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3)
+        version: 6.3.1(prisma@7.8.0(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3)
 
   packages/db-url:
     devDependencies:
@@ -9491,10 +9497,10 @@ snapshots:
     optionalDependencies:
       nodemailer: 6.10.1
 
-  '@auth/prisma-adapter@2.11.2(@prisma/client@6.3.1(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3))(nodemailer@6.10.1)':
+  '@auth/prisma-adapter@2.11.2(@prisma/client@6.3.1(prisma@7.8.0(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3))(nodemailer@6.10.1)':
     dependencies:
       '@auth/core': 0.41.2(nodemailer@6.10.1)
-      '@prisma/client': 6.3.1(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3)
+      '@prisma/client': 6.3.1(prisma@7.8.0(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3)
     transitivePeerDependencies:
       - '@simplewebauthn/browser'
       - '@simplewebauthn/server'
@@ -12844,7 +12850,7 @@ snapshots:
       prisma: 6.3.1(typescript@5.9.3)
       typescript: 5.9.3
 
-  '@prisma/client@6.3.1(prisma@7.8.0(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3)':
+  '@prisma/client@6.3.1(prisma@7.8.0(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3))(typescript@5.9.3)':
     optionalDependencies:
       prisma: 7.8.0(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@5.9.3)
       typescript: 5.9.3

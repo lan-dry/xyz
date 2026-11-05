@@ -8,6 +8,7 @@ import { canPlatform } from "@/lib/platform-permissions";
 import {
   getResearchBylineForAccount,
   resolveResearchBylineDisplay,
+  type PublicStaffProfile,
 } from "@/lib/research-author";
 import { getPrisma } from "@/lib/prisma";
 import { updateMyByline } from "@/app/(ops)/content/authors/actions";
@@ -23,9 +24,16 @@ export default async function OpsMyBylinePage({
   const query = await searchParams;
 
   const prisma = getPrisma();
-  const stored =
-    prisma && session ? await getResearchBylineForAccount(prisma, session.account_id) : null;
-  const profile = session ? resolveResearchBylineDisplay(session, stored) : null;
+  let stored: PublicStaffProfile | null = null;
+  let profileError: string | null = null;
+  if (prisma && session) {
+    try {
+      stored = await getResearchBylineForAccount(prisma, session.account_id);
+    } catch (err) {
+      profileError = err instanceof Error ? err.message : "Could not load the public profile.";
+    }
+  }
+  const profile = session && !profileError ? resolveResearchBylineDisplay(session, stored) : null;
 
   return (
     <ContentPageShell
@@ -45,6 +53,13 @@ export default async function OpsMyBylinePage({
 
       {!prisma || !session ? (
         <EmptyStatePanel title="Database not configured" description="Set DATABASE_URL on Platform Ops." />
+      ) : null}
+
+      {profileError ? (
+        <EmptyStatePanel
+          title="Public profile could not be loaded"
+          description={profileError}
+        />
       ) : null}
 
       {canWrite && profile ? (

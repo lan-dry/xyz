@@ -4,7 +4,8 @@ const idApiUrl = process.env.SALANOR_ID_URL ?? "http://127.0.0.1:8091";
 const billingApiUrl = process.env.BILLING_API_URL ?? "http://127.0.0.1:8093";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@salanor/marketing-blog"],
+  transpilePackages: ["@salanor/db-url", "@salanor/marketing-blog"],
+  serverExternalPackages: ["pg"],
   async redirects() {
     return [{ source: "/leads", destination: "/content/leads", permanent: false }];
   },

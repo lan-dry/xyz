@@ -87,7 +87,7 @@ export async function getResearchBylineForAccount(
       byline_x_url,
       byline_instagram_url
     FROM account
-    WHERE account_id = ${accountId}::uuid
+    WHERE account_id = CAST(${accountId} AS uuid)
     LIMIT 1
   `;
   const row = rows[0];
@@ -145,7 +145,7 @@ export async function updateResearchBylineForAccount(
       byline_x_url = ${data.xUrl},
       byline_instagram_url = ${data.instagramUrl},
       updated_at = now()
-    WHERE account_id = ${accountId}::uuid
+    WHERE account_id = CAST(${accountId} AS uuid)
   `;
 }
 
