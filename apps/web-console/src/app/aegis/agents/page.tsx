@@ -33,6 +33,11 @@ export default function AgentsPage() {
     null,
   );
 
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameAgentId, setRenameAgentId] = useState<string | null>(null);
+  const [renameName, setRenameName] = useState("");
+  const [renameMessage, setRenameMessage] = useState<string | null>(null);
+
   useEffect(() => {
     setEnvironment(readConsoleEnvironment());
     function onEnv(e: Event) {
@@ -94,6 +99,25 @@ export default function AgentsPage() {
     onSuccess: (data) => {
       setKillMessage(data.message);
       void queryClient.invalidateQueries({ queryKey: ["console", "agents"] });
+    },
+  });
+
+  const renameAgent = useMutation({
+    mutationFn: (input: { agentId: string; display_name: string }) =>
+      consoleApi<{
+        agent: { agent_id: string; display_name: string | null; slug: string };
+        message: string;
+      }>(`/agents/${encodeURIComponent(input.agentId)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ display_name: input.display_name }),
+      }),
+    onSuccess: (data) => {
+      setRenameMessage(data.message);
+      setRenameOpen(false);
+      setRenameAgentId(null);
+      setRenameName("");
+      void queryClient.invalidateQueries({ queryKey: ["console", "agents"] });
+      void queryClient.invalidateQueries({ queryKey: ["console", "traces"] });
     },
   });
 
@@ -207,6 +231,14 @@ export default function AgentsPage() {
       {setActive.isError ? (
         <ErrorAlert message={(setActive.error as Error).message} />
       ) : null}
+      {renameMessage ? (
+        <div className={`${ui.alert} ${ui.alertInfo}`} style={{ marginBottom: "1.5rem" }}>
+          {renameMessage}
+        </div>
+      ) : null}
+      {renameAgent.isError ? (
+        <ErrorAlert message={(renameAgent.error as Error).message} />
+      ) : null}
 
       {agentsQuery.isPending ? <LoadingBlock /> : null}
       {agentsQuery.isError ? (
@@ -285,6 +317,19 @@ export default function AgentsPage() {
                   <td>{formatRelativeTime(agent.created_at)}</td>
                   <td>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    <button
+                      type="button"
+                      className={`${ui.btn} ${ui.btnSecondary}`}
+                      disabled={renameAgent.isPending}
+                      onClick={() => {
+                        setRenameAgentId(agent.agent_id);
+                        setRenameName(agent.display_name?.trim() || agent.slug);
+                        setRenameMessage(null);
+                        setRenameOpen(true);
+                      }}
+                    >
+                      Rename
+                    </button>
                     <button
                       type="button"
                       className={`${ui.btn} ${agent.active ? ui.btnDanger : ui.btnPrimary}`}
@@ -398,6 +443,69 @@ export default function AgentsPage() {
               type="button"
               className={`${ui.btn} ${ui.btnSecondary}`}
               onClick={() => setModalOpen(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={renameOpen}
+        title="Rename agent"
+        onClose={() => {
+          if (!renameAgent.isPending) {
+            setRenameOpen(false);
+            setRenameAgentId(null);
+          }
+        }}
+        closeOnOverlayClick={false}
+      >
+        <form
+          className={ui.formGrid}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!renameAgentId || !renameName.trim()) return;
+            renameAgent.mutate({
+              agentId: renameAgentId,
+              display_name: renameName.trim(),
+            });
+          }}
+        >
+          <label className={ui.field}>
+            Display name
+            <input
+              className={ui.input}
+              value={renameName}
+              onChange={(e) => setRenameName(e.target.value)}
+              placeholder="Agent name"
+              autoFocus
+              maxLength={120}
+            />
+          </label>
+          <p style={{ fontSize: "0.8125rem", color: "var(--muted)", margin: 0 }}>
+            Agent ID stays the same. This name is shown on Live feed, cases, and shared
+            receipts.
+          </p>
+          {renameAgent.isError ? (
+            <ErrorAlert message={(renameAgent.error as Error).message} />
+          ) : null}
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              type="submit"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              disabled={renameAgent.isPending || !renameName.trim()}
+            >
+              {renameAgent.isPending ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnSecondary}`}
+              disabled={renameAgent.isPending}
+              onClick={() => {
+                setRenameOpen(false);
+                setRenameAgentId(null);
+              }}
             >
               Cancel
             </button>

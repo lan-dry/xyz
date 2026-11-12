@@ -147,6 +147,64 @@ agentRoutes.post("/agents", requireConsoleSession, async (c) => {
   }
 });
 
+/** Rename agent — updates display_name only; agent_id and slug stay the same. */
+agentRoutes.patch("/agents/:agentId", requireConsoleSession, async (c) => {
+  const session = c.get("consoleSession");
+  if (session.role !== "admin" && session.role !== "owner") {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const agentId = c.req.param("agentId")?.trim();
+  if (!agentId) {
+    return c.json({ error: "agentId required" }, 422);
+  }
+
+  let body: { display_name?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+
+  const displayName =
+    typeof body.display_name === "string" ? body.display_name.trim() : "";
+  if (!displayName) {
+    return c.json({ error: "display_name is required" }, 422);
+  }
+  if (displayName.length > 120) {
+    return c.json({ error: "display_name must be 120 characters or fewer" }, 422);
+  }
+
+  const client = await getPool().connect();
+  try {
+    const result = await client.query<{
+      agent_id: string;
+      display_name: string | null;
+      slug: string;
+    }>(
+      `UPDATE agent
+       SET display_name = $3
+       WHERE organization_id = $1 AND agent_id = $2
+       RETURNING agent_id, display_name, slug`,
+      [session.organizationId, agentId, displayName],
+    );
+    const row = result.rows[0];
+    if (!row) {
+      return c.json({ error: "Agent not found" }, 404);
+    }
+    return c.json({
+      agent: {
+        agent_id: row.agent_id,
+        display_name: row.display_name,
+        slug: row.slug,
+      },
+      message: "Agent renamed.",
+    });
+  } finally {
+    client.release();
+  }
+});
+
 /** Register a customer-held Ed25519 public key (BYOK — private key never sent to Salanor). */
 agentRoutes.post("/agents/:agentId/keys/byok", requireConsoleSession, async (c) => {
   const session = c.get("consoleSession");
