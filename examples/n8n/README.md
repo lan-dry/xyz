@@ -13,6 +13,7 @@
 | `integrations/n8n-nodes-salanor-aegis` | Community node (Record + Check Policy) |
 | `examples/n8n/aegis-workflow-bridge.json` | One Record HTTP node (simple) |
 | `examples/n8n/aegis-policy-then-record.json` | Policy gate + Record (HTTP, works today) |
+| `examples/sensitive-action/` | General sensitive-action JSON → signed receipt (any domain) |
 | `examples/n8n/RAILWAY_GET_LATEST_DEPLOY.md` | How to ship latest API when Redeploy is wrong |
 
 ## Railway

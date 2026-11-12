@@ -111,6 +111,8 @@ export type AgentCredentialsPayload = {
 export type TraceSummary = {
   trace_id: string;
   agent_id: string;
+  /** Human-readable agent name; falls back to agent_id. */
+  agent_name?: string;
   status: string;
   started_at: string;
   ended_at: string | null;

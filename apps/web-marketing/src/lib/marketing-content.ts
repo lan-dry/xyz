@@ -128,9 +128,9 @@ export const HOME_WORKFLOW_EXAMPLE = {
 export const IMPLEMENTATION_OFFER = {
   badge: "Aegis · early access",
   headline: "Who authorized this action?",
-  headlineAccent: "Prove it later.",
+  headlineAccent: "Show it later.",
   subhead:
-    "Salanor is a verifiable decision record for automated actions — every risky tool call is signed, tied to policy, and exportable as evidence auditors can check without trusting our UI.",
+    "When an automated system processes a loan, a payment, or customer data, most companies cannot easily prove what it did on a specific case. Aegis creates a clear, signed record of what happened so risk, compliance, or audit can check it without reconstructing the story.",
   detail:
     "We help you put one high-risk workflow into production (payout, refund, KYC escalation, or similar) with Aegis built in: enforce rules, route approvals, keep the receipt.",
   primaryCta: "Book a scoping call",

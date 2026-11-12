@@ -33,9 +33,12 @@ type ShareReceiptResponse = {
   verification: {
     status: "valid" | "pending" | "unavailable";
     detail: string;
+    inclusion_status?: "ok" | "pending" | "unavailable";
+    inclusion_detail?: string | null;
   };
   story?: {
     what_happened: string;
+    description?: string | null;
     data_seen: string | null;
     policy_decision: string;
     policy_reason: string | null;
@@ -77,12 +80,21 @@ export default function ShareReceiptPage() {
   });
 
   const data = query.data;
-  const verifyClass =
-    data?.verification.status === "valid"
-      ? styles.badge
-      : data?.verification.status === "pending"
-        ? styles.badgeWarn
-        : styles.badgeFail;
+  const chainOk = Boolean(data?.receipt.chain_valid);
+  const fullyVerified = data?.verification.status === "valid" &&
+    (data.verification.inclusion_status === "ok" ||
+      data.verification.inclusion_status == null);
+  // Intact seal reads as finished even while public witness inclusion catches up.
+  const showVerified = chainOk || data?.verification.status === "valid";
+  const inclusionPending =
+    showVerified &&
+    (data?.verification.inclusion_status === "pending" ||
+      (data?.verification.status === "pending" && chainOk));
+  const verifyClass = showVerified
+    ? styles.badge
+    : data?.verification.status === "pending"
+      ? styles.badgeWarn
+      : styles.badgeFail;
 
   return (
     <main className={styles.page}>
@@ -92,7 +104,8 @@ export default function ShareReceiptPage() {
           {data?.story?.what_happened ?? "Shared receipt"}
         </h1>
         <p className={styles.lead}>
-          Read-only record of what this agent did. No console login required.
+          {data?.story?.description?.trim() ||
+            "Read-only record of what this agent did. No console login required."}
         </p>
 
         {query.isPending ? (
@@ -119,13 +132,19 @@ export default function ShareReceiptPage() {
 
             <p className={styles.statusRow}>
               <span className={`${styles.badge} ${verifyClass}`}>
-                {data.verification.status === "valid"
+                {showVerified
                   ? "Verified"
                   : data.verification.status === "pending"
                     ? "Verification pending"
                     : "Verification unavailable"}
               </span>
-              <span className={styles.metaInline}>{data.verification.detail}</span>
+              <span className={styles.metaInline}>
+                {showVerified
+                  ? fullyVerified
+                    ? data.verification.detail
+                    : "Signature chain is intact."
+                  : data.verification.detail}
+              </span>
             </p>
 
             {data.story?.anomaly ? (
@@ -140,12 +159,13 @@ export default function ShareReceiptPage() {
                 What happened
               </h2>
               <p className={styles.prose}>
-                {data.story?.what_happened ??
-                  data.receipt.tool_name ??
+                {data.story?.description?.trim() ||
+                  data.story?.what_happened ||
+                  data.receipt.tool_name ||
                   data.receipt.action_kind}
               </p>
               <p className={styles.metaInline}>
-                {data.receipt.agent_name ?? data.receipt.agent_id}
+                {data.receipt.agent_name?.trim() || data.receipt.agent_id}
                 {" · "}
                 {new Date(data.receipt.emitted_at).toLocaleString()}
                 {data.story?.status ? ` · ${data.story.status}` : ""}
@@ -199,6 +219,18 @@ export default function ShareReceiptPage() {
                   <dt className={styles.dt}>Chain</dt>
                   <dd className={styles.dd}>
                     {data.receipt.chain_valid ? "Intact" : "Broken"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className={styles.dt}>Public inclusion</dt>
+                  <dd className={styles.dd}>
+                    {data.verification.inclusion_status === "ok"
+                      ? "Witness and transparency verified"
+                      : inclusionPending
+                        ? data.verification.inclusion_detail ||
+                          "Witness inclusion is still processing"
+                        : data.verification.inclusion_detail ||
+                          data.verification.detail}
                   </dd>
                 </div>
                 <div>

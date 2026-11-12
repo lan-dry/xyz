@@ -16,6 +16,7 @@ export type CaseEventLike = {
   payload: unknown;
   emitted_at?: string;
   actor_principal?: string | null;
+  chain_valid?: boolean;
 };
 
 export type CaseFourAnswers = {
@@ -26,7 +27,10 @@ export type CaseFourAnswers = {
 };
 
 export type CaseStory = {
+  /** Primary title from the event task (or narrative fallback). */
   headline: string;
+  /** Supporting copy from event summary when present. */
+  description: string | null;
   listSentence: string;
   outcome: OutcomeDisplay;
   fourAnswers: CaseFourAnswers;
@@ -117,6 +121,71 @@ function pushFields(target: string[], value: unknown) {
   }
 }
 
+/** True when the payload clearly came from an email workflow. */
+function isEmailSourced(p: Record<string, unknown> | null): boolean {
+  if (!p) return false;
+  const source = str(p.source)?.toLowerCase() ?? "";
+  if (source === "email" || source.includes("email")) return true;
+  return Boolean(str(p.email_from) || str(p.email_to) || str(p.mailbox));
+}
+
+/**
+ * Case title from the event itself (task first). Never use agent names.
+ * email_subject is only a fallback for email-sourced cases.
+ */
+export function titleFromPayload(p: Record<string, unknown> | null): string | null {
+  if (!p) return null;
+  return (
+    str(p.task) ??
+    str(p.subject) ??
+    str(p.business_context) ??
+    str(p.trigger_detail) ??
+    (isEmailSourced(p) ? str(p.email_subject) : null)
+  );
+}
+
+export function descriptionFromPayload(
+  p: Record<string, unknown> | null,
+): string | null {
+  if (!p) return null;
+  return str(p.summary);
+}
+
+function pickTitleAndDescription(events: CaseEventLike[]): {
+  subject: string | null;
+  description: string | null;
+  emailCase: boolean;
+} {
+  let subject: string | null = null;
+  let description: string | null = null;
+  let emailCase = false;
+  let emailSubjectFallback: string | null = null;
+
+  for (const e of events) {
+    const p = payloadRecord(e.payload);
+    if (isEmailSourced(p)) emailCase = true;
+    subject = subject ?? str(p?.task);
+    description = description ?? descriptionFromPayload(p);
+    emailSubjectFallback = emailSubjectFallback ?? str(p?.email_subject);
+  }
+  if (!subject) {
+    for (const e of events) {
+      const p = payloadRecord(e.payload);
+      subject =
+        subject ??
+        str(p?.subject) ??
+        str(p?.business_context) ??
+        str(p?.trigger_detail);
+      if (subject) break;
+    }
+  }
+  if (!subject && emailCase) {
+    subject = emailSubjectFallback;
+  }
+
+  return { subject, description, emailCase };
+}
+
 function collectFromEvents(events: CaseEventLike[]) {
   let amountUsd: number | null = null;
   let reference: string | null = null;
@@ -134,13 +203,14 @@ function collectFromEvents(events: CaseEventLike[]) {
   let anomalySeverity: string | null = null;
   let anomalyType: string | null = null;
   let anomalyFlagged = false;
-  let subject: string | null = null;
   let hasPolicyDecision = false;
   let obligation = false;
   let denied = false;
   let allowedPayment = false;
   let decisionLayer: string | null = null;
   let evaluationContext: Record<string, unknown> | null = null;
+
+  const { subject, description } = pickTitleAndDescription(events);
 
   for (const e of events) {
     const p = payloadRecord(e.payload);
@@ -160,14 +230,6 @@ function collectFromEvents(events: CaseEventLike[]) {
       dataSensitivity ??
       str(p?.sensitivity) ??
       str(p?.classification);
-    subject =
-      subject ??
-      str(p?.task) ??
-      str(p?.subject) ??
-      str(p?.email_subject) ??
-      str(p?.summary) ??
-      str(p?.business_context) ??
-      str(p?.trigger_detail);
 
     if (e.action_kind === "anomaly_signal") {
       anomalyFlagged = true;
@@ -239,6 +301,7 @@ function collectFromEvents(events: CaseEventLike[]) {
     anomalyType,
     anomalyFlagged,
     subject,
+    description,
     hasPolicyDecision,
     evaluationContext,
     obligation,
@@ -254,6 +317,10 @@ function actionNoun(
   opts?: { anomaly?: boolean; dataAccess?: boolean; subject?: string | null },
 ): string {
   const tool = toolLabel ?? "";
+  // Event task/title wins over generic "Data access" / tool labels.
+  if (opts?.subject) {
+    return opts.subject;
+  }
   if (opts?.anomaly && opts?.dataAccess) {
     return "Sensitive data access";
   }
@@ -262,9 +329,6 @@ function actionNoun(
   }
   if (opts?.dataAccess || tool.includes("aegis.data.")) {
     return "Data access";
-  }
-  if (opts?.subject && (tool.startsWith("demo.") || tool.includes("trace.") || !tool)) {
-    return opts.subject;
   }
   if (tool.includes("paymentIntents") || tool.includes("refund")) {
     return amountUsd != null ? `Refund of ${money(amountUsd)}` : "Refund";
@@ -276,7 +340,7 @@ function actionNoun(
     return "Flagged agent behaviour";
   }
   if (tool.startsWith("demo.")) {
-    return opts?.subject ?? "Recorded action";
+    return "Recorded action";
   }
   if (tool) {
     return amountUsd != null
@@ -291,6 +355,7 @@ export function buildCaseStory(
   meta: {
     traceId: string;
     agentId: string;
+    agentName?: string | null;
     status: string;
     pendingApproval?: boolean;
     deniedEvents?: number;
@@ -335,8 +400,11 @@ export function buildCaseStory(
       : GENERIC_FLAG
     : null;
 
+  // Prefer the event task as the page title; fall back to a short narrative.
   let headline: string;
-  if (flagLine && c.denied) {
+  if (c.subject) {
+    headline = c.subject;
+  } else if (flagLine && c.denied) {
     headline = `Stopped. ${endSentence(flagLine)}`;
   } else if (flagLine && waitingForPerson) {
     headline = `${endSentence(flagLine)} Needs approval before this can continue.`;
@@ -368,14 +436,20 @@ export function buildCaseStory(
     headline = `${action}${refBit}. ${outcome.label}.`;
   }
 
-  const listSentence = flagLine
-    ? flagLine
-    : seen
-      ? seen.replace(/\.$/, "")
-      : c.reference
-        ? `${action} for ${c.reference}`
-        : c.subject
-          ? c.subject
+  const listSentence = c.subject
+    ? waitingForPerson
+      ? `${c.subject} — needs approval`
+      : c.denied
+        ? `${c.subject} — stopped`
+        : flagLine
+          ? `${c.subject} — flagged`
+          : c.subject
+    : flagLine
+      ? flagLine
+      : seen
+        ? seen.replace(/\.$/, "")
+        : c.reference
+          ? `${action} for ${c.reference}`
           : action;
 
   const contextBits: string[] = [];
@@ -414,7 +488,11 @@ export function buildCaseStory(
     whyDetail = endSentence(c.ruleReason ?? "A rule allowed this.");
   }
 
-  const whatDetail = [seen ? endSentence(seen) : null, flagLine ? endSentence(flagLine) : null]
+  const whatDetail = [
+    c.description ? endSentence(c.description) : null,
+    seen ? endSentence(seen) : null,
+    flagLine ? endSentence(flagLine) : null,
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -426,7 +504,7 @@ export function buildCaseStory(
     who: {
       title: "Who did it, and for whom?",
       detail: [
-        `Agent: ${meta.agentId}.`,
+        `Agent: ${meta.agentName?.trim() || meta.agentId}.`,
         c.reference ? `Reference: ${c.reference}.` : null,
         c.ticketId && c.orderId && c.ticketId !== c.orderId
           ? `Order: ${c.orderId}.`
@@ -441,16 +519,20 @@ export function buildCaseStory(
     },
     canTrust: {
       title: "Can the record be trusted?",
-      detail:
-        "Every step is sealed in an append-only chain. Changing a field after the fact breaks verification.",
-      verifiedHint: "Open Technical details to check the seal.",
+      detail: events.every((e) => e.chain_valid !== false)
+        ? "Verified. Every step is sealed in an append-only chain."
+        : "Every step is sealed in an append-only chain. Changing a field after the fact breaks verification.",
+      verifiedHint: events.every((e) => e.chain_valid !== false)
+        ? "The signature chain is intact."
+        : "Open Technical details to check the seal.",
     },
   };
 
-  const attempted = seen || `${action}${refBit}`;
+  const attempted = c.subject || seen || `${action}${refBit}`;
 
   return {
     headline,
+    description: c.description,
     listSentence,
     outcome,
     fourAnswers,
@@ -502,7 +584,20 @@ export function listSentenceFromTrace(t: {
     anomaly: Boolean(flagLine) && !needsPerson && t.denied_events === 0,
   });
   let sentence: string;
-  if (flagLine && needsPerson) {
+  const title = t.preview_subject?.trim() || null;
+  if (title) {
+    if (flagLine && needsPerson) {
+      sentence = `${title} — needs approval`;
+    } else if (flagLine) {
+      sentence = `${title} — flagged`;
+    } else if (needsPerson) {
+      sentence = `${title} — needs approval`;
+    } else if (t.denied_events > 0) {
+      sentence = `${title} — stopped`;
+    } else {
+      sentence = title;
+    }
+  } else if (flagLine && needsPerson) {
     sentence = `${flagLine} Needs approval.`;
   } else if (flagLine) {
     sentence = flagLine;
@@ -514,8 +609,6 @@ export function listSentenceFromTrace(t: {
     sentence = seen ? `Stopped. ${seen}` : "Stopped by a rule";
   } else if (seen) {
     sentence = seen.replace(/\.$/, "");
-  } else if (t.preview_subject) {
-    sentence = t.preview_subject;
   } else if (t.status === "completed" || t.has_policy_decision) {
     sentence = "Completed";
   } else {
@@ -536,19 +629,14 @@ export function stepTitlePlain(
   pushFields(fields, p?.data_touched);
   pushFields(fields, p?.fields);
   const seen = readSentence(fields);
+  const subject = titleFromPayload(p);
+  if (subject && (actionKind === "data_access" || actionKind === "tool_call")) {
+    return subject;
+  }
   if (actionKind === "data_access" && seen) return seen.replace(/\.$/, "");
   if (actionKind === "anomaly_signal") {
     const reason = str(p?.reason);
     return reason ? anomalyLead(str(p?.type), reason) : GENERIC_FLAG;
-  }
-  const subject =
-    str(p?.task) ??
-    str(p?.subject) ??
-    str(p?.email_subject) ??
-    str(p?.summary) ??
-    str(p?.business_context);
-  if (subject && actionKind === "tool_call" && !toolName?.includes("trace.")) {
-    return subject;
   }
   const base = actionKindPlain(actionKind, toolName);
   if (actionKind === "policy_decision") {
@@ -564,5 +652,5 @@ export function stepTitlePlain(
         ? "A person declined"
         : base;
   }
-  return base;
+  return subject ?? base;
 }

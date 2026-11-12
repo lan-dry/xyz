@@ -1,0 +1,31 @@
+{
+  "action": "Decide a personal loan application",
+  "resource": "loan_application",
+  "fields_accessed": [
+    "applicant_name",
+    "income",
+    "credit_score",
+    "requested_amount",
+    "debt_to_income"
+  ],
+  "sensitivity": "high",
+  "source": "core_banking_api",
+  "policy": {
+    "id": "pol-loan-decision-v1",
+    "reason": "Score below the auto-approve band. A credit officer must confirm before the offer is issued."
+  },
+  "outcome": "paused",
+  "approval": {
+    "required": true,
+    "decision": "approved",
+    "approver": "credit.officer@example.bank",
+    "decided_at": "2026-11-12T08:15:00.000Z"
+  },
+  "summary": "Loan application paused for a person, then approved.",
+  "context": {
+    "application_id": "LN-10482",
+    "product_type": "personal_loan",
+    "requested_amount": 25000,
+    "currency": "USD"
+  }
+}

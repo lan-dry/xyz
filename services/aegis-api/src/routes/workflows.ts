@@ -1,5 +1,7 @@
 import type { Context } from "hono";
+import type pg from "pg";
 
+import { notifyAnomalyFlagged } from "../approvals/notify.js";
 import { resolveIngestKey } from "../auth/ingest-key.js";
 import { getPool } from "../db/pool.js";
 import {
@@ -23,6 +25,45 @@ function bearerToken(authorization: string | undefined): string | null {
 
 function consoleBaseUrl(): string | undefined {
   return process.env.CONSOLE_PUBLIC_URL?.trim() || process.env.CONSOLE_ORIGIN?.trim();
+}
+
+/** Bridge-signed anomaly events should notify the same way direct ingest does. */
+async function notifyRecordedAnomalies(
+  client: pg.PoolClient,
+  organizationId: string,
+  events: Array<{ event_id: string; action_kind: string }>,
+): Promise<void> {
+  const ids = events
+    .filter((event) => event.action_kind === "anomaly_signal")
+    .map((event) => event.event_id);
+  if (ids.length === 0) return;
+
+  const rows = await client.query<{
+    event_id: string;
+    trace_id: string;
+    agent_id: string;
+    policy_decision: string;
+    payload: Record<string, unknown> | null;
+  }>(
+    `SELECT event_id, trace_id, agent_id, policy_decision, payload
+     FROM event
+     WHERE organization_id = $1 AND event_id = ANY($2::text[])`,
+    [organizationId, ids],
+  );
+
+  const pool = getPool();
+  for (const row of rows.rows) {
+    const payload = row.payload ?? {};
+    notifyAnomalyFlagged(pool, {
+      organizationId,
+      traceId: row.trace_id,
+      eventId: row.event_id,
+      agentId: row.agent_id,
+      severity: typeof payload.severity === "string" ? payload.severity : "",
+      reason: typeof payload.reason === "string" ? payload.reason : "",
+      policyDecision: row.policy_decision,
+    });
+  }
 }
 
 function traceUrl(traceId: string): string | undefined {
@@ -118,6 +159,8 @@ export async function postWorkflowRunStart(c: Context): Promise<Response> {
       actorPrincipal: body.actor_principal,
     });
 
+    await notifyRecordedAnomalies(client, organizationId, result.events);
+
     return c.json(
       {
         ...result,
@@ -181,6 +224,8 @@ export async function postWorkflowRunSteps(c: Context): Promise<Response> {
       actorPrincipal: body.actor_principal,
     });
 
+    await notifyRecordedAnomalies(client, organizationId, result.events);
+
     return c.json({ trace_id: traceId, ...result }, 201);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to append steps";
@@ -243,6 +288,8 @@ export async function postWorkflowRunComplete(c: Context): Promise<Response> {
       policy_gate: body.policy_gate,
       actorPrincipal: body.actor_principal,
     });
+
+    await notifyRecordedAnomalies(client, organizationId, result.events);
 
     return c.json({
       ...result,
@@ -327,6 +374,8 @@ export async function postWorkflowRunCapture(c: Context): Promise<Response> {
       policy_gate: body.policy_gate,
       actorPrincipal: body.actor_principal,
     });
+
+    await notifyRecordedAnomalies(client, organizationId, result.events);
 
     return c.json(
       {

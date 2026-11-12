@@ -23,6 +23,7 @@ import {
   useTraceListParams,
 } from "@/hooks/use-trace-list-params";
 import { consoleApi } from "@/lib/api";
+import { agentLabel } from "@/lib/agent-label";
 import { listSentenceFromTrace } from "@/lib/case-story";
 import { readConsoleEnvironment } from "@/lib/console-environment";
 import type { TraceSummary } from "@/lib/types";
@@ -294,7 +295,7 @@ export default function LiveFeedPage() {
                         color: "var(--console-fg-muted)",
                       }}
                     >
-                      Agent <span className="mono">{t.agent_id}</span> · {t.total_events}{" "}
+                      {agentLabel(t.agent_name, t.agent_id)} · {t.total_events}{" "}
                       step{t.total_events === 1 ? "" : "s"}
                     </p>
                   </div>
@@ -332,8 +333,8 @@ export default function LiveFeedPage() {
             </p>
             <dl style={{ margin: 0, fontSize: "0.8125rem" }}>
               <dt style={{ color: "var(--console-fg-subtle)" }}>Agent</dt>
-              <dd className="mono" style={{ margin: "0 0 0.5rem" }}>
-                {selected.agent_id}
+              <dd style={{ margin: "0 0 0.5rem" }}>
+                {agentLabel(selected.agent_name, selected.agent_id)}
               </dd>
               <dt style={{ color: "var(--console-fg-subtle)" }}>Started</dt>
               <dd style={{ margin: "0 0 0.5rem" }}>

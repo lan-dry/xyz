@@ -1,0 +1,15 @@
+{
+  "action": "Plain-language description of what was attempted",
+  "resource": "object_or_system_name",
+  "fields_accessed": ["field_one", "field_two"],
+  "sensitivity": "medium",
+  "source": "api",
+  "policy": {
+    "id": "pol-your-rule-id",
+    "reason": "Why this outcome — written for a person, not a developer."
+  },
+  "outcome": "allowed",
+  "approval": null,
+  "summary": "One sentence for the sealed receipt.",
+  "context": {}
+}

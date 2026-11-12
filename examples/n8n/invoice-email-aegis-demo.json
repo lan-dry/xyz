@@ -1,0 +1,169 @@
+{
+  "name": "Invoice email → Aegis demo",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": true
+      },
+      "id": "aegis-invoice-gmail",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CONFIGURE_GMAIL",
+          "name": "Demo Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function header(json, name) {\n  const headers = json.payload?.headers || json.headers || [];\n  if (Array.isArray(headers)) {\n    const found = headers.find((item) => String(item.name || '').toLowerCase() === name);\n    return found?.value || '';\n  }\n  return '';\n}\n\nconst json = $input.first().json;\nconst subject = json.subject || json.Subject || header(json, 'subject') || '(no subject)';\nconst from = json.from || json.From || header(json, 'from') || '';\nconst body = json.text || json.textPlain || json.snippet || json.body || '';\n\nreturn [{\n  json: {\n    subject,\n    from,\n    body,\n    messageId: json.id || json.messageId || '',\n    promptBody: {\n      prompt: 'Subject: ' + subject + '\\n\\nBody:\\n' + body,\n    },\n  },\n}];"
+      },
+      "id": "aegis-invoice-prepare",
+      "name": "Prepare classifier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.safeprompt.dev/api/v1/validate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-User-IP",
+              "value": "127.0.0.1"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.promptBody) }}",
+        "options": {}
+      },
+      "id": "aegis-invoice-openai",
+      "name": "Classify email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_SAFEPROMPT",
+          "name": "SafePrompt API — Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $('Prepare classifier').first().json;\nconst verdict = $input.first().json;\nconst suspicious = verdict.safe === false;\nconst threats = Array.isArray(verdict.threats) ? verdict.threats : [];\nconst normalFields = ['invoice_amount', 'beneficiary_name', 'invoice_number'];\nconst fields = suspicious\n  ? Array.from(new Set([...normalFields, ...threats]))\n  : normalFields;\nconst reason = String(verdict.reasoning || threats.join(', ') || 'SafePrompt flagged this email.').slice(0, 500);\n\nconst steps = [\n  {\n    action_kind: 'data_access',\n    tool_name: 'aegis.data.read',\n    policy_decision: 'allow',\n    resource: 'invoice',\n    operation: 'read',\n    fields,\n    purpose: 'Read supplier invoice email',\n    payload: {\n      task: 'Read a supplier invoice before payout',\n      source: 'email',\n      sensitivity: suspicious ? 'high' : 'low',\n      email_subject: email.subject,\n      email_from: email.from,\n      fields_accessed: fields,\n    },\n  },\n];\n\nif (suspicious) {\n  steps.push({\n    action_kind: 'anomaly_signal',\n    tool_name: 'aegis.anomaly.signal',\n    policy_decision: 'allow',\n    purpose: 'Suspicious instruction in invoice email',\n    payload: {\n      type: 'prompt_injection_indicator',\n      severity: 'high',\n      reason,\n    },\n  });\n}\n\n// Paste agt_... here only if more than one agent has Workflow Bridge enabled.\nconst agentId = '';\n\nconst capture = {\n  business_context: suspicious\n    ? 'Invoice email flagged: extra sensitive fields requested'\n    : 'Invoice email read',\n  external_system: 'n8n',\n  external_workflow_id: String($workflow.id),\n  external_execution_id: String($execution.id),\n  status: 'completed',\n  summary: suspicious ? reason : 'Normal invoice email recorded.',\n  steps,\n};\nif (agentId) capture.agent_id = agentId;\n\nreturn [{ json: { capture, suspicious, subject: email.subject } }];"
+      },
+      "id": "aegis-invoice-build",
+      "name": "Build Aegis capture",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.AEGIS_API_URL || 'https://api.salanor.com').replace(/\\/+$/, '') }}/v1/aegis/workflows/runs/capture",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.capture) }}",
+        "options": {}
+      },
+      "id": "aegis-invoice-record",
+      "name": "Record in Aegis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_AEGIS_INGEST",
+          "name": "Aegis Ingest API — Header Auth"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare classifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare classifier": {
+      "main": [
+        [
+          {
+            "node": "Classify email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify email": {
+      "main": [
+        [
+          {
+            "node": "Build Aegis capture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Aegis capture": {
+      "main": [
+        [
+          {
+            "node": "Record in Aegis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "description": "Reads a demo inbox, checks it with SafePrompt, and records a signed Aegis trace. Unsafe emails also emit anomaly_signal."
+  }
+}

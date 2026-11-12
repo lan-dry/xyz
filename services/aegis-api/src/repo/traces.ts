@@ -4,6 +4,8 @@ export type TraceSummary = {
   trace_id: string;
   organization_id: string;
   agent_id: string;
+  /** display_name, else slug, else agent_id */
+  agent_name: string;
   status: string;
   started_at: Date;
   ended_at: Date | null;
@@ -35,6 +37,11 @@ const TRACE_SELECT = `
   SELECT t.trace_id,
          t.organization_id,
          t.agent_id,
+         COALESCE(
+           NULLIF(ag.display_name, ''),
+           NULLIF(ag.slug, ''),
+           t.agent_id
+         ) AS agent_name,
          t.status,
          t.started_at,
          t.ended_at,
@@ -101,26 +108,48 @@ const TRACE_SELECT = `
          ) AS preview_anomaly_type,
          (
            SELECT COALESCE(
-             NULLIF(e.payload->>'task', ''),
-             NULLIF(e.payload->>'subject', ''),
-             NULLIF(e.payload->>'email_subject', ''),
-             NULLIF(e.payload->>'summary', ''),
-             NULLIF(e.payload->>'business_context', ''),
-             NULLIF(e.payload->>'trigger_detail', '')
+             (
+               SELECT NULLIF(e.payload->>'task', '')
+               FROM event e
+               WHERE e.trace_id = t.trace_id
+                 AND e.organization_id = t.organization_id
+                 AND NULLIF(e.payload->>'task', '') IS NOT NULL
+               ORDER BY e.sequence_num ASC
+               LIMIT 1
+             ),
+             (
+               SELECT COALESCE(
+                 NULLIF(e.payload->>'subject', ''),
+                 NULLIF(e.payload->>'business_context', ''),
+                 NULLIF(e.payload->>'trigger_detail', '')
+               )
+               FROM event e
+               WHERE e.trace_id = t.trace_id
+                 AND e.organization_id = t.organization_id
+                 AND COALESCE(
+                   NULLIF(e.payload->>'subject', ''),
+                   NULLIF(e.payload->>'business_context', ''),
+                   NULLIF(e.payload->>'trigger_detail', '')
+                 ) IS NOT NULL
+               ORDER BY e.sequence_num ASC
+               LIMIT 1
+             ),
+             (
+               SELECT NULLIF(e.payload->>'email_subject', '')
+               FROM event e
+               WHERE e.trace_id = t.trace_id
+                 AND e.organization_id = t.organization_id
+                 AND NULLIF(e.payload->>'email_subject', '') IS NOT NULL
+                 AND (
+                   lower(COALESCE(e.payload->>'source', '')) LIKE '%email%'
+                   OR NULLIF(e.payload->>'email_from', '') IS NOT NULL
+                   OR NULLIF(e.payload->>'email_to', '') IS NOT NULL
+                   OR NULLIF(e.payload->>'mailbox', '') IS NOT NULL
+                 )
+               ORDER BY e.sequence_num ASC
+               LIMIT 1
+             )
            )
-           FROM event e
-           WHERE e.trace_id = t.trace_id
-             AND e.organization_id = t.organization_id
-             AND COALESCE(
-               NULLIF(e.payload->>'task', ''),
-               NULLIF(e.payload->>'subject', ''),
-               NULLIF(e.payload->>'email_subject', ''),
-               NULLIF(e.payload->>'summary', ''),
-               NULLIF(e.payload->>'business_context', ''),
-               NULLIF(e.payload->>'trigger_detail', '')
-             ) IS NOT NULL
-           ORDER BY e.sequence_num DESC
-           LIMIT 1
          ) AS preview_subject,
          (
            SELECT COALESCE(jsonb_agg(DISTINCT x), '[]'::jsonb)
@@ -151,6 +180,9 @@ const TRACE_SELECT = `
              AND btrim(x) <> ''
          ) AS preview_fields
   FROM trace t
+  LEFT JOIN agent ag
+    ON ag.agent_id = t.agent_id
+   AND ag.organization_id = t.organization_id
   LEFT JOIN event re
     ON re.event_id = t.root_event_id
    AND re.organization_id = t.organization_id
@@ -170,7 +202,14 @@ function traceWhereClause(
     const pattern = `%${filters.q.trim()}%`;
     params.push(pattern);
     parts.push(
-      `(t.trace_id ILIKE $${n} OR t.agent_id ILIKE $${n} OR EXISTS (
+      `(t.trace_id ILIKE $${n} OR t.agent_id ILIKE $${n}
+        OR EXISTS (
+          SELECT 1 FROM agent a
+          WHERE a.agent_id = t.agent_id
+            AND a.organization_id = t.organization_id
+            AND (a.display_name ILIKE $${n} OR a.slug ILIKE $${n})
+        )
+        OR EXISTS (
          SELECT 1 FROM event ev
          WHERE ev.trace_id = t.trace_id
            AND ev.organization_id = t.organization_id

@@ -3,5 +3,6 @@ packages:
   - "packages/*"
   - "services/*"
   - "tools/*"
+  - "examples/*"
   - "sdks/typescript"
   - "tools/conformance"

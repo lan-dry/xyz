@@ -1,0 +1,24 @@
+{
+  "action": "Send a customer payout",
+  "resource": "payout",
+  "fields_accessed": [
+    "beneficiary_name",
+    "account_number",
+    "amount",
+    "currency"
+  ],
+  "sensitivity": "high",
+  "source": "payments_api",
+  "policy": {
+    "id": "pol-payout-limit-v1",
+    "reason": "Amount is within the daily limit for this agent. Payout allowed."
+  },
+  "outcome": "allowed",
+  "approval": null,
+  "summary": "Customer payout completed within the daily limit.",
+  "context": {
+    "payment_id": "pay_9f2a",
+    "amount": 1200,
+    "currency": "USD"
+  }
+}

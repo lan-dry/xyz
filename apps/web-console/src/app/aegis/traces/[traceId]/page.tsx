@@ -20,6 +20,7 @@ import { ChainRootPanel } from "@/components/console/chain-root-panel";
 import { SpanTreePanel } from "@/components/console/span-tree-panel";
 import { consoleApi } from "@/lib/api";
 import { idApi } from "@/lib/id-api";
+import { agentLabel } from "@/lib/agent-label";
 import { buildCaseStory } from "@/lib/case-story";
 import type {
   EventDetail,
@@ -54,6 +55,7 @@ export default function TraceDetailPage() {
     ? buildCaseStory(data.events, {
         traceId: data.trace.trace_id,
         agentId: data.trace.agent_id,
+        agentName: agentLabel(data.trace.agent_name, data.trace.agent_id),
         status: data.trace.status,
         pendingApproval: data.trace.pending_approval,
         deniedEvents: data.trace.denied_events,
@@ -90,6 +92,11 @@ export default function TraceDetailPage() {
             title={story.headline}
             subtitle={
               <>
+                {story.description ? (
+                  <span style={{ display: "block", marginBottom: "0.35rem" }}>
+                    {story.description}
+                  </span>
+                ) : null}
                 <OutcomeChip chip={story.outcome.chip} kind={story.outcome.kind} />
                 <span style={{ marginLeft: "0.65rem" }}>
                   {new Date(data.trace.started_at).toLocaleString()}
@@ -201,7 +208,7 @@ export default function TraceDetailPage() {
           >
             <h2 className={ui.panelTitle}>What happened</h2>
             <p style={{ margin: 0, fontSize: "0.9375rem", lineHeight: 1.55 }}>
-              {story.headline}
+              {story.description || story.headline}
             </p>
           </section>
 
@@ -342,10 +349,17 @@ export default function TraceDetailPage() {
           >
             <h2 className={ui.panelTitle}>Verification status</h2>
             <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem" }}>
-              {data.events.every((e) => e.chain_valid)
-                ? "Chain valid — every sealed step checks out."
-                : "Chain check failed on at least one step. Open Technical details."}
-              {" "}
+              {data.events.every((e) => e.chain_valid) ? (
+                <>
+                  <StatusBadge status="ok" />{" "}
+                  <strong>Verified.</strong> Signature chain is intact on every
+                  step.
+                </>
+              ) : (
+                <>
+                  Chain check failed on at least one step. Open Technical details.
+                </>
+              )}{" "}
               Signatures are append-only; changing a field after signing fails
               verification.
             </p>
@@ -439,9 +453,29 @@ export default function TraceDetailPage() {
             >
               This is the raw record. Every other screen is generated from it. Case id:{" "}
               <code className="mono">{data.trace.trace_id}</code> · agent{" "}
-              <code className="mono">{data.trace.agent_id}</code> ·{" "}
-              <StatusBadge status={data.trace.status} />
+              {agentLabel(data.trace.agent_name, data.trace.agent_id)}
+              {data.trace.agent_name?.trim() &&
+              data.trace.agent_name.trim() !== data.trace.agent_id ? (
+                <>
+                  {" "}
+                  (<code className="mono">{data.trace.agent_id}</code>)
+                </>
+              ) : null}{" "}
+              · <StatusBadge status={data.trace.status} />
             </p>
+            {data.events.every((e) => e.chain_valid) ? (
+              <p
+                style={{
+                  margin: "0 0 1rem",
+                  fontSize: "0.8125rem",
+                  color: "var(--console-fg-muted)",
+                }}
+              >
+                Seal chain: intact. Public witness or transparency inclusion may
+                still be processing for a minute after ingest — that does not change
+                the verified chain above.
+              </p>
+            ) : null}
             {data.trace.chain_root_hash ? (
               <div style={{ marginBottom: "1rem" }}>
                 <ChainRootPanel

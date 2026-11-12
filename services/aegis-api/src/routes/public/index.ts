@@ -48,6 +48,16 @@ function anomalySentence(type: string | null, reason: string | null): string | n
   return `Flagged: ${reason}`;
 }
 
+function isEmailSourced(payload: Record<string, unknown>): boolean {
+  const source = textOf(payload, "source")?.toLowerCase() ?? "";
+  if (source === "email" || source.includes("email")) return true;
+  return Boolean(
+    textOf(payload, "email_from") ||
+      textOf(payload, "email_to") ||
+      textOf(payload, "mailbox"),
+  );
+}
+
 type TraceStep = {
   action_kind: string;
   policy_decision: string;
@@ -57,6 +67,7 @@ type TraceStep = {
 
 function storyFromTrace(steps: TraceStep[]): {
   what_happened: string;
+  description: string | null;
   data_seen: string | null;
   fields: string[];
   policy_decision: string;
@@ -70,7 +81,11 @@ function storyFromTrace(steps: TraceStep[]): {
   let anomalyFlagged = false;
   let policyDecision = "allow";
   let policyReason: string | null = null;
-  let subject: string | null = null;
+  let task: string | null = null;
+  let description: string | null = null;
+  let genericSubject: string | null = null;
+  let emailSubject: string | null = null;
+  let emailCase = false;
   let denied = false;
   let needsPerson = false;
 
@@ -86,12 +101,15 @@ function storyFromTrace(steps: TraceStep[]): {
     if (context && typeof context === "object" && !Array.isArray(context)) {
       pushFieldNames(fields, (context as Record<string, unknown>).fields_accessed);
     }
-    subject =
-      textOf(payload, "task") ??
+    if (isEmailSourced(payload)) emailCase = true;
+    task = task ?? textOf(payload, "task");
+    description = description ?? textOf(payload, "summary");
+    genericSubject =
+      genericSubject ??
       textOf(payload, "subject") ??
-      textOf(payload, "email_subject") ??
-      textOf(payload, "summary") ??
-      subject;
+      textOf(payload, "business_context") ??
+      textOf(payload, "trigger_detail");
+    emailSubject = emailSubject ?? textOf(payload, "email_subject");
     if (step.action_kind === "anomaly_signal") {
       anomalyFlagged = true;
       anomalyType = textOf(payload, "type") ?? anomalyType;
@@ -127,10 +145,16 @@ function storyFromTrace(steps: TraceStep[]): {
         : "Allowed";
 
   const labels = [...new Set(fields.map(humanField).filter(Boolean))];
-  const what = subject ?? (anomaly ? "This case was flagged." : "This case was recorded.");
+  const subject =
+    task ??
+    genericSubject ??
+    (emailCase ? emailSubject : null);
+  const what =
+    subject ?? (anomaly ? "This case was flagged." : "This case was recorded.");
 
   return {
     what_happened: what,
+    description,
     data_seen: dataSeen,
     fields: labels,
     policy_decision: policyLabel,
@@ -431,9 +455,17 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
     let verification: {
       status: "valid" | "pending" | "unavailable";
       detail: string;
+      inclusion_status?: "ok" | "pending" | "unavailable";
+      inclusion_detail?: string | null;
     } = {
-      status: "unavailable",
-      detail: "Public cryptographic bundle not built for this receipt yet.",
+      status: ev.chain_valid ? "valid" : "unavailable",
+      detail: ev.chain_valid
+        ? "Signature chain verified."
+        : "Public cryptographic bundle not built for this receipt yet.",
+      inclusion_status: "pending",
+      inclusion_detail: ev.chain_valid
+        ? "Witness or transparency inclusion may still be processing."
+        : null,
     };
     try {
       const bundle = await buildPublicVerificationBundle(
@@ -444,20 +476,28 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
       if (bundle) {
         const checked = verifyPublicVerificationBundle(bundle);
         verification = {
-          status: checked.ok ? "valid" : "unavailable",
+          status: checked.ok || ev.chain_valid ? "valid" : "unavailable",
           detail: checked.ok
             ? "Witness and transparency inclusion verified."
-            : checked.errors.join("; ") || "Verification failed.",
+            : ev.chain_valid
+              ? "Signature chain verified."
+              : checked.errors.join("; ") || "Verification failed.",
+          inclusion_status: checked.ok ? "ok" : "unavailable",
+          inclusion_detail: checked.ok
+            ? null
+            : checked.errors.join("; ") || "Inclusion check failed.",
         };
-      } else {
+      } else if (ev.chain_valid) {
         verification = {
-          status: "pending",
-          detail:
-            "Seal chain is recorded; witness or transparency inclusion may still be pending.",
+          status: "valid",
+          detail: "Signature chain verified.",
+          inclusion_status: "pending",
+          inclusion_detail:
+            "Witness or transparency inclusion may still be processing.",
         };
       }
     } catch {
-      /* keep unavailable */
+      /* keep chain-based fallback above */
     }
 
     return c.json({

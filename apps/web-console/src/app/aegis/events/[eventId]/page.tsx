@@ -68,10 +68,10 @@ function verifyBanner(v: VerifyResult["verification"]): {
   }
   if (status === "pending_inclusion") {
     return {
-      title: "Seal intact · witness inclusion pending",
-      className: ui.alertInfo,
+      title: "Verified: signature chain intact",
+      className: ui.alertSuccess,
       inclusionLabel: "pending",
-      note: "The signature chain is intact. Witness inclusion is still pending.",
+      note: "Witness inclusion is still processing. Details stay under the seal checks below — the record itself is finished.",
     };
   }
   return {
@@ -235,7 +235,17 @@ export default function EventDetailPage() {
                       <li key={err}>{err}</li>
                     ))}
                   </ul>
-                  {banner.note ? (
+                  {banner.note && banner.inclusionLabel === "pending" ? (
+                    <p
+                      style={{
+                        margin: "0.75rem 0 0",
+                        fontSize: "0.75rem",
+                        color: "var(--console-fg-muted)",
+                      }}
+                    >
+                      {banner.note}
+                    </p>
+                  ) : banner.note ? (
                     <p style={{ margin: "0.75rem 0 0", fontSize: "0.8125rem" }}>
                       {banner.note}
                     </p>

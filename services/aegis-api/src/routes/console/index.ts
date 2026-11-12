@@ -86,6 +86,7 @@ function serializeTrace(row: TraceSummary) {
   return {
     trace_id: row.trace_id,
     agent_id: row.agent_id,
+    agent_name: row.agent_name || row.agent_id,
     status: row.status,
     started_at: startedAt,
     ended_at: row.ended_at?.toISOString() ?? null,
