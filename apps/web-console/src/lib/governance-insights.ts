@@ -205,7 +205,7 @@ export function buildGovernanceInsights(
 
   if (events.length === 0) {
     return {
-      headline: "No signed activity yet",
+      headline: "No activity yet",
       insights: [],
       stats,
     };
@@ -213,11 +213,13 @@ export function buildGovernanceInsights(
 
   let headline: string;
   if (stats.tools_denied > 0) {
-    headline = `Governed workflow: ${stats.tools_denied} risky action(s) blocked, ${stats.llm_steps} AI step(s) on record`;
+    headline = `${stats.tools_denied} risky action(s) were stopped`;
+  } else if (stats.obligation_required > 0) {
+    headline = `${stats.obligation_required} action(s) need a person to approve`;
   } else if (stats.pii_fields.length > 0) {
-    headline = `Visible AI activity: ${stats.llm_steps} model call(s) touching ${stats.pii_fields.length} data type(s)`;
+    headline = `Recent cases touched ${stats.pii_fields.length} sensitive data type(s)`;
   } else {
-    headline = `${events.length} signed event(s): provable record of what your agent did`;
+    headline = "Recent cases look quiet — nothing unusual to flag";
   }
 
   return { headline, insights: insights.slice(0, 8), stats };

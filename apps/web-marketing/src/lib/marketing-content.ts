@@ -111,17 +111,17 @@ export const PLATFORM_DATA_POINTS = [
 
 /** Who the public homepage speaks to first (Rehan / design-partner clarity). */
 export const HOME_ICP =
-  "For teams running automation on money, accounts, or sensitive customer data — fintech, insurance ops, and regulated in-house engineering." as const;
+  "For teams running automation on money, accounts, or sensitive customer data: fintech, insurance ops, and regulated in-house engineering." as const;
 
-/** One concrete scene — plain language, not architecture jargon. */
+/** One concrete scene: plain language, not architecture jargon. */
 export const HOME_WORKFLOW_EXAMPLE = {
-  title: "Example: a payout agent tries to move USD 2,500",
+  title: "Example: a payment of USD 2,500",
   lines: [
-    "Policy runs before the transfer API is called — deny, allow, or pause for a human approver.",
-    "Every decision and tool call becomes a signed trace: who acted, which policy version applied, what ran.",
-    "Six months later, risk or audit downloads an export — not a folder of screenshots and log grep.",
+    "A rule runs before the payment is sent. It can allow it, stop it, or ask a person to approve.",
+    "Every step is recorded: what data was used, which rule applied, and whether a person approved.",
+    "Months later, risk or audit can open the record and see exactly what happened, instead of searching through logs.",
   ],
-  footnote: "Same pattern for refunds, KYC escalation, admin access, or fraud review workflows.",
+  footnote: "Same idea for refunds, customer checks, admin access, or fraud review.",
 } as const;
 
 /** Homepage hero + design-partner offer (aligned with docs/PITCH_FINTECH_HUB.md). */
@@ -187,22 +187,22 @@ export const HOW_IT_WORKS = [
   },
 ] as const;
 
-/** Homepage — three steps from the fintech pitch (no duplicate implementation grid). */
+/** Homepage: three steps from the fintech pitch (no duplicate implementation grid). */
 export const HOME_HOW_IT_WORKS = [
   {
     step: "01",
-    title: "Witness before the call",
-    desc: "Policy runs before the dangerous action — deny, allow, or require human approval in Console.",
+    title: "Check before it runs",
+    desc: "A rule runs before the risky action. It can allow it, stop it, or ask a person to approve.",
   },
   {
     step: "02",
-    title: "Signed trace",
-    desc: "Each step is a cryptographic event: who decided, what ran, which policy was in force.",
+    title: "Keep a clear record",
+    desc: "Each step is written down: who decided, what ran, and which rule applied.",
   },
   {
     step: "03",
-    title: "Export the proof",
-    desc: "Traces, approvals, and compliance bundles your risk team can hand to audit — not spreadsheet archaeology.",
+    title: "Hand over the proof",
+    desc: "Risk can open the record later and show audit what happened, without digging through logs.",
   },
 ] as const;
 

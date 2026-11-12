@@ -3,28 +3,26 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, FileCheck, KeyRound, Percent, Shield, ShieldAlert, UserCheck } from "lucide-react";
+import { Activity, Shield, UserCheck } from "lucide-react";
 
 import { EmptyStatePanel } from "@/components/console/empty-state-panel";
 import {
   ConsolePage,
   ErrorAlert,
   LoadingBlock,
+  OutcomeChip,
   PageHeader,
-  StatusBadge,
   ui,
 } from "@/components/console/console-ui";
-import { DemoGuidePanel } from "@/components/console/demo-guide";
-import { GovernanceInsightsPanel } from "@/components/console/governance-insights-panel";
-import { MetricSparkline, MetricTrend } from "@/components/console/metric-visuals";
 import { SystemStatusStrip } from "@/components/console/system-status-strip";
 import { consoleApi } from "@/lib/api";
+import { agentLabel } from "@/lib/agent-label";
+import { listSentenceFromTrace } from "@/lib/case-story";
 import {
   environmentLabel,
   readConsoleEnvironment,
   type ConsoleEnvironment,
 } from "@/lib/console-environment";
-import { seriesFromTimestamps, sumSeriesFromTimestamps, trendPercent } from "@/lib/metric-series";
 import type { TraceSummary } from "@/lib/types";
 
 type OverviewMetrics = {
@@ -46,53 +44,6 @@ type OverviewMetrics = {
     avg_approval_seconds: number | null;
   };
 };
-
-function DashboardStat({
-  title,
-  value,
-  hint,
-  icon: Icon,
-  sparkline,
-  trendPct,
-  accent,
-}: {
-  title: string;
-  value: number;
-  hint: React.ReactNode;
-  icon: typeof Activity;
-  sparkline?: number[];
-  trendPct?: number | null;
-  accent?: string;
-}) {
-  return (
-    <div className={`${ui.card} ${ui.cardPad}`} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", alignItems: "flex-start" }}>
-        <p className={ui.cardTitle} style={{ margin: 0 }}>
-          {title}
-        </p>
-        <Icon size={18} aria-hidden style={{ opacity: 0.45, flexShrink: 0 }} />
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "0.75rem" }}>
-        <div>
-          <p className={ui.cardValue} style={{ margin: 0 }}>
-            {value}
-          </p>
-          <p className={ui.cardHint} style={{ margin: "0.35rem 0 0" }}>
-            {hint}
-          </p>
-          {trendPct !== undefined ? (
-            <div style={{ marginTop: "0.35rem" }}>
-              <MetricTrend percent={trendPct ?? null} />
-            </div>
-          ) : null}
-        </div>
-        {sparkline ? (
-          <MetricSparkline values={sparkline} color={accent} width={96} height={32} />
-        ) : null}
-      </div>
-    </div>
-  );
-}
 
 export default function AegisDashboardPage() {
   const [environment, setEnvironment] = useState<ConsoleEnvironment>("production");
@@ -132,50 +83,24 @@ export default function AegisDashboardPage() {
       }>("/approvals?status=pending"),
   });
 
-  const insightsQuery = useQuery({
-    queryKey: ["console", "insights"],
-    queryFn: () =>
-      consoleApi<{
-        insights: {
-          headline: string;
-          insights: Array<{
-            id: string;
-            severity: "info" | "attention" | "critical";
-            title: string;
-            detail: string;
-            metric?: string;
-          }>;
-          period_days: number;
-          trace_count: number;
-          event_count: number;
-        };
-      }>("/insights"),
-  });
-
   const overview = overviewQuery.data?.overview;
   const traces = tracesQuery.data?.traces ?? [];
   const pendingApprovals = approvalsQuery.data?.approvals ?? [];
   const pending = overview?.pending_approvals ?? pendingApprovals.length;
   const blocked = traces.filter((t) => t.status === "blocked").length;
-  const executing = traces.filter((t) => t.status === "executing").length;
-  const activePolicies = overview?.active_policy_count ?? 0;
+  const flagged = traces.filter(
+    (t) =>
+      Boolean(t.preview_anomaly_reason || t.preview_anomaly_type) &&
+      t.status !== "blocked",
+  ).length;
   const recent = [...traces]
     .sort(
       (a, b) =>
         new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
     )
-    .slice(0, 5);
+    .slice(0, 6);
 
-  const traceSparkline = seriesFromTimestamps(traces.map((t) => t.started_at));
-  const traceTrend = trendPercent(traceSparkline);
-  const eventSparkline = sumSeriesFromTimestamps(
-    traces.map((t) => ({ at: t.started_at, amount: t.total_events })),
-  );
-  const eventTrend = trendPercent(eventSparkline);
-  const blockedSparkline = seriesFromTimestamps(
-    traces.filter((t) => t.status === "blocked").map((t) => t.started_at),
-  );
-
+  const needsAttention = pending > 0 || blocked > 0 || flagged > 0;
   const loading =
     overviewQuery.isPending || tracesQuery.isPending || approvalsQuery.isPending;
   const error = overviewQuery.error || tracesQuery.error || approvalsQuery.error;
@@ -184,303 +109,258 @@ export default function AegisDashboardPage() {
     <ConsolePage>
       <PageHeader
         title="Overview"
-        subtitle={`Operational view for ${environmentLabel(environment)}: coverage, seals, and what needs attention.`}
+        subtitle={`What needs attention in ${environmentLabel(environment)}, and what ran recently.`}
         actions={
-          pending > 0 ? (
-            <Link href="/aegis/approvals" className={`${ui.btn} ${ui.btnPrimary}`}>
-              Review approvals ({pending})
-            </Link>
-          ) : (
-            <Link href="/aegis/live" className={`${ui.btn} ${ui.btnPrimary}`}>
-              Open live feed
-            </Link>
-          )
+          <Link href="/aegis/live" className={`${ui.btn} ${ui.btnPrimary}`}>
+            Open live feed
+          </Link>
         }
       />
 
       <SystemStatusStrip />
 
       {loading ? <LoadingBlock /> : null}
-      {error ? <ErrorAlert message="Failed to load dashboard metrics." /> : null}
+      {error ? <ErrorAlert message="Failed to load dashboard." /> : null}
 
       {!loading && !error ? (
         <>
-          <div className={ui.statGrid}>
-            <DashboardStat
-              title="Policy coverage"
-              value={overview?.policy_coverage_pct ?? 0}
-              icon={Percent}
-              hint={
-                <Link href="/aegis/workflows" className={ui.tableLink}>
-                  {overview?.agent_count ?? 0} agent(s) · workflows
-                </Link>
-              }
-              accent="var(--console-accent)"
-            />
-            <DashboardStat
-              title="Unverified events"
-              value={overview?.unverified_event_count ?? 0}
-              icon={ShieldAlert}
-              hint={
-                (overview?.unverified_event_count ?? 0) === 0
-                  ? "Healthy: all seals chain-valid"
-                  : "Investigate chain breaks"
-              }
-              accent={
-                (overview?.unverified_event_count ?? 0) > 0 ? "#c24141" : undefined
-              }
-            />
-            <DashboardStat
-              title="Pending approvals"
-              value={pending}
-              icon={UserCheck}
-              hint={
-                pending > 0 ? (
-                  <Link href="/aegis/approvals" className={ui.tableLink}>
-                    Review queue
-                  </Link>
-                ) : (
-                  "No obligations waiting"
-                )
-              }
-            />
-            <DashboardStat
-              title="Blocked cases"
-              value={blocked}
-              icon={Shield}
-              hint="Awaiting human decision"
-              sparkline={blockedSparkline}
-              accent="#c24141"
-            />
-            <DashboardStat
-              title="Last 24h"
-              value={overview?.events_24h ?? 0}
-              icon={Activity}
-              hint={`${overview?.traces_24h ?? 0} cases · ${executing} executing`}
-              sparkline={eventSparkline}
-              trendPct={eventTrend}
-            />
-            <DashboardStat
-              title="Active policies"
-              value={activePolicies}
-              icon={KeyRound}
-              hint={
-                <Link href="/aegis/policies" className={ui.tableLink}>
-                  Manage policies
-                </Link>
-              }
-              sparkline={traceSparkline}
-              trendPct={traceTrend}
-            />
-            <DashboardStat
-              title="Amount stopped (30d)"
-              value={Math.round(overview?.value_report_30d?.amount_stopped_usd ?? 0)}
-              icon={FileCheck}
-              hint={
-                (overview?.value_report_30d?.stopped ?? 0) > 0
-                  ? `${overview?.value_report_30d?.stopped ?? 0} stopped action(s)`
-                  : "No stopped amounts this period"
-              }
-              accent="#c24141"
-            />
-          </div>
-
-          {overview?.value_report_30d ? (
-            <p
-              className={ui.cardHint}
-              style={{ margin: "1rem 0 0", maxWidth: "48rem" }}
-              role="status"
-            >
-              Last 30 days:{" "}
-              {overview.value_report_30d.actions.toLocaleString()} actions ·{" "}
-              {overview.value_report_30d.allowed.toLocaleString()} allowed ·{" "}
-              {overview.value_report_30d.approvals_requested.toLocaleString()} sent for
-              approval
-              {overview.value_report_30d.avg_approval_seconds != null
-                ? ` (avg ${Math.round(overview.value_report_30d.avg_approval_seconds / 60)} min)`
-                : ""}{" "}
-              · {overview.value_report_30d.stopped.toLocaleString()} stopped · $
-              {Math.round(overview.value_report_30d.amount_stopped_usd).toLocaleString()}{" "}
-              amount stopped.
-            </p>
-          ) : null}
-
           <section
             className={`${ui.card} ${ui.cardPad}`}
-            style={{ marginTop: "1.5rem" }}
-            aria-labelledby="coverage-limits-heading"
+            style={{ marginBottom: "1.25rem" }}
+            aria-labelledby="attention-heading"
           >
-            <h2 id="coverage-limits-heading" className={ui.panelTitle} style={{ marginTop: 0 }}>
-              Coverage and limits
-            </h2>
-            <p className={ui.cardHint} style={{ margin: "0 0 0.75rem", maxWidth: "48rem" }}>
-              Aegis records SDK and gateway traffic only. A seal proves what was said and
-              decided; it does not prove the decision was correct. Aegis does not decide what
-              is fraud. Your models and rules detect risk; Aegis enforces them and seals the
-              trail.
-            </p>
-            <p style={{ margin: 0 }}>
-              <Link href="/aegis/coverage" className={ui.tableLink}>
-                Open tool coverage
-              </Link>
-              {" · "}
-              <Link href="/aegis/get-started" className={ui.tableLink}>
-                What Aegis covers
-              </Link>
-            </p>
-          </section>
-
-          {pending > 0 ? (
-            <section className={`${ui.card} ${ui.cardPad}`} style={{ marginTop: "1.5rem" }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: "1rem",
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                  marginBottom: "1rem",
-                }}
-              >
-                <h2 className={ui.panelTitle} style={{ margin: 0 }}>
-                  Approvals need attention
-                </h2>
-                <Link href="/aegis/approvals" className={`${ui.btn} ${ui.btnPrimary}`}>
-                  Open approvals
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "1rem",
+                flexWrap: "wrap",
+                alignItems: "center",
+                marginBottom: needsAttention ? "1rem" : 0,
+              }}
+            >
+              <h2 id="attention-heading" className={ui.panelTitle} style={{ margin: 0 }}>
+                Needs attention
+              </h2>
+              {pending > 0 ? (
+                <Link href="/aegis/approvals" className={`${ui.btn} ${ui.btnSecondary}`}>
+                  Review approvals ({pending})
                 </Link>
-              </div>
+              ) : null}
+            </div>
+
+            {!needsAttention ? (
+              <p className={ui.cardHint} style={{ margin: 0 }}>
+                Nothing waiting. Open the live feed to watch new cases as they arrive.
+              </p>
+            ) : (
               <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                {pendingApprovals.slice(0, 3).map((a) => (
+                {pending > 0 ? (
                   <li
-                    key={a.approval_id}
                     style={{
                       padding: "0.75rem 0",
                       borderTop: "1px solid var(--console-border)",
+                      display: "flex",
+                      gap: "0.75rem",
+                      alignItems: "flex-start",
                     }}
                   >
-                    <Link
-                      href={`/aegis/approvals?focus=${encodeURIComponent(a.approval_id)}`}
-                      className={ui.tableLink}
-                      style={{ fontWeight: 600 }}
-                    >
-                      {a.tool_name ?? "Unknown tool"}
-                    </Link>
-                    <p className={ui.cardHint} style={{ margin: "0.25rem 0 0" }}>
-                      {a.request_preview.summary ??
-                        a.request_preview.fields
-                          .slice(0, 2)
-                          .map((f) => `${f.key}: ${f.value}`)
-                          .join(" · ") ??
-                        "Review before side effects run"}
-                    </p>
+                    <UserCheck size={16} aria-hidden style={{ marginTop: "0.15rem", opacity: 0.7 }} />
+                    <div>
+                      <strong style={{ fontSize: "0.875rem" }}>
+                        {pending} approval{pending === 1 ? "" : "s"} waiting
+                      </strong>
+                      <p className={ui.cardHint} style={{ margin: "0.25rem 0 0" }}>
+                        {pendingApprovals[0]?.request_preview.summary ||
+                          pendingApprovals[0]?.tool_name ||
+                          "A person needs to approve before the action can continue."}
+                      </p>
+                      {pendingApprovals.length > 1 ? (
+                        <p className={ui.cardHint} style={{ margin: "0.35rem 0 0" }}>
+                          <Link href="/aegis/approvals" className={ui.tableLink}>
+                            Open the approvals queue
+                          </Link>
+                        </p>
+                      ) : pendingApprovals[0] ? (
+                        <p className={ui.cardHint} style={{ margin: "0.35rem 0 0" }}>
+                          <Link
+                            href={`/aegis/approvals?focus=${encodeURIComponent(pendingApprovals[0].approval_id)}`}
+                            className={ui.tableLink}
+                          >
+                            Open this approval
+                          </Link>
+                        </p>
+                      ) : null}
+                    </div>
                   </li>
-                ))}
+                ) : null}
+                {blocked > 0 ? (
+                  <li
+                    style={{
+                      padding: "0.75rem 0",
+                      borderTop: "1px solid var(--console-border)",
+                      display: "flex",
+                      gap: "0.75rem",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <Shield size={16} aria-hidden style={{ marginTop: "0.15rem", opacity: 0.7 }} />
+                    <div>
+                      <strong style={{ fontSize: "0.875rem" }}>
+                        {blocked} case{blocked === 1 ? "" : "s"} blocked
+                      </strong>
+                      <p className={ui.cardHint} style={{ margin: "0.25rem 0 0" }}>
+                        Waiting for a decision before work can continue.{" "}
+                        <Link href="/aegis/live" className={ui.tableLink}>
+                          View in live feed
+                        </Link>
+                      </p>
+                    </div>
+                  </li>
+                ) : null}
+                {flagged > 0 ? (
+                  <li
+                    style={{
+                      padding: "0.75rem 0",
+                      borderTop: "1px solid var(--console-border)",
+                      display: "flex",
+                      gap: "0.75rem",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <Activity size={16} aria-hidden style={{ marginTop: "0.15rem", opacity: 0.7 }} />
+                    <div>
+                      <strong style={{ fontSize: "0.875rem" }}>
+                        {flagged} case{flagged === 1 ? "" : "s"} flagged
+                      </strong>
+                      <p className={ui.cardHint} style={{ margin: "0.25rem 0 0" }}>
+                        Marked for review.{" "}
+                        <Link href="/aegis/live" className={ui.tableLink}>
+                          Open live feed
+                        </Link>
+                      </p>
+                    </div>
+                  </li>
+                ) : null}
               </ul>
-            </section>
-          ) : null}
+            )}
+          </section>
 
-          {insightsQuery.data?.insights ? (
-            <GovernanceInsightsPanel
-              headline={insightsQuery.data.insights.headline}
-              insights={insightsQuery.data.insights.insights}
-              subtitle={`Last ${insightsQuery.data.insights.period_days} days · ${insightsQuery.data.insights.trace_count} trace(s) · ${insightsQuery.data.insights.event_count} signed event(s)`}
-            />
-          ) : null}
+          <section
+            className={`${ui.card} ${ui.cardPad}`}
+            style={{ marginBottom: "1.25rem" }}
+            aria-labelledby="activity-heading"
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "1rem",
+                flexWrap: "wrap",
+                alignItems: "center",
+                marginBottom: "1rem",
+              }}
+            >
+              <h2 id="activity-heading" className={ui.panelTitle} style={{ margin: 0 }}>
+                Recent activity
+              </h2>
+              <Link href="/aegis/live" className={`${ui.btn} ${ui.btnSecondary}`}>
+                Open live feed
+              </Link>
+            </div>
 
-          <DemoGuidePanel tracesCount={traces.length} />
+            <p style={{ margin: "0 0 1rem", fontSize: "0.9375rem" }}>
+              Last 24 hours:{" "}
+              <strong>{overview?.traces_24h ?? 0}</strong> case
+              {(overview?.traces_24h ?? 0) === 1 ? "" : "s"}
+              {overview?.value_report_30d ? (
+                <>
+                  {" · "}
+                  Last 30 days:{" "}
+                  <strong>{overview.value_report_30d.stopped}</strong> stopped
+                  {overview.value_report_30d.approvals_requested > 0
+                    ? ` · ${overview.value_report_30d.approvals_requested} sent for approval`
+                    : ""}
+                </>
+              ) : null}
+            </p>
 
-          <div className={ui.twoCol} style={{ marginTop: "1.5rem" }}>
-            <section className={`${ui.card} ${ui.cardPad}`}>
-              <h2 className={ui.panelTitle}>Quick actions</h2>
+            {recent.length === 0 ? (
+              <EmptyStatePanel
+                title="No cases yet"
+                description="When an agent runs a governed action, you will see a plain-language case here."
+                action={
+                  <Link href="/aegis/agents" className={`${ui.btn} ${ui.btnPrimary}`}>
+                    Connect an agent
+                  </Link>
+                }
+              />
+            ) : (
               <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                <li style={{ marginBottom: "0.75rem" }}>
-                  <Link href="/aegis/approvals" className={ui.tableLink}>
-                    <UserCheck size={14} style={{ verticalAlign: "-2px" }} /> Pending
-                    approvals
-                  </Link>
-                </li>
-                <li style={{ marginBottom: "0.75rem" }}>
-                  <Link href="/aegis/live" className={ui.tableLink}>
-                    <Activity size={14} style={{ verticalAlign: "-2px" }} /> Live
-                    feed
-                  </Link>
-                </li>
-                <li style={{ marginBottom: "0.75rem" }}>
-                  <Link href="/aegis/workflows" className={ui.tableLink}>
-                    Workflows
-                  </Link>
-                </li>
-                <li style={{ marginBottom: "0.75rem" }}>
-                  <Link href="/aegis/policies" className={ui.tableLink}>
-                    <Shield size={14} style={{ verticalAlign: "-2px" }} /> Policy
-                    engine
-                  </Link>
-                </li>
-                <li style={{ marginBottom: "0.75rem" }}>
-                  <Link href="/aegis/keys" className={ui.tableLink}>
-                    <KeyRound size={14} style={{ verticalAlign: "-2px" }} /> Ingest API
-                    keys
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/aegis/evidence" className={ui.tableLink}>
-                    <FileCheck size={14} style={{ verticalAlign: "-2px" }} />{" "}
-                    Evidence
-                  </Link>
-                </li>
-              </ul>
-            </section>
-
-            <section>
-              <h2 className={ui.panelTitle}>Recent traces</h2>
-              {recent.length === 0 ? (
-                <EmptyStatePanel
-                  title="Connect an agent or create a policy"
-                  description="Once a governed action runs, you will see plain-language cases here with a clear receipt — what happened, what data was seen, and whether a person approved."
-                  action={
-                    <Link href="/aegis/agents" className={`${ui.btn} ${ui.btnPrimary}`}>
-                      Connect an agent
-                    </Link>
-                  }
-                  secondary={
-                    <Link href="/aegis/policies" className={`${ui.btn} ${ui.btnGhost}`}>
-                      Create a policy
-                    </Link>
-                  }
-                />
-              ) : (
-                <div className={ui.tableWrap}>
-                  <table className={ui.table}>
-                    <thead>
-                      <tr>
-                        <th>Trace</th>
-                        <th>Status</th>
-                        <th>Events</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recent.map((t) => (
-                        <tr key={t.trace_id}>
-                          <td>
-                            <Link
-                              href={`/aegis/traces/${encodeURIComponent(t.trace_id)}`}
-                              className={`${ui.tableLink} mono`}
+                {recent.map((t) => {
+                  const row = listSentenceFromTrace(t);
+                  return (
+                    <li
+                      key={t.trace_id}
+                      style={{
+                        padding: "0.85rem 0",
+                        borderTop: "1px solid var(--console-border)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: "0.75rem",
+                          flexWrap: "wrap",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <div style={{ flex: "1 1 16rem" }}>
+                          <div style={{ marginBottom: "0.35rem" }}>
+                            <OutcomeChip chip={row.outcome.chip} kind={row.outcome.kind} />
+                            <span
+                              style={{
+                                marginLeft: "0.65rem",
+                                fontSize: "0.75rem",
+                                color: "var(--console-fg-subtle)",
+                              }}
                             >
-                              {t.trace_id}
-                            </Link>
-                          </td>
-                          <td>
-                            <StatusBadge status={t.status} />
-                          </td>
-                          <td>{t.total_events}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-          </div>
+                              {new Date(t.started_at).toLocaleString()}
+                            </span>
+                          </div>
+                          <p style={{ margin: 0, fontWeight: 600, fontSize: "0.9375rem" }}>
+                            {row.sentence}
+                          </p>
+                          <p
+                            style={{
+                              margin: "0.3rem 0 0",
+                              fontSize: "0.75rem",
+                              color: "var(--console-fg-muted)",
+                            }}
+                          >
+                            {agentLabel(t.agent_name, t.agent_id)}
+                          </p>
+                        </div>
+                        <Link
+                          href={`/aegis/traces/${encodeURIComponent(t.trace_id)}`}
+                          className={`${ui.btn} ${ui.btnGhost}`}
+                        >
+                          View case
+                        </Link>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <p style={{ margin: 0 }}>
+            <Link href="/aegis/live" className={`${ui.btn} ${ui.btnPrimary}`}>
+              Open live feed
+            </Link>
+          </p>
         </>
       ) : null}
     </ConsolePage>

@@ -44,7 +44,7 @@ export function HeroSection() {
         </div>
         <div>
           <HeroDataVisual />
-          <p className={s.heroVisualCaption}>Policy → sign → ledger → export</p>
+          <p className={s.heroVisualCaption}>Rule → record → proof</p>
         </div>
       </div>
     </section>
@@ -79,8 +79,8 @@ export function HowItWorksSection() {
       <div className="section-inner">
         <ScrollReveal className={s.header}>
           <p className="section-label">How it works</p>
-          <h2>From agent call to evidence you can export</h2>
-          <p>Three steps. Deeper technical detail on the Aegis product page and in docs.</p>
+          <h2>From the action to a record you can show later</h2>
+          <p>Three steps. More detail is on the Aegis product page and in the docs.</p>
         </ScrollReveal>
         <ScrollReveal delay={80}>
           <div className={s.serviceGrid}>
@@ -110,7 +110,7 @@ export function ComplianceStripSection() {
             <Link href="/trust" className={s.inlineLink}>
               trust center
             </Link>{" "}
-            for live status — mapping is not certification.
+            for live status. Mapping is not certification.
           </p>
         </ScrollReveal>
         <ScrollReveal delay={60}>

@@ -3,7 +3,6 @@ import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import { getPool } from "../../db/pool.js";
 import {
   createWorkflow,
-  ensureMerchantPayoutsWorkflow,
   getWorkflow,
   listWorkflows,
   updateWorkflow,
@@ -44,14 +43,10 @@ workflowRoutes.get("/workflows", requireConsoleSession, async (c) => {
     envRaw === "sandbox" || envRaw === "production" ? envRaw : undefined;
   const pool = getPool();
   try {
-    if (c.req.query("ensure") === "merchant-payouts") {
-      await ensureMerchantPayoutsWorkflow(
-        pool,
-        orgId,
-        environment ?? "production",
-      );
-    }
-    const rows = await listWorkflows(pool, orgId, environment);
+    // Hide Northwind "Merchant payouts" demo seed — not a real process for most orgs.
+    const rows = (await listWorkflows(pool, orgId, environment)).filter(
+      (row) => row.name.trim().toLowerCase() !== "merchant payouts",
+    );
     const withScores = await Promise.all(
       rows.map(async (row) => {
         const scores = await workflowScores(pool, orgId, row);

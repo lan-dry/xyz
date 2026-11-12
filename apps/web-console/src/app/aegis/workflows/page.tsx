@@ -55,7 +55,7 @@ export default function WorkflowsPage() {
     queryKey: ["console", "workflows", environment],
     queryFn: () =>
       consoleApi<{ workflows: WorkflowRow[]; error?: string }>(
-        `/workflows?environment=${environment}&ensure=merchant-payouts`,
+        `/workflows?environment=${environment}`,
       ),
   });
 
@@ -81,15 +81,18 @@ export default function WorkflowsPage() {
     },
   });
 
-  const workflows = listQuery.data?.workflows ?? [];
+  // Hide the Northwind demo seed — it is not tied to a real process.
+  const workflows = (listQuery.data?.workflows ?? []).filter(
+    (w) => w.name.trim().toLowerCase() !== "merchant payouts",
+  );
   const migrateHint =
     listQuery.data?.error?.includes("migration") ||
     (listQuery.error instanceof Error &&
       listQuery.error.message.includes("503"));
 
-  function openCreate(preset?: { name: string; description: string }) {
-    setName(preset?.name ?? "");
-    setDescription(preset?.description ?? "");
+  function openCreate() {
+    setName("");
+    setDescription("");
     setFormError(null);
     setCreateOpen(true);
   }
@@ -142,20 +145,14 @@ export default function WorkflowsPage() {
         <EmptyStatePanel
           mark={<AegisMark />}
           title="No workflows yet"
-          description="Create Merchant payouts to link your payout agent and policy bundle, or name any governed path."
+          description="Name a governed path for this environment — for example loan decisions or refunds — and link an agent and policies when you are ready."
           action={
             <button
               type="button"
               className={`${ui.btn} ${ui.btnPrimary}`}
-              onClick={() =>
-                openCreate({
-                  name: "Merchant payouts",
-                  description:
-                    "Governed payout path: agent → policy pause → human approve → sealed receipt.",
-                })
-              }
+              onClick={() => openCreate()}
             >
-              Create Merchant payouts
+              New workflow
             </button>
           }
         />
@@ -216,7 +213,7 @@ export default function WorkflowsPage() {
       <Modal
         open={createOpen}
         title="New workflow"
-        description="Name a governed path for this environment. Names must be unique (Merchant payouts is only the Northwind demo seed)."
+        description="Name a governed path for this environment. Names must be unique within the environment."
         onClose={() => setCreateOpen(false)}
         closeOnOverlayClick={false}
         footer={
