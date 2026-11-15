@@ -1,0 +1,61 @@
+{
+  "description": "Golden outputs for evaluateRules before forensic/bank workstream. Do not change existing behaviour unless a policy opts into combine=all_matching.",
+  "captured_at": "2026-11-15",
+  "tag": "pre-forensic-demo",
+  "cases": [
+    {
+      "id": "deny_wins_same_priority",
+      "policy_id": "pol_test",
+      "tool": "stripe.paymentIntents.create",
+      "rules": [
+        { "rule_id": "r1", "tool_pattern": "stripe.paymentIntents.create", "decision": "allow", "priority": 10 },
+        { "rule_id": "r2", "tool_pattern": "stripe.paymentIntents.create", "decision": "deny", "priority": 10 }
+      ],
+      "expected": {
+        "decision": "deny",
+        "rule_id": "r2",
+        "policy_id": "pol_test"
+      }
+    },
+    {
+      "id": "obligation_match",
+      "policy_id": "pol_test",
+      "tool": "payments.wire.transfer",
+      "rules": [
+        { "rule_id": "obl", "tool_pattern": "payments.wire.transfer", "decision": "allow_with_obligation", "priority": 50 }
+      ],
+      "expected": {
+        "decision": "allow_with_obligation",
+        "rule_id": "obl",
+        "policy_id": "pol_test"
+      }
+    },
+    {
+      "id": "higher_priority_allow_overrides_lower_deny",
+      "policy_id": "pol_test",
+      "tool": "demo.echo",
+      "rules": [
+        { "rule_id": "deny_low", "tool_pattern": "demo.echo", "decision": "deny", "priority": 1 },
+        { "rule_id": "allow_high", "tool_pattern": "demo.echo", "decision": "allow", "priority": 100 }
+      ],
+      "expected": {
+        "decision": "allow",
+        "rule_id": "allow_high",
+        "policy_id": "pol_test"
+      }
+    },
+    {
+      "id": "default_allow_no_match",
+      "policy_id": "pol_test",
+      "tool": "unknown.tool",
+      "rules": [
+        { "rule_id": "r1", "tool_pattern": "stripe.*", "decision": "deny", "priority": 10 }
+      ],
+      "expected": {
+        "decision": "allow",
+        "rule_id": null,
+        "reason_contains": "no matching rule"
+      }
+    }
+  ]
+}
