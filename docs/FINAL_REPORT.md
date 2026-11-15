@@ -100,6 +100,7 @@ failed=5
 
 1. **1.1** Scenarios 3, 8, 9, 10, 11 (FAIL in §2 paste); also receipt_kind=none on 4/6/7/12  
 2. **1.2** demo:rehearse green (rate_limit / 500 on this pass)  
+2b. **1.3** scenario 10 HTTP green (unit escalate/delegate tests exist)  
 3. **1.4** Projector PNG screens under `docs/screens/`  
 4. **2.1** Baseline worktree per-test table vs `pre-forensic-demo` (branch results only this pass)  
 5. **2.4** Backup/restore drill on a host with `pg_dump` + resolvable `pg`  
