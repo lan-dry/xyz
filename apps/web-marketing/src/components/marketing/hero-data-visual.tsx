@@ -4,13 +4,14 @@ import { useCallback, useRef, useState } from "react";
 
 import styles from "./hero-data-visual.module.css";
 
+/** Honest preview labels — no absolute latency SLAs, no certification badges. */
 const NODES = [
-  { id: "wrap", label: "SDK intercept", value: "<5ms", x: 18, y: 22 },
-  { id: "policy", label: "Policy gate", value: "OPA/WASM", x: 72, y: 18 },
-  { id: "sign", label: "Ed25519 sign", value: "BYOK", x: 82, y: 48 },
-  { id: "chain", label: "Hash chain", value: "append-only", x: 58, y: 72 },
-  { id: "witness", label: "Merkle witness", value: "60s", x: 28, y: 68 },
-  { id: "export", label: "Compliance", value: "SOC 2 · EU AI", x: 12, y: 44 },
+  { id: "wrap", label: "Policy check", value: "Before action", x: 18, y: 22 },
+  { id: "policy", label: "Rules", value: "Allow · Hold · Stop", x: 72, y: 18 },
+  { id: "sign", label: "Signed record", value: "Customer keys*", x: 82, y: 48 },
+  { id: "chain", label: "Hash chain", value: "Append-only", x: 58, y: 72 },
+  { id: "witness", label: "Witness batch", value: "Configurable", x: 28, y: 68 },
+  { id: "export", label: "Export mapping", value: "Not certification", x: 12, y: 44 },
 ] as const;
 
 const EDGES: [string, string][] = [

@@ -17,23 +17,23 @@ export const TRUST_FEATURES: TrustFeature[] = [
   },
   {
     id: "byok-customer",
-    feature: "BYOK (customer-held signing keys)",
+    feature: "Customer-controlled signing keys (where configured)",
     status: "live",
     notes:
-      "Register public keys via Console (Agents → Register BYOK key). Private key never sent to Salanor. Sign with your KMS or local HSM.",
+      "Register public keys via Console. Private key never sent to Salanor. Sign with your KMS or local HSM.",
   },
   {
     id: "byok-aws-kms",
-    feature: "BYOK (AWS KMS server sign)",
-    status: "live",
+    feature: "AWS KMS server Sign",
+    status: "pilot",
     notes:
-      "Optional kms_provider=aws + kms_key_arn for bridge/human-approval paths. Salanor calls kms:Sign; no raw private key stored.",
+      "Optional kms_provider=aws + kms_key_arn. Requires AWS credentials; fails clearly when missing. Partial until KeyProvider P1 complete.",
   },
   {
     id: "byok-gcp-kms",
-    feature: "BYOK (GCP Cloud KMS server sign)",
+    feature: "GCP Cloud KMS server Sign",
     status: "pilot",
-    notes: "Requires GCP_KMS_ACCESS_TOKEN on API service. Customer grants asymmetricSign on key version.",
+    notes: "Requires GCP credentials / access token. Customer grants asymmetricSign on key version. Partial until P1 complete.",
   },
   {
     id: "policy-gate",
@@ -58,14 +58,14 @@ export const TRUST_FEATURES: TrustFeature[] = [
     feature: "Interactive trace reconstruction",
     status: "live",
     notes:
-      "Console rebuilds signed causal chain in milliseconds. Click any step; side-effectful tools marked local_rerun.",
+      "Console rebuilds the signed causal chain interactively. Click any step; side-effectful tools marked local_rerun. No absolute-time SLA.",
   },
   {
     id: "witness-60s",
-    feature: "Merkle witness batching (60s cadence)",
+    feature: "Merkle witness batching (configurable cadence)",
     status: "live",
     notes:
-      "witness:worker on Railway (60s). Batches pending events + transparency log. History in Platform Ops → Workers.",
+      "Default WITNESS_INTERVAL_MS ≈ 60s on Railway — documented cadence, not a guarantee. Batches pending events + transparency log.",
   },
   {
     id: "compliance-export",

@@ -57,11 +57,12 @@ export default function SecurityPage() {
           <ul>
             <li>
               <strong>Integrity of APS-1 events:</strong> Ed25519 signatures, per-agent hash chains,
-              and Merkle transparency proofs (60s witness worker)
+              and Merkle transparency proofs (default 60s witness cadence, configurable)
             </li>
             <li>
-              <strong>BYOK signing:</strong> Customer registers public keys; private keys stay in
-              your KMS, HSM, or agent runtime. Optional AWS/GCP KMS Sign for server-side paths.
+              <strong>Customer-controlled signing:</strong> Customer registers public keys; private
+              keys stay in your KMS, HSM, or agent runtime where configured. AWS/GCP/Vault
+              server-side Sign remains partial until KeyProvider P1 is complete.
             </li>
             <li>
               <strong>Tenant isolation:</strong> organization-scoped data paths in API and console
@@ -82,15 +83,16 @@ export default function SecurityPage() {
 
         <LegalSection title="Architecture summary (whitepaper)">
           <p>
-            <strong>Data flow:</strong> Agent or workflow bridge signs APS-1 events client-side (BYOK).
-            API verifies signature against registered public key, persists hash-chained rows, evaluates
-            policy, and optionally notifies approvers. Witness worker batches Merkle roots every 60
-            seconds. Compliance exports package events + control mapping + witness proofs as ZIP.
+            <strong>Data flow:</strong> Agent or workflow bridge signs APS-1 events client-side with
+            customer-held keys where configured. API verifies signature against registered public
+            key, persists hash-chained rows, evaluates policy, and optionally notifies approvers.
+            Witness worker batches Merkle roots on a configurable cadence (default 60s). Compliance
+            exports package events + control mapping + witness proofs as ZIP.
           </p>
           <p>
-            <strong>What Salanor cannot do:</strong> For customer-held BYOK keys, we cannot forge
-            events or rewrite history without your private key. We can deny ingest for invalid
-            signatures or policy violations.
+            <strong>What Salanor cannot do:</strong> For customer-held keys, we cannot forge events
+            or rewrite history without your private key. We can deny ingest for invalid signatures
+            or policy violations.
           </p>
           <p>
             <strong>Subprocessors:</strong> Hosting (Railway, Vercel), Postgres (Neon), email

@@ -2,18 +2,20 @@ import Link from "next/link";
 
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 import { HeroDataVisual } from "@/components/marketing/hero-data-visual";
-import { contactUrl } from "@/lib/site-urls";
 import {
   COMPLIANCE_AVAILABLE,
   COMPLIANCE_ROADMAP,
   HOME_FAQ,
   HOME_HOW_IT_WORKS,
-  HOME_ICP,
+  HOME_PRICING_BRIEF,
   HOME_PROBLEM_QUESTIONS,
+  HOME_SECURITY_HONEST,
   HOME_WHAT_AEGIS_DOES,
+  HOME_WHERE_IT_RUNS,
   HOME_WORKFLOW_EXAMPLE,
   IMPLEMENTATION_OFFER,
 } from "@/lib/marketing-content";
+import { contactUrl } from "@/lib/site-urls";
 
 import s from "./sections.module.css";
 
@@ -24,25 +26,20 @@ export function HeroSection() {
       <div className={s.heroGlow} aria-hidden />
       <div className={s.heroLayout}>
         <div className={s.heroCopy}>
-          <div className={s.badge}>
-            <span className={s.badgeDot} />
-            <span>{offer.badge}</span>
-          </div>
-          <p className={s.heroIcp}>{HOME_ICP}</p>
+          <p className={s.heroBrand}>Aegis by Salanor</p>
           <h1>
             {offer.headline}
             <br />
             <span className={s.heroAccent}>{offer.headlineAccent}</span>
           </h1>
           <p className={s.heroSub}>{offer.subhead}</p>
-          <p className={s.heroTagline}>{offer.detail}</p>
           <div className={s.heroActions}>
-            <Link href="#example" className={s.btnHeroGhost}>
-              {offer.secondaryCta}
-            </Link>
             <a href={contactUrl()} className={s.btnHero}>
               {offer.primaryCta}
             </a>
+            <Link href="#example" className={s.btnHeroGhost}>
+              {offer.secondaryCta}
+            </Link>
           </div>
         </div>
         <div>
@@ -149,7 +146,13 @@ export function HowItWorksSection() {
         <ScrollReveal className={s.header}>
           <p className="section-label">How it works</p>
           <h2>From the action to a record you can show later</h2>
-          <p>Three steps. More detail is on the Aegis product page and in the docs.</p>
+          <p>
+            Four steps. Technical terms are explained on the{" "}
+            <Link href="/for-engineers" className={s.inlineLink}>
+              for engineers
+            </Link>{" "}
+            page.
+          </p>
         </ScrollReveal>
         <ScrollReveal delay={80}>
           <div className={s.serviceGrid}>
@@ -207,6 +210,99 @@ export function ComplianceStripSection() {
   );
 }
 
+export function WhereItRunsSection() {
+  return (
+    <section className={s.section} id="where">
+      <div className="section-inner">
+        <ScrollReveal className={s.header}>
+          <p className="section-label">Where it runs</p>
+          <h2>Your cloud or ours</h2>
+          <p>{HOME_WHERE_IT_RUNS}</p>
+        </ScrollReveal>
+      </div>
+    </section>
+  );
+}
+
+export function SecurityHonestSection() {
+  const sec = HOME_SECURITY_HONEST;
+  return (
+    <section className={s.sectionAlt} id="security">
+      <div className="section-inner">
+        <ScrollReveal className={s.header}>
+          <p className="section-label">Security</p>
+          <h2>{sec.title}</h2>
+        </ScrollReveal>
+        <ScrollReveal delay={60}>
+          <ul className={s.exampleList}>
+            <li>
+              <strong>Stored.</strong> {sec.stored}
+            </li>
+            <li>
+              <strong>Signed.</strong> {sec.signed}
+            </li>
+            <li>
+              <strong>Not yet.</strong> {sec.notYet}
+            </li>
+          </ul>
+          <p className={s.exampleFoot}>
+            Full detail on the{" "}
+            <Link href="/legal/security" className={s.inlineLink}>
+              security page
+            </Link>
+            .
+          </p>
+        </ScrollReveal>
+      </div>
+    </section>
+  );
+}
+
+export function PricingBriefSection() {
+  const p = HOME_PRICING_BRIEF;
+  return (
+    <section className={s.section} id="pricing-brief">
+      <div className="section-inner">
+        <ScrollReveal className={s.header}>
+          <p className="section-label">Pricing</p>
+          <h2>{p.title}</h2>
+        </ScrollReveal>
+        <ScrollReveal delay={60}>
+          <ul className={s.exampleList}>
+            {p.lines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <p className={s.exampleFoot}>
+            <Link href={p.href} className={s.inlineLink}>
+              Full pricing page
+            </Link>
+          </p>
+        </ScrollReveal>
+      </div>
+    </section>
+  );
+}
+
+export function ContactActionSection() {
+  return (
+    <section className={s.sectionAlt} id="contact">
+      <div className="section-inner">
+        <ScrollReveal className={`${s.header} ${s.centerHeader}`}>
+          <p className={`section-label ${s.centerLabel}`}>Contact</p>
+          <h2>One next step</h2>
+          <p>Tell us the workflow you want to govern. We will reply with a short scoping plan.</p>
+          <p style={{ marginTop: "1.25rem" }}>
+            <a href={contactUrl()} className={s.btnHero}>
+              Talk to us
+            </a>
+          </p>
+        </ScrollReveal>
+      </div>
+    </section>
+  );
+}
+
 export function HomePageContent() {
   return (
     <>
@@ -215,8 +311,12 @@ export function HomePageContent() {
       <WhatAegisDoesSection />
       <HowItWorksSection />
       <WorkflowExampleSection />
+      <WhereItRunsSection />
+      <SecurityHonestSection />
+      <PricingBriefSection />
       <ComplianceStripSection />
       <FaqSection />
+      <ContactActionSection />
     </>
   );
 }

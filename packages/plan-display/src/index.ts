@@ -107,7 +107,7 @@ export const PLAN_DISPLAY: Record<PlanSlug, PlanDisplayInfo> = {
     name: "Enterprise",
     tagline: "Regulated scale",
     listPrice: "Custom",
-    listPriceDetail: "from ~$999 / mo",
+    listPriceDetail: "regulated institutions",
     billingNote: "Annual contract · invoice or PO",
     limits: {
       eventsPerMonth: "Unlimited",

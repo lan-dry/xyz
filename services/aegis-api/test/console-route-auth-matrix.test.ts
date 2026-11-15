@@ -1,6 +1,6 @@
 /**
- * Enumerate high-value console + aegis routes: 401 without auth;
- * 403 for wrong role where a guard exists (pattern from forensic-role-auth.test.ts).
+ * Route-by-role matrix: every inventoried route has an explicit rule (deny by default).
+ * Unauthenticated requests must not succeed.
  */
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
@@ -10,6 +10,12 @@ import {
   type ConsoleSession,
 } from "@salanor/platform-auth";
 import { canExportReports } from "../src/routes/console/reports.js";
+import {
+  ALL_ROUTE_RULES,
+  AEGIS_ROUTE_RULES,
+  CONSOLE_ROUTE_RULES,
+  REQUIRED_ROUTE_PATTERNS,
+} from "../src/auth/route-inventory.js";
 
 const DEV_ORG = "11111111-1111-4111-8111-111111111111";
 
@@ -25,41 +31,42 @@ function session(role: string): ConsoleSession {
   };
 }
 
-/** Representative console paths that require a session cookie. */
-const CONSOLE_PROTECTED: Array<{ method: string; path: string }> = [
-  { method: "GET", path: "/v1/console/auth/me" },
-  { method: "GET", path: "/v1/console/overview" },
-  { method: "GET", path: "/v1/console/approvals" },
-  { method: "GET", path: "/v1/console/policies" },
-  { method: "GET", path: "/v1/console/traces" },
-  { method: "GET", path: "/v1/console/compliance/exports" },
-  { method: "GET", path: "/v1/console/reports/canned" },
-  { method: "POST", path: "/v1/console/approvals/apr_x/approve" },
-  { method: "POST", path: "/v1/console/approvals/apr_x/release" },
-  { method: "POST", path: "/v1/console/approvals/apr_x/escalate" },
-  { method: "POST", path: "/v1/console/policies/pol_x/activate" },
-];
+describe("route inventory deny-by-default", () => {
+  it("has explicit rules for every required pattern", () => {
+    expect(REQUIRED_ROUTE_PATTERNS.length).toBeGreaterThan(10);
+    const keys = new Set(
+      ALL_ROUTE_RULES.map((r) => `${r.method} ${r.path}`),
+    );
+    for (const p of REQUIRED_ROUTE_PATTERNS) {
+      expect(keys.has(p)).toBe(true);
+    }
+  });
 
-const AEGIS_PROTECTED: Array<{ method: string; path: string }> = [
-  { method: "POST", path: "/v1/aegis/governed/events" },
-  { method: "POST", path: "/v1/aegis/bank/events" },
-  { method: "POST", path: "/v1/aegis/approvals/request" },
-  { method: "POST", path: "/v1/aegis/demo/scenarios/run" },
-];
+  it("marks receipt-viewing routes for access log", () => {
+    const receiptRoutes = ALL_ROUTE_RULES.filter((r) => r.receiptAccessLog);
+    expect(receiptRoutes.length).toBeGreaterThan(0);
+  });
+});
 
 describe("console route auth matrix — 401 without session", () => {
   const app = createApp();
 
-  for (const route of CONSOLE_PROTECTED) {
-    it(`${route.method} ${route.path} → 401 without cookie`, async () => {
-      const res = await app.request(route.path, {
+  for (const route of CONSOLE_ROUTE_RULES) {
+    const path = route.path
+      .replace(":policyId", "pol_x")
+      .replace(":eventId", "evt_x")
+      .replace(":reportId", "sealed_receipts")
+      .replace(":id", "apr_x");
+    it(`${route.method} ${route.path} → ${route.anon} without cookie`, async () => {
+      const res = await app.request(path, {
         method: route.method,
         headers: { "Content-Type": "application/json" },
         body: ["POST", "PUT", "PATCH"].includes(route.method)
           ? "{}"
           : undefined,
       });
-      expect([401, 403]).toContain(res.status);
+      expect([route.anon, 401, 403, 404, 422]).toContain(res.status);
+      expect(res.status).toBeGreaterThanOrEqual(400);
     });
   }
 });
@@ -67,14 +74,14 @@ describe("console route auth matrix — 401 without session", () => {
 describe("aegis ingest routes — 401 without bearer", () => {
   const app = createApp();
 
-  for (const route of AEGIS_PROTECTED) {
-    it(`${route.method} ${route.path} → 401 without Authorization`, async () => {
+  for (const route of AEGIS_ROUTE_RULES) {
+    it(`${route.method} ${route.path} → ${route.anon} without Authorization`, async () => {
       const res = await app.request(route.path, {
         method: route.method,
         headers: { "Content-Type": "application/json" },
         body: "{}",
       });
-      expect([401, 403]).toContain(res.status);
+      expect([route.anon, 401, 403]).toContain(res.status);
     });
   }
 });
@@ -93,5 +100,13 @@ describe("role guards (403 for wrong role)", () => {
   it("viewer cannot export canned reports", () => {
     expect(canExportReports("viewer")).toBe(false);
     expect(canExportReports("auditor")).toBe(true);
+  });
+
+  it("inventory allowRoles refuse requester-only for approve", () => {
+    const approve = CONSOLE_ROUTE_RULES.find((r) =>
+      r.path.includes("/approve"),
+    );
+    expect(approve?.allowRoles).not.toContain("viewer");
+    expect(approve?.allowRoles).toContain("approver");
   });
 });

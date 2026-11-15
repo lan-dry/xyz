@@ -95,16 +95,16 @@ export const AEGIS_COMPLIANCE = [
 export const PLATFORM_DATA_POINTS = [
   {
     id: "non-repudiation",
-    value: "BYOK",
-    label: "Customer-controlled keys",
+    value: "Your keys",
+    label: "Customer-controlled signing",
     detail:
-      "Register Ed25519 public keys in Console. Sign with AWS KMS, GCP KMS, Vault, or agent-held keys. Salanor verifies; it does not hold your private key.",
+      "Register Ed25519 public keys in Console. Sign in your KMS or agent runtime where configured. Salanor verifies; it does not hold your private key. Cloud KMS server-side Sign is partial until P1 is complete.",
   },
   {
     id: "standard",
-    value: "APS-1",
-    label: "Open provenance standard",
-    detail: "Published JSON Schema + verifier. Export bundles use the same wire format.",
+    value: "Signed",
+    label: "Open event format",
+    detail: "Published JSON Schema + offline verifier (signed event format). Export bundles use the same wire format.",
   },
   {
     id: "regulatory",
@@ -114,17 +114,17 @@ export const PLATFORM_DATA_POINTS = [
   },
   {
     id: "verify",
-    value: "<1s",
+    value: "Interactive",
     label: "Trace reconstruction",
     detail:
-      "Console rebuilds the signed causal chain interactively: click any step, view payload preview, open signed events.",
+      "Console rebuilds the signed causal chain: click any step, view payload preview, open signed events. No absolute-time SLA.",
   },
   {
     id: "transparency",
-    value: "60s",
+    value: "Default 60s",
     label: "Merkle witness cadence",
     detail:
-      "witness:worker batches pending events every 60 seconds and publishes transparency log entries.",
+      "Default witness:worker cadence is 60 seconds (configurable via WITNESS_INTERVAL_MS). Cadence is not a durability guarantee.",
   },
 ] as const;
 
@@ -202,13 +202,13 @@ export const HOME_FAQ = [
 
 /** Homepage hero + design-partner offer (aligned with docs/PITCH_FINTECH_HUB.md). */
 export const IMPLEMENTATION_OFFER = {
-  badge: "Aegis · early access · Mapping, not certification",
-  headline: "Know what your automated systems did,",
-  headlineAccent: "and who approved it.",
+  badge: "Aegis by Salanor · early access",
+  headline: "Aegis",
+  headlineAccent: "Verifiable decisions for automated actions.",
   subhead:
-    "Aegis checks sensitive actions against your rules before they run, asks a named person to approve when needed, and keeps a signed record you can show an auditor.",
+    "Check sensitive actions against your rules before they run, ask a named person when needed, and keep a signed record you can show an auditor.",
   detail:
-    "Start with one high-risk workflow (loan decision, payment, or data access). Record-only pilots available. Hosted by us, or on your side.",
+    "Start with one high-risk workflow. Record-only pilots available. Hosted by us, or on your side. Control mappings in exports — not certifications.",
   primaryCta: "Talk to us",
   secondaryCta: "See a short example",
   section: {
@@ -249,12 +249,12 @@ export const HOW_IT_WORKS = [
   {
     step: "02",
     title: "Sign & enforce",
-    desc: "Policies evaluate before risky tools run. Events are Ed25519-signed with BYOK keys you control.",
+    desc: "Policies evaluate before risky tools run. Events are Ed25519-signed with customer-controlled keys where configured.",
   },
   {
     step: "03",
     title: "Ledger & witness",
-    desc: "Hash-chained append-only storage. Merkle roots batched every 60s into a transparency log.",
+    desc: "Hash-chained append-only storage. Merkle roots batched on a configurable cadence (default 60s) into a transparency log.",
   },
   {
     step: "04",
@@ -263,22 +263,50 @@ export const HOW_IT_WORKS = [
   },
 ] as const;
 
-/** Homepage: three steps from the fintech pitch (no duplicate implementation grid). */
+export const HOME_WHERE_IT_RUNS =
+  "Hosted by Salanor, or on your side. You choose per deployment. Keys stay under your control where you configure them." as const;
+
+export const HOME_SECURITY_HONEST = {
+  title: "What is stored, signed, and not provided yet",
+  stored:
+    "Decision attributes you send, policy versions, approval metadata, and signed event hashes. Field policies can mask or omit sensitive values.",
+  signed:
+    "Events and forensic receipts are signed with keys you register. Offline verification checks signatures, hashes, and sequence continuity.",
+  notYet:
+    "We do not claim FedRAMP or HIPAA authorization. Cloud KMS Sign and production TSA are available when you configure them; development keys are refused in production.",
+} as const;
+
+export const HOME_PRICING_BRIEF = {
+  title: "Pricing in brief",
+  lines: [
+    "Free tier for evaluation.",
+    "Team plan at $299 per month.",
+    "Regulated institutions: custom.",
+  ],
+  href: "/pricing",
+} as const;
+
+/** Homepage: four steps (jargon lives on /for-engineers). */
 export const HOME_HOW_IT_WORKS = [
   {
     step: "01",
+    title: "Connect one workflow",
+    desc: "Send the attributes for one sensitive action from your system or agent.",
+  },
+  {
+    step: "02",
     title: "Check before it runs",
     desc: "A rule runs before the risky action. It can allow it, stop it, or ask a person to approve.",
   },
   {
-    step: "02",
+    step: "03",
     title: "Keep a clear record",
     desc: "Each step is written down: who decided, what ran, and which rule applied.",
   },
   {
-    step: "03",
+    step: "04",
     title: "Hand over the proof",
-    desc: "Risk can open the record later and show audit what happened, without digging through logs.",
+    desc: "Export a signed bundle. Risk can verify it offline without digging through logs.",
   },
 ] as const;
 
@@ -309,18 +337,18 @@ export const PRODUCTS = {
       "Aegis is the managed control plane for APS-1 events: ingest, policy, human approvals, witness batches, transparency proofs, and compliance exports, scoped per organization.",
     features: [
       "APS-1 open standard with Ed25519 signed events",
-      "BYOK: register customer public keys + optional AWS/GCP KMS sign",
+      "Customer-controlled keys: register public keys; optional AWS/GCP/Vault Sign where configured (partial)",
       "Hash-chained append-only ledger with Merkle witness batches",
       "Policy engine with human approvals (email, Slack, PagerDuty, SMS)",
-      "Compliance export bundles with SOC 2 / EU AI Act control mapping",
+      "Compliance export bundles with SOC 2 / EU AI Act control mapping (mapping, not certification)",
       "n8n Workflow Bridge + TypeScript, Python & Go SDKs",
     ],
     metrics: [
       {
-        value: "<5ms",
-        label: "Policy p50",
-        gloss: "Median policy latency",
-        detail: "Block-before-call proxy path",
+        value: "Measured",
+        label: "Latency",
+        gloss: "Bench figures only after a published run",
+        detail: "See tools/bench/load-test.mts — not an SLA",
       },
       {
         value: "RFC 6962",
@@ -329,10 +357,10 @@ export const PRODUCTS = {
         detail: "External verifier, no Salanor trust",
       },
       {
-        value: "BYOK",
+        value: "Your keys",
         label: "Signing",
-        gloss: "You hold the signing keys",
-        detail: "AWS KMS, GCP KMS, Vault",
+        gloss: "Customer-held keys where configured",
+        detail: "AWS/GCP/Vault Sign partial until P1 complete",
       },
       {
         value: "OTel",
@@ -343,7 +371,7 @@ export const PRODUCTS = {
     ],
     code: `import { evaluatePolicyViaApi, signAndIngest } from "@salanor/aegis";
 
-// BYOK: private key stays in your runtime. Register public key in Console.
+// Customer-held key: private key stays in your runtime. Register public key in Console.
 const decision = await evaluatePolicyViaApi(
   "https://api.salanor.com/v1/aegis",
   process.env.AEGIS_INGEST_TOKEN!,

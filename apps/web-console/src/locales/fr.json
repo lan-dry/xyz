@@ -1,0 +1,49 @@
+{
+  "app": {
+    "name": "Aegis",
+    "console": "Console"
+  },
+  "nav": {
+    "overview": "Vue d’ensemble",
+    "live": "Flux en direct",
+    "approvals": "Approbations",
+    "policies": "Politiques",
+    "workflows": "Workflows",
+    "agents": "Agents",
+    "exports": "Exports",
+    "settings": "Paramètres"
+  },
+  "policies": {
+    "dual_publish_pending": "Double publication requise. Un second éditeur autorisé distinct doit confirmer l’activation.",
+    "dual_publish_waiting": "En attente d’un second éditeur",
+    "activate": "Activer"
+  },
+  "receipt": {
+    "title": "Reçu",
+    "outcome": "Résultat",
+    "mode": "Mode",
+    "would_have": "Aurait été",
+    "demo_clock": "Créé avec l’horloge de démo",
+    "verify": "Vérifier",
+    "matched_rules": "Règles correspondantes",
+    "sealed_events": "Événements scellés"
+  },
+  "approvals": {
+    "approve": "Approuver",
+    "reject": "Rejeter",
+    "release": "Libérer",
+    "reason_code": "Code motif",
+    "comment": "Commentaire",
+    "insufficient_role": "Votre rôle n’est pas suffisant pour approuver ce dossier",
+    "separation_of_duties": "Vous ne pouvez pas approuver votre propre demande"
+  },
+  "common": {
+    "loading": "Chargement…",
+    "error": "Une erreur s’est produite",
+    "save": "Enregistrer",
+    "cancel": "Annuler"
+  },
+  "_meta": {
+    "review": "MACHINE_TRANSLATED_NEEDS_NATIVE_SPEAKER_REVIEW"
+  }
+}

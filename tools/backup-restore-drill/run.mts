@@ -155,10 +155,15 @@ async function exportReceiptBundle(
 }
 
 async function main() {
+  const args = process.argv.slice(2);
+  const backupOnly = args.includes("--backup");
+  const restoreOnly = args.includes("--restore");
   const sourceUrl = requireEnv("DATABASE_URL");
   const { adminUrl } = parseDbUrl(sourceUrl);
   const drillName = `aegis_drill_${randomUUID().replace(/-/g, "").slice(0, 10)}`;
-  const work = join(tmpdir(), "aegis-backup-restore-drill");
+  const work = process.env.AEGIS_BACKUP_DIR?.trim()
+    ? resolve(process.env.AEGIS_BACKUP_DIR)
+    : join(tmpdir(), "aegis-backup-restore-drill");
   mkdirSync(work, { recursive: true });
   const dumpPath = join(work, "dump.sql");
   const bundlePath = join(work, "bundle.json");
@@ -173,6 +178,13 @@ async function main() {
       err instanceof Error ? err.message : err,
     );
     process.exit(2);
+  }
+  if (backupOnly) {
+    console.log(`PASS: backup written to ${dumpPath}`);
+    return;
+  }
+  if (restoreOnly && !existsSync(dumpPath)) {
+    throw new Error(`--restore requires existing dump at ${dumpPath}`);
   }
 
   const admin = new pg.Client({ connectionString: adminUrl });
