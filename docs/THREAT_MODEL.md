@@ -1,43 +1,38 @@
-# Threat model — Salanor (living document)
+# Threat model (short) — Aegis forensic / bank path
 
-**Version:** 0.1 DRAFT
+Status: living document. Lists what is and is not covered today.
 
-This document evolves with phases (see **IMPLEMENTATION_PLAN.md** gates).
+## Assets
 
----
+- Sealed APS-1 events (hash chain, signatures)
+- Derived forensic receipts (cite sealed events; tenant sequence)
+- Policies (published content_hash)
+- Approval decisions and access logs
+- Ingest API keys and signing keys
 
-## 1. Asset inventory
+## Actors
 
-| Asset | Criticality |
-|-------|-------------|
-| APS-1 private signing keys | Catastrophic |
-| Customer API secrets (hashes) | High |
-| Event ledger integrity | Critical |
-| Contact & careers PII | Medium |
-| Research MDX authenticity | Medium |
+- Bank core / automation (machine, ingest key)
+- Approvers and auditors (console session / SSO)
+- Tenant admin
+- External attacker (network, stolen key, insider)
 
----
+## Threats and mitigations
 
-## 2. Adversary classes
+| Threat | Mitigation today | Gap |
+|--------|------------------|-----|
+| Tamper receipt fact | Receipt hash + signature; `aegis-verify` | Need full APS seal link on every bank path |
+| Swap/remove receipt | Tenant seq + prev_hash checks | Append-only on receipt table (migration 015) |
+| Self-approval | SoD guard | Must be wired on all approval HTTP paths |
+| Clear national ID in logs | Field policy mask/hash/evaluate_only | End-to-end log scrub not proven for all writers |
+| Demo clock abuse in prod | `AEGIS_DEMO_MODE` + DB URL guard | Operators must not set allow flags in prod |
+| Stolen local signing key | KeyProvider; local file refused in prod | AWS KMS Sign path incomplete |
+| Cross-tenant read | Org scoping on queries | Continuous review of new endpoints |
 
-| Class | Capability |
-|-------|-------------|
-| A1 Anonymous abuser | Form spam / scraping |
-| A2 Tenant user | Scoped API misuse |
-| A3 Rogue insider customer | Erase forward-only keys only |
-| A4 Rogue Salanor employee | Abuse admin paths |
-| A5 External attacker SSRF/RCE | Infra intrusion |
+## Not covered yet
 
-Mitigations enumerated per phase in SECURITY runbooks (**to be authored P1/P3**).
-
----
-
-## STRIDE placeholders
-
-Table to elaborate P1+: Spoofing, Tampering, Repudiation, Information Disclosure, DoS, Elevation — map controls.
-
----
-
-## Review cadence
-
-Quarterly baseline; major architecture ADR triggers diff review.
+- Formal penetration test
+- Full RFC 3161 trusted time in production
+- Certification (SOC 2 / EU AI Act are **mappings**, not certifications)
+- Physical HSM attestation
+- Supply-chain SBOM enforcement beyond planned CI (P7)

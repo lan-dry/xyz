@@ -1,12 +1,15 @@
 import { Hono } from "hono";
-import { canDecideApprovals } from "@salanor/platform-auth";
+import {
+  canDecideApprovals,
+  type ConsoleSession,
+} from "@salanor/platform-auth";
+import type pg from "pg";
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import { getPool } from "../../db/pool.js";
 import { ingestHumanApprovalEvent } from "../../console/human-approval-event.js";
 import { buildRequestPreview } from "../../approvals/request-preview.js";
 import {
   askMoreOnApproval,
-  assertApproverAllowed,
   decideApproval,
   expireStaleApprovals,
   getApprovalRich,
@@ -15,6 +18,10 @@ import {
   reassignApproval,
   type ApprovalRichDetail,
 } from "../../repo/approvals.js";
+import {
+  guardConsoleApprovalDecision,
+  type ApprovalDecisionBody,
+} from "../../bank/console-approval-guard.js";
 import {
   requireConsoleSession,
   type ConsoleVariables,
@@ -136,6 +143,37 @@ function emitApprovalDecidedWebhook(
   });
 }
 
+/** Run bank/SoD/required-field guard; on deny write audit_log (caller commits). */
+async function enforceApprovalGuard(
+  client: pg.PoolClient,
+  session: ConsoleSession,
+  approvalId: string,
+  action: "approve" | "reject",
+  body: ApprovalDecisionBody,
+) {
+  const guard = await guardConsoleApprovalDecision(client, {
+    organizationId: session.organizationId,
+    membershipId: session.userId,
+    email: session.email,
+    approvalId,
+    action,
+    body,
+  });
+  if (!guard.ok) {
+    await auditFromConsoleSession(client, session, {
+      action: "approval.guard_denied",
+      resourceType: "approval",
+      resourceId: approvalId,
+      metadata: {
+        code: guard.code,
+        message: guard.message,
+        decision_action: action,
+      },
+    });
+  }
+  return guard;
+}
+
 export const approvalRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
 approvalRoutes.get("/approvals", requireConsoleSession, async (c) => {
@@ -211,19 +249,23 @@ approvalRoutes.post("/approvals/act", requireConsoleSession, async (c) => {
   }
 
   const approvalId = claims.approvalId;
+  const decisionBody: ApprovalDecisionBody = {
+    reason: body.reason,
+  };
   const client = await getPool().connect();
   try {
     await client.query("BEGIN");
     await expireStaleApprovals(client, session.organizationId);
-    const selfCheck = await assertApproverAllowed(
+    const guard = await enforceApprovalGuard(
       client,
-      session.organizationId,
+      session,
       approvalId,
-      session.email,
+      claims.decision === "approved" ? "approve" : "reject",
+      decisionBody,
     );
-    if (!selfCheck.ok) {
-      await client.query("ROLLBACK");
-      return c.json({ error: selfCheck.error }, 403);
+    if (!guard.ok) {
+      await client.query("COMMIT");
+      return c.json({ error: guard.message, code: guard.code }, 403);
     }
     const decided = await finalizeHumanApproval(client, {
       organizationId: session.organizationId,
@@ -306,7 +348,7 @@ approvalRoutes.post(
     if (!approvalId) {
       return c.json({ error: "approvalId required" }, 422);
     }
-    let body: { reason?: string } = {};
+    let body: ApprovalDecisionBody = {};
     try {
       body = await c.req.json();
     } catch {
@@ -317,15 +359,16 @@ approvalRoutes.post(
     try {
       await client.query("BEGIN");
       await expireStaleApprovals(client, session.organizationId);
-      const selfCheck = await assertApproverAllowed(
+      const guard = await enforceApprovalGuard(
         client,
-        session.organizationId,
+        session,
         approvalId,
-        session.email,
+        "approve",
+        body,
       );
-      if (!selfCheck.ok) {
-        await client.query("ROLLBACK");
-        return c.json({ error: selfCheck.error }, 403);
+      if (!guard.ok) {
+        await client.query("COMMIT");
+        return c.json({ error: guard.message, code: guard.code }, 403);
       }
       const decided = await finalizeHumanApproval(client, {
         organizationId: session.organizationId,
@@ -333,7 +376,7 @@ approvalRoutes.post(
         userId: session.userId,
         email: session.email,
         decision: "approved",
-        reason: body.reason?.trim(),
+        reason: body.reason?.trim() ?? body.comment?.trim(),
       });
       if (!decided) {
         await client.query("ROLLBACK");
@@ -347,7 +390,8 @@ approvalRoutes.post(
         metadata: {
           trace_id: decided.detail.trace_id,
           event_id: decided.detail.event_id,
-          reason: body.reason?.trim() ?? null,
+          reason: body.reason?.trim() ?? body.comment?.trim() ?? null,
+          reason_code: body.reason_code?.trim() ?? null,
           finalized: decided.finalized,
           votes: decided.votes,
           required: decided.required,
@@ -361,7 +405,7 @@ approvalRoutes.post(
         decided,
         "approved",
         session.email,
-        body.reason?.trim(),
+        body.reason?.trim() ?? body.comment?.trim(),
       );
       return c.json({
         approval: rich ? serializeApproval(rich) : null,
@@ -397,7 +441,7 @@ approvalRoutes.post(
     if (!approvalId) {
       return c.json({ error: "approvalId required" }, 422);
     }
-    let body: { reason?: string } = {};
+    let body: ApprovalDecisionBody = {};
     try {
       body = await c.req.json();
     } catch {
@@ -411,15 +455,16 @@ approvalRoutes.post(
     try {
       await client.query("BEGIN");
       await expireStaleApprovals(client, session.organizationId);
-      const selfCheck = await assertApproverAllowed(
+      const guard = await enforceApprovalGuard(
         client,
-        session.organizationId,
+        session,
         approvalId,
-        session.email,
+        "reject",
+        body,
       );
-      if (!selfCheck.ok) {
-        await client.query("ROLLBACK");
-        return c.json({ error: selfCheck.error }, 403);
+      if (!guard.ok) {
+        await client.query("COMMIT");
+        return c.json({ error: guard.message, code: guard.code }, 403);
       }
       const decided = await finalizeHumanApproval(client, {
         organizationId: session.organizationId,
@@ -442,6 +487,7 @@ approvalRoutes.post(
           trace_id: decided.detail.trace_id,
           event_id: decided.detail.event_id,
           reason: body.reason.trim(),
+          reason_code: body.reason_code?.trim() ?? null,
           finalized: decided.finalized,
         },
       });

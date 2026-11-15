@@ -1,0 +1,41 @@
+{
+  "app": {
+    "name": "Aegis",
+    "console": "Console"
+  },
+  "nav": {
+    "overview": "Overview",
+    "live": "Live",
+    "approvals": "Approvals",
+    "policies": "Policies",
+    "workflows": "Workflows",
+    "agents": "Agents",
+    "exports": "Exports",
+    "settings": "Settings"
+  },
+  "receipt": {
+    "title": "Receipt",
+    "outcome": "Outcome",
+    "mode": "Mode",
+    "would_have": "Would have",
+    "demo_clock": "Created with demo clock",
+    "verify": "Verify",
+    "matched_rules": "Matched rules",
+    "sealed_events": "Sealed events"
+  },
+  "approvals": {
+    "approve": "Approve",
+    "reject": "Reject",
+    "release": "Release",
+    "reason_code": "Reason code",
+    "comment": "Comment",
+    "insufficient_role": "Your role is not high enough to approve this case",
+    "separation_of_duties": "You cannot approve your own request"
+  },
+  "common": {
+    "loading": "Loading",
+    "error": "Something went wrong",
+    "save": "Save",
+    "cancel": "Cancel"
+  }
+}

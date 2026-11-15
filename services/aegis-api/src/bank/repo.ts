@@ -2,6 +2,20 @@ import type pg from "pg";
 import type { AuthorityMatrixRow, BankRole } from "./authority-matrix.js";
 import type { FieldPolicyRule } from "./field-policy.js";
 
+async function publicRelationExists(
+  client: pg.Pool | pg.PoolClient,
+  tableName: string,
+): Promise<boolean> {
+  const result = await client.query(
+    `SELECT 1
+     FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_name = $1
+     LIMIT 1`,
+    [tableName],
+  );
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function listBankRoleLadder(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
@@ -14,6 +28,48 @@ export async function listBankRoleLadder(
     [organizationId],
   );
   return result.rows;
+}
+
+export async function listMembershipBankRoles(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  membershipId: string,
+): Promise<string[]> {
+  const result = await client.query<{ role_key: string }>(
+    `SELECT role_key
+     FROM membership_bank_role
+     WHERE organization_id = $1 AND membership_id = $2`,
+    [organizationId, membershipId],
+  );
+  return result.rows.map((r) => r.role_key);
+}
+
+/**
+ * Load ladder + actor bank roles. If forensic bank tables are not migrated yet,
+ * returns available:false so callers can skip role-level checks without aborting
+ * an open transaction.
+ */
+export async function loadBankApprovalRoleContext(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  membershipId: string,
+): Promise<{ available: boolean; ladder: BankRole[]; actorRoles: string[] }> {
+  const hasLadder = await publicRelationExists(client, "bank_role_ladder");
+  const hasMembershipRoles = await publicRelationExists(
+    client,
+    "membership_bank_role",
+  );
+  if (!hasLadder || !hasMembershipRoles) {
+    return { available: false, ladder: [], actorRoles: [] };
+  }
+
+  const ladder = await listBankRoleLadder(client, organizationId);
+  const actorRoles = await listMembershipBankRoles(
+    client,
+    organizationId,
+    membershipId,
+  );
+  return { available: true, ladder, actorRoles };
 }
 
 export async function listAuthorityMatrix(

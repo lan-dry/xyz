@@ -16,7 +16,7 @@ This file is updated at the end of each phase. Nothing is marked Present unless 
 |-------|--------|-------|
 | 0 Baseline / branch / tag | Done | `pre-forensic-demo` tag; golden evaluate-rules tests |
 | 1 Engine / adapter / matrix / field policy | Done | Unit tests green; bank route evaluate+persist case; sealing into APS receipt deferred to Phase 2 |
-| 2 Approvals / receipts / aegis-verify | Partial | Receipt sign/verify + tamper matrix + approval guards unit-tested; bank handler seal wiring + scenario CLI still open |
+| 2 Approvals / receipts / aegis-verify | Partial | Receipts + aegis-verify + scenario 1/2/3/6/7/12 unit runner; console approval guards wired; provisional event hash (full APS seal still open) |
 | 3 Integration / batch import | Partial | Batch CSV/JSONL dry-run + `onUnreachable` alias; webhook retry / bank-core stub incomplete |
 | 4 Search / admin UI / i18n | Pending | |
 | 5 P1–P10 hardening | Pending | |
