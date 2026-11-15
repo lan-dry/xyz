@@ -15,6 +15,7 @@
     "db:local:pilot-fixture": "tsx src/db/local-pilot-fixture-cli.ts",
     "demo:seed:northwind": "tsx src/db/seed-northwind-cli.ts",
     "scenario:run": "tsx src/demo/scenario-run-cli.ts",
+    "pack:apply": "tsx src/packs/apply-pack-cli.ts",
     "compliance:worker": "tsx src/compliance/worker-cli.ts",
     "compliance:schedule": "tsx src/compliance/schedule-cli.ts",
     "maintenance:housekeeping": "tsx src/maintenance/housekeeping-cli.ts",

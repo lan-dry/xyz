@@ -3,7 +3,7 @@
 **Branch:** `forensic-demo-readiness`  
 **Baseline tag:** `pre-forensic-demo`  
 **Date:** 2026-11-15  
-**Last phase completed:** Phase 1 (engine / adapter / matrix / field policy / record-only)  
+**Last phase completed:** Genericity addendum (policy packs + multi-tenant insurance E2E)  
 **Method:** Code audit against R1–R11, section C tests, P1–P12, and website workstream E. Status values: **Present** / **Partial** / **Missing**.
 
 This file is updated at the end of each phase. Nothing is marked Present unless implemented and tested.

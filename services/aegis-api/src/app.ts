@@ -145,7 +145,10 @@ export function createApp(): Hono {
 
   const aegis = new Hono();
   aegis.post("/events", postEvent);
+  /** Banking-pack convenience alias (sector example). Prefer /governed/events. */
   aegis.post("/bank/events", postBankEvent);
+  /** Sector-neutral decision intake (same handler). */
+  aegis.post("/governed/events", postBankEvent);
   aegis.post("/policy/evaluate", postPolicyEvaluate);
   aegis.route("/", gatewayRoutes);
   aegis.post("/approvals/request", postApprovalRequest);

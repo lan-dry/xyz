@@ -2,7 +2,8 @@
 
 ## 1. Synchronous API
 
-Bank core (or adapter) calls `POST /v1/aegis/bank/events` with an ingest API key.
+Your system calls `POST /v1/aegis/governed/events` with an ingest API key  
+(alias: `POST /v1/aegis/bank/events` for the demo banking pack example).
 
 - Body: bank event schema (`schema_version`, `case_id`, `idempotency_key`, `event_type`, `emitted_at`, `attributes`)
 - Response: `outcome` = `allow` | `hold` | `stop`, plus `case_id`, `decision_id`, `receipt_id`
