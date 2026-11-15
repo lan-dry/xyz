@@ -15,6 +15,8 @@
     "db:local:pilot-fixture": "tsx src/db/local-pilot-fixture-cli.ts",
     "demo:seed:northwind": "tsx src/db/seed-northwind-cli.ts",
     "scenario:run": "tsx src/demo/scenario-run-cli.ts",
+    "scenario:live": "tsx src/demo/scenario-live-cli.ts",
+    "export:scenario-bundles": "tsx src/demo/export-scenario-bundles-cli.ts",
     "pack:apply": "tsx src/packs/apply-pack-cli.ts",
     "demo:reset": "tsx src/demo/reset-cli.ts",
     "compliance:worker": "tsx src/compliance/worker-cli.ts",

@@ -55,6 +55,7 @@ export type BankDecisionResponse = {
   flags?: {
     demo_clock?: boolean;
     decided_without_aegis?: boolean;
+    provisional?: boolean;
   };
 };
 

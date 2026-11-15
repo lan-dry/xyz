@@ -20,6 +20,8 @@ export type ApprovalDecisionBody = {
   callback_verified?: boolean;
   required_fields?: string[];
   required_role?: string;
+  /** Target bank role when escalating (metadata.escalate_to_role). */
+  escalate_to_role?: string;
 };
 
 function asStringArray(value: unknown): string[] | undefined {
@@ -77,7 +79,7 @@ export function buildConsoleApprovalAttempt(input: {
   actor_email: string;
   actor_roles: string[];
   is_requester: boolean;
-  action: "approve" | "reject";
+  action: "approve" | "reject" | "release";
   metadata?: Record<string, unknown> | null;
   body?: ApprovalDecisionBody;
   bankRolesAvailable: boolean;
@@ -88,6 +90,13 @@ export function buildConsoleApprovalAttempt(input: {
   const comment =
     (typeof body.comment === "string" ? body.comment : null) ??
     (typeof body.reason === "string" ? body.reason : null);
+
+  const releaseRequires =
+    typeof metadata?.release_requires_role === "string"
+      ? metadata.release_requires_role
+      : typeof metadata?.escalate_to_role === "string" && input.action === "release"
+        ? metadata.escalate_to_role
+        : undefined;
 
   const attempt: ApprovalAttempt = {
     actor_membership_id: input.actor_membership_id,
@@ -102,6 +111,7 @@ export function buildConsoleApprovalAttempt(input: {
     required_role: pickRequiredRole(metadata, body, input.bankRolesAvailable),
     required_fields: pickRequiredFields(metadata, body),
     hard_stop: metadata?.hard_stop === true,
+    release_requires_role: releaseRequires,
   };
 
   return { attempt, ladder: input.ladder };
@@ -112,7 +122,7 @@ export function evaluateConsoleApprovalAttempt(input: {
   actor_email: string;
   actor_roles: string[];
   is_requester: boolean;
-  action: "approve" | "reject";
+  action: "approve" | "reject" | "release";
   metadata?: Record<string, unknown> | null;
   body?: ApprovalDecisionBody;
   bankRolesAvailable: boolean;
@@ -134,6 +144,30 @@ export function evaluateConsoleApprovalAttempt(input: {
   return { ok: true };
 }
 
+/** Apply escalate_to_role on pending approval metadata (raises required_role). */
+export function applyEscalateToRoleMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+  escalateToRole: string,
+  actor: { membership_id: string; email: string },
+): Record<string, unknown> {
+  const role = escalateToRole.trim();
+  if (!role) {
+    throw new Error("escalate_to_role required");
+  }
+  const next = {
+    ...(metadata && typeof metadata === "object" ? metadata : {}),
+  };
+  next.escalate_to_role = role;
+  next.required_role = role;
+  next.required_roles = [role];
+  next.escalated_to_role_at = new Date().toISOString();
+  next.escalated_to_role_by = {
+    membership_id: actor.membership_id,
+    email: actor.email,
+  };
+  return next;
+}
+
 /**
  * Load approval + bank roles (when tables exist) and run checkApprovalAttempt.
  * Returns ok when the approval row is missing so the route can 404 as before.
@@ -145,7 +179,7 @@ export async function guardConsoleApprovalDecision(
     membershipId: string;
     email: string;
     approvalId: string;
-    action: "approve" | "reject";
+    action: "approve" | "reject" | "release";
     body?: ApprovalDecisionBody;
   },
 ): Promise<ApprovalGuardResult> {

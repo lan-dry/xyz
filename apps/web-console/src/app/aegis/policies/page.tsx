@@ -271,6 +271,7 @@ export default function PoliciesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [policyPage, setPolicyPage] = useState(1);
   const [policyLimit, setPolicyLimit] = useState(25);
+  const [dualPublishBanner, setDualPublishBanner] = useState<string | null>(null);
 
   useEffect(() => {
     setEnvironment(readConsoleEnvironment());
@@ -353,10 +354,13 @@ export default function PoliciesPage() {
       }),
     onSuccess: (data) => {
       if (data.pending_confirmation) {
-        window.alert(
+        const msg =
           data.message ??
-            "Activation requested. A second distinct admin must confirm Activate.",
-        );
+          "Dual-publish required. A second distinct authorised publisher must confirm Activate.";
+        window.alert(msg);
+        setDualPublishBanner(msg);
+      } else {
+        setDualPublishBanner(null);
       }
       void queryClient.invalidateQueries({ queryKey: ["console", "policies"] });
     },
@@ -816,6 +820,31 @@ export default function PoliciesPage() {
         title="Policies"
         subtitle="Draft, review, activate. Multiple policies can be active at once; rules from all active policies are enforced together."
       />
+
+      {dualPublishBanner ? (
+        <div
+          role="status"
+          className={`${ui.card} ${ui.cardPad}`}
+          style={{
+            marginBottom: "1rem",
+            borderColor: "var(--console-accent, #2563eb)",
+            background: "color-mix(in srgb, var(--console-accent, #2563eb) 8%, transparent)",
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: "0.35rem" }}>
+            Waiting for a second publisher
+          </strong>
+          <p style={{ margin: 0, fontSize: "0.875rem" }}>{dualPublishBanner}</p>
+          <button
+            type="button"
+            className={`${ui.btn} ${ui.btnGhost}`}
+            style={{ marginTop: "0.75rem" }}
+            onClick={() => setDualPublishBanner(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
       <section className={`${ui.card} ${ui.cardPad}`} style={{ marginBottom: "1.25rem" }}>
         <h2 className={ui.panelTitle} style={{ marginTop: 0 }}>

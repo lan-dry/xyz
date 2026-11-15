@@ -11,7 +11,7 @@ Your system calls `POST /v1/aegis/governed/events` with an ingest API key
 - On `stop`, do not proceed
 - Malformed events return **HTTP 400** with machine-readable `error` / `code` / `fields`
 
-See `examples/bank-core-stub`.
+See `examples/bank-core-stub` (**stub** — demo client only).
 
 ## 2. Webhook
 
@@ -23,8 +23,10 @@ Retry with backoff and a delivery log are required for production hardening (P3)
 
 Use CSV or JSON Lines with a column mapping file.
 
-- Dry-run returns a validation report and row-level errors
-- Import should run in **record-only** mode for the first pilot
+HTTP: `POST /v1/aegis/governed/events/batch` (alias `/bank/events/batch`) with the same ingest Bearer key as single-event intake. Body: `{ format, text, mapping?, dry_run?, defaults? }`.
+
+- `dry_run` defaults to **true** and returns a validation report and row-level errors
+- Commit (`dry_run: false`) always evaluates in **record-only** mode
 - Idempotency keys per row prevent duplicates
 
 Code: `services/aegis-api/src/bank/batch-import.ts`

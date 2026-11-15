@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   dryRunBatch,
   parseCsv,
   rowsToBankEvents,
+  runBatchImport,
 } from "../src/bank/batch-import.js";
 
 describe("batch import", () => {
@@ -69,5 +70,50 @@ L-1,3000000,RWF,idem-1
     expect(report.total_rows).toBe(2);
     expect(report.valid_rows).toBe(1);
     expect(report.errors).toHaveLength(1);
+  });
+
+  it("commit path forces record-only results via mocked handler", async () => {
+    const commit = vi.fn(async (event: { case_id: string }) => ({
+      case_id: event.case_id,
+      decision_id: "dec_x",
+      outcome: "allow" as const,
+      mode: "record_only" as const,
+      event_id: "evt_real_1",
+      would_have: "hold",
+    }));
+    const jsonl = JSON.stringify({
+      case_id: "c1",
+      idempotency_key: "i1",
+      event_type: "loan_decision",
+      emitted_at: "2026-01-15T10:00:00.000Z",
+      amount: 100,
+    });
+    const report = await runBatchImport(
+      jsonl,
+      "jsonl",
+      {
+        case_id: "case_id",
+        idempotency_key: "idempotency_key",
+        event_type: "event_type",
+        emitted_at: "emitted_at",
+        amount: "attributes.amount",
+      },
+      {
+        dry_run: false,
+        defaults: {
+          schema_version: 1,
+          case_id: "",
+          idempotency_key: "",
+          event_type: "loan_decision",
+          emitted_at: "2026-01-15T10:00:00.000Z",
+          attributes: {},
+        },
+        commit,
+      },
+    );
+    expect(report.record_only).toBe(true);
+    expect(report.committed_rows).toBe(1);
+    expect(report.results[0]?.mode).toBe("record_only");
+    expect(commit).toHaveBeenCalledTimes(1);
   });
 });

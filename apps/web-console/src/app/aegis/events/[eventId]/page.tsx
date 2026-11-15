@@ -183,6 +183,28 @@ export default function EventDetailPage() {
             subtitle={
               <>
                 <StatusBadge status={e.policy_decision} />
+                <span
+                  style={{
+                    marginLeft: "0.5rem",
+                    display: "inline-block",
+                    padding: "0.1rem 0.45rem",
+                    borderRadius: "0.25rem",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    letterSpacing: "0.02em",
+                    background: e.event_id.startsWith("evt_gov_")
+                      ? "#b45309"
+                      : "#047857",
+                    color: "#fff",
+                  }}
+                  title={
+                    e.event_id.startsWith("evt_gov_")
+                      ? "No agent APS seal — provisional citation"
+                      : "APS-1 sealed event"
+                  }
+                >
+                  {e.event_id.startsWith("evt_gov_") ? "provisional" : "sealed"}
+                </span>
                 <span style={{ marginLeft: "0.5rem" }}>
                   {outcome.label}
                   {typeof amount === "number" ? ` · $${amount}` : ""}

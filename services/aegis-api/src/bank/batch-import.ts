@@ -195,11 +195,101 @@ export function dryRunBatch(
   defaults?: Partial<BankEvent>,
 ): BatchDryRunReport {
   const rows = format === "csv" ? parseCsv(text) : parseJsonLines(text);
-  const { events, errors } = rowsToBankEvents(rows, { mapping, defaults });
+  const { events, errors } = rowsToBankEvents(rows, {
+    mapping,
+    defaults,
+    record_only: true,
+  });
   return {
     total_rows: rows.length,
     valid_rows: events.length,
     errors,
     sample_events: events.slice(0, 5),
+  };
+}
+
+export type BatchCommitRowResult = {
+  row: number;
+  case_id: string;
+  decision_id: string;
+  outcome: string;
+  mode: "enforce" | "record_only";
+  event_id: string | null;
+  would_have?: string;
+};
+
+export type BatchImportReport = {
+  dry_run: boolean;
+  /** Batch import always evaluates as record-only. */
+  record_only: true;
+  total_rows: number;
+  valid_rows: number;
+  committed_rows: number;
+  errors: BatchRowError[];
+  sample_events: BankEvent[];
+  results: BatchCommitRowResult[];
+};
+
+/**
+ * Parse + optionally commit batch rows. Commit path must force record-only
+ * via the provided handler (e.g. handleBankEvent with forceRecordOnly).
+ */
+export async function runBatchImport(
+  text: string,
+  format: "csv" | "jsonl",
+  mapping: ColumnMapping,
+  options: {
+    dry_run?: boolean;
+    defaults?: Partial<BankEvent>;
+    commit?: (event: BankEvent) => Promise<{
+      case_id: string;
+      decision_id: string;
+      outcome: string;
+      mode: "enforce" | "record_only";
+      event_id: string | null;
+      would_have?: string;
+    }>;
+  } = {},
+): Promise<BatchImportReport> {
+  const dryRun = options.dry_run !== false;
+  const rows = format === "csv" ? parseCsv(text) : parseJsonLines(text);
+  const { events, errors } = rowsToBankEvents(rows, {
+    mapping,
+    defaults: options.defaults,
+    record_only: true,
+  });
+
+  const results: BatchCommitRowResult[] = [];
+  if (!dryRun && options.commit) {
+    // Map valid events back to 1-based source row numbers (skip error rows).
+    const errorRows = new Set(errors.map((e) => e.row));
+    let eventIdx = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const rowNum = i + 1;
+      if (errorRows.has(rowNum)) continue;
+      const event = events[eventIdx++];
+      if (!event) break;
+      const decision = await options.commit(event);
+      results.push({
+        row: rowNum,
+        case_id: decision.case_id,
+        decision_id: decision.decision_id,
+        outcome: decision.outcome,
+        mode: decision.mode,
+        event_id: decision.event_id,
+        would_have: decision.would_have,
+      });
+    }
+  }
+
+  return {
+    dry_run: dryRun,
+    record_only: true,
+    total_rows: rows.length,
+    valid_rows: events.length,
+    committed_rows: results.length,
+    errors,
+    sample_events: events.slice(0, 5),
+    results,
   };
 }

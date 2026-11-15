@@ -1,4 +1,5 @@
 import type pg from "pg";
+import { listActiveDelegatedRoles } from "./approval-delegate.js";
 import type { AuthorityMatrixRow, BankRole } from "./authority-matrix.js";
 import type { FieldPolicyRule } from "./field-policy.js";
 
@@ -64,11 +65,17 @@ export async function loadBankApprovalRoleContext(
   }
 
   const ladder = await listBankRoleLadder(client, organizationId);
-  const actorRoles = await listMembershipBankRoles(
+  const permanent = await listMembershipBankRoles(
     client,
     organizationId,
     membershipId,
   );
+  const delegated = await listActiveDelegatedRoles(
+    client,
+    organizationId,
+    membershipId,
+  );
+  const actorRoles = [...new Set([...permanent, ...delegated])];
   return { available: true, ladder, actorRoles };
 }
 

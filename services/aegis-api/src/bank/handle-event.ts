@@ -22,10 +22,16 @@ function demoClockActive(): boolean {
   return isDemoClockActive();
 }
 
+export type HandleBankEventOptions = {
+  /** Force evaluate/seal in record-only mode (batch import pilot). */
+  forceRecordOnly?: boolean;
+};
+
 export async function handleBankEvent(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
   event: BankEvent,
+  options?: HandleBankEventOptions,
 ): Promise<BankDecisionResponse> {
   const existing = await findCaseByIdempotency(
     client,
@@ -50,11 +56,13 @@ export async function handleBankEvent(
   const fieldRules = await listFieldPolicies(client, organizationId);
   const fielded = applyFieldPolicy(event.attributes, fieldRules);
 
-  const recordOnly = await getWorkflowRecordOnly(
-    client,
-    organizationId,
-    event.workflow_id,
-  );
+  const recordOnly =
+    options?.forceRecordOnly === true ||
+    (await getWorkflowRecordOnly(
+      client,
+      organizationId,
+      event.workflow_id,
+    ));
   const matrix = await listAuthorityMatrix(client, organizationId);
   const ladder = await listBankRoleLadder(client, organizationId);
 
@@ -186,7 +194,9 @@ export async function handleBankEvent(
     }
   }
 
+  let provisional = false;
   if (!eventId || !eventHash || sequenceNum == null) {
+    provisional = true;
     eventId = `evt_gov_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
     eventHash = `sha256:${createHash("sha256")
       .update(
@@ -233,6 +243,7 @@ export async function handleBankEvent(
             reason: evalResult.reason,
           },
         ],
+        flags: provisional ? { provisional: true } : undefined,
       });
       receiptId = issued.receipt_id;
     } catch {
@@ -283,7 +294,10 @@ export async function handleBankEvent(
         event_id: again.event_id,
         event_hash: null,
         sequence_num: null,
-        flags: demoClockActive() ? { demo_clock: true } : undefined,
+        flags: {
+          ...(demoClockActive() ? { demo_clock: true } : {}),
+          ...(provisional ? { provisional: true } : {}),
+        },
       };
     }
   }
@@ -311,6 +325,9 @@ export async function handleBankEvent(
     event_id: eventId,
     event_hash: eventHash,
     sequence_num: sequenceNum,
-    flags: demoClockActive() ? { demo_clock: true } : undefined,
+    flags: {
+      ...(demoClockActive() ? { demo_clock: true } : {}),
+      ...(provisional ? { provisional: true } : {}),
+    },
   };
 }

@@ -57,6 +57,8 @@ export type ForensicReceiptBody = {
   flags?: {
     demo_clock?: boolean;
     decided_without_aegis?: boolean;
+    /** True when citing a provisional (non-APS) event or missing agent key. */
+    provisional?: boolean;
   };
   issued_at: string;
   key_id: string;

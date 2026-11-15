@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   UserCheck,
 } from "lucide-react";
+import { t } from "@/lib/i18n";
 
 export type ConsoleNavItem = {
   href: string;
@@ -27,19 +28,19 @@ export type ConsoleNavItem = {
 
 /** Pitch order (Phase 3). Get started / Search / Members / Keys / Logs live under Settings or Overview. */
 export const AEGIS_NAV: ConsoleNavItem[] = [
-  { href: "/aegis", label: "Overview", icon: LayoutDashboard },
-  { href: "/aegis/live", label: "Live feed", icon: Activity },
-  { href: "/aegis/approvals", label: "Approvals", icon: UserCheck, badgeKey: "approvals" },
-  { href: "/aegis/agents", label: "Agents", icon: Bot },
+  { href: "/aegis", label: t("nav.overview", "Overview"), icon: LayoutDashboard },
+  { href: "/aegis/live", label: t("nav.live", "Live feed"), icon: Activity },
+  { href: "/aegis/approvals", label: t("nav.approvals", "Approvals"), icon: UserCheck, badgeKey: "approvals" },
+  { href: "/aegis/agents", label: t("nav.agents", "Agents"), icon: Bot },
   { href: "/aegis/keys", label: "API keys", icon: KeyRound },
-  { href: "/aegis/workflows", label: "Workflows", icon: GitBranch },
-  { href: "/aegis/policies", label: "Policies", icon: Shield },
+  { href: "/aegis/workflows", label: t("nav.workflows", "Workflows"), icon: GitBranch },
+  { href: "/aegis/policies", label: t("nav.policies", "Policies"), icon: Shield },
   { href: "/aegis/coverage", label: "Coverage", icon: PieChart },
   { href: "/aegis/incidents", label: "Incidents", icon: AlertTriangle },
-  { href: "/aegis/evidence", label: "Receipts", icon: FileCheck },
-  { href: "/aegis/verify", label: "Verify", icon: ShieldCheck },
+  { href: "/aegis/evidence", label: t("receipt.title", "Receipts"), icon: FileCheck },
+  { href: "/aegis/verify", label: t("receipt.verify", "Verify"), icon: ShieldCheck },
   { href: "/aegis/integrations", label: "Integrations", icon: Plug },
-  { href: "/aegis/settings", label: "Settings", icon: Settings },
+  { href: "/aegis/settings", label: t("nav.settings", "Settings"), icon: Settings },
 ];
 
 export const PLATFORM_OPS_NAV: ConsoleNavItem[] = [

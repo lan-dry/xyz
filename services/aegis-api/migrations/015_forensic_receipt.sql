@@ -64,6 +64,11 @@ CREATE INDEX IF NOT EXISTS idx_receipt_access_org
 -- ---------------------------------------------------------------------------
 -- Append-only: block destructive mutation of seal columns on event
 -- Retention purge redacts payload / sets purged_at — those columns remain writable.
+--
+-- OPS: application DB role MUST NOT be superuser and MUST NOT SET
+-- session_replication_role (that bypasses these triggers). See docs/APPEND_ONLY.md.
+-- session_replication_role = replica is test-only (helpers / integration fixtures /
+-- witness tamper tests). Grant check: tools/check-append-only-grants.sql.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION aegis_forbid_event_seal_mutation()
 RETURNS trigger

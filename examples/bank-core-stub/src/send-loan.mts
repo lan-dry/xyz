@@ -1,5 +1,6 @@
 /**
- * Submits a synthetic retail_loan event to Aegis bank API.
+ * Stub demo client — submits a synthetic retail_loan event to Aegis.
+ * Not a production bank-core integration.
  */
 const base = process.env.AEGIS_API_BASE ?? "http://localhost:8080";
 const key = process.env.AEGIS_INGEST_KEY;

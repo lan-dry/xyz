@@ -22,6 +22,7 @@ import { postEvent } from "../src/routes/events.js";
 import { postPolicyEvaluate } from "../src/routes/policy-evaluate.js";
 import {
   getApprovalStatus,
+  postApprovalBindCheck,
   postApprovalComplete,
   postApprovalRequest,
 } from "../src/routes/approvals.js";
@@ -46,10 +47,6 @@ const INGEST_KEY = process.env.AEGIS_INGEST_DEV_KEY ?? "aegis_dev_local_change_m
 const OBLIGATION_TOOL = "payments.wire.transfer";
 
 const signOpts: SignOptions = { privateKeyB64: privateKeyB64!, keyId: DEV_KEY };
-const ingestOpts = {
-  apiBaseUrl: "http://test.local",
-  ingestApiKey: INGEST_KEY,
-};
 
 function apiApp() {
   const app = new Hono();
@@ -57,8 +54,59 @@ function apiApp() {
   app.post("/v1/aegis/policy/evaluate", postPolicyEvaluate);
   app.post("/v1/aegis/approvals/request", postApprovalRequest);
   app.get("/v1/aegis/approvals/:approvalId", getApprovalStatus);
+  app.post("/v1/aegis/approvals/:approvalId/bind-check", postApprovalBindCheck);
   app.post("/v1/aegis/approvals/:approvalId/complete", postApprovalComplete);
   return app;
+}
+
+/** Local stub so wrapFetchResume bind-check never hits a fake host like test.local. */
+async function startApiStub(app: Hono): Promise<{ server: Server; baseUrl: string }> {
+  return new Promise((resolvePromise, reject) => {
+    const server = createServer((req, res) => {
+      void (async () => {
+        try {
+          const host = req.headers.host ?? "127.0.0.1";
+          const url = `http://${host}${req.url ?? "/"}`;
+          const headers = new Headers();
+          for (const [key, value] of Object.entries(req.headers)) {
+            if (value == null) continue;
+            headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+          }
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          const bodyBuf = Buffer.concat(chunks);
+          const method = req.method ?? "GET";
+          const init: RequestInit = { method, headers };
+          if (method !== "GET" && method !== "HEAD" && bodyBuf.length > 0) {
+            init.body = bodyBuf;
+          }
+          const response = await app.request(url, init);
+          res.statusCode = response.status;
+          response.headers.forEach((v, k) => {
+            res.setHeader(k, v);
+          });
+          res.end(Buffer.from(await response.arrayBuffer()));
+        } catch (err) {
+          res.statusCode = 500;
+          res.end(err instanceof Error ? err.message : "stub error");
+        }
+      })();
+    });
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const addr = server.address();
+      if (!addr || typeof addr === "string") {
+        reject(new Error("api stub address unavailable"));
+        return;
+      }
+      resolvePromise({
+        server,
+        baseUrl: `http://127.0.0.1:${addr.port}`,
+      });
+    });
+  });
 }
 
 async function ingestInProcess(
@@ -244,6 +292,8 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
     await activatePolicy(pool, DEV_ORG, policy.policy_id);
 
     const mock = await startMockUpstream();
+    const app = apiApp();
+    const apiStub = await startApiStub(app);
     const traceId = `trc_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
 
     const wrapConfig = {
@@ -255,7 +305,10 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
         toolName: OBLIGATION_TOOL,
       },
       sign: signOpts,
-      ingest: ingestOpts,
+      ingest: {
+        apiBaseUrl: apiStub.baseUrl,
+        ingestApiKey: INGEST_KEY,
+      },
       fetchImpl: fetch,
       ingestFn: ingestInProcess,
       evaluatePolicyFn: evaluateInProcess,
@@ -321,7 +374,7 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
       traceStatus = await getTraceStatus(pool, DEV_ORG, traceId);
       expect(traceStatus).toBe("executing");
 
-      const mismatchedComplete = await apiApp().request(
+      const mismatchedComplete = await app.request(
         `/v1/aegis/approvals/${encodeURIComponent(caught!.approvalId)}/complete`,
         {
           method: "POST",
@@ -339,6 +392,7 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
       traceStatus = await getTraceStatus(pool, DEV_ORG, traceId);
       expect(traceStatus).toBe("executing");
 
+      // Resume uses the local stub for bind-check (real HTTP), not test.local.
       const res = await wrapFetchResume(
         caught!.approvalId,
         mock.url,
@@ -365,6 +419,7 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
       expect(approvalStatus.status).toBe("approved");
     } finally {
       mock.server.close();
+      apiStub.server.close();
     }
   });
 });

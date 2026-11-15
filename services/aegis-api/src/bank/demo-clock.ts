@@ -12,14 +12,19 @@ export class DemoClockError extends Error {
 let offsetMs = 0;
 let active = false;
 
+/** True only when explicitly enabled and never in production process/env. */
 export function isDemoModeAllowed(): boolean {
-  return process.env.AEGIS_DEMO_MODE === "true";
+  if (process.env.AEGIS_DEMO_MODE !== "true") return false;
+  const nodeEnv = (process.env.NODE_ENV ?? "").toLowerCase();
+  const aegisEnv = (process.env.AEGIS_ENV ?? "").toLowerCase();
+  if (nodeEnv === "production" || aegisEnv === "production") return false;
+  return true;
 }
 
 export function assertDemoMode(operation: string): void {
   if (!isDemoModeAllowed()) {
     throw new DemoClockError(
-      `${operation} refused: AEGIS_DEMO_MODE is not enabled (production guard)`,
+      `${operation} refused: AEGIS_DEMO_MODE is not enabled, or process is production (NODE_ENV/AEGIS_ENV)`,
     );
   }
   const dbUrl = process.env.DATABASE_URL ?? "";

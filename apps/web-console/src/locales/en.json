@@ -5,13 +5,18 @@
   },
   "nav": {
     "overview": "Overview",
-    "live": "Live",
+    "live": "Live feed",
     "approvals": "Approvals",
     "policies": "Policies",
     "workflows": "Workflows",
     "agents": "Agents",
     "exports": "Exports",
     "settings": "Settings"
+  },
+  "policies": {
+    "dual_publish_pending": "Dual-publish required. A second distinct authorised publisher must confirm Activate.",
+    "dual_publish_waiting": "Waiting for a second publisher",
+    "activate": "Activate"
   },
   "receipt": {
     "title": "Receipt",

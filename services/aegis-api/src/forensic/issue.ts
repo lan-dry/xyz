@@ -99,6 +99,11 @@ export async function issueForensicReceipt(
     attributes?: Record<string, unknown>;
     timeline?: Array<Record<string, unknown>>;
     approvals?: Array<Record<string, unknown>>;
+    flags?: {
+      demo_clock?: boolean;
+      decided_without_aegis?: boolean;
+      provisional?: boolean;
+    };
     signingKey?: { key_id: string; private_key_b64: string };
   },
 ): Promise<SignedForensicReceipt> {
@@ -113,6 +118,16 @@ export async function issueForensicReceipt(
   }
 
   const { seq, prev_hash } = await nextReceiptSeq(client, input.organization_id);
+  const provisionalFromEvents = input.sealed_events.some((e) =>
+    e.event_id.startsWith("evt_gov_"),
+  );
+  const flags = {
+    ...(isDemoClockActive() ? { demo_clock: true as const } : {}),
+    ...(input.flags ?? {}),
+    ...(provisionalFromEvents || input.flags?.provisional
+      ? { provisional: true as const }
+      : {}),
+  };
   const body = buildReceiptBody({
     organization_id: input.organization_id,
     seq,
@@ -128,7 +143,7 @@ export async function issueForensicReceipt(
     attributes: input.attributes,
     timeline: input.timeline,
     approvals: input.approvals,
-    flags: isDemoClockActive() ? { demo_clock: true } : undefined,
+    flags: Object.keys(flags).length > 0 ? flags : undefined,
     key_id: keyId,
     issued_at: nowIso(),
   });

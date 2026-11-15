@@ -19,9 +19,12 @@ import {
   type ApprovalRichDetail,
 } from "../../repo/approvals.js";
 import {
+  applyEscalateToRoleMetadata,
   guardConsoleApprovalDecision,
   type ApprovalDecisionBody,
 } from "../../bank/console-approval-guard.js";
+import { roleSatisfies } from "../../bank/authority-matrix.js";
+import { loadBankApprovalRoleContext } from "../../bank/repo.js";
 import {
   requireConsoleSession,
   type ConsoleVariables,
@@ -148,7 +151,7 @@ async function enforceApprovalGuard(
   client: pg.PoolClient,
   session: ConsoleSession,
   approvalId: string,
-  action: "approve" | "reject",
+  action: "approve" | "reject" | "release",
   body: ApprovalDecisionBody,
 ) {
   const guard = await guardConsoleApprovalDecision(client, {
@@ -561,6 +564,266 @@ approvalRoutes.post(
       const rich = await getApprovalRich(client, session.organizationId, approvalId);
       await client.query("COMMIT");
       return c.json({ approval: rich ? serializeApproval(rich) : null });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+);
+
+/**
+ * Release a hard-stopped case/approval after role check (head_of_compliance by default).
+ * Body: { reason_code, comment?, reason? }
+ */
+approvalRoutes.post(
+  "/approvals/:approvalId/release",
+  requireConsoleSession,
+  async (c) => {
+    const session = c.get("consoleSession");
+    if (!canDecideApprovals(session, session.organizationId)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    if (!isBridgeMasterKeyConfigured()) {
+      return bridgeMasterKeyMissingResponse(c);
+    }
+    const approvalId = c.req.param("approvalId");
+    if (!approvalId) {
+      return c.json({ error: "approvalId required" }, 422);
+    }
+    let body: ApprovalDecisionBody = {};
+    try {
+      body = await c.req.json();
+    } catch {
+      body = {};
+    }
+    if (!body.reason_code?.trim()) {
+      return c.json({ error: "reason_code required for release" }, 422);
+    }
+
+    const client = await getPool().connect();
+    try {
+      await client.query("BEGIN");
+      await expireStaleApprovals(client, session.organizationId);
+      const rich = await getApprovalRich(
+        client,
+        session.organizationId,
+        approvalId,
+      );
+      if (!rich) {
+        await client.query("ROLLBACK");
+        return c.json({ error: "Not found" }, 404);
+      }
+      const meta =
+        rich.metadata && typeof rich.metadata === "object"
+          ? rich.metadata
+          : {};
+      if (meta.hard_stop !== true && rich.status !== "rejected") {
+        // Allow release when hard_stop flagged, or after a stop outcome held as pending release.
+        if (meta.release_pending !== true) {
+          await client.query("ROLLBACK");
+          return c.json(
+            {
+              error: "Approval is not marked hard_stop / release_pending",
+              code: "not_hard_stop",
+            },
+            409,
+          );
+        }
+      }
+
+      const guard = await enforceApprovalGuard(
+        client,
+        session,
+        approvalId,
+        "release",
+        body,
+      );
+      if (!guard.ok) {
+        await client.query("COMMIT");
+        return c.json({ error: guard.message, code: guard.code }, 403);
+      }
+
+      const releaseMeta = {
+        ...meta,
+        hard_stop: false,
+        released_at: new Date().toISOString(),
+        released_by: session.email,
+        release_reason_code: body.reason_code.trim(),
+        release_comment: body.comment?.trim() ?? body.reason?.trim() ?? null,
+      };
+      await client.query(
+        `UPDATE approval
+         SET status = 'approved',
+             decided_at = now(),
+             approver_user_id = $3,
+             metadata = $4::jsonb
+         WHERE organization_id = $1 AND approval_id = $2
+           AND status IN ('pending', 'needs_info', 'rejected')`,
+        [
+          session.organizationId,
+          approvalId,
+          session.userId,
+          JSON.stringify(releaseMeta),
+        ],
+      );
+
+      // Soft-update linked bank_case when present.
+      try {
+        await client.query(
+          `UPDATE bank_case
+           SET status = 'approved', updated_at = now()
+           WHERE organization_id = $1
+             AND (event_id = $2 OR trace_id = $3)
+             AND status IN ('open', 'held', 'stopped')`,
+          [
+            session.organizationId,
+            rich.event_id,
+            rich.trace_id,
+          ],
+        );
+      } catch {
+        // bank_case may be absent on older DBs
+      }
+
+      await auditFromConsoleSession(client, session, {
+        action: "approval.hard_stop_released",
+        resourceType: "approval",
+        resourceId: approvalId,
+        metadata: {
+          reason_code: body.reason_code.trim(),
+          comment: body.comment?.trim() ?? null,
+        },
+      });
+
+      const updated = await getApprovalRich(
+        client,
+        session.organizationId,
+        approvalId,
+      );
+      await client.query("COMMIT");
+      return c.json({
+        approval: updated ? serializeApproval(updated) : null,
+        released: true,
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+);
+
+/**
+ * Escalate a pending approval to a higher bank role (metadata.escalate_to_role).
+ * Body: { escalate_to_role: string }
+ */
+approvalRoutes.post(
+  "/approvals/:approvalId/escalate",
+  requireConsoleSession,
+  async (c) => {
+    const session = c.get("consoleSession");
+    if (!canDecideApprovals(session, session.organizationId)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    const approvalId = c.req.param("approvalId");
+    if (!approvalId) {
+      return c.json({ error: "approvalId required" }, 422);
+    }
+    let body: { escalate_to_role?: string } = {};
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON" }, 422);
+    }
+    const target = body.escalate_to_role?.trim();
+    if (!target) {
+      return c.json({ error: "escalate_to_role required" }, 422);
+    }
+
+    const client = await getPool().connect();
+    try {
+      await client.query("BEGIN");
+      const rich = await getApprovalRich(
+        client,
+        session.organizationId,
+        approvalId,
+      );
+      if (!rich || !["pending", "needs_info"].includes(rich.status)) {
+        await client.query("ROLLBACK");
+        return c.json({ error: "Not found or not pending" }, 404);
+      }
+
+      const roleCtx = await loadBankApprovalRoleContext(
+        client,
+        session.organizationId,
+        session.userId,
+      );
+      if (roleCtx.available) {
+        const currentRequired =
+          typeof rich.metadata?.required_role === "string"
+            ? rich.metadata.required_role
+            : null;
+        // Actor must satisfy current required role (or have any bank role if unset)
+        // and the target must be strictly higher on the ladder when current is set.
+        if (currentRequired) {
+          const canAct = session.role === "admin" || session.role === "owner"
+            || roleCtx.actorRoles.some((r) =>
+              roleSatisfies(roleCtx.ladder, r, currentRequired),
+            );
+          if (!canAct) {
+            await client.query("COMMIT");
+            return c.json(
+              { error: "Insufficient role to escalate", code: "insufficient_role" },
+              403,
+            );
+          }
+          const currentLevel =
+            roleCtx.ladder.find((r) => r.role_key === currentRequired)?.level ?? 0;
+          const targetLevel =
+            roleCtx.ladder.find((r) => r.role_key === target)?.level;
+          if (targetLevel == null || targetLevel <= currentLevel) {
+            await client.query("ROLLBACK");
+            return c.json(
+              {
+                error: "escalate_to_role must be a higher ladder role",
+                code: "invalid_escalate_role",
+              },
+              422,
+            );
+          }
+        }
+      }
+
+      const nextMeta = applyEscalateToRoleMetadata(rich.metadata, target, {
+        membership_id: session.userId,
+        email: session.email,
+      });
+      await client.query(
+        `UPDATE approval
+         SET metadata = $3::jsonb
+         WHERE organization_id = $1 AND approval_id = $2
+           AND status IN ('pending', 'needs_info')`,
+        [session.organizationId, approvalId, JSON.stringify(nextMeta)],
+      );
+      await auditFromConsoleSession(client, session, {
+        action: "approval.escalated_to_role",
+        resourceType: "approval",
+        resourceId: approvalId,
+        metadata: { escalate_to_role: target },
+      });
+      const updated = await getApprovalRich(
+        client,
+        session.organizationId,
+        approvalId,
+      );
+      await client.query("COMMIT");
+      return c.json({
+        approval: updated ? serializeApproval(updated) : null,
+        escalate_to_role: target,
+      });
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

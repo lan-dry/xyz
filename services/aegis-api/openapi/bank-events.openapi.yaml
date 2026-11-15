@@ -75,6 +75,50 @@ paths:
                 $ref: "#/components/schemas/ValidationError"
         "401":
           description: Missing or invalid API key
+  /governed/events/batch:
+    post:
+      operationId: postGovernedEventBatch
+      summary: Batch CSV/JSONL import (always record-only; dry_run defaults true)
+      security:
+        - ingestBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                format:
+                  type: string
+                  enum: [csv, jsonl]
+                text:
+                  type: string
+                mapping:
+                  type: object
+                  additionalProperties:
+                    type: string
+                dry_run:
+                  type: boolean
+                  default: true
+                defaults:
+                  type: object
+      responses:
+        "200":
+          description: Dry-run or commit report
+        "401":
+          description: Missing or invalid API key
+  /bank/events/batch:
+    post:
+      operationId: postBankEventBatch
+      summary: Alias for /governed/events/batch
+      security:
+        - ingestBearer: []
+      responses:
+        "200":
+          description: Dry-run or commit report
+        "401":
+          description: Missing or invalid API key
 components:
   securitySchemes:
     ingestBearer:

@@ -200,6 +200,73 @@ policyRoutes.post("/policies/test", requireConsoleSession, async (c) => {
   });
 });
 
+/** Diff two policies' rules (draft vs active or any pair). */
+policyRoutes.get(
+  "/policies/:policyId/diff",
+  requireConsoleSession,
+  async (c) => {
+    const session = c.get("consoleSession");
+    const policyId = c.req.param("policyId");
+    const against = c.req.query("against")?.trim();
+    if (!policyId || !against) {
+      return c.json({ error: "policyId and against query required" }, 422);
+    }
+    const pool = getPool();
+    const left = await getPolicyWithRules(pool, session.organizationId, policyId);
+    const right = await getPolicyWithRules(pool, session.organizationId, against);
+    if (!left || !right) {
+      return c.json({ error: "Not found" }, 404);
+    }
+    const leftRules = new Map(
+      left.rules.map((r) => [
+        r.rule_id,
+        {
+          tool_pattern: r.tool_pattern,
+          decision: r.decision,
+          priority: r.priority,
+        },
+      ]),
+    );
+    const rightRules = new Map(
+      right.rules.map((r) => [
+        r.rule_id,
+        {
+          tool_pattern: r.tool_pattern,
+          decision: r.decision,
+          priority: r.priority,
+        },
+      ]),
+    );
+    const added: unknown[] = [];
+    const removed: unknown[] = [];
+    const changed: unknown[] = [];
+    for (const [id, rule] of leftRules) {
+      if (!rightRules.has(id)) added.push({ rule_id: id, ...rule });
+      else if (JSON.stringify(rightRules.get(id)) !== JSON.stringify(rule)) {
+        changed.push({ rule_id: id, from: rightRules.get(id), to: rule });
+      }
+    }
+    for (const [id, rule] of rightRules) {
+      if (!leftRules.has(id)) removed.push({ rule_id: id, ...rule });
+    }
+    return c.json({
+      left: {
+        policy_id: left.policy.policy_id,
+        version: left.policy.version,
+        content_hash: (left.policy as { content_hash?: string | null }).content_hash ?? null,
+      },
+      right: {
+        policy_id: right.policy.policy_id,
+        version: right.policy.version,
+        content_hash: (right.policy as { content_hash?: string | null }).content_hash ?? null,
+      },
+      added,
+      removed,
+      changed,
+    });
+  },
+);
+
 policyRoutes.post(
   "/policies/:policyId/activate",
   requireConsoleSession,

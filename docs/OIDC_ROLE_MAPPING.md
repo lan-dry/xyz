@@ -1,38 +1,24 @@
-# OIDC role mapping (P4)
+# OIDC claim → console / bank role mapping
 
-Aegis keeps existing SSO. Map identity claims to org roles and optional authority ladder roles.
+Module: `services/aegis-api/src/auth/oidc-claim-mapper.ts`
 
-## Org console roles
+## Env
 
-| Claim example | Aegis membership role |
-|---------------|------------------------|
-| `aegis_role=admin` or group `aegis-admins` | `admin` |
-| `aegis_role=approver` | `approver` |
-| `aegis_role=auditor` | `auditor` |
-| `aegis_role=viewer` | `viewer` |
+| Variable | Meaning |
+|----------|---------|
+| `AEGIS_OIDC_ROLE_CLAIM` | Claim name holding roles (default `roles`). Also reads `groups` and Keycloak `realm_access.roles`. |
+| `AEGIS_OIDC_ROLE_MAP` | JSON map from claim value → console role or `bank:<role_key>`. |
 
-Authority ladder roles (pack-specific, e.g. `credit_manager`, `claims_supervisor`) are stored in `membership_bank_role` and checked at approval time — not interchangeable with console roles.
+## Defaults
 
-## Example OIDC configuration (WorkOS / generic OIDC)
+Claim values `admin`, `approver`, `auditor`, `engineer`, `viewer`, `owner` map to the same console roles.  
+Bank ladder keys (`credit_manager`, `credit_officer`, `compliance_officer`, `head_of_compliance`, `dpo`) map to `bank:<key>` and are applied via `membership_bank_role` / delegation flows.
 
-```json
-{
-  "provider": "oidc",
-  "issuer": "https://idp.example.com/",
-  "client_id": "aegis-console",
-  "role_claim": "aegis_role",
-  "group_claim": "groups",
-  "group_map": {
-    "aegis-admins": "admin",
-    "aegis-approvers": "approver",
-    "aegis-auditors": "auditor"
-  },
-  "authority_role_claim": "aegis_authority_roles"
-}
+## Example
+
+```bash
+AEGIS_OIDC_ROLE_CLAIM=groups
+AEGIS_OIDC_ROLE_MAP={"Aegis-Admins":"admin","Aegis-Approvers":"approver","BK-Credit-Managers":"bank:credit_manager"}
 ```
 
-`aegis_authority_roles` should be a string array of pack role keys. Levels are resolved from the tenant's `bank_role_ladder` at approval time.
-
-## Test note
-
-Automated mapping unit coverage lives with platform-auth SSO tests where configured. This file is the contract for pilots.
+When multiple console roles match, the highest privilege wins (`owner` > `admin` > … > `viewer`).

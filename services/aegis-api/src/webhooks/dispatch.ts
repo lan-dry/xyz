@@ -4,6 +4,7 @@ import {
   endpointAcceptsEvent,
   type WebhookEventType,
 } from "./catalog.js";
+import { withExponentialBackoff } from "./retry.js";
 import {
   listWebhookEndpoints,
   loadWebhookSecret,
@@ -31,23 +32,39 @@ async function postSignedWebhook(
     data: payload,
   });
   const signature = signBody(secret, timestamp, body);
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "User-Agent": "Aegis-Webhooks/1.0",
-      "X-Aegis-Event": eventType,
-      "X-Aegis-Delivery-Id": deliveryId,
-      "X-Aegis-Timestamp": String(timestamp),
-      "X-Aegis-Signature": `sha256=${signature}`,
-    },
-    body,
-    signal: AbortSignal.timeout(15_000),
+
+  const result = await withExponentialBackoff(async () => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Aegis-Webhooks/1.0",
+        "X-Aegis-Event": eventType,
+        "X-Aegis-Delivery-Id": deliveryId,
+        "X-Aegis-Timestamp": String(timestamp),
+        "X-Aegis-Signature": `sha256=${signature}`,
+      },
+      body,
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      return {
+        ok: false,
+        status: response.status,
+        error: text.slice(0, 200),
+      };
+    }
+    return { ok: true, status: response.status };
+  }, {
+    maxAttempts: Number(process.env.AEGIS_WEBHOOK_MAX_ATTEMPTS ?? "5"),
+    baseDelayMs: Number(process.env.AEGIS_WEBHOOK_BASE_DELAY_MS ?? "250"),
   });
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
+
+  if (!result.ok) {
+    const last = result.attempts[result.attempts.length - 1];
     console.warn(
-      `[aegis-api] webhook delivery failed (${response.status}) ${url} ${text.slice(0, 200)}`,
+      `[aegis-api] webhook delivery failed after ${result.attempts.length} attempts ${url} ${last?.error ?? ""}`,
     );
   }
 }

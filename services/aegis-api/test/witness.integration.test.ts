@@ -100,10 +100,16 @@ describeIfDb("witness / Merkle (Stage 8 exit)", () => {
     );
     const eventId = first.rows[0]!.event_id;
 
-    await pool.query(
-      `UPDATE event SET event_hash = $1 WHERE event_id = $2`,
-      ["0".repeat(64), eventId],
-    );
+    // Intentional DB-level tamper for the verifier; bypass append-only triggers.
+    await pool.query(`SET session_replication_role = replica`);
+    try {
+      await pool.query(
+        `UPDATE event SET event_hash = $1 WHERE event_id = $2`,
+        ["0".repeat(64), eventId],
+      );
+    } finally {
+      await pool.query(`SET session_replication_role = DEFAULT`);
+    }
 
     const row = await loadEventRow(eventId);
     const result = await verifyEventFull(pool, row);

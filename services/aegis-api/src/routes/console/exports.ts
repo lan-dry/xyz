@@ -301,7 +301,7 @@ exportRoutes.put("/compliance/schedule", requireConsoleSession, async (c) => {
   }
 
   const pool = getPool();
-  if (Boolean(body.enabled)) {
+  if (body.enabled) {
     try {
       await assertCanUseComplianceSchedule(pool, session.organizationId);
     } catch (error) {

@@ -12,6 +12,8 @@ describe("OpenAPI bank/governed events spec", () => {
     expect(text).toMatch(/openapi:\s*3/);
     expect(text).toMatch(/version:\s*0\.1\.0/);
     expect(text).toContain("/bank/events");
+    expect(text).toContain("/governed/events/batch");
+    expect(text).toContain("/bank/events/batch");
     expect(text).toContain("BankEvent");
     expect(text).toContain("BankDecisionResponse");
     expect(text).toContain("ValidationError");

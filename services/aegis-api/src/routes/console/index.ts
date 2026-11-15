@@ -77,6 +77,7 @@ import { incidentRoutes } from "./incidents.js";
 import { proofRoutes } from "./proof.js";
 import { auditorRoutes } from "./auditor.js";
 import { shareRoutes } from "./share.js";
+import { reportRoutes } from "./reports.js";
 import { getOverviewMetrics } from "../../repo/overview.js";
 
 const LEGACY_SESSION_COOKIE = "aegis_session";
@@ -234,6 +235,7 @@ consoleRoutes.route("/", incidentRoutes);
 consoleRoutes.route("/", proofRoutes);
 consoleRoutes.route("/", auditorRoutes);
 consoleRoutes.route("/", shareRoutes);
+consoleRoutes.route("/", reportRoutes);
 
 consoleRoutes.post("/auth/login", async (c) => {
   const ip = getClientIp(c.req.raw.headers);

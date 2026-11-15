@@ -211,8 +211,15 @@ export async function insertEvent(
 export async function cleanupIsolationFixtures(
   client: pg.PoolClient,
 ): Promise<void> {
-  await client.query(`DELETE FROM event WHERE event_id LIKE 'evt-test-%'`);
-  await client.query(`DELETE FROM trace WHERE trace_id LIKE 'trace-test-%'`);
+  // Migration 015: sealed event DELETE needs replica role (test/superuser only).
+  // Do NOT delete organization while replica is on — FK CASCADE is disabled then.
+  await client.query(`SET session_replication_role = replica`);
+  try {
+    await client.query(`DELETE FROM event WHERE event_id LIKE 'evt-test-%'`);
+    await client.query(`DELETE FROM trace WHERE trace_id LIKE 'trace-test-%'`);
+  } finally {
+    await client.query(`SET session_replication_role = DEFAULT`);
+  }
   await client.query(`DELETE FROM signing_key WHERE key_id LIKE 'key-test-%'`);
   await client.query(`DELETE FROM agent WHERE agent_id LIKE 'agent-test-%'`);
   await client.query(
