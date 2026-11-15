@@ -34,12 +34,12 @@ export function HeroSection() {
           <p className={s.heroSub}>{offer.subhead}</p>
           <p className={s.heroTagline}>{offer.detail}</p>
           <div className={s.heroActions}>
+            <Link href="#example" className={s.btnHeroGhost}>
+              {offer.secondaryCta}
+            </Link>
             <a href={contactUrl()} className={s.btnHero}>
               {offer.primaryCta}
             </a>
-            <Link href="/products/aegis" className={s.btnHeroGhost}>
-              {offer.secondaryCta}
-            </Link>
           </div>
         </div>
         <div>

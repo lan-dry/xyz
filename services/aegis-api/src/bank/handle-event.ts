@@ -1,6 +1,7 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type pg from "pg";
 import { getActivePoliciesWithRules } from "../repo/policies.js";
+import { issueForensicReceipt } from "../forensic/issue.js";
 import { applyFieldPolicy } from "./field-policy.js";
 import { evaluateBankEvent } from "./evaluate.js";
 import { policyContentHash } from "./policy-hash.js";
@@ -14,9 +15,10 @@ import {
 } from "./repo.js";
 import type { BankEvent, BankDecisionResponse } from "./types.js";
 import type { RuleCombineMode } from "../policy/evaluate-rules.js";
+import { isDemoClockActive } from "./demo-clock.js";
 
 function demoClockActive(): boolean {
-  return process.env.AEGIS_DEMO_CLOCK === "true";
+  return isDemoClockActive();
 }
 
 export async function handleBankEvent(
@@ -142,8 +144,67 @@ export async function handleBankEvent(
   });
 
   const decisionId = `dec_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
-  const receiptId = `rcpt_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  let receiptId = `rcpt_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   const traceId = event.trace_id ?? `tr_bank_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+  // Provisional sealed-event citation until full APS ingest is attached (D1).
+  const eventId = `evt_bank_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+  const eventHash = `sha256:${createHash("sha256")
+    .update(
+      JSON.stringify({
+        case_id: event.case_id,
+        decision_id: decisionId,
+        outcome: evalResult.outcome,
+        attributes: fielded.stored,
+      }),
+      "utf8",
+    )
+    .digest("hex")}`;
+  const sequenceNum = 1;
+
+  const matched = evalResult.matched_rules.map((m) => ({
+    rule_id: m.rule_id,
+    policy_id: m.policy_id,
+    decision: m.decision,
+  }));
+
+  if (process.env.AEGIS_RECEIPT_SIGNING_KEY_B64) {
+    try {
+      const issued = await issueForensicReceipt(client, {
+        organization_id: organizationId,
+        case_id: event.case_id,
+        decision_id: decisionId,
+        outcome: evalResult.outcome,
+        mode: evalResult.mode,
+        would_have: evalResult.would_have,
+        policy: {
+          policy_id: policyId,
+          version: policyVersion,
+          content_hash: contentHash,
+        },
+        matched_rules: matched,
+        sealed_events: [
+          {
+            event_id: eventId,
+            event_hash: eventHash,
+            sequence_num: sequenceNum,
+          },
+        ],
+        attributes: fielded.stored,
+        timeline: [
+          {
+            at: event.emitted_at,
+            type: "decision",
+            outcome: evalResult.outcome,
+            reason: evalResult.reason,
+          },
+        ],
+      });
+      receiptId = issued.receipt_id;
+    } catch {
+      // Keep case without sealed receipt if signing/migration unavailable
+    }
+  }
 
   const status =
     evalResult.outcome === "hold"
@@ -158,7 +219,7 @@ export async function handleBankEvent(
     idempotency_key: event.idempotency_key,
     workflow_id: event.workflow_id ?? null,
     trace_id: traceId,
-    event_id: null,
+    event_id: eventId,
     decision_id: decisionId,
     receipt_id: receiptId,
     outcome: evalResult.outcome,
@@ -200,11 +261,7 @@ export async function handleBankEvent(
     outcome: evalResult.outcome,
     mode: evalResult.mode,
     would_have: evalResult.would_have,
-    matched_rules: evalResult.matched_rules.map((m) => ({
-      rule_id: m.rule_id,
-      policy_id: m.policy_id,
-      decision: m.decision,
-    })),
+    matched_rules: matched,
     policy: {
       policy_id: policyId,
       version: policyVersion,
@@ -217,9 +274,9 @@ export async function handleBankEvent(
             approval_id: null,
           }
         : null,
-    event_id: null,
-    event_hash: null,
-    sequence_num: null,
+    event_id: eventId,
+    event_hash: eventHash,
+    sequence_num: sequenceNum,
     flags: demoClockActive() ? { demo_clock: true } : undefined,
   };
 }

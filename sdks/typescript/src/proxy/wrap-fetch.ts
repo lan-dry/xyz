@@ -44,6 +44,12 @@ export type WrapFetchConfig = {
    * - fail_open_buffer: allow the outbound call and queue a local signed decision for later drain
    */
   failMode?: FailMode;
+  /**
+   * Bank-facing alias for failMode (scenario 11):
+   * - hold → fail_closed
+   * - proceed_and_flag → fail_open_buffer (receipts should carry decided_without_aegis)
+   */
+  onUnreachable?: "hold" | "proceed_and_flag" | FailMode;
   fetchImpl?: typeof fetch;
   ingestFn?: typeof signAndIngest;
   evaluatePolicyFn?: (
@@ -59,13 +65,21 @@ export type WrapFetchConfig = {
   getApprovalStatusFn?: typeof getApprovalStatusViaApi;
 };
 
+function resolveFailMode(config: WrapFetchConfig): FailMode {
+  if (config.failMode) return config.failMode;
+  const u = config.onUnreachable;
+  if (u === "hold" || u === "fail_closed") return "fail_closed";
+  if (u === "proceed_and_flag" || u === "fail_open_buffer") return "fail_open_buffer";
+  return "fail_closed";
+}
+
 async function resolveDecision(
   config: WrapFetchConfig,
 ): Promise<PolicyEvaluateResult & { buffered?: boolean }> {
   const { context, ingest } = config;
   const fetchImpl = config.fetchImpl ?? fetch;
   const payload = context.policyPayload ?? context.auditPayload;
-  const failMode: FailMode = config.failMode ?? "fail_closed";
+  const failMode: FailMode = resolveFailMode(config);
 
   try {
     if (config.evaluatePolicyFn) {

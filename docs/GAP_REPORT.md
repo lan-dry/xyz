@@ -17,7 +17,11 @@ This file is updated at the end of each phase. Nothing is marked Present unless 
 | 0 Baseline / branch / tag | Done | `pre-forensic-demo` tag; golden evaluate-rules tests |
 | 1 Engine / adapter / matrix / field policy | Done | Unit tests green; bank route evaluate+persist case; sealing into APS receipt deferred to Phase 2 |
 | 2 Approvals / receipts / aegis-verify | Partial | Receipt sign/verify + tamper matrix + approval guards unit-tested; bank handler seal wiring + scenario CLI still open |
-| 3–7 | Pending | |
+| 3 Integration / batch import | Partial | Batch CSV/JSONL dry-run + `onUnreachable` alias; webhook retry / bank-core stub incomplete |
+| 4 Search / admin UI / i18n | Pending | |
+| 5 P1–P10 hardening | Pending | |
+| 6 Demo ops / DEMO.md | Partial | `scenario:run` covers 1,2,3,6,7,12 unit-level; full DB reset scenarios open |
+| 7 Website | Partial | Claim honesty pass started; `docs/WEBSITE_CHANGES.md`; no live publish |
 
 ---
 
@@ -28,9 +32,9 @@ This file is updated at the end of each phase. Nothing is marked Present unless 
 | R1 Event intake | Partial | `POST /v1/aegis/bank/events` + 400 validation + idempotent `bank_case`; APS seal/link still Phase 2 |
 | R2 Policy engine | Partial | `combine: all_matching` opt-in + content_hash on activate + published immutability; dual publish still Missing |
 | R3 Authority matrix | Partial | Table + ladder + retail_loan RWF defaults + unit tests; demo seed CLI still Phase 6 |
-| R4 Approvals | Partial | Self-approve + multi-vote + expiry; no role levels, required fields, escalate_to_role, clock, delegation |
-| R5 Evidence | Partial | Event hash chain + witness; no §2.4 receipt, tenant receipt seq, append-only triggers |
-| R6 Verifier | Missing | No offline `aegis-verify`; pack verify and online verify are partial substitutes |
+| R4 Approvals | Partial | Bank role/SoD/required-field guards unit-tested; not yet wired into console approval HTTP path |
+| R5 Evidence | Partial | Forensic receipt schema + tenant seq + append-only migration 015; bank path seal+issue wiring incomplete |
+| R6 Verifier | Partial | `tools/aegis-verify` + `verifyForensicBundle` tamper matrix (scenario 12) Present in unit tests |
 | R7 Field policy | Partial | store/mask/hash/evaluate_only/omit implemented + leak tests; not yet wired end-to-end on sealed receipt |
 | R8 Search / reports | Partial | Trace search + timeline; no canned reports / full facets / CSV |
 | R9 Admin / security | Partial | Auditor + audit_log + SSO wedge |

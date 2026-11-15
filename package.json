@@ -64,6 +64,7 @@
     "verifier:public": "tsx tools/verifier/verify.mts",
     "aegis:verify-compliance-zip": "tsx tools/aegis-verify-compliance-zip/run.mts",
     "aegis-verify": "tsx tools/aegis-verify/cli.mts",
+    "scenario:run": "pnpm --filter aegis-api scenario:run",
     "compliance:worker": "pnpm --filter aegis-api compliance:worker",
     "build": "nx run-many -t build --all"
   },

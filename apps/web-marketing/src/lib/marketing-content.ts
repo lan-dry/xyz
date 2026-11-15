@@ -22,10 +22,26 @@ export const INTEGRATION_LOGOS = [
 ] as const;
 
 export const HOME_METRICS = [
-  { value: "BYOK", label: "Customer signing keys", detail: "Register public keys; sign in your KMS or agent runtime" },
-  { value: "<5ms", label: "Policy p50 (target)", detail: "Rules engine on Check Policy hot path" },
-  { value: "60s", label: "Witness cadence", detail: "Merkle batch worker (WITNESS_INTERVAL_MS)" },
-  { value: "Live", label: "Design partner pilot", detail: "n8n, approvals, exports. See /trust" },
+  {
+    value: "Keys",
+    label: "Customer-controlled signing",
+    detail: "Register public keys; sign in your KMS or agent runtime where configured",
+  },
+  {
+    value: "Measured",
+    label: "Policy latency",
+    detail: "Published only after the load-test script reports p50/p95/p99 on a stated machine",
+  },
+  {
+    value: "Witness",
+    label: "Merkle batch cadence",
+    detail: "Configurable worker interval (WITNESS_INTERVAL_MS); not a guarantee",
+  },
+  {
+    value: "Pilot",
+    label: "Design partner access",
+    detail: "n8n, approvals, exports. See /trust. Early access; first pilot partners welcome",
+  },
 ] as const;
 
 /**
@@ -39,15 +55,18 @@ export const HOME_METRICS = [
  * The homepage "2+4" stat and compliance sections update automatically from these arrays.
  */
 export const COMPLIANCE_AVAILABLE = [
-  { name: "SOC 2", note: "Control mapping in export ZIPs" },
-  { name: "EU AI Act", note: "Art. 12+ mapping in exports" },
+  { name: "SOC 2", note: "Control mapping in export ZIPs · Mapping, not certification" },
+  {
+    name: "EU AI Act",
+    note: "Art. 12 record-keeping mapping in exports · Mapping, not certification",
+  },
 ] as const;
 
 export const COMPLIANCE_ROADMAP = [
-  { name: "NIST AI RMF", note: "Roadmap" },
-  { name: "HIPAA", note: "BYOC path" },
-  { name: "FedRAMP", note: "Architecture path" },
-  { name: "ISO 42001", note: "Roadmap" },
+  { name: "NIST AI RMF", note: "Plan — not available yet" },
+  { name: "HIPAA", note: "Plan — not available yet" },
+  { name: "FedRAMP", note: "Plan — not available yet" },
+  { name: "ISO 42001", note: "Plan — not available yet" },
 ] as const;
 
 function complianceFrameworkStat(): string {
@@ -111,7 +130,7 @@ export const PLATFORM_DATA_POINTS = [
 
 /** Who the public homepage speaks to first (Rehan / design-partner clarity). */
 export const HOME_ICP =
-  "For teams running automation on money, accounts, or sensitive customer data: fintech, insurance ops, and regulated in-house engineering." as const;
+  "For banks, insurers and fintechs. Also for teams running AI agents." as const;
 
 /** One concrete scene: plain language, not architecture jargon. */
 export const HOME_WORKFLOW_EXAMPLE = {
@@ -126,15 +145,15 @@ export const HOME_WORKFLOW_EXAMPLE = {
 
 /** Homepage hero + design-partner offer (aligned with docs/PITCH_FINTECH_HUB.md). */
 export const IMPLEMENTATION_OFFER = {
-  badge: "Aegis · early access",
-  headline: "Who authorized this action?",
-  headlineAccent: "Show it later.",
+  badge: "Aegis · early access · Mapping, not certification",
+  headline: "Know what your automated systems did,",
+  headlineAccent: "and who approved it.",
   subhead:
-    "When an automated system processes a loan, a payment, or customer data, most companies cannot easily prove what it did on a specific case. Aegis creates a clear, signed record of what happened so risk, compliance, or audit can check it without reconstructing the story.",
+    "Aegis checks sensitive actions against your rules before they run, asks a named person to approve when needed, and keeps a signed record you can show an auditor.",
   detail:
-    "We help you put one high-risk workflow into production (payout, refund, KYC escalation, or similar) with Aegis built in: enforce rules, route approvals, keep the receipt.",
-  primaryCta: "Book a scoping call",
-  secondaryCta: "See Aegis",
+    "Start with one high-risk workflow (loan decision, payment, or data access). Record-only pilots available. Hosted by us, or on your side.",
+  primaryCta: "Talk to us",
+  secondaryCta: "See a short example",
   section: {
     label: "What we deliver",
     title: "One governed workflow in production",
