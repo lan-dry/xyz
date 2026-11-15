@@ -16,7 +16,7 @@ This file is updated at the end of each phase. Nothing is marked Present unless 
 |-------|--------|-------|
 | 0 Baseline / branch / tag | Done | `pre-forensic-demo` tag; golden evaluate-rules tests |
 | 1 Engine / adapter / matrix / field policy | Done | Unit tests green; bank route evaluate+persist case; sealing into APS receipt deferred to Phase 2 |
-| 2 Approvals / receipts / aegis-verify | Pending | |
+| 2 Approvals / receipts / aegis-verify | Partial | Receipt sign/verify + tamper matrix + approval guards unit-tested; bank handler seal wiring + scenario CLI still open |
 | 3–7 | Pending | |
 
 ---

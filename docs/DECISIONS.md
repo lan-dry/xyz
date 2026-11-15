@@ -65,6 +65,14 @@ Other obligation kinds must not become `hold`.
 
 ---
 
+## D9 — Append-only scope on `event`
+
+**Decision:** Append-only triggers lock `event_id`, `organization_id`, `agent_id`, `event_hash`, `sequence_num`, `prev_event_hash`. Payload redaction (retention) and legacy resign of `sig_*` remain allowed so purge and bridge resign keep working. Forensic receipts themselves are fully immutable (no UPDATE/DELETE).
+
+**Why:** GO requires purge and backups to keep working; full signature immutability on `event` would break existing resign paths without a larger redesign.
+
+---
+
 ## Later decisions
 
-Add new entries below as D9+ when implementation forces a change from the GO prompt.
+Add new entries below as D10+ when implementation forces a change from the GO prompt.
