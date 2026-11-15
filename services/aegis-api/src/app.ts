@@ -9,6 +9,7 @@ import {
 } from "./routes/approvals.js";
 import { consoleRoutes } from "./routes/console/index.js";
 import { postEvent } from "./routes/events.js";
+import { postBankEvent } from "./routes/bank-events.js";
 import { getEventInclusionProof } from "./routes/inclusion-proof.js";
 import { postPolicyEvaluate } from "./routes/policy-evaluate.js";
 import { gatewayRoutes } from "./routes/gateway.js";
@@ -144,6 +145,7 @@ export function createApp(): Hono {
 
   const aegis = new Hono();
   aegis.post("/events", postEvent);
+  aegis.post("/bank/events", postBankEvent);
   aegis.post("/policy/evaluate", postPolicyEvaluate);
   aegis.route("/", gatewayRoutes);
   aegis.post("/approvals/request", postApprovalRequest);

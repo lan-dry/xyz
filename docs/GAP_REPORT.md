@@ -3,9 +3,21 @@
 **Branch:** `forensic-demo-readiness`  
 **Baseline tag:** `pre-forensic-demo`  
 **Date:** 2026-11-15  
+**Last phase completed:** Phase 1 (engine / adapter / matrix / field policy / record-only)  
 **Method:** Code audit against R1–R11, section C tests, P1–P12, and website workstream E. Status values: **Present** / **Partial** / **Missing**.
 
 This file is updated at the end of each phase. Nothing is marked Present unless implemented and tested.
+
+---
+
+## Phase checkpoints
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 0 Baseline / branch / tag | Done | `pre-forensic-demo` tag; golden evaluate-rules tests |
+| 1 Engine / adapter / matrix / field policy | Done | Unit tests green; bank route evaluate+persist case; sealing into APS receipt deferred to Phase 2 |
+| 2 Approvals / receipts / aegis-verify | Pending | |
+| 3–7 | Pending | |
 
 ---
 
@@ -13,13 +25,13 @@ This file is updated at the end of each phase. Nothing is marked Present unless 
 
 | Area | Overall | Notes |
 |------|---------|-------|
-| R1 Event intake | Partial | APS-1 ingest exists; bank event API and decision response contract missing |
-| R2 Policy engine | Partial | Rules + conditions exist; all-matching combine, content_hash, record-only, dual publish missing |
-| R3 Authority matrix | Missing | Score bands / amount limits only; no table-driven matrix or role ladder |
+| R1 Event intake | Partial | `POST /v1/aegis/bank/events` + 400 validation + idempotent `bank_case`; APS seal/link still Phase 2 |
+| R2 Policy engine | Partial | `combine: all_matching` opt-in + content_hash on activate + published immutability; dual publish still Missing |
+| R3 Authority matrix | Partial | Table + ladder + retail_loan RWF defaults + unit tests; demo seed CLI still Phase 6 |
 | R4 Approvals | Partial | Self-approve + multi-vote + expiry; no role levels, required fields, escalate_to_role, clock, delegation |
 | R5 Evidence | Partial | Event hash chain + witness; no §2.4 receipt, tenant receipt seq, append-only triggers |
 | R6 Verifier | Missing | No offline `aegis-verify`; pack verify and online verify are partial substitutes |
-| R7 Field policy | Missing | Retention only |
+| R7 Field policy | Partial | store/mask/hash/evaluate_only/omit implemented + leak tests; not yet wired end-to-end on sealed receipt |
 | R8 Search / reports | Partial | Trace search + timeline; no canned reports / full facets / CSV |
 | R9 Admin / security | Partial | Auditor + audit_log + SSO wedge |
 | R10 Integration | Partial | HMAC webhook + buffer; no retry log, bank-core stub, named onUnreachable |
@@ -33,29 +45,29 @@ This file is updated at the end of each phase. Nothing is marked Present unless 
 
 | ID | Status | Files | Note |
 |----|--------|-------|------|
-| R1.1 Schema; HTTP 400 machine-readable | Partial | `services/aegis-api/src/ingest/validate.ts`, `routes/events.ts`, `spec/aps/v0.1.json` | Hand checks; rejects with **422**, not 400; no bank event schema |
-| R1.2 Idempotency | Partial | `ingest/persist.ts`, `routes/events.ts` | Header `Idempotency-Key`; body key unused; concurrent not proven |
-| R1.3 Persist after field policy | Partial | `ingest/persist.ts` | Persists APS-1 payload; no field-policy mask/hash at ingest |
-| R1.4 Decision response contract | Missing | `routes/events.ts`, `routes/policy-evaluate.ts` | Returns event ids / allow\|deny\|obligation, not allow\|hold\|stop + case/decision/receipt ids |
+| R1.1 Schema; HTTP 400 machine-readable | Partial | `bank/validate.ts`, `routes/bank-events.ts` | Bank events → **400** machine-readable; APS ingest still 422 |
+| R1.2 Idempotency | Partial | `bank/repo.ts` unique `(org, idempotency_key)` | Concurrent conflict → single case; integration proof still open |
+| R1.3 Persist after field policy | Partial | `bank/field-policy.ts`, `handle-event.ts` | Applied before `bank_case.attributes`; APS seal still Phase 2 |
+| R1.4 Decision response contract | Partial | `bank/types.ts`, `handle-event.ts` | allow\|hold\|stop + case/decision/receipt ids; `event_id`/`hash` filled in Phase 2 |
 
 ## R2 Policy engine
 
 | ID | Status | Files | Note |
 |----|--------|-------|------|
-| R2.1 Evaluate all matching rules | Missing | `policy/evaluate-rules.ts` | Top-priority winner only; bank `combine: all_matching` not implemented |
-| R2.2 Combine hard stop / hold union / allow | Partial | `evaluate-rules.ts`, `evaluate-conditions.ts` | Deny vs obligation at same priority; no union of approval slots across rules |
-| R2.3 Immutable published policy + content_hash | Partial | `repo/policies.ts` | Draft/active; no content_hash on decisions; published immutability not enforced |
-| R2.4 Record-only mode | Missing | `workflows` fail_mode only | No record-only evaluate-and-seal without blocking |
+| R2.1 Evaluate all matching rules | Present | `policy/evaluate-rules.ts` | Opt-in `combine: all_matching`; legacy golden baseline unchanged |
+| R2.2 Combine hard stop / hold union / allow | Present | `evaluate-rules.ts`, `bank/evaluate.ts` | Hard stop / deny → stop; holds union; matrix overlay |
+| R2.3 Immutable published policy + content_hash | Partial | `repo/policies.ts`, `bank/policy-hash.ts` | content_hash on activate; update/delete of published refused + audit; dual publish Missing |
+| R2.4 Record-only mode | Partial | `014_forensic_bank.sql`, `bank/evaluate.ts` | Workflow `record_only` default false; evaluate returns would_have; queue skip Phase 2 |
 | R2.5 Rule test / simulate | Partial | `repo/policy-simulate.ts`, console | Simulate exists; not bank sample-event against draft with matched rules list |
-| R2.6 Dual-approver policy publish | Missing | `repo/policies.ts` | Admin activate; not two distinct authorised publishers |
+| R2.6 Dual-approver policy publish | Missing | `policy_publish_approval` table ready | Activate still single admin |
 
 ## R3 Authority matrix
 
 | ID | Status | Files | Note |
 |----|--------|-------|------|
-| R3.1 Matrix as data + view | Missing | `repo/score-bands.ts`, `policy/amount.ts` | Amount/segment limits, not product×band×risk matrix |
-| R3.2 retail_loan RWF seed | Missing | — | Not seeded |
-| R3.3 Role or-above ladder | Missing | org roles owner/admin/approver only | No credit_* ladder |
+| R3.1 Matrix as data + view | Partial | `authority_matrix` table, `bank/authority-matrix.ts` | Match + most-restrictive; console view Phase 4 |
+| R3.2 retail_loan RWF seed | Partial | `DEFAULT_RETAIL_LOAN_*` | Code defaults + `seedRetailLoanAuthority`; demo org seed Phase 6 |
+| R3.3 Role or-above ladder | Partial | `bank_role_ladder`, `roleSatisfies` | Levels tested; approval-time check Phase 2 |
 
 ## R4 Approvals
 
@@ -92,8 +104,8 @@ This file is updated at the end of each phase. Nothing is marked Present unless 
 
 | ID | Status | Files | Note |
 |----|--------|-------|------|
-| R7.1 Field policy modes | Missing | — | |
-| R7.2 No clear hash/omit in receipts/logs | Missing | — | |
+| R7.1 Field policy modes | Present | `bank/field-policy.ts`, migration 014 | store/mask/hash/evaluate_only/omit unit-tested |
+| R7.2 No clear hash/omit in receipts/logs | Partial | leak helper tested | End-to-end receipt/log scan in scenario 8 (Phase 2/6) |
 | R7.3 Scenario 8 demonstration | Missing | — | |
 | R7.4 Retention without breaking verify | Partial | retention-purge.ts | Needs redaction-preserving-hash design |
 

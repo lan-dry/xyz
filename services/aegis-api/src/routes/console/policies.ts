@@ -10,6 +10,7 @@ import {
   deleteDraftPolicy,
   getPolicyWithRules,
   listPoliciesByOrganization,
+  PolicyImmutableError,
   updateDraftPolicy,
 } from "../../repo/policies.js";
 import { listDraftPolicyConflicts } from "../../repo/policy-conflicts.js";
@@ -337,8 +338,11 @@ policyRoutes.patch("/policies/:policyId", requireConsoleSession, async (c) => {
       rules: updated.rules,
     });
   } catch (err) {
-    if (err instanceof Error && err.message === "POLICY_NOT_DRAFT") {
-      return c.json({ error: "Only draft policies can be edited" }, 409);
+    if (
+      err instanceof PolicyImmutableError ||
+      (err instanceof Error && err.message === "POLICY_NOT_DRAFT")
+    ) {
+      return c.json({ error: "Published policy cannot be modified" }, 409);
     }
     throw err;
   }
@@ -355,16 +359,23 @@ policyRoutes.delete("/policies/:policyId", requireConsoleSession, async (c) => {
   }
 
   const pool = getPool();
-  const deleted = await deleteDraftPolicy(pool, session.organizationId, policyId);
-  if (!deleted) {
-    return c.json({ error: "Not found or not a draft" }, 404);
+  try {
+    const deleted = await deleteDraftPolicy(pool, session.organizationId, policyId);
+    if (!deleted) {
+      return c.json({ error: "Not found or not a draft" }, 404);
+    }
+    await auditFromConsoleSession(pool, session, {
+      action: "policy.deleted",
+      resourceType: "policy",
+      resourceId: policyId,
+    });
+    return c.json({ ok: true });
+  } catch (err) {
+    if (err instanceof PolicyImmutableError) {
+      return c.json({ error: "Published policy cannot be modified" }, 409);
+    }
+    throw err;
   }
-  await auditFromConsoleSession(pool, session, {
-    action: "policy.deleted",
-    resourceType: "policy",
-    resourceId: policyId,
-  });
-  return c.json({ ok: true });
 });
 
 policyRoutes.post(

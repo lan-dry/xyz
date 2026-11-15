@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
+import { policyContentHash } from "../bank/policy-hash.js";
 
 export type PolicyRow = {
   policy_id: string;
@@ -10,9 +11,37 @@ export type PolicyRow = {
   wasm_artifact: Buffer | null;
   status: string;
   environment?: string;
+  combine?: string;
+  content_hash?: string | null;
+  dual_publish_required?: boolean;
   activated_at: Date | null;
   created_at: Date;
 };
+
+export class PolicyImmutableError extends Error {
+  constructor(message = "Published policy cannot be modified") {
+    super(message);
+    this.name = "PolicyImmutableError";
+  }
+}
+
+async function logPolicyGuard(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  action: string,
+  policyId: string,
+  detail: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await client.query(
+      `INSERT INTO audit_log (organization_id, action, resource_type, resource_id, metadata)
+       VALUES ($1, $2, 'policy', $3, $4::jsonb)`,
+      [organizationId, action, policyId, JSON.stringify(detail)],
+    );
+  } catch {
+    // audit_log shape may vary; never block the refusal path
+  }
+}
 
 export type PolicyRuleRow = {
   rule_id: string;
@@ -180,7 +209,9 @@ export async function activatePolicy(
 ): Promise<PolicyRow | null> {
   const check = await client.query<PolicyRow>(
     `SELECT policy_id, organization_id, name, version, rego_source,
-            wasm_artifact, status, activated_at, created_at
+            wasm_artifact, status,
+            COALESCE(combine, 'top_priority') AS combine,
+            content_hash, activated_at, created_at
      FROM policy
      WHERE organization_id = $1 AND policy_id = $2`,
     [organizationId, policyId],
@@ -190,13 +221,34 @@ export async function activatePolicy(
     return null;
   }
 
+  const rulesResult = await client.query<PolicyRuleRow>(
+    `SELECT rule_id, policy_id, tool_pattern, decision, priority, conditions
+     FROM policy_rule WHERE policy_id = $1 ORDER BY priority DESC`,
+    [policyId],
+  );
+  const contentHash = policyContentHash({
+    policy_id: policy.policy_id,
+    name: policy.name,
+    version: policy.version,
+    combine: policy.combine ?? "top_priority",
+    rules: rulesResult.rows.map((r) => ({
+      rule_id: r.rule_id,
+      tool_pattern: r.tool_pattern,
+      decision: r.decision,
+      priority: r.priority,
+      conditions: r.conditions,
+    })),
+  });
+
   const updated = await client.query<PolicyRow>(
     `UPDATE policy
-     SET status = 'active', activated_at = now()
+     SET status = 'active', activated_at = now(), content_hash = $2
      WHERE policy_id = $1
      RETURNING policy_id, organization_id, name, version, rego_source,
-               wasm_artifact, status, activated_at, created_at`,
-    [policyId],
+               wasm_artifact, status,
+               COALESCE(combine, 'top_priority') AS combine,
+               content_hash, activated_at, created_at`,
+    [policyId, contentHash],
   );
   return updated.rows[0] ?? null;
 }
@@ -215,7 +267,11 @@ export async function updateDraftPolicy(
   const row = check.rows[0];
   if (!row) return null;
   if (row.status !== "draft") {
-    throw new Error("POLICY_NOT_DRAFT");
+    await logPolicyGuard(client, organizationId, "policy.update_refused", policyId, {
+      status: row.status,
+      reason: "published_immutable",
+    });
+    throw new PolicyImmutableError();
   }
 
   await client.query(
@@ -259,6 +315,20 @@ export async function deleteDraftPolicy(
   organizationId: string,
   policyId: string,
 ): Promise<boolean> {
+  const check = await client.query<{ status: string }>(
+    `SELECT status FROM policy
+     WHERE organization_id = $1 AND policy_id = $2`,
+    [organizationId, policyId],
+  );
+  const row = check.rows[0];
+  if (!row) return false;
+  if (row.status !== "draft") {
+    await logPolicyGuard(client, organizationId, "policy.delete_refused", policyId, {
+      status: row.status,
+      reason: "published_immutable",
+    });
+    throw new PolicyImmutableError();
+  }
   const result = await client.query(
     `DELETE FROM policy
      WHERE organization_id = $1 AND policy_id = $2 AND status = 'draft'`,
