@@ -76,6 +76,7 @@ async function main() {
       ok: boolean;
       detail: string;
       approvals?: string;
+      receipt_kind?: string;
     }>;
   };
 
@@ -88,8 +89,9 @@ async function main() {
   let failed = 0;
   for (const r of body.results ?? []) {
     const ap = r.approvals ? ` [${r.approvals}]` : "";
+    const rk = r.receipt_kind ? ` receipt_kind=${r.receipt_kind}` : "";
     console.log(
-      `${r.ok ? "PASS" : "FAIL"} scenario ${r.id} ${r.name}${ap} — ${r.detail}`,
+      `${r.ok ? "PASS" : "FAIL"} scenario ${r.id} ${r.name}${ap}${rk} — ${r.detail}`,
     );
     if (!r.ok) failed++;
   }

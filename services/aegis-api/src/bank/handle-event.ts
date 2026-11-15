@@ -66,53 +66,30 @@ export async function handleBankEvent(
   const matrix = await listAuthorityMatrix(client, organizationId);
   const ladder = await listBankRoleLadder(client, organizationId);
 
+  // Active policies now return combine + content_hash and fetch rules in one query
+  // (avoids N+1 policy_rule round-trips and a second policy SELECT).
   const actives = await getActivePoliciesWithRules(client, organizationId);
   const primary = actives[0];
-  const combine: RuleCombineMode =
-    ((primary?.policy as { combine?: string } | undefined)?.combine as
-      | RuleCombineMode
-      | undefined) ?? "top_priority";
-
-  // Prefer policy.combine from DB when column exists
-  let policyCombine = combine;
-  let contentHash: string | null = null;
+  let policyCombine: RuleCombineMode =
+    primary?.policy.combine === "all_matching" ? "all_matching" : "top_priority";
+  let contentHash: string | null = primary?.policy.content_hash ?? null;
   let policyVersion = primary?.policy.version ?? 0;
   let policyId = primary?.policy.policy_id ?? "pol_none";
 
-  if (primary) {
-    const combineRow = await client.query<{
-      combine: string;
-      content_hash: string | null;
-      version: number;
-    }>(
-      `SELECT COALESCE(combine, 'top_priority') AS combine, content_hash, version
-       FROM policy WHERE policy_id = $1`,
-      [primary.policy.policy_id],
-    );
-    const row = combineRow.rows[0];
-    if (row) {
-      policyCombine =
-        row.combine === "all_matching" ? "all_matching" : "top_priority";
-      contentHash = row.content_hash;
-      policyVersion = row.version;
-    }
-    policyId = primary.policy.policy_id;
-
-    if (!contentHash) {
-      contentHash = policyContentHash({
-        policy_id: primary.policy.policy_id,
-        name: primary.policy.name,
-        version: primary.policy.version,
-        combine: policyCombine,
-        rules: primary.rules.map((r) => ({
-          rule_id: r.rule_id,
-          tool_pattern: r.tool_pattern,
-          decision: r.decision,
-          priority: r.priority,
-          conditions: r.conditions,
-        })),
-      });
-    }
+  if (primary && !contentHash) {
+    contentHash = policyContentHash({
+      policy_id: primary.policy.policy_id,
+      name: primary.policy.name,
+      version: primary.policy.version,
+      combine: policyCombine,
+      rules: primary.rules.map((r) => ({
+        rule_id: r.rule_id,
+        tool_pattern: r.tool_pattern,
+        decision: r.decision,
+        priority: r.priority,
+        conditions: r.conditions,
+      })),
+    });
   }
 
   // Generic tool name for pack rules; event_type stays on the case for search.

@@ -104,6 +104,8 @@ export async function getActivePoliciesWithRules(
     `SELECT policy_id, organization_id, name, version, rego_source,
             wasm_artifact, status,
             COALESCE(environment, 'production') AS environment,
+            COALESCE(combine, 'top_priority') AS combine,
+            content_hash,
             activated_at, created_at
      FROM policy
      WHERE organization_id = $1 AND status = 'active'
@@ -112,16 +114,28 @@ export async function getActivePoliciesWithRules(
     [organizationId, environment ?? null],
   );
 
-  const results: Array<{ policy: PolicyRow; rules: PolicyRuleRow[] }> = [];
-  for (const policy of policyResult.rows) {
-    const rulesResult = await client.query<PolicyRuleRow>(
-      `SELECT rule_id, policy_id, tool_pattern, decision, priority, conditions
-       FROM policy_rule WHERE policy_id = $1 ORDER BY priority DESC`,
-      [policy.policy_id],
-    );
-    results.push({ policy, rules: rulesResult.rows });
+  if (policyResult.rows.length === 0) return [];
+
+  // One rules query for all active policies (avoids N+1 round-trips).
+  const policyIds = policyResult.rows.map((p) => p.policy_id);
+  const rulesResult = await client.query<PolicyRuleRow>(
+    `SELECT rule_id, policy_id, tool_pattern, decision, priority, conditions
+     FROM policy_rule
+     WHERE policy_id = ANY($1::text[])
+     ORDER BY priority DESC`,
+    [policyIds],
+  );
+  const rulesByPolicy = new Map<string, PolicyRuleRow[]>();
+  for (const rule of rulesResult.rows) {
+    const list = rulesByPolicy.get(rule.policy_id) ?? [];
+    list.push(rule);
+    rulesByPolicy.set(rule.policy_id, list);
   }
-  return results;
+
+  return policyResult.rows.map((policy) => ({
+    policy,
+    rules: rulesByPolicy.get(policy.policy_id) ?? [],
+  }));
 }
 
 /** @deprecated Prefer getActivePoliciesWithRules — kept for callers expecting one bundle. */
