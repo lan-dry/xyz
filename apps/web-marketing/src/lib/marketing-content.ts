@@ -134,14 +134,71 @@ export const HOME_ICP =
 
 /** One concrete scene: plain language, not architecture jargon. */
 export const HOME_WORKFLOW_EXAMPLE = {
-  title: "Example: a payment of USD 2,500",
+  title: "Illustrative example: a loan decision",
   lines: [
-    "A rule runs before the payment is sent. It can allow it, stop it, or ask a person to approve.",
-    "Every step is recorded: what data was used, which rule applied, and whether a person approved.",
-    "Months later, risk or audit can open the record and see exactly what happened, instead of searching through logs.",
+    "Your system sends the event. Aegis checks your rules before the action runs.",
+    "It can allow, stop, or hold for a named person. Approvals are logged with role and time.",
+    "A signed receipt cites the sealed events underneath, so an auditor can verify the record offline.",
   ],
-  footnote: "Same idea for refunds, customer checks, admin access, or fraud review.",
+  footnote:
+    "Synthetic data. Banking walkthroughs live on the banks page. Same pattern for claims, payments, or data access.",
 } as const;
+
+export const HOME_PROBLEM_QUESTIONS = [
+  "What data was used?",
+  "Which rule applied?",
+  "Who approved it, and when?",
+] as const;
+
+export const HOME_WHAT_AEGIS_DOES = [
+  {
+    title: "Check",
+    desc: "Match the action against your rules and authority limits before it runs.",
+  },
+  {
+    title: "Decide",
+    desc: "Allow, stop, or ask a named person when your policy requires it.",
+  },
+  {
+    title: "Prove",
+    desc: "Keep a signed record that cites sealed events you can verify later.",
+  },
+] as const;
+
+export const HOME_FAQ = [
+  {
+    q: "What is it?",
+    a: "Aegis checks sensitive automated actions against your rules, asks for approval when needed, and keeps a signed record.",
+  },
+  {
+    q: "Does it replace our systems?",
+    a: "No. Your systems still run the action. Aegis sits in front for rules, approvals, and evidence.",
+  },
+  {
+    q: "What data does it see?",
+    a: "The attributes you send for the action. Field policies can mask, hash, or omit sensitive values.",
+  },
+  {
+    q: "Where does it run?",
+    a: "Hosted by us, or on your side. You choose per deployment.",
+  },
+  {
+    q: "What if it is unavailable?",
+    a: "Each workflow sets hold or proceed-and-flag. Queued decisions can be replayed when Aegis returns.",
+  },
+  {
+    q: "How do we know a record was not changed?",
+    a: "Export a bundle and verify it offline. Tampered facts, signatures, or sequence gaps are reported by name.",
+  },
+  {
+    q: "Is it certified?",
+    a: "No. Export bundles include control mappings. Mapping is not certification.",
+  },
+  {
+    q: "How do we start?",
+    a: "Pick one workflow, often in record-only mode. Agree success criteria, then talk to us.",
+  },
+] as const;
 
 /** Homepage hero + design-partner offer (aligned with docs/PITCH_FINTECH_HUB.md). */
 export const IMPLEMENTATION_OFFER = {

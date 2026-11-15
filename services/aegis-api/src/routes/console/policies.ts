@@ -13,6 +13,7 @@ import {
   PolicyImmutableError,
   updateDraftPolicy,
 } from "../../repo/policies.js";
+import { recordPolicyPublishApproval } from "../../bank/dual-publish.js";
 import { listDraftPolicyConflicts } from "../../repo/policy-conflicts.js";
 import { getGovernanceSettings } from "../../repo/governance-settings.js";
 import {
@@ -214,6 +215,44 @@ policyRoutes.post(
 
     const pool = getPool();
     const governance = await getGovernanceSettings(pool, session.organizationId);
+
+    // Per-policy dual_publish_required (default off) — distinct from org governance flag.
+    const dualFlag = await pool.query<{ dual_publish_required: boolean }>(
+      `SELECT COALESCE(dual_publish_required, false) AS dual_publish_required
+       FROM policy WHERE organization_id = $1 AND policy_id = $2`,
+      [session.organizationId, policyId],
+    );
+    if (dualFlag.rows[0]?.dual_publish_required) {
+      const result = await recordPolicyPublishApproval(pool, {
+        organization_id: session.organizationId,
+        policy_id: policyId,
+        membership_id: session.userId,
+      });
+      await auditFromConsoleSession(pool, session, {
+        action: result.published
+          ? "policy.activated"
+          : "policy.publish_approval_recorded",
+        resourceType: "policy",
+        resourceId: policyId,
+        metadata: { count: result.count, published: result.published },
+      });
+      if (!result.published) {
+        return c.json({
+          pending_confirmation: true,
+          approvals: result.count,
+          message:
+            "Dual-publish required. A second distinct authorised publisher must approve.",
+        });
+      }
+      const activated = await getPolicyWithRules(
+        pool,
+        session.organizationId,
+        policyId,
+      );
+      return c.json({
+        policy: activated ? serializePolicy(activated.policy) : null,
+      });
+    }
 
     if (governance.two_person_policy_activate) {
       const existing = await pool.query<{

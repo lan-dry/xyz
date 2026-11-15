@@ -9,10 +9,43 @@ servers:
   - url: https://api.example.local/v1/aegis
     description: Replace with your Aegis base URL
 paths:
+  /governed/events:
+    post:
+      operationId: postGovernedEvent
+      summary: Submit a governed event for policy evaluation (sector-neutral)
+      security:
+        - ingestBearer: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankEvent"
+      responses:
+        "200":
+          description: Decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankDecisionResponse"
+        "400":
+          description: Malformed event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Missing or invalid API key
   /bank/events:
     post:
       operationId: postBankEvent
-      summary: Submit a bank event for policy evaluation
+      summary: Alias for /governed/events (demo banking pack convenience)
       security:
         - ingestBearer: []
       parameters:

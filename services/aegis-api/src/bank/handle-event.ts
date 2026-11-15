@@ -5,6 +5,7 @@ import { issueForensicReceipt } from "../forensic/issue.js";
 import { applyFieldPolicy } from "./field-policy.js";
 import { evaluateBankEvent } from "./evaluate.js";
 import { policyContentHash } from "./policy-hash.js";
+import { sealGovernedDecision } from "./seal-decision.js";
 import {
   findCaseByIdempotency,
   getWorkflowRecordOnly,
@@ -143,28 +144,63 @@ export async function handleBankEvent(
 
   const decisionId = `dec_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   let receiptId = `rcpt_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
-  const traceId = event.trace_id ?? `tr_bank_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
-
-  // Provisional sealed-event citation until full APS ingest is attached (D1).
-  const eventId = `evt_bank_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
-  const eventHash = `sha256:${createHash("sha256")
-    .update(
-      JSON.stringify({
-        case_id: event.case_id,
-        decision_id: decisionId,
-        outcome: evalResult.outcome,
-        attributes: fielded.stored,
-      }),
-      "utf8",
-    )
-    .digest("hex")}`;
-  const sequenceNum = 1;
+  const traceId = event.trace_id ?? `tr_gov_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
 
   const matched = evalResult.matched_rules.map((m) => ({
     rule_id: m.rule_id,
     policy_id: m.policy_id,
     decision: m.decision,
   }));
+
+  let eventId: string | null = null;
+  let eventHash: string | null = null;
+  let sequenceNum: number | null = null;
+
+  // Prefer real APS-1 seal when an org agent signing key exists (D1).
+  if ("query" in client) {
+    try {
+      const sealed = await sealGovernedDecision(client as pg.PoolClient, {
+        organization_id: organizationId,
+        trace_id: traceId,
+        case_id: event.case_id,
+        decision_id: decisionId,
+        outcome: evalResult.outcome,
+        mode: evalResult.mode,
+        would_have: evalResult.would_have,
+        tool_name: toolName,
+        attributes: fielded.stored,
+        matched_rules: matched,
+        policy_id: policyId,
+        policy_version: policyVersion,
+        policy_content_hash: contentHash,
+        agent_id: event.agent_id,
+        idempotency_key: event.idempotency_key,
+      });
+      if (sealed) {
+        eventId = sealed.event_id;
+        eventHash = sealed.event_hash;
+        sequenceNum = sealed.sequence_num;
+      }
+    } catch {
+      // Fall through to provisional citation
+    }
+  }
+
+  if (!eventId || !eventHash || sequenceNum == null) {
+    eventId = `evt_gov_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+    eventHash = `sha256:${createHash("sha256")
+      .update(
+        JSON.stringify({
+          case_id: event.case_id,
+          decision_id: decisionId,
+          outcome: evalResult.outcome,
+          attributes: fielded.stored,
+        }),
+        "utf8",
+      )
+      .digest("hex")}`;
+    sequenceNum = 1;
+  }
 
   if (process.env.AEGIS_RECEIPT_SIGNING_KEY_B64) {
     try {

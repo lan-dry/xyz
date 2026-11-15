@@ -6,8 +6,11 @@ import { contactUrl } from "@/lib/site-urls";
 import {
   COMPLIANCE_AVAILABLE,
   COMPLIANCE_ROADMAP,
+  HOME_FAQ,
   HOME_HOW_IT_WORKS,
   HOME_ICP,
+  HOME_PROBLEM_QUESTIONS,
+  HOME_WHAT_AEGIS_DOES,
   HOME_WORKFLOW_EXAMPLE,
   IMPLEMENTATION_OFFER,
 } from "@/lib/marketing-content";
@@ -46,6 +49,72 @@ export function HeroSection() {
           <HeroDataVisual />
           <p className={s.heroVisualCaption}>Rule → record → proof</p>
         </div>
+      </div>
+    </section>
+  );
+}
+
+export function ProblemQuestionsSection() {
+  return (
+    <section className={s.section} id="problem">
+      <div className="section-inner">
+        <ScrollReveal className={s.header}>
+          <p className="section-label">The problem</p>
+          <h2>Three questions most teams cannot answer quickly</h2>
+        </ScrollReveal>
+        <ScrollReveal delay={60}>
+          <ul className={s.exampleList}>
+            {HOME_PROBLEM_QUESTIONS.map((q) => (
+              <li key={q}>{q}</li>
+            ))}
+          </ul>
+        </ScrollReveal>
+      </div>
+    </section>
+  );
+}
+
+export function WhatAegisDoesSection() {
+  return (
+    <section className={s.sectionAlt} id="what">
+      <div className="section-inner">
+        <ScrollReveal className={s.header}>
+          <p className="section-label">What Aegis does</p>
+          <h2>Check, decide, prove</h2>
+        </ScrollReveal>
+        <ScrollReveal delay={60}>
+          <div className={s.serviceGrid}>
+            {HOME_WHAT_AEGIS_DOES.map((block) => (
+              <article key={block.title} className={s.serviceCard}>
+                <h3 className={s.stepTitle}>{block.title}</h3>
+                <p className={s.stepDesc}>{block.desc}</p>
+              </article>
+            ))}
+          </div>
+        </ScrollReveal>
+      </div>
+    </section>
+  );
+}
+
+export function FaqSection() {
+  return (
+    <section className={s.section} id="faq">
+      <div className="section-inner">
+        <ScrollReveal className={s.header}>
+          <p className="section-label">FAQ</p>
+          <h2>Short answers</h2>
+        </ScrollReveal>
+        <ScrollReveal delay={60}>
+          <dl className={s.exampleList}>
+            {HOME_FAQ.map((item) => (
+              <div key={item.q} style={{ marginBottom: "1.25rem" }}>
+                <dt style={{ fontWeight: 600, marginBottom: "0.35rem" }}>{item.q}</dt>
+                <dd style={{ margin: 0, opacity: 0.9 }}>{item.a}</dd>
+              </div>
+            ))}
+          </dl>
+        </ScrollReveal>
       </div>
     </section>
   );
@@ -142,9 +211,12 @@ export function HomePageContent() {
   return (
     <>
       <HeroSection />
-      <WorkflowExampleSection />
+      <ProblemQuestionsSection />
+      <WhatAegisDoesSection />
       <HowItWorksSection />
+      <WorkflowExampleSection />
       <ComplianceStripSection />
+      <FaqSection />
     </>
   );
 }

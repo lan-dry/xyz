@@ -1,0 +1,47 @@
+name: Security scan and SBOM
+
+on:
+  pull_request:
+    paths:
+      - "services/aegis-api/**"
+      - "sdks/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/security-sbom.yml"
+  push:
+    branches: [main, forensic-demo-readiness]
+  workflow_dispatch:
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Generate CycloneDX SBOM for aegis-api
+        run: |
+          pnpm dlx @cyclonedx/cdxgen -o sbom-aegis-api.json -t pnpm services/aegis-api || \
+          pnpm dlx @cyclonedx/cdxgen -o sbom-aegis-api.json .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-aegis-api
+          path: sbom-aegis-api.json
