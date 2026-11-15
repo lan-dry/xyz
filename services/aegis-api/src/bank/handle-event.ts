@@ -106,14 +106,12 @@ export async function handleBankEvent(
     }
   }
 
+  // Generic tool name for pack rules; event_type stays on the case for search.
   const toolName =
-    event.event_type === "loan_decision"
-      ? "bank.loan.decide"
-      : event.event_type === "payment_transfer"
-        ? "bank.payment.transfer"
-        : event.event_type === "data_access"
-          ? "bank.data.access"
-          : `bank.${event.event_type}`;
+    typeof event.attributes.tool_name === "string" &&
+    event.attributes.tool_name.trim()
+      ? String(event.attributes.tool_name).trim()
+      : "governed.action";
 
   const rules =
     primary?.rules.map((r) => ({

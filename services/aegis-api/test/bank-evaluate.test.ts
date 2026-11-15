@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_RETAIL_LOAN_LADDER,
-  DEFAULT_RETAIL_LOAN_MATRIX,
-  type AuthorityMatrixRow,
-} from "../src/bank/authority-matrix.js";
 import { evaluateBankEvent } from "../src/bank/evaluate.js";
 import { toBankOutcome, isHumanApprovalObligation } from "../src/bank/outcome.js";
 import { parseBankEvent, BankValidationError } from "../src/bank/validate.js";
 import { policyContentHash } from "../src/bank/policy-hash.js";
+import { loadDemoPack, packMatrixRows, packRoles } from "../src/packs/load.js";
 
-describe("bank outcome mapping (D2)", () => {
+describe("outcome mapping (D2)", () => {
   it("maps allow_with_obligation to hold only for human approval", () => {
     expect(toBankOutcome("allow_with_obligation")).toBe("hold");
     expect(
@@ -24,7 +20,7 @@ describe("bank outcome mapping (D2)", () => {
   });
 });
 
-describe("bank event validation", () => {
+describe("event validation", () => {
   it("returns machine-readable 400 body for malformed events", () => {
     try {
       parseBankEvent({ schema_version: 2 });
@@ -39,7 +35,7 @@ describe("bank event validation", () => {
     }
   });
 
-  it("accepts a minimal valid loan event", () => {
+  it("accepts a minimal valid event", () => {
     const event = parseBankEvent({
       schema_version: 1,
       case_id: "case-1",
@@ -53,27 +49,28 @@ describe("bank event validation", () => {
   });
 });
 
-describe("evaluateBankEvent", () => {
-  const matrix: AuthorityMatrixRow[] = DEFAULT_RETAIL_LOAN_MATRIX.map(
-    (r, i) => ({ ...r, matrix_id: `m${i}` }),
-  );
+describe("evaluateBankEvent with pack config", () => {
+  const pack = loadDemoPack("banking");
+  const matrix = packMatrixRows(pack);
+  const ladder = packRoles(pack);
+  const currency = pack.currencies[0]!;
 
-  it("scenario 1 shape: allow under AUTH-RL for 3M", () => {
+  it("allow under configured low band", () => {
     const result = evaluateBankEvent({
       policy_id: "pol_v3",
       combine: "all_matching",
       rules: [
         {
           rule_id: "AUTH-RL",
-          tool_pattern: "bank.loan.decide",
+          tool_pattern: "governed.action",
           decision: "allow",
           priority: 10,
         },
       ],
-      tool_name: "bank.loan.decide",
-      attributes: { amount: 3_000_000, currency: "RWF", product: "retail_loan" },
+      tool_name: "governed.action",
+      attributes: { amount: 3_000_000, currency, product: "retail_loan" },
       matrix_rows: matrix,
-      ladder: DEFAULT_RETAIL_LOAN_LADDER,
+      ladder,
       product: "retail_loan",
     });
     expect(result.outcome).toBe("allow");
@@ -89,16 +86,19 @@ describe("evaluateBankEvent", () => {
       rules: [
         {
           rule_id: "LN-07",
-          tool_pattern: "bank.loan.decide",
+          tool_pattern: "governed.action",
           decision: "allow_with_obligation",
           priority: 50,
-          obligations: { kind: "human_approval", required_role: "credit_manager" },
+          obligations: {
+            kind: "human_approval",
+            required_role: "credit_manager",
+          },
         },
       ],
-      tool_name: "bank.loan.decide",
-      attributes: { amount: 18_000_000, currency: "RWF" },
+      tool_name: "governed.action",
+      attributes: { amount: 18_000_000, currency },
       matrix_rows: matrix,
-      ladder: DEFAULT_RETAIL_LOAN_LADDER,
+      ladder,
       product: "retail_loan",
       record_only: true,
     });
@@ -112,16 +112,31 @@ describe("evaluateBankEvent", () => {
       policy_id: "pol_v3",
       combine: "all_matching",
       rules: [],
-      tool_name: "bank.loan.decide",
-      attributes: { amount: 18_000_000, currency: "RWF" },
+      tool_name: "governed.action",
+      attributes: { amount: 18_000_000, currency },
       matrix_rows: matrix,
-      ladder: DEFAULT_RETAIL_LOAN_LADDER,
+      ladder,
       product: "retail_loan",
       record_only: false,
     });
     expect(result.mode).toBe("enforce");
     expect(result.outcome).toBe("hold");
     expect(result.required_roles).toContain("credit_manager");
+  });
+
+  it("does not apply matrix without currency on the event", () => {
+    const result = evaluateBankEvent({
+      policy_id: "pol_v3",
+      combine: "all_matching",
+      rules: [],
+      tool_name: "governed.action",
+      attributes: { amount: 18_000_000 },
+      matrix_rows: matrix,
+      ladder,
+      product: "retail_loan",
+    });
+    expect(result.outcome).toBe("allow");
+    expect(result.matrix).toBeNull();
   });
 });
 
@@ -135,7 +150,7 @@ describe("policy content hash", () => {
       rules: [
         {
           rule_id: "AUTH-RL",
-          tool_pattern: "bank.loan.decide",
+          tool_pattern: "governed.action",
           decision: "allow",
           priority: 10,
         },

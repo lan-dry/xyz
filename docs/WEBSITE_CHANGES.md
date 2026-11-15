@@ -33,6 +33,14 @@ Status: **Awaiting founder approval of copy.** No live deploy from this branch.
 | W7 Technical quality | Logo/favicon/OG — verify before preview |
 | W8 Preview + this file | This document; **no live publish** |
 
+## Genericity (addendum)
+
+| Surface | Change |
+|---------|--------|
+| Homepage ICP | Sector-neutral: "financial institutions" / "automated actions" |
+| `/banks` | Banking-specific examples stay here |
+| Engine / packs | Roles, currencies, matrix from `demo.banking` / `demo.insurance` packs only |
+
 ## Before / after claim list
 
 Will be completed when homepage copy PR is ready for founder review.

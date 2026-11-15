@@ -130,7 +130,7 @@ export const PLATFORM_DATA_POINTS = [
 
 /** Who the public homepage speaks to first (Rehan / design-partner clarity). */
 export const HOME_ICP =
-  "For banks, insurers and fintechs. Also for teams running AI agents." as const;
+  "For financial institutions and teams that run automated actions — including AI agents." as const;
 
 /** One concrete scene: plain language, not architecture jargon. */
 export const HOME_WORKFLOW_EXAMPLE = {

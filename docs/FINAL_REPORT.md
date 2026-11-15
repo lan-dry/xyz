@@ -61,7 +61,7 @@ Honesty rule: nothing below is marked done unless implemented and tested. This b
 |------|--------|
 | W0 claim audit | Present in `docs/WEBSITE_CHANGES.md` |
 | W1 claim honesty | Partial (metrics + compliance copy updated) |
-| W2–W6 homepage /banks rewrite | Partial hero copy only |
+| W2–W6 homepage /banks rewrite | Partial hero copy + `/banks` page added (preview only) |
 | W8 no live publish | Honoured |
 
 ---
@@ -122,11 +122,21 @@ See `docs/WEBSITE_CHANGES.md`. Summary: removed unqualified "<5ms"/BYOK hero met
 
 ---
 
+## Genericity (addendum)
+
+| Check | Status |
+|-------|--------|
+| No hard-coded currency/roles in engine | Present — packs only; no default currency |
+| Second tenant insurance E2E | Present — `test/multi-tenant-pack.e2e.test.ts` |
+| Grep for real institution names | Present — `test/no-institution-names.test.ts` (excludes `docs/presentations/`) |
+| Replaceable policy packs | Present — `src/packs/demo/banking`, `demo/insurance`, `template/` |
+| Sector-neutral site wording | Partial — homepage ICP updated; banking detail on `/banks` |
+
 ## Remaining work (do next)
 
-1. Full APS-1 seal on bank decisions (replace provisional hash)
-2. DB-backed `reset` + scenarios 4,5,8,9,10,11
-3. Dual-approver policy publish
-4. OpenAPI + Java/C# clients
+1. Full APS-1 seal on decisions (replace provisional hash)
+2. DB-backed `reset` + live E2E for all 12 scenarios
+3. Dual-approver policy publish HTTP wiring
+4. Generate Java/C# clients from OpenAPI
 5. RFC 3161, notification delivery log, CI secret/SBOM scans
-6. `/banks` page + full homepage W2 structure on preview only
+6. Full homepage W2 FAQ structure on preview only

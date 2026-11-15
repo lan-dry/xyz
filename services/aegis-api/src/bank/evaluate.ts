@@ -131,7 +131,9 @@ export function evaluateBankEvent(input: BankEvalInput): BankEvalResult {
     input.currency ??
     (typeof input.attributes.currency === "string"
       ? input.attributes.currency
-      : "RWF");
+      : undefined);
+  // No engine default currency — matrix match requires an explicit currency
+  // from the event attributes or caller (tenant/pack configuration).
   const risk_tier =
     typeof input.attributes.risk_tier === "string"
       ? input.attributes.risk_tier
@@ -141,6 +143,7 @@ export function evaluateBankEvent(input: BankEvalInput): BankEvalResult {
     input.matrix_rows &&
     input.matrix_rows.length > 0 &&
     product &&
+    currency &&
     amount !== undefined &&
     Number.isFinite(amount)
   ) {

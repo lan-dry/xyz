@@ -1,26 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_RETAIL_LOAN_LADDER,
-  DEFAULT_RETAIL_LOAN_MATRIX,
   matchAuthorityMatrix,
   roleSatisfies,
-  type AuthorityMatrixRow,
 } from "../src/bank/authority-matrix.js";
+import { loadDemoPack, packMatrixRows, packRoles } from "../src/packs/load.js";
 
-function withIds(
-  rows: typeof DEFAULT_RETAIL_LOAN_MATRIX,
-): AuthorityMatrixRow[] {
-  return rows.map((r, i) => ({ ...r, matrix_id: `m${i}` }));
-}
+describe("authority matrix (from demo.banking pack)", () => {
+  const pack = loadDemoPack("banking");
+  const rows = packMatrixRows(pack);
+  const ladder = packRoles(pack);
 
-describe("authority matrix", () => {
-  const rows = withIds(DEFAULT_RETAIL_LOAN_MATRIX);
-  const ladder = DEFAULT_RETAIL_LOAN_LADDER;
+  it("pack is labelled demo_only", () => {
+    expect(pack.demo_only).toBe(true);
+    expect(pack.id).toBe("demo.banking");
+  });
 
-  it("allows retail_loan under 5M RWF (AUTH-RL)", () => {
+  it("allows retail_loan under configured low band", () => {
+    const currency = pack.currencies[0]!;
     const m = matchAuthorityMatrix(
       rows,
-      { product: "retail_loan", amount: 3_000_000, currency: "RWF" },
+      { product: "retail_loan", amount: 3_000_000, currency },
       ladder,
     );
     expect(m?.outcome).toBe("allow");
@@ -28,17 +27,18 @@ describe("authority matrix", () => {
     expect(m?.required_role).toBeNull();
   });
 
-  it("holds 18M for credit_manager", () => {
+  it("holds mid-band for configured role", () => {
+    const currency = pack.currencies[0]!;
     const m = matchAuthorityMatrix(
       rows,
-      { product: "retail_loan", amount: 18_000_000, currency: "RWF" },
+      { product: "retail_loan", amount: 18_000_000, currency },
       ladder,
     );
     expect(m?.outcome).toBe("hold");
     expect(m?.required_role).toBe("credit_manager");
   });
 
-  it("role or-above: manager satisfies credit_officer requirement", () => {
+  it("role or-above from pack ladder", () => {
     expect(roleSatisfies(ladder, "credit_manager", "credit_officer")).toBe(
       true,
     );

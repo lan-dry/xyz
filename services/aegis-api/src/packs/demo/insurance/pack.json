@@ -1,0 +1,87 @@
+{
+  "id": "demo.insurance",
+  "name": "Demo insurance pack (illustrative claims payout)",
+  "demo_only": true,
+  "sector": "insurance",
+  "version": 1,
+  "combine": "all_matching",
+  "currencies": ["USD"],
+  "roles": [
+    { "role_key": "claims_handler", "display_name": "Claims Handler", "level": 10 },
+    { "role_key": "claims_supervisor", "display_name": "Claims Supervisor", "level": 20 },
+    { "role_key": "fraud_analyst", "display_name": "Fraud Analyst", "level": 25 },
+    { "role_key": "chief_claims", "display_name": "Chief Claims Officer", "level": 40 }
+  ],
+  "authority_matrix": [
+    {
+      "matrix_id": "demo_ins_claim_low",
+      "product": "claim_payout",
+      "amount_min": 0,
+      "amount_max": 2500,
+      "currency": "USD",
+      "risk_tier": null,
+      "required_role": null,
+      "outcome": "allow",
+      "rule_code": "CLM-01",
+      "active": true
+    },
+    {
+      "matrix_id": "demo_ins_claim_mid",
+      "product": "claim_payout",
+      "amount_min": 2500,
+      "amount_max": 25000,
+      "currency": "USD",
+      "risk_tier": null,
+      "required_role": "claims_supervisor",
+      "outcome": "hold",
+      "rule_code": "CLM-02",
+      "active": true
+    },
+    {
+      "matrix_id": "demo_ins_claim_high",
+      "product": "claim_payout",
+      "amount_min": 25000,
+      "amount_max": null,
+      "currency": "USD",
+      "risk_tier": null,
+      "required_role": "chief_claims",
+      "outcome": "hold",
+      "rule_code": "CLM-03",
+      "active": true
+    }
+  ],
+  "field_policies": [
+    { "field_path": "claimant.ssn", "mode": "hash" },
+    { "field_path": "medical_notes", "mode": "evaluate_only" }
+  ],
+  "rules": [
+    {
+      "rule_id": "CLM-STAFF",
+      "tool_pattern": "governed.action",
+      "decision": "allow_with_obligation",
+      "priority": 80,
+      "conditions": {
+        "expr": { "eq": ["claimant.is_staff", true] }
+      },
+      "obligations": {
+        "kind": "human_approval",
+        "required_role": "fraud_analyst",
+        "required_fields": ["reason_code", "comment"]
+      }
+    },
+    {
+      "rule_id": "CLM-01",
+      "tool_pattern": "governed.action",
+      "decision": "allow",
+      "priority": 10
+    }
+  ],
+  "workflows": [
+    {
+      "name": "Claim payout",
+      "product": "claim_payout",
+      "record_only": false,
+      "on_unreachable": "hold"
+    }
+  ]
+}

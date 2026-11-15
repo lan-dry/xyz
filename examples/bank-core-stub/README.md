@@ -1,6 +1,8 @@
-# Bank-core stub
+# Example: banking-pack client stub (demo only)
 
-Minimal stand-in for a bank core that submits loan / payment events to Aegis and respects `allow` | `hold` | `stop`.
+Minimal stand-in that submits events shaped for the **demo.banking** policy pack.
+Aegis itself is sector-neutral; this example is banking-specific on purpose.
+Uses `allow` | `hold` | `stop`.
 
 ## Patterns
 

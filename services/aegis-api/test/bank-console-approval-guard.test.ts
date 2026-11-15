@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_RETAIL_LOAN_LADDER } from "../src/bank/authority-matrix.js";
 import {
   evaluateConsoleApprovalAttempt,
   isRequesterFromPayload,
 } from "../src/bank/console-approval-guard.js";
+import { loadDemoPack, packRoles } from "../src/packs/load.js";
 
 describe("console approval guard wiring (no DB)", () => {
-  const ladder = DEFAULT_RETAIL_LOAN_LADDER;
+  const ladder = packRoles(loadDemoPack("banking"));
   const base = {
     actor_membership_id: "mem-1",
-    actor_email: "grace.manager@bank.test",
+    actor_email: "manager@demo.test",
     actor_roles: ["credit_manager"] as string[],
     is_requester: false,
     action: "approve" as const,
@@ -104,14 +104,14 @@ describe("console approval guard wiring (no DB)", () => {
   it("isRequesterFromPayload matches requester_email", () => {
     expect(
       isRequesterFromPayload(
-        { requester_email: "Requester@Bank.Test" },
-        "requester@bank.test",
+        { requester_email: "Requester@Demo.Test" },
+        "requester@demo.test",
       ),
     ).toBe(true);
     expect(
       isRequesterFromPayload(
-        { requester_email: "other@bank.test" },
-        "requester@bank.test",
+        { requester_email: "other@demo.test" },
+        "requester@demo.test",
       ),
     ).toBe(false);
   });

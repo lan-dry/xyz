@@ -225,7 +225,8 @@ export async function upsertBankCase(
   }
 }
 
-export async function seedRetailLoanAuthority(
+/** Apply a policy pack's roles + matrix to a tenant (demo or custom). */
+export async function seedAuthorityFromPack(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
   ladder: BankRole[],
@@ -243,7 +244,7 @@ export async function seedRetailLoanAuthority(
   for (const row of matrix) {
     const id =
       row.matrix_id ??
-      `mtx_${organizationId.slice(0, 8)}_${row.product}_${row.amount_min}`;
+      `mtx_${organizationId.replace(/-/g, "").slice(0, 8)}_${row.product}_${row.amount_min}`;
     await client.query(
       `INSERT INTO authority_matrix (
          matrix_id, organization_id, product, amount_min, amount_max, currency,

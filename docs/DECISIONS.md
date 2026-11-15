@@ -73,6 +73,14 @@ Other obligation kinds must not become `hold`.
 
 ---
 
+## D10 — Genericity: no sector hard-coding in the engine
+
+**Decision:** Authority roles, currencies, products, matrix bands, and field policies come only from tenant configuration or labelled `demo_only` policy packs (`services/aegis-api/src/packs/`). The engine has no default currency or role ladder. Demo packs (`demo.banking`, `demo.insurance`) are illustrative. Real institution names are forbidden on the product surface (enforced by `test/no-institution-names.test.ts`); customer outreach decks under `docs/presentations/` are excluded from that scan.
+
+**Why:** Aegis must serve banking, insurance, and fintech without code changes — configuration and replaceable packs only.
+
+---
+
 ## Later decisions
 
-Add new entries below as D10+ when implementation forces a change from the GO prompt.
+Add new entries below as D11+ when implementation forces a change from the GO prompt.

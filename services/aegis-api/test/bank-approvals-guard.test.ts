@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_RETAIL_LOAN_LADDER } from "../src/bank/authority-matrix.js";
 import { checkApprovalAttempt } from "../src/bank/approvals-guard.js";
+import { loadDemoPack, packRoles } from "../src/packs/load.js";
 
-describe("bank approval guards", () => {
-  const ladder = DEFAULT_RETAIL_LOAN_LADDER;
+describe("approval guards (roles from demo.banking pack)", () => {
+  const ladder = packRoles(loadDemoPack("banking"));
 
-  it("scenario 2: credit_officer refused; credit_manager ok", () => {
+  it("scenario 2: lower role refused; required role ok", () => {
     const refused = checkApprovalAttempt(ladder, {
       actor_membership_id: "m1",
-      actor_email: "jean.officer@bank.test",
+      actor_email: "officer@demo.test",
       actor_roles: ["credit_officer"],
       is_requester: false,
       action: "approve",
@@ -19,7 +19,7 @@ describe("bank approval guards", () => {
 
     const ok = checkApprovalAttempt(ladder, {
       actor_membership_id: "m2",
-      actor_email: "grace.manager@bank.test",
+      actor_email: "manager@demo.test",
       actor_roles: ["credit_manager"],
       is_requester: false,
       action: "approve",
@@ -31,7 +31,7 @@ describe("bank approval guards", () => {
   it("scenario 3: requester refused; reason_code required", () => {
     const self = checkApprovalAttempt(ladder, {
       actor_membership_id: "m1",
-      actor_email: "requester@bank.test",
+      actor_email: "requester@demo.test",
       actor_roles: ["credit_manager"],
       is_requester: true,
       action: "approve",
@@ -43,7 +43,7 @@ describe("bank approval guards", () => {
 
     const noReason = checkApprovalAttempt(ladder, {
       actor_membership_id: "m2",
-      actor_email: "grace.manager@bank.test",
+      actor_email: "manager@demo.test",
       actor_roles: ["credit_manager"],
       is_requester: false,
       action: "approve",
@@ -55,7 +55,7 @@ describe("bank approval guards", () => {
 
     const approved = checkApprovalAttempt(ladder, {
       actor_membership_id: "m2",
-      actor_email: "grace.manager@bank.test",
+      actor_email: "manager@demo.test",
       actor_roles: ["credit_manager"],
       is_requester: false,
       action: "approve",
@@ -70,7 +70,7 @@ describe("bank approval guards", () => {
   it("scenario 6: callback_verified required to approve", () => {
     const bad = checkApprovalAttempt(ladder, {
       actor_membership_id: "m1",
-      actor_email: "ops@bank.test",
+      actor_email: "ops@demo.test",
       actor_roles: ["credit_manager"],
       is_requester: false,
       action: "approve",
@@ -81,10 +81,10 @@ describe("bank approval guards", () => {
     if (!bad.ok) expect(bad.code).toBe("callback_required");
   });
 
-  it("scenario 7: hard stop release needs head_of_compliance + reason", () => {
+  it("scenario 7: hard stop release needs configured high role + reason", () => {
     const manager = checkApprovalAttempt(ladder, {
       actor_membership_id: "m1",
-      actor_email: "grace.manager@bank.test",
+      actor_email: "manager@demo.test",
       actor_roles: ["credit_manager"],
       is_requester: false,
       action: "release",
@@ -94,7 +94,7 @@ describe("bank approval guards", () => {
 
     const noReason = checkApprovalAttempt(ladder, {
       actor_membership_id: "m2",
-      actor_email: "david.headcompliance@bank.test",
+      actor_email: "head@demo.test",
       actor_roles: ["head_of_compliance"],
       is_requester: false,
       action: "release",
@@ -104,7 +104,7 @@ describe("bank approval guards", () => {
 
     const released = checkApprovalAttempt(ladder, {
       actor_membership_id: "m2",
-      actor_email: "david.headcompliance@bank.test",
+      actor_email: "head@demo.test",
       actor_roles: ["head_of_compliance"],
       is_requester: false,
       action: "release",
@@ -119,7 +119,7 @@ describe("bank approval guards", () => {
     for (let i = 0; i < 3; i++) {
       const r = checkApprovalAttempt(ladder, {
         actor_membership_id: "m1",
-        actor_email: "requester@bank.test",
+        actor_email: "requester@demo.test",
         actor_roles: ["credit_manager"],
         is_requester: true,
         action: "approve",

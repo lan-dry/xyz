@@ -6,11 +6,6 @@
  */
 import * as ed from "@noble/ed25519";
 import { evaluateBankEvent } from "../bank/evaluate.js";
-import {
-  DEFAULT_RETAIL_LOAN_LADDER,
-  DEFAULT_RETAIL_LOAN_MATRIX,
-  type AuthorityMatrixRow,
-} from "../bank/authority-matrix.js";
 import { checkApprovalAttempt } from "../bank/approvals-guard.js";
 import {
   applyFieldPolicy,
@@ -29,12 +24,13 @@ import {
   signForensicReceipt,
 } from "../forensic/receipt.js";
 import { verifyForensicBundle } from "../forensic/verify-bundle.js";
+import { loadDemoPack, packMatrixRows, packRoles } from "../packs/load.js";
 
-const matrix: AuthorityMatrixRow[] = DEFAULT_RETAIL_LOAN_MATRIX.map((r, i) => ({
-  ...r,
-  matrix_id: `m${i}`,
-}));
-const ladder = DEFAULT_RETAIL_LOAN_LADDER;
+/** Demo-only banking pack — illustrative; not engine defaults. */
+const bankingPack = loadDemoPack("banking");
+const matrix = packMatrixRows(bankingPack);
+const ladder = packRoles(bankingPack);
+const currency = bankingPack.currencies[0]!;
 
 type ScenarioResult = { id: number; name: string; ok: boolean; detail: string };
 
@@ -55,13 +51,13 @@ function scenario1(): ScenarioResult {
     rules: [
       {
         rule_id: "AUTH-RL",
-        tool_pattern: "bank.loan.decide",
+        tool_pattern: "governed.action",
         decision: "allow",
         priority: 10,
       },
     ],
-    tool_name: "bank.loan.decide",
-    attributes: { amount: 3_000_000, currency: "RWF" },
+    tool_name: "governed.action",
+    attributes: { amount: 3_000_000, currency },
     matrix_rows: matrix,
     ladder,
     product: "retail_loan",
@@ -82,15 +78,15 @@ function scenario2(): ScenarioResult {
     policy_id: "pol_v3",
     combine: "all_matching",
     rules: [],
-    tool_name: "bank.loan.decide",
-    attributes: { amount: 18_000_000, currency: "RWF" },
+    tool_name: "governed.action",
+    attributes: { amount: 18_000_000, currency },
     matrix_rows: matrix,
     ladder,
     product: "retail_loan",
   });
   const officer = checkApprovalAttempt(ladder, {
     actor_membership_id: "m1",
-    actor_email: "jean.officer@bank.test",
+    actor_email: "officer@demo.test",
     actor_roles: ["credit_officer"],
     is_requester: false,
     action: "approve",
@@ -98,7 +94,7 @@ function scenario2(): ScenarioResult {
   });
   const manager = checkApprovalAttempt(ladder, {
     actor_membership_id: "m2",
-    actor_email: "grace.manager@bank.test",
+    actor_email: "manager@demo.test",
     actor_roles: ["credit_manager"],
     is_requester: false,
     action: "approve",
@@ -124,7 +120,7 @@ function scenario3(): ScenarioResult {
     rules: [
       {
         rule_id: "LN-07",
-        tool_pattern: "bank.loan.decide",
+        tool_pattern: "governed.action",
         decision: "allow_with_obligation",
         priority: 50,
         obligations: { kind: "human_approval", required_role: "credit_manager" },
@@ -133,10 +129,10 @@ function scenario3(): ScenarioResult {
         },
       },
     ],
-    tool_name: "bank.loan.decide",
+    tool_name: "governed.action",
     attributes: {
       amount: 12_000_000,
-      currency: "RWF",
+      currency,
       model: {
         id: "risk-v2",
         version: "2.1",
@@ -150,7 +146,7 @@ function scenario3(): ScenarioResult {
   });
   const self = checkApprovalAttempt(ladder, {
     actor_membership_id: "m1",
-    actor_email: "requester@bank.test",
+    actor_email: "requester@demo.test",
     actor_roles: ["credit_manager"],
     is_requester: true,
     action: "approve",
@@ -159,7 +155,7 @@ function scenario3(): ScenarioResult {
   });
   const noReason = checkApprovalAttempt(ladder, {
     actor_membership_id: "m2",
-    actor_email: "grace.manager@bank.test",
+    actor_email: "manager@demo.test",
     actor_roles: ["credit_manager"],
     is_requester: false,
     action: "approve",
@@ -169,7 +165,7 @@ function scenario3(): ScenarioResult {
   });
   const okApprove = checkApprovalAttempt(ladder, {
     actor_membership_id: "m2",
-    actor_email: "grace.manager@bank.test",
+    actor_email: "manager@demo.test",
     actor_roles: ["credit_manager"],
     is_requester: false,
     action: "approve",
@@ -195,7 +191,7 @@ function scenario3(): ScenarioResult {
 function scenario6(): ScenarioResult {
   const bad = checkApprovalAttempt(ladder, {
     actor_membership_id: "m1",
-    actor_email: "ops@bank.test",
+    actor_email: "ops@demo.test",
     actor_roles: ["credit_manager"],
     is_requester: false,
     action: "approve",
@@ -204,7 +200,7 @@ function scenario6(): ScenarioResult {
   });
   const reject = checkApprovalAttempt(ladder, {
     actor_membership_id: "m1",
-    actor_email: "ops@bank.test",
+    actor_email: "ops@demo.test",
     actor_roles: ["credit_manager"],
     is_requester: false,
     action: "reject",
@@ -223,7 +219,7 @@ function scenario6(): ScenarioResult {
 function scenario7(): ScenarioResult {
   const manager = checkApprovalAttempt(ladder, {
     actor_membership_id: "m1",
-    actor_email: "grace.manager@bank.test",
+    actor_email: "manager@demo.test",
     actor_roles: ["credit_manager"],
     is_requester: false,
     action: "release",
@@ -231,7 +227,7 @@ function scenario7(): ScenarioResult {
   });
   const headNoReason = checkApprovalAttempt(ladder, {
     actor_membership_id: "m2",
-    actor_email: "david.headcompliance@bank.test",
+    actor_email: "head@demo.test",
     actor_roles: ["head_of_compliance"],
     is_requester: false,
     action: "release",
@@ -239,7 +235,7 @@ function scenario7(): ScenarioResult {
   });
   const released = checkApprovalAttempt(ladder, {
     actor_membership_id: "m2",
-    actor_email: "david.headcompliance@bank.test",
+    actor_email: "head@demo.test",
     actor_roles: ["head_of_compliance"],
     is_requester: false,
     action: "release",
@@ -257,7 +253,7 @@ function scenario7(): ScenarioResult {
 function scenario4(): ScenarioResult {
   const manager = checkApprovalAttempt(ladder, {
     actor_membership_id: "m1",
-    actor_email: "grace.manager@bank.test",
+    actor_email: "manager@demo.test",
     actor_roles: ["credit_manager"],
     is_requester: false,
     action: "approve",
@@ -265,7 +261,7 @@ function scenario4(): ScenarioResult {
   });
   const complianceReject = checkApprovalAttempt(ladder, {
     actor_membership_id: "m2",
-    actor_email: "comp@bank.test",
+    actor_email: "comp@demo.test",
     actor_roles: ["compliance_officer"],
     is_requester: false,
     action: "reject",
@@ -289,7 +285,7 @@ function scenario5(): ScenarioResult {
   for (let i = 0; i < 3; i++) {
     const r = checkApprovalAttempt(ladder, {
       actor_membership_id: "m1",
-      actor_email: "requester@bank.test",
+      actor_email: "requester@demo.test",
       actor_roles: ["credit_manager"],
       is_requester: true,
       action: "approve",
@@ -318,7 +314,7 @@ function scenario8(): ScenarioResult {
   const leaks = findLeakedClearValues(hay, [nationalId]);
   const hold = checkApprovalAttempt(ladder, {
     actor_membership_id: "m1",
-    actor_email: "patrick.dpo@bank.test",
+    actor_email: "dpo@demo.test",
     actor_roles: ["dpo"],
     is_requester: false,
     action: "approve",
@@ -343,7 +339,7 @@ function scenario9(): ScenarioResult {
     rules: [
       {
         rule_id: "AUTH-RL",
-        tool_pattern: "bank.loan.decide",
+        tool_pattern: "governed.action",
         decision: "allow",
         priority: 10,
       },
@@ -356,7 +352,7 @@ function scenario9(): ScenarioResult {
       ...v3.rules,
       {
         rule_id: "AUTH-RL-V4",
-        tool_pattern: "bank.loan.decide",
+        tool_pattern: "governed.action",
         decision: "allow_with_obligation",
         priority: 20,
       },
@@ -375,8 +371,8 @@ function scenario9(): ScenarioResult {
     policy_id: "pol",
     combine: "all_matching",
     rules: v4.rules.map((r) => ({ ...r, policy_id: "pol" })),
-    tool_name: "bank.loan.decide",
-    attributes: { amount: 18_000_000, currency: "RWF" },
+    tool_name: "governed.action",
+    attributes: { amount: 18_000_000, currency },
     matrix_rows: matrix,
     ladder,
     product: "retail_loan",
@@ -406,7 +402,7 @@ function scenario10(): ScenarioResult {
     const expired = nowMs() - t0 >= 1441 * 60 * 1000;
     const deputy = checkApprovalAttempt(ladder, {
       actor_membership_id: "m_dep",
-      actor_email: "deputy@bank.test",
+      actor_email: "deputy@demo.test",
       actor_roles: ["credit_manager"],
       is_requester: false,
       action: "approve",

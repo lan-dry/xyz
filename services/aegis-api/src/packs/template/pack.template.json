@@ -1,0 +1,44 @@
+{
+  "id": "custom.your_sector",
+  "name": "Replace with your pack name",
+  "demo_only": false,
+  "sector": "custom",
+  "version": 1,
+  "combine": "all_matching",
+  "currencies": ["USD"],
+  "roles": [
+    { "role_key": "operator", "display_name": "Operator", "level": 10 },
+    { "role_key": "supervisor", "display_name": "Supervisor", "level": 20 }
+  ],
+  "authority_matrix": [
+    {
+      "matrix_id": "custom_product_low",
+      "product": "your_product",
+      "amount_min": 0,
+      "amount_max": 1000,
+      "currency": "USD",
+      "risk_tier": null,
+      "required_role": null,
+      "outcome": "allow",
+      "rule_code": "RULE-01",
+      "active": true
+    }
+  ],
+  "field_policies": [],
+  "rules": [
+    {
+      "rule_id": "RULE-01",
+      "tool_pattern": "governed.action",
+      "decision": "allow",
+      "priority": 10
+    }
+  ],
+  "workflows": [
+    {
+      "name": "Your workflow",
+      "product": "your_product",
+      "record_only": true,
+      "on_unreachable": "hold"
+    }
+  ]
+}
