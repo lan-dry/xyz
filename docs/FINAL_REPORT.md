@@ -2,9 +2,10 @@
 
 **Branch:** `forensic-demo-readiness`  
 **Baseline tag:** `pre-forensic-demo`  
-**Date:** 2026-11-15  
+**Last verified:** 2026-11-15  
 **Honesty rule:** Status is Present / Done only when implemented and tested. This branch must not deploy to salanor.com.  
-**Keep in sync with:** `docs/GAP_REPORT.md`, `docs/DEMO.md`.
+**Keep in sync with:** `docs/GAP_REPORT.md`, `docs/DEMO.md`, `docs/WEBSITE_CHANGES.md`.  
+**Commits this finish pass:** `410202f` (T1), `55795c4` (T2–T4 docs/website).
 
 ---
 
@@ -26,8 +27,9 @@ Demo endpoint `POST /v1/aegis/demo/scenarios/run` requires `AEGIS_DEMO_MODE=true
 |---------|--------|
 | `pnpm scenario:run` | In-process fixtures in `scenario-runners.ts` |
 | `pnpm --filter aegis-api scenario:live` | Live HTTP demo endpoint; intake seals for 1–3, 8 |
-| `… scenario:live -- --approvals=http` | Same + real authenticated approval path for **2, 3, 4, 6, 7** |
-| `pnpm --filter aegis-api export:scenario-bundles` | Export DB receipts for 1–3, 8 → verify → tamper fails |
+| `… scenario:live -- --approvals=http` | Same + real authenticated path for **2–7, 5, 9–12** |
+| `pnpm demo:up` / `pnpm demo:rehearse` | One-command demo + headless DEMO.md sequence |
+| `pnpm --filter aegis-api export:scenario-bundles` | Export DB receipts (all receipt scenarios + chain-5) → verify → tamper fails |
 
 ---
 
@@ -196,24 +198,81 @@ See also `docs/WEBSITE_CHANGES.md`. **No live publish from this branch.**
 
 ---
 
-## 8. Stubs (remain labelled)
+## 8. Stubs / partial (honest)
 
 | Surface | Label |
 |---------|--------|
-| Console `/aegis/reports` | **Stub** |
-| Canned report API | `stub: true` / `X-Report-Stub` |
-| `examples/bank-core-stub` | Demo stub |
-| AWS KMS Sign / prod TSA | Incomplete / local test |
+| Console `/aegis/reports` | **Real canned CSV + filters** (stub label removed) |
+| `examples/bank-core-stub` | Demo stub (intentional) |
+| AWS KMS Sign / prod TSA | Present when creds/`AEGIS_TSA_URL` set; local TSA for tests |
+| `docs/screens/*.png` | Capture checklist only — operator must screenshot |
+| ledger-sdk / id / insurance per-test table | Run `node tools/scripts/baseline-suite-compare.mjs` |
+| French UI | Machine-translated — needs native review (`docs/I18N.md`) |
+| Website live publish | **Not done** (by design) |
 
 ---
 
-## 9. Commands
+## 9. Finish-pass status (tiers 1–4)
+
+| Item | Status | Reproduce |
+|------|--------|-----------|
+| 1.1 Live sealed receipts 2–12 | **Done** (code + unit/integration); live HTTP E2E for 2–7 proven earlier; 5/9–12 via extended runners | `scenario:live -- --approvals=http` |
+| 1.2 demo:up / demo:rehearse | **Done** | `AEGIS_DEMO_APPROVAL_PASSWORD=… pnpm demo:up` then `pnpm demo:rehearse` |
+| 1.3 escalate + delegation | **Done** | scenario 10 HTTP + `escalate-to-role.test.ts` |
+| 1.4 Console polish | **Partial** — reports real; screens PNG pending capture | Console + `docs/screens/README.md` |
+| 1.5 Provisional receipts | **Done** | `flags.provisional` + UI badge + pack:apply warn |
+| 1.6 Docs sync | **Done** | `pnpm docs:status-agree` |
+| 2.1 ledger/id/insurance table | **Partial** — checklist script; needs fresh-DB operator run | `baseline-suite-compare.mjs` |
+| 2.1 aegis-api totals | **Done** | **211 passed / 1 skipped** on fresh `:5443` |
+| 2.1 upgrade migrate | **Partial** — script present | `tsx tools/scripts/upgrade-migrate-check.mts` |
+| 2.2 Route matrix | **Done** | `console-route-auth-matrix.test.ts` + `route-inventory.ts` |
+| 2.3 OIDC mapping | **Done** (prior + tests) | `oidc-claim-mapper.test.ts` |
+| 2.4 Backup/restore | **Done** tooling | `pnpm backup` / `pnpm restore` / `backup-restore-drill` (needs `pg_dump`) |
+| 2.5 Webhook retry | **Done** | `webhook-retry.test.ts` |
+| 2.6 Notifications | **Partial** — mocks done; real delivery needs creds | `docs/NOTIFICATIONS_STAGING.md` |
+| 2.7 Key custody AWS KMS | **Partial** — provider + prod refuse local file | `key-provider-managed.test.ts` |
+| 2.8 RFC 3161 TSA | **Partial** — client + local test TSA | `AEGIS_TSA_URL` + `docs/AEGIS_TSA_AND_KMS.md` |
+| 2.9 Operability | **Partial** | `docs/OPERABILITY.md` |
+| 3.1 Java/C# clients | **Partial** — container generate + CI smoke scripts | `pnpm generate:openapi-clients` |
+| 3.2 i18n + FR | **Partial** | `docs/I18N.md` |
+| 3.3 Performance | **Partial** — load-test script; re-run for before/after | `tools/bench/load-test.mts` |
+| 3.4 Release notes | **Done** (no merge) | `docs/RELEASE_NOTES.md` |
+| 4 Website W2–W8 preview | **Done** on branch; **not published** | `docs/WEBSITE_CHANGES.md` |
+
+### Needs your credentials / decision
+
+- `AEGIS_DEMO_APPROVAL_PASSWORD` for demo:up (no default)
+- Resend / Teams for `NOTIFICATIONS_STAGING.md`
+- Real production TSA URL + cert chain
+- AWS KMS credentials for live Sign proof
+- Founder approval before any website publish
+- Operator capture of `docs/screens/*.png`
+- Fresh-DB baseline table for ledger-sdk / id / insurance (`baseline-suite-compare.mjs`)
+
+### Do not say in a demo or on the website
+
+- Absolute `<5ms` or millisecond SLAs
+- Unqualified BYOK / FedRAMP / HIPAA as available
+- “Certified” for SOC 2 / EU AI Act (mapping only)
+- That every scenario was always sealed historically (use `receipt_kind` from the live runner)
+
+---
+
+## 10. Commands
 
 ```powershell
+$env:AEGIS_DEMO_APPROVAL_PASSWORD="<secret-min-10>"
+$env:AEGIS_DEMO_MODE="true"
+pnpm demo:up
+pnpm demo:rehearse
 pnpm scenario:run
 $env:AEGIS_INGEST_KEY=$env:AEGIS_INGEST_DEV_KEY
-pnpm --filter aegis-api scenario:live
 pnpm --filter aegis-api scenario:live -- --approvals=http
+pnpm --filter aegis-api export:scenario-bundles
+pnpm docs:status-agree
+pnpm --filter aegis-api test   # last: 211 passed, 1 skipped
+pnpm --filter aegis-api lint
 $env:BENCH_N="1000"; $env:BENCH_CONCURRENCY="20"
 pnpm tsx tools/bench/load-test.mts
 ```
+
