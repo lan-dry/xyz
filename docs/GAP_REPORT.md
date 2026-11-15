@@ -152,7 +152,7 @@ Corrected after implementation pass (explore inventory of “Missing” for esca
 | Time-bound delegation | **Present** — `approval_delegate` + migration 016 |
 | Hard-stop release HTTP | **Present** — `POST …/approvals/:id/release` |
 | `--approvals=http` 2–7,5,9–12 | **Present** — extended live runners; rehearse via `pnpm demo:rehearse` |
-| `demo:up` / `demo:rehearse` | **Present** — `pnpm demo:up`, `pnpm demo:rehearse` (password env required) |
+| `demo:up` / `demo:rehearse` | **Present** — `pnpm demo:up`, `pnpm demo:rehearse`; `AEGIS_DEMO_APPROVAL_PASSWORD` required (no default) |
 | Bundle export + chain-5 + verify/tamper | **Present** — `export:scenario-bundles` (all receipt scenarios + chain-5) |
 | Provisional receipt badge | **Present** — API `flags.provisional` + console sealed/provisional badge |
 | Policy diff endpoint | **Present** — `GET /v1/console/policies/:id/diff?against=` |
