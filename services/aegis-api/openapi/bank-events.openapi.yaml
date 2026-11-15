@@ -1,0 +1,150 @@
+openapi: 3.0.3
+info:
+  title: Aegis Bank Event API
+  version: 0.1.0
+  description: >
+    Bank-facing event intake and decision response.
+    Outcomes at the API boundary are allow | hold | stop.
+servers:
+  - url: https://api.example.local/v1/aegis
+    description: Replace with your Aegis base URL
+paths:
+  /bank/events:
+    post:
+      operationId: postBankEvent
+      summary: Submit a bank event for policy evaluation
+      security:
+        - ingestBearer: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankEvent"
+      responses:
+        "200":
+          description: Decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankDecisionResponse"
+        "400":
+          description: Malformed bank event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Missing or invalid API key
+components:
+  securitySchemes:
+    ingestBearer:
+      type: http
+      scheme: bearer
+  schemas:
+    BankEvent:
+      type: object
+      required:
+        - schema_version
+        - case_id
+        - idempotency_key
+        - event_type
+        - emitted_at
+        - attributes
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        case_id:
+          type: string
+        idempotency_key:
+          type: string
+        event_type:
+          type: string
+        product:
+          type: string
+        workflow_id:
+          type: string
+        emitted_at:
+          type: string
+          format: date-time
+        attributes:
+          type: object
+          additionalProperties: true
+    BankDecisionResponse:
+      type: object
+      required:
+        - case_id
+        - decision_id
+        - receipt_id
+        - outcome
+        - mode
+      properties:
+        case_id:
+          type: string
+        decision_id:
+          type: string
+        receipt_id:
+          type: string
+        outcome:
+          type: string
+          enum: [allow, hold, stop]
+        mode:
+          type: string
+          enum: [enforce, record_only]
+        would_have:
+          type: string
+          enum: [allow, hold, stop]
+        matched_rules:
+          type: array
+          items:
+            type: object
+        policy:
+          type: object
+        approval:
+          type: object
+          nullable: true
+        event_id:
+          type: string
+          nullable: true
+        event_hash:
+          type: string
+          nullable: true
+        sequence_num:
+          type: integer
+          nullable: true
+        flags:
+          type: object
+          properties:
+            demo_clock:
+              type: boolean
+            decided_without_aegis:
+              type: boolean
+    ValidationError:
+      type: object
+      required: [error, code, message]
+      properties:
+        error:
+          type: string
+          enum: [validation_error]
+        code:
+          type: string
+        message:
+          type: string
+        fields:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              code:
+                type: string
+              message:
+                type: string

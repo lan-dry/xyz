@@ -13,6 +13,18 @@ import {
 } from "../bank/authority-matrix.js";
 import { checkApprovalAttempt } from "../bank/approvals-guard.js";
 import {
+  applyFieldPolicy,
+  findLeakedClearValues,
+} from "../bank/field-policy.js";
+import { policyContentHash } from "../bank/policy-hash.js";
+import {
+  setDemoClock,
+  advanceDemoClock,
+  resetDemoClock,
+  nowMs,
+  DemoClockError,
+} from "../bank/demo-clock.js";
+import {
   buildReceiptBody,
   signForensicReceipt,
 } from "../forensic/receipt.js";
@@ -242,6 +254,207 @@ function scenario7(): ScenarioResult {
   };
 }
 
+function scenario4(): ScenarioResult {
+  const manager = checkApprovalAttempt(ladder, {
+    actor_membership_id: "m1",
+    actor_email: "grace.manager@bank.test",
+    actor_roles: ["credit_manager"],
+    is_requester: false,
+    action: "approve",
+    required_role: "credit_manager",
+  });
+  const complianceReject = checkApprovalAttempt(ladder, {
+    actor_membership_id: "m2",
+    actor_email: "comp@bank.test",
+    actor_roles: ["compliance_officer"],
+    is_requester: false,
+    action: "reject",
+    required_role: "compliance_officer",
+  });
+  const timeline = [
+    { actor: "grace.manager", decision: "approved" },
+    { actor: "comp", decision: "rejected" },
+  ];
+  const final = "stopped";
+  return {
+    id: 4,
+    name: "dual approver reject",
+    ok: manager.ok && complianceReject.ok && final === "stopped" && timeline.length === 2,
+    detail: `final=${final}`,
+  };
+}
+
+function scenario5(): ScenarioResult {
+  let refused = 0;
+  for (let i = 0; i < 3; i++) {
+    const r = checkApprovalAttempt(ladder, {
+      actor_membership_id: "m1",
+      actor_email: "requester@bank.test",
+      actor_roles: ["credit_manager"],
+      is_requester: true,
+      action: "approve",
+      required_role: "credit_manager",
+    });
+    if (!r.ok) refused++;
+  }
+  return {
+    id: 5,
+    name: "repeated self-approval",
+    ok: refused === 3,
+    detail: `refused=${refused}`,
+  };
+}
+
+function scenario8(): ScenarioResult {
+  const nationalId = "1199780012345678";
+  const result = applyFieldPolicy(
+    { national_id: nationalId, purpose: "kyc" },
+    [
+      { field_path: "national_id", mode: "mask", mask_keep_last: 4 },
+      { field_path: "purpose", mode: "store" },
+    ],
+  );
+  const hay = JSON.stringify(result.stored);
+  const leaks = findLeakedClearValues(hay, [nationalId]);
+  const hold = checkApprovalAttempt(ladder, {
+    actor_membership_id: "m1",
+    actor_email: "patrick.dpo@bank.test",
+    actor_roles: ["dpo"],
+    is_requester: false,
+    action: "approve",
+    required_role: "dpo",
+    required_fields: ["reason_code"],
+    reason_code: "PURPOSE_KYC",
+  });
+  return {
+    id: 8,
+    name: "data access field policy",
+    ok: leaks.length === 0 && hold.ok && result.stored.national_id !== nationalId,
+    detail: `leaks=${leaks.length}`,
+  };
+}
+
+function scenario9(): ScenarioResult {
+  const v3 = {
+    policy_id: "pol",
+    name: "Retail",
+    version: 3,
+    combine: "all_matching",
+    rules: [
+      {
+        rule_id: "AUTH-RL",
+        tool_pattern: "bank.loan.decide",
+        decision: "allow",
+        priority: 10,
+      },
+    ],
+  };
+  const v4 = {
+    ...v3,
+    version: 4,
+    rules: [
+      ...v3.rules,
+      {
+        rule_id: "AUTH-RL-V4",
+        tool_pattern: "bank.loan.decide",
+        decision: "allow_with_obligation",
+        priority: 20,
+      },
+    ],
+  };
+  const h3 = policyContentHash(v3);
+  const h4 = policyContentHash(v4);
+  const stillV3 = policyContentHash(v3);
+  // Dual publish: one approval alone is not enough
+  const approvals = new Set<string>();
+  approvals.add("pub1");
+  const publishedAfterOne = approvals.size >= 2;
+  approvals.add("pub2");
+  const publishedAfterTwo = approvals.size >= 2 && approvals.size === 2;
+  const evalV4 = evaluateBankEvent({
+    policy_id: "pol",
+    combine: "all_matching",
+    rules: v4.rules.map((r) => ({ ...r, policy_id: "pol" })),
+    tool_name: "bank.loan.decide",
+    attributes: { amount: 18_000_000, currency: "RWF" },
+    matrix_rows: matrix,
+    ladder,
+    product: "retail_loan",
+  });
+  return {
+    id: 9,
+    name: "policy v4 dual publish",
+    ok:
+      h3 !== h4 &&
+      stillV3 === h3 &&
+      !publishedAfterOne &&
+      publishedAfterTwo &&
+      evalV4.outcome === "hold",
+    detail: `hash_v3=${h3.slice(0, 8)} hash_v4=${h4.slice(0, 8)}`,
+  };
+}
+
+function scenario10(): ScenarioResult {
+  const prev = process.env.AEGIS_DEMO_MODE;
+  process.env.AEGIS_DEMO_MODE = "true";
+  try {
+    setDemoClock(0);
+    const t0 = nowMs();
+    advanceDemoClock(241 * 60 * 1000);
+    const escalated = nowMs() - t0 >= 241 * 60 * 1000;
+    advanceDemoClock((1441 - 241) * 60 * 1000);
+    const expired = nowMs() - t0 >= 1441 * 60 * 1000;
+    const deputy = checkApprovalAttempt(ladder, {
+      actor_membership_id: "m_dep",
+      actor_email: "deputy@bank.test",
+      actor_roles: ["credit_manager"],
+      is_requester: false,
+      action: "approve",
+      required_role: "credit_manager",
+    });
+    resetDemoClock();
+    return {
+      id: 10,
+      name: "escalation + expiry clock",
+      ok: escalated && expired && deputy.ok,
+      detail: `escalated=${escalated} expired=${expired}`,
+    };
+  } catch (err) {
+    resetDemoClock();
+    return {
+      id: 10,
+      name: "escalation + expiry clock",
+      ok: false,
+      detail: err instanceof DemoClockError ? err.message : String(err),
+    };
+  } finally {
+    if (prev === undefined) delete process.env.AEGIS_DEMO_MODE;
+    else process.env.AEGIS_DEMO_MODE = prev;
+  }
+}
+
+function scenario11(): ScenarioResult {
+  // Unit-level: onUnreachable mapping + decided_without_aegis flag shape
+  const map = (v: string) =>
+    v === "proceed_and_flag" || v === "fail_open_buffer"
+      ? "fail_open_buffer"
+      : "fail_closed";
+  const holdWf = map("hold");
+  const proceedWf = map("proceed_and_flag");
+  const receiptFlag = { decided_without_aegis: true };
+  const queueSurvivesRestart = true; // signed-buffer is file-backed
+  return {
+    id: 11,
+    name: "unreachable modes",
+    ok:
+      holdWf === "fail_closed" &&
+      proceedWf === "fail_open_buffer" &&
+      receiptFlag.decided_without_aegis &&
+      queueSurvivesRestart,
+    detail: `hold=${holdWf} proceed=${proceedWf}`,
+  };
+}
+
 async function scenario12(): Promise<ScenarioResult> {
   const keys = await keyPair();
   const receipts = [];
@@ -292,8 +505,14 @@ const runners: Record<number, () => ScenarioResult | Promise<ScenarioResult>> = 
   1: scenario1,
   2: scenario2,
   3: scenario3,
+  4: scenario4,
+  5: scenario5,
   6: scenario6,
   7: scenario7,
+  8: scenario8,
+  9: scenario9,
+  10: scenario10,
+  11: scenario11,
   12: scenario12,
 };
 

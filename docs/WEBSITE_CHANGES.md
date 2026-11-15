@@ -27,7 +27,7 @@ Status: **Awaiting founder approval of copy.** No live deploy from this branch.
 | W1 Claims change | In progress on branch (marketing-content / home-sections) |
 | W2 Homepage structure | Planned rewrite; preview only |
 | W3 Jargon off first screen | Planned with W2 |
-| W4 `/banks` page | Not created yet |
+| W4 `/banks` page | Added at `apps/web-marketing/src/app/banks/page.tsx` (preview only) |
 | W5 About / trust basics | Partial |
 | W6 Writing style | Applies to all new copy |
 | W7 Technical quality | Logo/favicon/OG — verify before preview |

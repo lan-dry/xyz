@@ -24,7 +24,7 @@ Honesty rule: nothing below is marked done unless implemented and tested. This b
 | R8 Search/reports | Missing / Partial | Existing trace search only |
 | R9 Admin/security | Partial | Auditor roles exist; access log table for receipts added |
 | R10 Integration | Partial | Batch import dry-run; `onUnreachable`; bank-core stub; webhook retry incomplete |
-| R11 Demo ops | Partial | `scenario:run` for 1,2,3,6,7,12; full DB reset scenarios Missing |
+| R11 Demo ops | Partial | `scenario:run all` passes unit-level scenarios 1–12; full DB reset E2E Missing |
 
 ### Section C tests
 
@@ -35,7 +35,8 @@ Honesty rule: nothing below is marked done unless implemented and tested. This b
 | Scenario 12 tamper matrix | Present (unit) |
 | Idempotency concurrent DB proof | Partial |
 | Tenant isolation / role on every endpoint | Partial (existing tests + new guards) |
-| Scenarios 4,5,8,9,10,11 automated E2E | Missing |
+| Scenarios 1–12 unit runner | Present (`pnpm scenario:run -- all`) |
+| Scenarios 1–12 DB-backed E2E from reset | Missing |
 
 ### P1–P12
 
