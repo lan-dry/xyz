@@ -86,127 +86,144 @@ export async function persistSignedEvent(
 
   const eventHash = digestHex(event as Record<string, unknown>, event.key_id);
 
-  const chainRow = await client.query<{
-    sequence_num: string;
-    event_hash: string;
-  }>(
-    `SELECT sequence_num, event_hash FROM event
-     WHERE organization_id = $1 AND agent_id = $2
-     ORDER BY sequence_num DESC LIMIT 1`,
-    [event.organization_id, event.agent_id],
-  );
-
-  const prev = chainRow.rows[0];
-  const sequenceNum = prev ? Number(prev.sequence_num) + 1 : 1;
-  const prevEventHash = prev?.event_hash ?? null;
-
-  let chainValid = true;
-  if (prev && prevEventHash) {
-    chainValid = true;
-  }
-
-  await client.query(
-    `INSERT INTO trace (trace_id, organization_id, agent_id, started_at, status)
-     VALUES ($1, $2, $3, $4::timestamptz, 'running')
-     ON CONFLICT (trace_id) DO NOTHING`,
-    [event.trace_id, event.organization_id, event.agent_id, event.emitted_at],
-  );
-
-  const spanId = await ensureSpanForEvent(client, event);
-
-  await client.query(
-    `INSERT INTO event (
-       event_id,
-       organization_id,
-       trace_id,
-       span_id,
-       parent_event_id,
-       agent_id,
-       key_id,
-       policy_id,
-       schema_version,
-       sequence_num,
-       prev_event_hash,
-       event_hash,
-       actor_type,
-       actor_principal,
-       action_kind,
-       tool_name,
-       args_hash,
-       args_redacted,
-       policy_decision,
-       policy_obligations,
-       result_status,
-       output_hash,
-       sig_alg,
-       sig_value_b64,
-       chain_valid,
-       payload,
-       emitted_at
-     ) VALUES (
-       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-       $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-       $22, $23, $24, $25, $26, $27::timestamptz
-     )`,
-    [
-      event.event_id,
-      event.organization_id,
-      event.trace_id,
-      spanId ?? resolveSpanId(event),
-      event.parent_event_id ?? null,
-      event.agent_id,
-      event.key_id,
-      event.policy_id && event.policy_id !== "none" ? event.policy_id : null,
-      event.schema_version,
-      sequenceNum,
-      prevEventHash,
-      eventHash,
-      event.actor_type,
-      event.actor_principal,
-      event.action_kind,
-      event.tool_name ?? null,
-      event.args_hash ?? null,
-      event.args_redacted ? JSON.stringify(event.args_redacted) : null,
-      event.policy_decision,
-      event.policy_obligations
-        ? JSON.stringify(event.policy_obligations)
-        : null,
-      event.result_status ?? null,
-      event.output_hash ?? null,
-      event.sig_alg,
-      event.sig_value_b64,
-      chainValid,
-      JSON.stringify(event.payload),
-      event.emitted_at,
-    ],
-  );
-
-  if (idempotencyKey) {
+  // Hold advisory lock through INSERT so concurrent seals cannot allocate the
+  // same (organization_id, agent_id, sequence_num). FOR UPDATE alone is a no-op
+  // under autocommit; bank-events also wraps in BEGIN for belt-and-suspenders.
+  await client.query(`SELECT pg_advisory_lock(hashtext($1), hashtext($2))`, [
+    event.organization_id,
+    event.agent_id,
+  ]);
+  try {
     await client.query(
-      `INSERT INTO idempotency_record (organization_id, idempotency_key, event_id)
-       VALUES ($1, $2, $3)`,
-      [event.organization_id, idempotencyKey, event.event_id],
+      `SELECT agent_id FROM agent
+       WHERE agent_id = $1 AND organization_id = $2
+       FOR UPDATE`,
+      [event.agent_id, event.organization_id],
     );
+
+    const chainRow = await client.query<{
+      sequence_num: string;
+      event_hash: string;
+    }>(
+      `SELECT sequence_num, event_hash FROM event
+       WHERE organization_id = $1 AND agent_id = $2
+       ORDER BY sequence_num DESC LIMIT 1`,
+      [event.organization_id, event.agent_id],
+    );
+
+    const prev = chainRow.rows[0];
+    const sequenceNum = prev ? Number(prev.sequence_num) + 1 : 1;
+    const prevEventHash = prev?.event_hash ?? null;
+    const chainValid = true;
+
+    await client.query(
+      `INSERT INTO trace (trace_id, organization_id, agent_id, started_at, status)
+       VALUES ($1, $2, $3, $4::timestamptz, 'running')
+       ON CONFLICT (trace_id) DO NOTHING`,
+      [event.trace_id, event.organization_id, event.agent_id, event.emitted_at],
+    );
+
+    const spanId = await ensureSpanForEvent(client, event);
+
+    await client.query(
+      `INSERT INTO event (
+         event_id,
+         organization_id,
+         trace_id,
+         span_id,
+         parent_event_id,
+         agent_id,
+         key_id,
+         policy_id,
+         schema_version,
+         sequence_num,
+         prev_event_hash,
+         event_hash,
+         actor_type,
+         actor_principal,
+         action_kind,
+         tool_name,
+         args_hash,
+         args_redacted,
+         policy_decision,
+         policy_obligations,
+         result_status,
+         output_hash,
+         sig_alg,
+         sig_value_b64,
+         chain_valid,
+         payload,
+         emitted_at
+       ) VALUES (
+         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+         $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
+         $22, $23, $24, $25, $26, $27::timestamptz
+       )`,
+      [
+        event.event_id,
+        event.organization_id,
+        event.trace_id,
+        spanId ?? resolveSpanId(event),
+        event.parent_event_id ?? null,
+        event.agent_id,
+        event.key_id,
+        event.policy_id && event.policy_id !== "none" ? event.policy_id : null,
+        event.schema_version,
+        sequenceNum,
+        prevEventHash,
+        eventHash,
+        event.actor_type,
+        event.actor_principal,
+        event.action_kind,
+        event.tool_name ?? null,
+        event.args_hash ?? null,
+        event.args_redacted ? JSON.stringify(event.args_redacted) : null,
+        event.policy_decision,
+        event.policy_obligations
+          ? JSON.stringify(event.policy_obligations)
+          : null,
+        event.result_status ?? null,
+        event.output_hash ?? null,
+        event.sig_alg,
+        event.sig_value_b64,
+        chainValid,
+        JSON.stringify(event.payload),
+        event.emitted_at,
+      ],
+    );
+
+    if (idempotencyKey) {
+      await client.query(
+        `INSERT INTO idempotency_record (organization_id, idempotency_key, event_id)
+         VALUES ($1, $2, $3)`,
+        [event.organization_id, idempotencyKey, event.event_id],
+      );
+    }
+
+    await client.query(
+      `UPDATE trace
+       SET root_event_id = $1
+       WHERE trace_id = $2
+         AND organization_id = $3
+         AND root_event_id IS NULL`,
+      [event.event_id, event.trace_id, event.organization_id],
+    );
+
+    if (event.tool_name === "aegis.trace.complete") {
+      await completeTrace(client, event.organization_id, event.trace_id);
+    }
+
+    return {
+      eventId: event.event_id,
+      sequenceNum,
+      eventHash,
+      chainValid,
+      replayed: false,
+    };
+  } finally {
+    await client.query(`SELECT pg_advisory_unlock(hashtext($1), hashtext($2))`, [
+      event.organization_id,
+      event.agent_id,
+    ]);
   }
-
-  await client.query(
-    `UPDATE trace
-     SET root_event_id = $1
-     WHERE trace_id = $2
-       AND organization_id = $3
-       AND root_event_id IS NULL`,
-    [event.event_id, event.trace_id, event.organization_id],
-  );
-
-  if (event.tool_name === "aegis.trace.complete") {
-    await completeTrace(client, event.organization_id, event.trace_id);
-  }
-
-  return {
-    eventId: event.event_id,
-    sequenceNum,
-    eventHash,
-    chainValid,
-    replayed: false,
-  };
 }

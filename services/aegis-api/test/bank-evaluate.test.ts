@@ -12,11 +12,120 @@ describe("outcome mapping (D2)", () => {
       toBankOutcome("allow_with_obligation", { kind: "human_approval" }),
     ).toBe("hold");
     expect(
+      toBankOutcome("allow_with_obligation", { type: "require_approval" }),
+    ).toBe("hold");
+    expect(
       toBankOutcome("allow_with_obligation", { kind: "callback_verify" }),
     ).toBe("allow");
     expect(isHumanApprovalObligation({ kind: "other" })).toBe(false);
     expect(toBankOutcome("deny")).toBe("stop");
     expect(toBankOutcome("allow")).toBe("allow");
+  });
+});
+
+describe("F2 matched_rules vs outcome (decision_basis)", () => {
+  const pack = loadDemoPack("banking");
+  const matrix = packMatrixRows(pack);
+  const ladder = packRoles(pack);
+  const currency = pack.currencies[0]!;
+
+  it("amount_gte rule below threshold does not match; outcome allow under AUTH-RL", () => {
+    const result = evaluateBankEvent({
+      policy_id: "pol_v3",
+      combine: "all_matching",
+      rules: [
+        {
+          rule_id: "AUTH-RL",
+          tool_pattern: "governed.action",
+          decision: "allow",
+          priority: 10,
+        },
+        {
+          rule_id: "r_v4_demo",
+          tool_pattern: "governed.action",
+          decision: "allow_with_obligation",
+          priority: 200,
+          conditions: {
+            amount_gte: 15_000_000,
+            obligations: [{ type: "require_approval", roles: ["credit_manager"] }],
+          },
+          obligations: [{ type: "require_approval", roles: ["credit_manager"] }],
+        },
+      ],
+      tool_name: "governed.action",
+      attributes: { amount: 1_200_000, currency, product: "retail_loan" },
+      matrix_rows: matrix,
+      ladder,
+      product: "retail_loan",
+    });
+    expect(result.outcome).toBe("allow");
+    expect(result.matched_rules.map((m) => m.rule_id)).not.toContain("r_v4_demo");
+    expect(result.matched_rules.some((m) => m.rule_id === "AUTH-RL")).toBe(true);
+    expect(result.decision_basis.explanation).toMatch(/Allowed|No human approval/i);
+  });
+
+  it("amount_gte rule at threshold holds with require_approval (human)", () => {
+    const result = evaluateBankEvent({
+      policy_id: "pol_v4",
+      combine: "all_matching",
+      rules: [
+        {
+          rule_id: "AUTH-RL",
+          tool_pattern: "governed.action",
+          decision: "allow",
+          priority: 10,
+        },
+        {
+          rule_id: "r_v4_demo",
+          tool_pattern: "governed.action",
+          decision: "allow_with_obligation",
+          priority: 200,
+          conditions: {
+            amount_gte: 15_000_000,
+            obligations: [{ type: "require_approval", roles: ["credit_manager"] }],
+          },
+          obligations: [{ type: "require_approval", roles: ["credit_manager"] }],
+        },
+      ],
+      tool_name: "governed.action",
+      attributes: { amount: 18_000_000, currency, product: "retail_loan" },
+      matrix_rows: matrix,
+      ladder,
+      product: "retail_loan",
+    });
+    expect(result.outcome).toBe("hold");
+    expect(result.matched_rules.some((m) => m.rule_id === "r_v4_demo")).toBe(true);
+    expect(result.decision_basis.explanation).toMatch(/Held|human approval|r_v4/i);
+  });
+
+  it("non-human obligation matched with allow outcome is explained (D2)", () => {
+    const result = evaluateBankEvent({
+      policy_id: "pol_v3",
+      combine: "all_matching",
+      rules: [
+        {
+          rule_id: "AUTH-RL",
+          tool_pattern: "governed.action",
+          decision: "allow",
+          priority: 10,
+        },
+        {
+          rule_id: "r_callback",
+          tool_pattern: "governed.action",
+          decision: "allow_with_obligation",
+          priority: 50,
+          obligations: { kind: "callback_verify" },
+        },
+      ],
+      tool_name: "governed.action",
+      attributes: { amount: 1_200_000, currency, product: "retail_loan" },
+      matrix_rows: matrix,
+      ladder,
+      product: "retail_loan",
+    });
+    expect(result.outcome).toBe("allow");
+    expect(result.matched_rules.some((m) => m.rule_id === "r_callback")).toBe(true);
+    expect(result.decision_basis.explanation).toMatch(/non-human obligation|do not become a hold/i);
   });
 });
 

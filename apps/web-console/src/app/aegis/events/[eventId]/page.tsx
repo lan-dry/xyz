@@ -19,7 +19,7 @@ import { PublicVerifyShare } from "@/components/console/public-verify-share";
 import { consoleApi } from "@/lib/api";
 import { idApi } from "@/lib/id-api";
 import { stepTitlePlain } from "@/lib/case-story";
-import { buildEventProvenance } from "@/lib/event-provenance";
+import { buildEventProvenance, userFacingSummary } from "@/lib/event-provenance";
 import { outcomeFromPolicyDecision } from "@/lib/outcome-vocab";
 import type { EventDetail, MeResponse } from "@/lib/types";
 
@@ -156,7 +156,7 @@ export default function EventDetailPage() {
   const amount = p?.amount_usd ?? p?.amount;
   const reason =
     (typeof p?.reason === "string" && p.reason) ||
-    (typeof p?.investor_summary === "string" && p.investor_summary) ||
+    userFacingSummary(p?.investor_summary) ||
     null;
   const policyId = typeof p?.policy_id === "string" ? p.policy_id : null;
   const ruleId = typeof p?.rule_id === "string" ? p.rule_id : null;
@@ -289,7 +289,7 @@ export default function EventDetailPage() {
               <dl style={{ margin: 0, fontSize: "0.875rem" }}>
                 <dt style={{ color: "var(--console-fg-subtle)" }}>What</dt>
                 <dd style={{ margin: "0 0 0.5rem" }}>{title}</dd>
-                {e.tool_name ? (
+                {e.tool_name && e.tool_name !== "governed.action" ? (
                   <>
                     <dt style={{ color: "var(--console-fg-subtle)" }}>System / tool</dt>
                     <dd className="mono" style={{ margin: "0 0 0.5rem" }}>

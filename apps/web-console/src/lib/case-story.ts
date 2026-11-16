@@ -8,6 +8,16 @@ import {
   outcomeFromTraceStatus,
   type OutcomeDisplay,
 } from "./outcome-vocab";
+import {
+  actionLabel,
+  describeDecision,
+  formatApprover,
+  formatRoleLabel,
+  formatRuleLabel,
+  type DescribeDecisionInput,
+} from "./describe-decision";
+import type { CaseApprover } from "./types";
+import { formatRwf } from "./format-display";
 
 export type CaseEventLike = {
   action_kind: string;
@@ -49,7 +59,39 @@ export type CaseStory = {
   approvalAt: string | null;
   evaluationContext: Record<string, unknown> | null;
   amountUsd: number | null;
+  /** e.g. `EUR 8,000` — currency from the event/pack, never invented. */
+  amountDisplay: string | null;
   reference: string | null;
+  /** Plain sentence for bank cases (describeDecision); null for non-bank cases. */
+  bankDecision: string | null;
+  /** Rule ids that decided the case. */
+  ruleIds: string[];
+  /** Allowed automatically: "No approval needed: allowed automatically by rule X". */
+  noApprovalNeeded: string | null;
+  /** Every field seen, with how field policy treated it. Never empty when attributes exist. */
+  dataSeen: DataSeenField[];
+};
+
+export type DataSeenField = {
+  field: string;
+  label: string;
+  treatment: "stored" | "masked" | "hashed" | "name_only";
+  /** Display value for stored fields (amount formatted); null when masked or hashed. */
+  value: string | null;
+};
+
+/** Optional facts from GET /cases/summary that the sealed events do not carry. */
+export type CaseSummaryMeta = {
+  required_role?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  product?: string | null;
+  event_type?: string | null;
+  rules?: string[];
+  /** Rule that drove the outcome (the hold rule, not the AUTH-RL allow). */
+  decided_by_rule_id?: string | null;
+  /** Approve/decline votes with display names (emails stay in Technical details). */
+  approvers?: CaseApprover[];
 };
 
 function payloadRecord(payload: unknown): Record<string, unknown> | null {
@@ -71,8 +113,9 @@ function num(v: unknown): number | null {
   return null;
 }
 
-function money(n: number): string {
-  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+function moneyFmt(n: number, currency?: string | null): string {
+  if (currency) return formatRwf(n, currency.toUpperCase());
+  return `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 function humanField(field: string): string {
@@ -121,6 +164,111 @@ function pushFields(target: string[], value: unknown) {
   }
 }
 
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return Boolean(v) && typeof v === "object" && !Array.isArray(v);
+}
+
+/** Governed bank decisions seal outcome + matched_rules + attributes in the payload. */
+function isBankPayload(p: Record<string, unknown> | null): boolean {
+  return Boolean(
+    p &&
+      typeof p.outcome === "string" &&
+      Array.isArray(p.matched_rules) &&
+      isRecord(p.attributes),
+  );
+}
+
+function ruleIdsFromPayload(p: Record<string, unknown> | null): string[] {
+  const rules = Array.isArray(p?.matched_rules) ? (p!.matched_rules as unknown[]) : [];
+  return [
+    ...new Set(
+      rules
+        .map((r) => (isRecord(r) ? str(r.rule_id) : null))
+        .filter((x): x is string => Boolean(x)),
+    ),
+  ];
+}
+
+function treatmentOf(value: unknown): DataSeenField["treatment"] {
+  if (typeof value === "string") {
+    if (value.startsWith("sha256:")) return "hashed";
+    if (/^\*{2,}/.test(value)) return "masked";
+  }
+  return "stored";
+}
+
+function humanLabel(field: string): string {
+  const h = humanField(field);
+  return h ? h.charAt(0).toUpperCase() + h.slice(1) : field;
+}
+
+function displayValue(field: string, value: unknown, currency: string | null): string | null {
+  if (value == null) return null;
+  if (typeof value === "number" && /amount|limit|balance|principal/i.test(field)) {
+    return currency ? formatRwf(value, currency.toUpperCase()) : value.toLocaleString("en-US");
+  }
+  if (typeof value === "number") return value.toLocaleString("en-US");
+  if (typeof value === "string" || typeof value === "boolean") return String(value);
+  return null;
+}
+
+/**
+ * Fields the case saw, with how field policy treated each. Built from the stored
+ * attributes (masked values start with `*`, hashed with `sha256:`), then any
+ * fields named in data_touched / fields_accessed.
+ */
+function collectDataSeen(
+  attributes: Record<string, unknown> | null,
+  evaluationContext: Record<string, unknown> | null,
+  touched: string[],
+): DataSeenField[] {
+  const out: DataSeenField[] = [];
+  const seen = new Set<string>();
+  const currency = attributes && typeof attributes.currency === "string" ? attributes.currency : null;
+
+  function add(field: string, value: unknown) {
+    if (seen.has(field)) return;
+    seen.add(field);
+    const treatment = treatmentOf(value);
+    out.push({
+      field,
+      label: humanLabel(field),
+      treatment,
+      value: treatment === "stored" ? displayValue(field, value, currency) : null,
+    });
+  }
+
+  function walk(prefix: string, obj: Record<string, unknown>, depth: number) {
+    for (const [k, v] of Object.entries(obj)) {
+      const path = prefix ? `${prefix}.${k}` : k;
+      if (isRecord(v) && depth < 2) walk(path, v, depth + 1);
+      else add(path, v);
+    }
+  }
+
+  if (attributes) walk("", attributes, 0);
+  if (evaluationContext) {
+    for (const [k, v] of Object.entries(evaluationContext)) {
+      if (k === "fields_accessed" || v == null || v === "") continue;
+      if (isRecord(v) || Array.isArray(v)) continue;
+      add(k, v);
+    }
+  }
+  for (const f of touched) {
+    if (seen.has(f)) continue;
+    seen.add(f);
+    out.push({ field: f, label: humanLabel(f), treatment: "name_only", value: null });
+  }
+  return out;
+}
+
+export const TREATMENT_LABEL: Record<DataSeenField["treatment"], string> = {
+  stored: "stored as sent",
+  masked: "masked",
+  hashed: "hashed",
+  name_only: "named only, value not kept",
+};
 /** True when the payload clearly came from an email workflow. */
 function isEmailSourced(p: Record<string, unknown> | null): boolean {
   if (!p) return false;
@@ -209,13 +357,25 @@ function collectFromEvents(events: CaseEventLike[]) {
   let allowedPayment = false;
   let decisionLayer: string | null = null;
   let evaluationContext: Record<string, unknown> | null = null;
+  let bankPayload: Record<string, unknown> | null = null;
+  let currency: string | null = null;
 
   const { subject, description } = pickTitleAndDescription(events);
 
   for (const e of events) {
     const p = payloadRecord(e.payload);
-    const amount = num(p?.amount_usd ?? p?.amount ?? p?.refund_amount_usd);
+    const attrs = isRecord(p?.attributes) ? (p!.attributes as Record<string, unknown>) : null;
+    const amount = num(
+      p?.amount_usd ??
+        p?.amount ??
+        p?.refund_amount_usd ??
+        attrs?.amount ??
+        attrs?.amount_rwf ??
+        attrs?.loan_amount,
+    );
     if (amount != null) amountUsd = amount;
+    currency = currency ?? str(attrs?.currency) ?? str(p?.currency);
+    if (isBankPayload(p)) bankPayload = p;
 
     ticketId = ticketId ?? str(p?.ticket_id);
     orderId = orderId ?? str(p?.order_id);
@@ -246,9 +406,10 @@ function collectFromEvents(events: CaseEventLike[]) {
 
     if (e.action_kind === "policy_decision") {
       toolLabel = e.tool_name ?? toolLabel;
+      // investor_summary ("Governed decision ... for case ...") is internal wording: never show it.
       ruleReason =
         str(p?.reason) ??
-        str(p?.investor_summary) ??
+        (isBankPayload(p) ? null : str(p?.investor_summary)) ??
         str(p?.business_context) ??
         ruleReason;
       policyId = str(p?.policy_id) ?? policyId;
@@ -284,6 +445,8 @@ function collectFromEvents(events: CaseEventLike[]) {
   dataTouched = [...new Set(dataTouched)];
   reference = ticketId ?? orderId;
   return {
+    bankPayload,
+    currency,
     amountUsd,
     reference,
     ticketId,
@@ -314,9 +477,19 @@ function collectFromEvents(events: CaseEventLike[]) {
 function actionNoun(
   toolLabel: string | null,
   amountUsd: number | null,
-  opts?: { anomaly?: boolean; dataAccess?: boolean; subject?: string | null },
+  opts?: {
+    anomaly?: boolean;
+    dataAccess?: boolean;
+    subject?: string | null;
+    currency?: string | null;
+  },
 ): string {
   const tool = toolLabel ?? "";
+  const money = (n: number) => moneyFmt(n, opts?.currency);
+  // governed.action is an internal tool name; never show it.
+  if (tool === "governed.action") {
+    return amountUsd != null ? `Action of ${money(amountUsd)}` : "Action";
+  }
   // Event task/title wins over generic "Data access" / tool labels.
   if (opts?.subject) {
     return opts.subject;
@@ -360,9 +533,87 @@ export function buildCaseStory(
     pendingApproval?: boolean;
     deniedEvents?: number;
     startedAt?: string;
+    summary?: CaseSummaryMeta | null;
   },
 ): CaseStory {
   const c = collectFromEvents(events);
+  const bp = c.bankPayload;
+  const bankAttributes = isRecord(bp?.attributes)
+    ? (bp!.attributes as Record<string, unknown>)
+    : null;
+  const ruleIds = bp ? ruleIdsFromPayload(bp) : (meta.summary?.rules ?? []);
+  const displayCurrency = c.currency ?? meta.summary?.currency ?? null;
+  const displayAmount = c.amountUsd ?? meta.summary?.amount ?? null;
+  const amountDisplay =
+    displayAmount != null ? moneyFmt(displayAmount, displayCurrency) : null;
+
+  let bankDecision: string | null = null;
+  let noApprovalNeeded: string | null = null;
+  /** "Jean Mutabazi · Credit Manager" when the summary names the approver, else the raw actor. */
+  let approverShown: string | null = c.approver;
+  if (bp) {
+    const bankOutcome = str(bp.outcome) ?? "allow";
+    const approved = c.approvalDecision === "approved";
+    const declined =
+      c.approvalDecision === "rejected" ||
+      c.approvalDecision === "denied" ||
+      c.approvalDecision === "declined";
+    // Prefer the summary's named approver (name · role); emails stay in Technical details.
+    const votes = meta.summary?.approvers ?? [];
+    const vote =
+      votes.find((a) => a.email && a.email === c.approver) ??
+      votes.find((a) =>
+        declined
+          ? ["rejected", "declined", "denied"].includes(a.decision)
+          : a.decision === "approved",
+      ) ??
+      null;
+    const approverName = vote?.name ?? (vote ? formatRoleLabel(vote.role) : null) ?? c.approver;
+    const approverRole = vote?.name ? (vote.role ?? null) : null;
+    if (vote) approverShown = formatApprover(approverName, approverRole) ?? approverName;
+    const decidedBy =
+      meta.summary?.decided_by_rule_id ??
+      str(bp.decided_by_rule_id) ??
+      (isRecord(bp.decision_basis) ? str(bp.decision_basis.decided_by_rule_id) : null) ??
+      (bankOutcome === "hold" || bankOutcome === "stop"
+        ? ruleIds.find((r) => !/(^|_)AUTH-RL$/.test(r))
+        : null) ??
+      ruleIds[0] ??
+      null;
+    const input: DescribeDecisionInput = {
+      outcome:
+        bankOutcome === "hold" && declined
+          ? "declined"
+          : bankOutcome === "hold" && approved
+            ? "released"
+            : bankOutcome,
+      product: str(bp.product) ?? meta.summary?.product ?? null,
+      event_type: str(bp.event_type) ?? meta.summary?.event_type ?? null,
+      amount: displayAmount,
+      currency: displayCurrency ?? null,
+      policy_version:
+        typeof bp.policy_version === "number" || typeof bp.policy_version === "string"
+          ? bp.policy_version
+          : null,
+      matched_rules: ruleIds.map((rule_id) => ({ rule_id })),
+      decided_by_rule_id: decidedBy,
+      required_role: meta.summary?.required_role ?? null,
+      approver_name: approved || declined ? approverName : null,
+      approver_role: approved || declined ? approverRole : null,
+      approved_at: approved || declined ? (c.approvalAt ?? vote?.decided_at ?? null) : null,
+      approval_reason: approved || declined ? (vote?.reason ?? null) : null,
+      mode: str(bp.mode),
+      would_have: str(bp.would_have),
+    };
+    bankDecision = describeDecision(input);
+    if (bankOutcome === "allow" && !str(bp.would_have)) {
+      const allowLabel = formatRuleLabel(decidedBy, "allow");
+      noApprovalNeeded = `No approval needed: allowed automatically${
+        allowLabel ? ` by rule ${allowLabel}` : " by policy"
+      }.`;
+    }
+  }
+  const dataSeen = collectDataSeen(bankAttributes, c.evaluationContext, c.dataTouched);
   const waitingForPerson =
     Boolean(meta.pendingApproval) ||
     (c.obligation && !c.approver && c.approvalDecision !== "rejected");
@@ -390,6 +641,7 @@ export function buildCaseStory(
     anomaly: c.anomalyFlagged,
     dataAccess: c.dataTouched.length > 0,
     subject: c.subject,
+    currency: displayCurrency,
   });
   const refBit = c.reference ? ` for ${c.reference}` : "";
 
@@ -404,6 +656,8 @@ export function buildCaseStory(
   let headline: string;
   if (c.subject) {
     headline = c.subject;
+  } else if (bankDecision && !flagLine) {
+    headline = bankDecision;
   } else if (flagLine && c.denied) {
     headline = `Stopped. ${endSentence(flagLine)}`;
   } else if (flagLine && waitingForPerson) {
@@ -417,7 +671,7 @@ export function buildCaseStory(
       headline = `${action}${refBit} was stopped by a rule before money moved.`;
     }
   } else if (c.obligation && (c.approvalDecision === "approved" || c.allowedPayment)) {
-    const who = c.approver ?? "a person";
+    const who = approverShown ?? "a person";
     const when = c.approvalAt
       ? ` at ${new Date(c.approvalAt).toLocaleString()}`
       : "";
@@ -425,7 +679,7 @@ export function buildCaseStory(
   } else if (waitingForPerson) {
     headline = `${action}${refBit} needs approval.`;
   } else if (c.obligation && c.approvalDecision === "rejected") {
-    headline = `${action}${refBit} was declined by ${c.approver ?? "a person"}.`;
+    headline = `${action}${refBit} was declined by ${approverShown ?? "a person"}.`;
   } else if (flagLine) {
     headline = flagLine;
   } else if (seen && !c.amountUsd) {
@@ -436,7 +690,9 @@ export function buildCaseStory(
     headline = `${action}${refBit}. ${outcome.label}.`;
   }
 
-  const listSentence = c.subject
+  const listSentence = bankDecision && !c.subject
+    ? bankDecision
+    : c.subject
     ? waitingForPerson
       ? `${c.subject} — needs approval`
       : c.denied
@@ -467,7 +723,17 @@ export function buildCaseStory(
       : "";
 
   let whyDetail: string;
-  if (c.denied) {
+  if (bankDecision && !flagLine) {
+    whyDetail = [
+      bankDecision,
+      c.approver && c.approvalDecision === "approved" && !/Approved by/.test(bankDecision)
+        ? `Approved by ${approverShown}.`
+        : null,
+      waitingForPerson && !c.approver ? "No decision yet." : null,
+    ]
+      .filter(Boolean)
+      .join(" ");
+  } else if (c.denied) {
     whyDetail = [endSentence(c.ruleReason ?? "A rule stopped this action."), contextLine.trim() || null]
       .filter(Boolean)
       .join(" ");
@@ -475,7 +741,7 @@ export function buildCaseStory(
     whyDetail = [
       endSentence(c.ruleReason ?? "A person had to approve this first."),
       c.approver
-        ? `${c.approvalDecision === "rejected" ? "Declined" : "Approved"} by ${c.approver}.`
+        ? `${c.approvalDecision === "rejected" ? "Declined" : "Approved"} by ${approverShown}.`
         : waitingForPerson
           ? "No decision yet."
           : null,
@@ -489,6 +755,7 @@ export function buildCaseStory(
   }
 
   const whatDetail = [
+    bankDecision && !c.description ? endSentence(bankDecision) : null,
     c.description ? endSentence(c.description) : null,
     seen ? endSentence(seen) : null,
     flagLine ? endSentence(flagLine) : null,
@@ -520,15 +787,23 @@ export function buildCaseStory(
     canTrust: {
       title: "Can the record be trusted?",
       detail: events.every((e) => e.chain_valid !== false)
-        ? "Verified. Every step is sealed in an append-only chain."
-        : "Every step is sealed in an append-only chain. Changing a field after the fact breaks verification.",
+        ? "Verified. Each step is signed and the record is append-only."
+        : "Each step is signed and the record is append-only. Changing a field after the fact breaks verification.",
       verifiedHint: events.every((e) => e.chain_valid !== false)
         ? "The signature chain is intact."
         : "Open Technical details to check the seal.",
     },
   };
 
-  const attempted = c.subject || seen || `${action}${refBit}`;
+  const bankWhat = bp
+    ? (() => {
+        const prod = str(bp.product) ?? meta.summary?.product ?? null;
+        const evt = str(bp.event_type) ?? meta.summary?.event_type ?? null;
+        const label = actionLabel(prod, evt);
+        return amountDisplay ? `${label} of ${amountDisplay}` : label;
+      })()
+    : null;
+  const attempted = c.subject || bankWhat || seen || `${action}${refBit}`;
 
   return {
     headline,
@@ -545,12 +820,17 @@ export function buildCaseStory(
     policyReason: c.ruleReason,
     policyId: c.policyId,
     waitingForPerson,
-    approver: c.approver,
+    approver: approverShown,
     approvalDecision: c.approvalDecision,
     approvalAt: c.approvalAt,
     evaluationContext: c.evaluationContext,
     amountUsd: c.amountUsd,
+    amountDisplay,
     reference: c.reference,
+    bankDecision,
+    ruleIds,
+    noApprovalNeeded,
+    dataSeen,
   };
 }
 
@@ -641,8 +921,33 @@ export function stepTitlePlain(
   const base = actionKindPlain(actionKind, toolName);
   if (actionKind === "policy_decision") {
     const o = outcomeFromPolicyDecision(policyDecision);
+    if (isBankPayload(p)) {
+      const attrs = p!.attributes as Record<string, unknown>;
+      const rules = ruleIdsFromPayload(p);
+      return describeDecision({
+        outcome: str(p!.outcome) ?? "allow",
+        product: str(p!.product),
+        event_type: str(p!.event_type),
+        amount: num(attrs.amount ?? attrs.amount_rwf ?? attrs.loan_amount),
+        currency: str(attrs.currency) ?? null,
+        matched_rules: rules.map((rule_id) => ({ rule_id })),
+        decided_by_rule_id:
+          str(p!.decided_by_rule_id) ??
+          (isRecord(p!.decision_basis) ? str(p!.decision_basis.decided_by_rule_id) : null) ??
+          (str(p!.outcome) === "hold" || str(p!.outcome) === "stop"
+            ? rules.find((r) => !/(^|_)AUTH-RL$/.test(r))
+            : null) ??
+          rules[0] ??
+          null,
+        mode: str(p!.mode),
+        would_have: str(p!.would_have),
+      });
+    }
     const reason = str(p?.reason);
-    return reason ? `Rule check: ${reason}` : `${base}: ${o.chip}`;
+    if (reason) return reason;
+    // Never a bare "Rule check: Allowed": say which rule decided.
+    const policyId = str(p?.policy_id);
+    return policyId ? `${o.label} under rule ${policyId}` : o.label;
   }
   if (actionKind === "human_approval") {
     const o = outcomeFromPolicyDecision(policyDecision);

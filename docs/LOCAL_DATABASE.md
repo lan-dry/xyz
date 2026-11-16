@@ -7,23 +7,25 @@ Use **Docker Postgres** for day-to-day dev and **`pnpm test`**. Point **`DATABAS
 1. In `.env` / `.env.local`:
 
 ```env
-DATABASE_URL=postgresql://salanor:salanor@127.0.0.1:5432/aegis
+DATABASE_URL=postgresql://salanor:salanor@127.0.0.1:5435/aegis
+STOA_DATABASE_URL=postgresql://salanor:salanor@127.0.0.1:5435/stoa
 ```
 
-2. Start infra:
+2. Start Postgres (Demo Bank / production-style local DB on **5435**):
 
 ```bash
-docker compose up -d
+docker compose -f deploy/docker/docker-compose.postgres-demo.yml up -d
 ```
 
-**Stoa** uses a separate database name on the same Postgres (`STOA_DATABASE_URL=.../stoa`). Create it once:
+(`docker compose up -d` at the repo root still starts a separate Postgres on **5432**; prefer one host and match `.env` to it.)
+
+**Stoa** uses a separate database name on the same Postgres. Create it once:
 
 ```bash
-docker compose exec postgres psql -U salanor -d aegis -c "CREATE DATABASE stoa;"
+docker exec aegis-pg-demo psql -U salanor -d aegis -c "CREATE DATABASE stoa;"
 pnpm db:migrate:stoa
 pnpm db:seed:stoa
 ```
-
 3. Same path as production:
 
 ```bash

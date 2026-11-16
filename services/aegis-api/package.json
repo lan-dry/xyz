@@ -13,7 +13,9 @@
     "db:migrate": "tsx src/db/migrate-cli.ts",
     "db:seed:bootstrap": "tsx src/db/bootstrap-superadmin-cli.ts",
     "db:local:pilot-fixture": "tsx src/db/local-pilot-fixture-cli.ts",
+    "db:demo-bank-fixture": "tsx src/db/demo-bank-fixture-cli.ts",
     "demo:seed:northwind": "tsx src/db/seed-northwind-cli.ts",
+    "demo:seed-story": "tsx src/demo/seed-story-cli.ts",
     "scenario:run": "tsx src/demo/scenario-run-cli.ts",
     "scenario:live": "tsx src/demo/scenario-live-cli.ts",
     "export:scenario-bundles": "tsx src/demo/export-scenario-bundles-cli.ts",
@@ -22,6 +24,7 @@
     "compliance:worker": "tsx src/compliance/worker-cli.ts",
     "compliance:schedule": "tsx src/compliance/schedule-cli.ts",
     "maintenance:housekeeping": "tsx src/maintenance/housekeeping-cli.ts",
+    "smoke:kms": "tsx scripts/smoke-kms.ts",
     "witness:worker": "tsx src/witness/worker-cli.ts",
     "witness:worker:prod": "node dist/witness/worker-cli.js",
     "witness:batch": "tsx src/witness/worker-cli.ts --once",
@@ -30,22 +33,24 @@
   "dependencies": {
     "@aws-sdk/client-kms": "^3.830.0",
     "@hono/node-server": "^1.14.4",
+    "@noble/ed25519": "^2.2.3",
     "@open-policy-agent/opa-wasm": "^1.10.0",
     "@salanor/aegis": "workspace:*",
     "@salanor/db-url": "workspace:*",
     "@salanor/observability": "workspace:*",
     "@salanor/platform-auth": "workspace:*",
     "@salanor/witness-merkle": "workspace:*",
-    "@noble/ed25519": "^2.2.3",
     "archiver": "^7.0.1",
     "dotenv": "^16.4.7",
     "hono": "^4.7.11",
+    "nodemailer": "^6.9.16",
     "pg": "^8.16.0"
   },
   "devDependencies": {
     "@salanor/config": "workspace:*",
     "@types/archiver": "^7.0.0",
     "@types/node": "^22.15.21",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.15.4",
     "eslint": "^9.28.0",
     "tsx": "^4.19.4",
@@ -54,6 +59,9 @@
     "vitest": "^3.2.4"
   },
   "nx": {
-    "tags": ["type:service", "scope:aegis"]
+    "tags": [
+      "type:service",
+      "scope:aegis"
+    ]
   }
 }

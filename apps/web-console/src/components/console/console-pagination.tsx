@@ -33,6 +33,7 @@ export function ConsolePagination({
   onPageChange,
   onLimitChange,
   noun = "trace",
+  nounPlural,
   pageSizes = TRACE_PAGE_SIZES,
 }: {
   total: number;
@@ -41,13 +42,15 @@ export function ConsolePagination({
   onPageChange: (page: number) => void;
   onLimitChange: (limit: number) => void;
   noun?: string;
+  /** Irregular plurals ("entry" -> "entries"). Defaults to noun + "s". */
+  nounPlural?: string;
   pageSizes?: readonly number[];
 }) {
   const pageCount = Math.max(1, Math.ceil(total / limit));
   const safePage = Math.min(Math.max(page, 1), pageCount);
   const from = total === 0 ? 0 : (safePage - 1) * limit + 1;
   const to = Math.min(safePage * limit, total);
-  const plural = total === 1 ? noun : `${noun}s`;
+  const plural = total === 1 ? noun : (nounPlural ?? `${noun}s`);
 
   return (
     <div

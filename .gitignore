@@ -42,3 +42,9 @@ coverage/
 # go (future services)
 bin/
 .neon
+
+# hosted Demo Bank tenant: real people's emails/passwords stay local, never committed
+.demo-tenant-emails.local.json
+.demo-tenant-*.local.json
+!.demo-tenant-emails.local.example.json
+.bank-simulator/

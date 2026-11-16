@@ -16,6 +16,8 @@
  *   pnpm --filter aegis-api scenario:live -- --approvals=http
  *   pnpm --filter aegis-api scenario:live -- 1,2,3
  */
+import "../db/load-env.js";
+
 function baseUrl(): string {
   return (process.env.AEGIS_API_BASE ?? "http://localhost:8080").replace(
     /\/$/,
@@ -24,9 +26,13 @@ function baseUrl(): string {
 }
 
 function ingestKey(): string {
-  const key = process.env.AEGIS_INGEST_KEY?.trim();
+  const key =
+    process.env.AEGIS_INGEST_KEY?.trim() ||
+    process.env.AEGIS_INGEST_DEV_KEY?.trim();
   if (!key) {
-    throw new Error("AEGIS_INGEST_KEY is required for scenario:live");
+    throw new Error(
+      "AEGIS_INGEST_KEY or AEGIS_INGEST_DEV_KEY is required for scenario:live (set in .env or the shell)",
+    );
   }
   return key;
 }

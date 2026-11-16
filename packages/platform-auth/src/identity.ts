@@ -767,6 +767,13 @@ export async function provisionOrganization(
     plan?: string;
     /** When true, user must complete /onboarding (company name + slug) before console use. */
     deferOnboarding?: boolean;
+    /** Hosted demonstration tenant (migration 018). Only written when true. */
+    isDemo?: boolean;
+    /**
+     * Disposable test/smoke tenant (migration 020). Only written when true. Set by platform
+     * provisioning (bootstrap secret) only, never by self-serve signup: it makes the tenant wipeable.
+     */
+    isTest?: boolean;
   },
 ): Promise<{
   organization_id: string;
@@ -794,6 +801,18 @@ export async function provisionOrganization(
   const organizationId = orgInsert.rows[0]?.organization_id;
   if (!organizationId) {
     throw new Error("Failed to create organization");
+  }
+  if (input.isDemo) {
+    await client.query(
+      `UPDATE organization SET is_demo = true WHERE organization_id = $1`,
+      [organizationId],
+    );
+  }
+  if (input.isTest) {
+    await client.query(
+      `UPDATE organization SET is_test = true WHERE organization_id = $1`,
+      [organizationId],
+    );
   }
 
   let accountId: string;

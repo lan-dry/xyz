@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import { policyContentHash } from "../bank/policy-hash.js";
+import {
+  PolicyRuleValidationError,
+  validatePolicyRules,
+} from "../bank/rule-validate.js";
 
 export type PolicyRow = {
   policy_id: string;
@@ -114,28 +118,16 @@ export async function getActivePoliciesWithRules(
     [organizationId, environment ?? null],
   );
 
-  if (policyResult.rows.length === 0) return [];
-
-  // One rules query for all active policies (avoids N+1 round-trips).
-  const policyIds = policyResult.rows.map((p) => p.policy_id);
-  const rulesResult = await client.query<PolicyRuleRow>(
-    `SELECT rule_id, policy_id, tool_pattern, decision, priority, conditions
-     FROM policy_rule
-     WHERE policy_id = ANY($1::text[])
-     ORDER BY priority DESC`,
-    [policyIds],
-  );
-  const rulesByPolicy = new Map<string, PolicyRuleRow[]>();
-  for (const rule of rulesResult.rows) {
-    const list = rulesByPolicy.get(rule.policy_id) ?? [];
-    list.push(rule);
-    rulesByPolicy.set(rule.policy_id, list);
+  const results: Array<{ policy: PolicyRow; rules: PolicyRuleRow[] }> = [];
+  for (const policy of policyResult.rows) {
+    const rulesResult = await client.query<PolicyRuleRow>(
+      `SELECT rule_id, policy_id, tool_pattern, decision, priority, conditions
+       FROM policy_rule WHERE policy_id = $1 ORDER BY priority DESC`,
+      [policy.policy_id],
+    );
+    results.push({ policy, rules: rulesResult.rows });
   }
-
-  return policyResult.rows.map((policy) => ({
-    policy,
-    rules: rulesByPolicy.get(policy.policy_id) ?? [],
-  }));
+  return results;
 }
 
 /** @deprecated Prefer getActivePoliciesWithRules — kept for callers expecting one bundle. */
@@ -165,6 +157,11 @@ export async function createPolicy(
   userId: string | null,
   input: CreatePolicyInput,
 ): Promise<{ policy: PolicyRow; rules: PolicyRuleRow[] }> {
+  const issues = validatePolicyRules(input.rules);
+  if (issues.length > 0) {
+    throw new PolicyRuleValidationError(issues);
+  }
+
   const environment = input.environment === "sandbox" ? "sandbox" : "production";
   const versionResult = await client.query<{ max: string | null }>(
     `SELECT MAX(version)::text AS max FROM policy
@@ -240,6 +237,10 @@ export async function activatePolicy(
      FROM policy_rule WHERE policy_id = $1 ORDER BY priority DESC`,
     [policyId],
   );
+  const activateIssues = validatePolicyRules(rulesResult.rows);
+  if (activateIssues.length > 0) {
+    throw new PolicyRuleValidationError(activateIssues);
+  }
   const contentHash = policyContentHash({
     policy_id: policy.policy_id,
     name: policy.name,

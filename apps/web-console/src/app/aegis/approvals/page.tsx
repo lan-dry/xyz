@@ -19,10 +19,19 @@ import {
   StatusBadge,
   ui,
 } from "@/components/console/console-ui";
+import { ConsoleTime } from "@/components/console/console-time";
+import { useCaseSummaries } from "@/hooks/use-case-summaries";
 import { consoleApi } from "@/lib/api";
+import { productFromSummary, roleLabel, titleFromSummary } from "@/lib/case-row";
+import {
+  readConsoleEnvironment,
+  type ConsoleEnvironment,
+} from "@/lib/console-environment";
+import { formatMoney } from "@/lib/format-display";
 import { idApi } from "@/lib/id-api";
 import { toolActionPlain } from "@/lib/outcome-vocab";
-import type { MeResponse } from "@/lib/types";
+import type { CaseSummary, MeResponse } from "@/lib/types";
+import { isBankDemoProfile } from "@/lib/ui-profile";
 
 type RequestPreview = {
   amount_usd?: number;
@@ -104,24 +113,53 @@ function payloadDiffLines(
   return lines;
 }
 
+function metaRecord(
+  metadata: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  return metadata && typeof metadata === "object" ? metadata : {};
+}
+
+function approvalRequiredFields(
+  metadata: Record<string, unknown> | null | undefined,
+): string[] {
+  const m = metaRecord(metadata);
+  return Array.isArray(m.required_fields)
+    ? m.required_fields.filter((f): f is string => typeof f === "string")
+    : [];
+}
+
+function isHardStopApproval(
+  metadata: Record<string, unknown> | null | undefined,
+): boolean {
+  const m = metaRecord(metadata);
+  return m.hard_stop === true;
+}
+
 function ApprovalCard({
   approval: a,
   focusRef,
   focused,
   onApprove,
   onReject,
+  onRelease,
   onAskMore,
   onReassign,
   onViewDetails,
   busy,
   showDecided,
   requiredApprovers,
+  summary,
+  signedIn,
 }: {
+  summary?: CaseSummary;
+  /** Current console user, for the "You are signed in as…" line. */
+  signedIn?: { email: string; role: string } | null;
   approval: ApprovalSummary;
   focusRef?: RefObject<HTMLDivElement | null>;
   focused?: boolean;
   onApprove?: () => void;
   onReject?: () => void;
+  onRelease?: () => void;
   onAskMore?: () => void;
   onReassign?: () => void;
   onViewDetails?: () => void;
@@ -131,6 +169,7 @@ function ApprovalCard({
 }) {
   const preview = a.request_preview;
   const expiry = expiresLabel(a.expires_at);
+  const hardStop = isHardStopApproval(a.metadata);
   const needsInfo =
     a.status === "needs_info" ||
     Boolean(
@@ -143,7 +182,13 @@ function ApprovalCard({
       ? String((a.metadata as { assignee_email?: unknown }).assignee_email ?? "")
       : "";
 
-  const title = toolActionPlain(a.tool_name);
+  const title = titleFromSummary(summary) ?? toolActionPlain(a.tool_name);
+  const amountText = formatMoney(summary?.amount, summary?.currency);
+  const triggeringRule = summary?.rules[0] ?? null;
+  const requester = summary?.requester ?? null;
+  const selfRequested =
+    Boolean(signedIn && requester) &&
+    signedIn!.email.toLowerCase() === requester!.toLowerCase();
   const titleId = `approval-title-${a.approval_id}`;
 
   return (
@@ -181,7 +226,15 @@ function ApprovalCard({
               <StatusBadge status={a.status} />
             ) : a.status === "pending" || a.status === "needs_info" ? (
               <OutcomeChip
-                chip={needsInfo ? "Needs more info" : "Ask a person"}
+                chip={
+                  hardStop
+                    ? "Hard stop"
+                    : needsInfo
+                      ? "Needs more info"
+                      : isBankDemoProfile()
+                        ? "Needs approval"
+                        : "Ask a person"
+                }
                 kind="ask_person"
               />
             ) : (
@@ -233,7 +286,65 @@ function ApprovalCard({
             </p>
           ) : null}
 
-          {(preview.amount_usd != null ||
+          {summary?.outcome ? (
+            <div
+              className={ui.card}
+              style={{
+                marginTop: "0.75rem",
+                padding: "0.75rem 1rem",
+                background: "var(--console-bg-subtle, rgba(0,0,0,0.03))",
+              }}
+            >
+              {amountText ? (
+                <p style={{ margin: "0 0 0.5rem", fontWeight: 700, fontSize: "1.1rem" }}>
+                  {amountText}
+                </p>
+              ) : null}
+              <dl
+                style={{
+                  margin: 0,
+                  display: "grid",
+                  gridTemplateColumns: "max-content 1fr",
+                  gap: "0.2rem 0.75rem",
+                  fontSize: "0.8125rem",
+                }}
+              >
+                {productFromSummary(summary) ? (
+                  <>
+                    <dt style={{ color: "var(--console-fg-muted)" }}>Product</dt>
+                    <dd style={{ margin: 0 }}>{productFromSummary(summary)}</dd>
+                  </>
+                ) : null}
+                <dt style={{ color: "var(--console-fg-muted)" }}>Requested by</dt>
+                <dd style={{ margin: 0 }}>{requester ?? "Not recorded"}</dd>
+                <dt style={{ color: "var(--console-fg-muted)" }}>Triggering rule</dt>
+                <dd style={{ margin: 0 }} className="mono">
+                  {triggeringRule ?? "Not recorded"}
+                </dd>
+                <dt style={{ color: "var(--console-fg-muted)" }}>Required role</dt>
+                <dd style={{ margin: 0 }}>{roleLabel(summary.required_role)}</dd>
+              </dl>
+              {!showDecided && signedIn ? (
+                <p
+                  style={{
+                    margin: "0.65rem 0 0",
+                    fontSize: "0.8125rem",
+                    color: "var(--console-fg-muted)",
+                  }}
+                >
+                  You are signed in as <strong>{signedIn.email}</strong> (
+                  {signedIn.role.replace(/_/g, " ")}). This needs{" "}
+                  <strong>{roleLabel(summary.required_role)}</strong>.
+                  {selfRequested
+                    ? " You requested this case, so someone else has to decide it."
+                    : ""}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {!summary?.outcome &&
+            (preview.amount_usd != null ||
             preview.fields.length > 0 ||
             (!showDecided && a.status === "pending")) && (
             <div
@@ -311,7 +422,7 @@ function ApprovalCard({
                     color: "var(--console-fg-muted)",
                   }}
                 >
-                  {new Date(a.decided_at).toLocaleString()}
+                  <ConsoleTime iso={a.decided_at} />
                 </p>
               ) : null}
             </div>
@@ -330,20 +441,6 @@ function ApprovalCard({
             >
               Open case
             </Link>
-            {" · "}
-            <Link
-              href={`/aegis/events/${encodeURIComponent(a.event_id)}`}
-              className={ui.tableLink}
-            >
-              Signed receipt
-            </Link>
-            {" · "}
-            <Link
-              href={`/aegis/events/${encodeURIComponent(a.event_id)}#share-receipt-heading`}
-              className={ui.tableLink}
-            >
-              Share receipt
-            </Link>
           </p>
           <p
             style={{
@@ -352,11 +449,53 @@ function ApprovalCard({
               color: "var(--console-fg-subtle)",
             }}
           >
-            Requested {new Date(a.created_at).toLocaleString()}
+            Requested <ConsoleTime iso={a.created_at} />
             {expiry && !showDecided ? ` · ${expiry}` : null}
           </p>
+          <details style={{ marginTop: "0.5rem", fontSize: "0.75rem" }}>
+            <summary style={{ cursor: "pointer", color: "var(--console-fg-subtle)" }}>
+              Technical details
+            </summary>
+            <dl
+              style={{
+                margin: "0.5rem 0 0",
+                display: "grid",
+                gridTemplateColumns: "max-content 1fr",
+                gap: "0.2rem 0.75rem",
+                color: "var(--console-fg-muted)",
+              }}
+            >
+              <dt>Decision ID</dt>
+              <dd className="mono" style={{ margin: 0, wordBreak: "break-all" }}>
+                {a.approval_id}
+              </dd>
+              <dt>Event</dt>
+              <dd className="mono" style={{ margin: 0, wordBreak: "break-all" }}>
+                {a.event_id}
+              </dd>
+              <dt>Case (trace)</dt>
+              <dd className="mono" style={{ margin: 0, wordBreak: "break-all" }}>
+                {a.trace_id}
+              </dd>
+            </dl>
+            <p style={{ margin: "0.5rem 0 0" }}>
+              <Link
+                href={`/aegis/events/${encodeURIComponent(a.event_id)}`}
+                className={ui.tableLink}
+              >
+                Signed receipt
+              </Link>
+              {" · "}
+              <Link
+                href={`/aegis/events/${encodeURIComponent(a.event_id)}#share-receipt-heading`}
+                className={ui.tableLink}
+              >
+                Share receipt
+              </Link>
+            </p>
+          </details>
         </div>
-        {onApprove && onReject ? (
+        {onApprove || onReject || onRelease ? (
           <div
             className={ui.formRow}
             style={{ alignSelf: "flex-start", flexWrap: "wrap" }}
@@ -371,7 +510,7 @@ function ApprovalCard({
                 View details
               </button>
             ) : null}
-            {onAskMore ? (
+            {onAskMore && !hardStop ? (
               <button
                 type="button"
                 className={`${ui.btn} ${ui.btnSecondary}`}
@@ -382,7 +521,7 @@ function ApprovalCard({
                 Ask more
               </button>
             ) : null}
-            {onReassign ? (
+            {onReassign && !hardStop ? (
               <button
                 type="button"
                 className={`${ui.btn} ${ui.btnSecondary}`}
@@ -393,24 +532,39 @@ function ApprovalCard({
                 Reassign
               </button>
             ) : null}
-            <button
-              type="button"
-              className={`${ui.btn} ${ui.btnPrimary}`}
-              onClick={onApprove}
-              disabled={busy}
-              aria-label={`Approve ${title}`}
-            >
-              Approve
-            </button>
-            <button
-              type="button"
-              className={`${ui.btn} ${ui.btnDanger}`}
-              onClick={onReject}
-              disabled={busy}
-              aria-label={`Decline ${title}`}
-            >
-              Decline
-            </button>
+            {hardStop && onRelease ? (
+              <button
+                type="button"
+                className={`${ui.btn} ${ui.btnPrimary}`}
+                onClick={onRelease}
+                disabled={busy}
+                aria-label={`Release hard stop for ${title}`}
+              >
+                Release
+              </button>
+            ) : null}
+            {!hardStop && onApprove ? (
+              <button
+                type="button"
+                className={`${ui.btn} ${ui.btnPrimary}`}
+                onClick={onApprove}
+                disabled={busy}
+                aria-label={`Approve ${title}`}
+              >
+                Approve
+              </button>
+            ) : null}
+            {onReject ? (
+              <button
+                type="button"
+                className={`${ui.btn} ${ui.btnDanger}`}
+                onClick={onReject}
+                disabled={busy}
+                aria-label={`Decline ${title}`}
+              >
+                Decline
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -423,6 +577,7 @@ export default function ApprovalsPage() {
   const searchParams = useSearchParams();
   const focusId = searchParams.get("focus");
   const focusRef = useRef<HTMLDivElement | null>(null);
+  const [environment, setEnvironment] = useState<ConsoleEnvironment>("production");
   const [tab, setTab] = useState<"pending" | "history">("pending");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [historyPage, setHistoryPage] = useState(1);
@@ -436,17 +591,30 @@ export default function ApprovalsPage() {
   const [actingId, setActingId] = useState<string | null>(null);
   const [actionModal, setActionModal] = useState<{
     approvalId: string;
-    kind: "approve" | "reject" | "ask_more" | "reassign";
+    kind: "approve" | "reject" | "release" | "ask_more" | "reassign";
   } | null>(null);
   const [actionNote, setActionNote] = useState("");
+  const [actionReasonCode, setActionReasonCode] = useState("");
+  const [actionCallbackVerified, setActionCallbackVerified] = useState(false);
 
   const meQuery = useQuery({
     queryKey: ["id", "me"],
     queryFn: () => idApi<MeResponse>("/auth/me"),
   });
+  const bankMode = isBankDemoProfile();
   const role = meQuery.data?.user?.role?.trim().toLowerCase();
   const canApprove =
     role === "admin" || role === "owner" || role === "approver";
+
+  useEffect(() => {
+    setEnvironment(readConsoleEnvironment());
+    function onEnv(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail === "sandbox" || detail === "production") setEnvironment(detail);
+    }
+    window.addEventListener("salanor:console-environment", onEnv);
+    return () => window.removeEventListener("salanor:console-environment", onEnv);
+  }, []);
 
   const governanceQuery = useQuery({
     queryKey: ["console", "governance-settings"],
@@ -466,13 +634,13 @@ export default function ApprovalsPage() {
   });
 
   const pendingQuery = useQuery({
-    queryKey: ["console", "approvals", "pending"],
+    queryKey: ["console", "approvals", "pending", environment],
     queryFn: () =>
       consoleApi<{
         approvals: ApprovalSummary[];
         blocked_traces?: number;
         required_approvers?: number;
-      }>("/approvals?status=pending"),
+      }>(`/approvals?status=pending&environment=${environment}`),
   });
 
   const historyQuery = useQuery({
@@ -480,6 +648,7 @@ export default function ApprovalsPage() {
       "console",
       "approvals",
       "history",
+      environment,
       historyPage,
       historyLimit,
       historyDecision,
@@ -488,6 +657,7 @@ export default function ApprovalsPage() {
     queryFn: () => {
       const params = new URLSearchParams({
         status: "history",
+        environment,
         limit: String(historyLimit),
         offset: String((historyPage - 1) * historyLimit),
         decision: historyDecision,
@@ -509,30 +679,87 @@ export default function ApprovalsPage() {
     }
   }, [focusId, pendingQuery.data]);
 
+  const resetActionForm = () => {
+    setActionModal(null);
+    setActionNote("");
+    setActionReasonCode("");
+    setActionCallbackVerified(false);
+  };
+
   const approve = useMutation({
     mutationFn: ({
       approvalId,
       reason,
+      reason_code,
+      callback_verified,
     }: {
       approvalId: string;
       reason?: string;
-    }) =>
-      consoleApi<{ approval: ApprovalSummary; finalized?: boolean }>(
+      reason_code?: string;
+      callback_verified?: boolean;
+    }) => {
+      const note = reason?.trim() || undefined;
+      const code = reason_code?.trim() || undefined;
+      return consoleApi<{ approval: ApprovalSummary; finalized?: boolean }>(
         `/approvals/${encodeURIComponent(approvalId)}/approve`,
         {
           method: "POST",
-          body: JSON.stringify({ reason: reason || undefined }),
+          body: JSON.stringify({
+            reason: note,
+            comment: note,
+            reason_code: code,
+            ...(typeof callback_verified === "boolean"
+              ? { callback_verified }
+              : {}),
+          }),
         },
-      ),
+      );
+    },
     onMutate: ({ approvalId }) => {
       setActingId(approvalId);
     },
     onSuccess: (data, { approvalId }) => {
-      setActionModal(null);
-      setActionNote("");
+      resetActionForm();
       if (data.finalized !== false && data.approval?.status === "approved") {
         setDecidedIds((prev) => new Set(prev).add(approvalId));
       }
+      void queryClient.invalidateQueries({ queryKey: ["console", "approvals"] });
+      void queryClient.invalidateQueries({ queryKey: ["console", "traces"] });
+    },
+    onSettled: () => {
+      setActingId(null);
+    },
+  });
+
+  const release = useMutation({
+    mutationFn: ({
+      approvalId,
+      reason,
+      reason_code,
+    }: {
+      approvalId: string;
+      reason?: string;
+      reason_code: string;
+    }) => {
+      const note = reason?.trim() || undefined;
+      return consoleApi<{ approval: ApprovalSummary; released?: boolean }>(
+        `/approvals/${encodeURIComponent(approvalId)}/release`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            reason: note,
+            comment: note,
+            reason_code: reason_code.trim(),
+          }),
+        },
+      );
+    },
+    onMutate: ({ approvalId }) => {
+      setActingId(approvalId);
+    },
+    onSuccess: (_data, { approvalId }) => {
+      resetActionForm();
+      setDecidedIds((prev) => new Set(prev).add(approvalId));
       void queryClient.invalidateQueries({ queryKey: ["console", "approvals"] });
       void queryClient.invalidateQueries({ queryKey: ["console", "traces"] });
     },
@@ -561,8 +788,7 @@ export default function ApprovalsPage() {
       setDecidedIds((prev) => new Set(prev).add(approvalId));
     },
     onSuccess: () => {
-      setActionModal(null);
-      setActionNote("");
+      resetActionForm();
       void queryClient.invalidateQueries({ queryKey: ["console", "approvals"] });
       void queryClient.invalidateQueries({ queryKey: ["console", "traces"] });
     },
@@ -585,8 +811,7 @@ export default function ApprovalsPage() {
         { method: "POST", body: JSON.stringify({ note }) },
       ),
     onSuccess: () => {
-      setActionModal(null);
-      setActionNote("");
+      resetActionForm();
       void queryClient.invalidateQueries({ queryKey: ["console", "approvals"] });
     },
   });
@@ -607,8 +832,7 @@ export default function ApprovalsPage() {
         },
       ),
     onSuccess: () => {
-      setActionModal(null);
-      setActionNote("");
+      resetActionForm();
       void queryClient.invalidateQueries({ queryKey: ["console", "approvals"] });
     },
   });
@@ -616,7 +840,40 @@ export default function ApprovalsPage() {
   const pending = (pendingQuery.data?.approvals ?? []).filter(
     (a) => !decidedIds.has(a.approval_id),
   );
+  const modalApproval =
+    actionModal == null
+      ? null
+      : (pending.find((a) => a.approval_id === actionModal.approvalId) ??
+        (detailQuery.data?.approval?.approval_id === actionModal.approvalId
+          ? detailQuery.data.approval
+          : null));
+  const modalRequired = approvalRequiredFields(modalApproval?.metadata);
+  const modalNeedsReasonCode =
+    actionModal?.kind === "release" || modalRequired.includes("reason_code");
+  const modalNeedsComment =
+    actionModal?.kind === "release" ||
+    actionModal?.kind === "reject" ||
+    actionModal?.kind === "ask_more" ||
+    modalRequired.includes("comment");
+  const modalNeedsCallback = modalRequired.includes("callback_verified");
+  const openAction = (
+    approvalId: string,
+    kind: "approve" | "reject" | "release" | "ask_more" | "reassign",
+  ) => {
+    setActionNote("");
+    setActionReasonCode("");
+    setActionCallbackVerified(false);
+    setActionModal({ approvalId, kind });
+  };
   const history = historyQuery.data?.approvals ?? [];
+  const summariesQuery = useCaseSummaries([
+    ...pending.map((a) => a.trace_id),
+    ...history.map((a) => a.trace_id),
+    ...(detailId && detailQuery.data?.approval ? [detailQuery.data.approval.trace_id] : []),
+  ]);
+  const summaries = summariesQuery.data;
+  const me = meQuery.data?.user;
+  const signedIn = me ? { email: me.email, role: me.role } : null;
   const historyTotal = historyQuery.data?.total ?? 0;
   const blockedTraces = pendingQuery.data?.blocked_traces ?? pending.length;
   const isEmptyPending = pending.length === 0 && !pendingQuery.isLoading;
@@ -636,7 +893,7 @@ export default function ApprovalsPage() {
         title="Approvals"
         subtitle={
           <>
-            When policy says <strong>Ask a person</strong>, the payment waits here. You have
+            When a rule says <strong>{bankMode ? "Needs approval" : "Ask a person"}</strong>, {bankMode ? "the case waits here" : "the payment waits here"}. You have
             up to <strong>{ttlHours} hours</strong> to Approve or Decline. Admins can get
             Slack or email notify under Settings → Governance.
           </>
@@ -716,7 +973,11 @@ export default function ApprovalsPage() {
             <EmptyStatePanel
               mark={<AegisMark />}
               title="No pending approvals"
-              description="When a policy requires approval, the trace blocks here until an operator approves or rejects. Admins receive email alerts when notifications are enabled."
+              description={
+                bankMode
+                  ? "When a rule says a case needs approval, it waits here until an authorised approver approves or declines it. Admins receive email alerts when notifications are enabled."
+                  : "When a policy requires approval, the trace blocks here until an operator approves or rejects. Admins receive email alerts when notifications are enabled."
+              }
               action={
                 <Link href="/aegis/traces" className={`${ui.btn} ${ui.btnSecondary}`}>
                   View cases
@@ -730,38 +991,33 @@ export default function ApprovalsPage() {
               approval={a}
               focusRef={a.approval_id === focusId ? focusRef : undefined}
               focused={a.approval_id === focusId}
+              summary={summaries?.[a.trace_id]}
+              signedIn={signedIn}
               busy={actingId === a.approval_id}
               requiredApprovers={requiredApprovers}
               onApprove={
-                canApprove
-                  ? () => {
-                      setActionNote("");
-                      setActionModal({ approvalId: a.approval_id, kind: "approve" });
-                    }
+                canApprove && !isHardStopApproval(a.metadata)
+                  ? () => openAction(a.approval_id, "approve")
+                  : undefined
+              }
+              onRelease={
+                canApprove && isHardStopApproval(a.metadata)
+                  ? () => openAction(a.approval_id, "release")
                   : undefined
               }
               onReject={
                 canApprove
-                  ? () => {
-                      setActionNote("");
-                      setActionModal({ approvalId: a.approval_id, kind: "reject" });
-                    }
+                  ? () => openAction(a.approval_id, "reject")
                   : undefined
               }
               onAskMore={
-                canApprove
-                  ? () => {
-                      setActionNote("");
-                      setActionModal({ approvalId: a.approval_id, kind: "ask_more" });
-                    }
+                canApprove && !isHardStopApproval(a.metadata)
+                  ? () => openAction(a.approval_id, "ask_more")
                   : undefined
               }
               onReassign={
-                canApprove
-                  ? () => {
-                      setActionNote("");
-                      setActionModal({ approvalId: a.approval_id, kind: "reassign" });
-                    }
+                canApprove && !isHardStopApproval(a.metadata)
+                  ? () => openAction(a.approval_id, "reassign")
                   : undefined
               }
               onViewDetails={() => setDetailId(a.approval_id)}
@@ -834,6 +1090,7 @@ export default function ApprovalsPage() {
               key={a.approval_id}
               approval={a}
               showDecided
+              summary={summaries?.[a.trace_id]}
               onViewDetails={() => setDetailId(a.approval_id)}
             />
           ))}
@@ -858,7 +1115,8 @@ export default function ApprovalsPage() {
         open={Boolean(detailId)}
         title={
           detailApproval
-            ? toolActionPlain(detailApproval.tool_name)
+            ? (titleFromSummary(summaries?.[detailApproval.trace_id]) ??
+              toolActionPlain(detailApproval.tool_name))
             : "Approval details"
         }
         description="Review what the AI tried to do before you decide."
@@ -878,29 +1136,48 @@ export default function ApprovalsPage() {
               <button
                 type="button"
                 className={`${ui.btn} ${ui.btnDanger}`}
-                disabled={reject.isPending || approve.isPending}
+                disabled={
+                  reject.isPending || approve.isPending || release.isPending
+                }
                 onClick={() => {
                   if (!detailId) return;
                   setDetailId(null);
-                  setActionNote("");
-                  setActionModal({ approvalId: detailId, kind: "reject" });
+                  openAction(detailId, "reject");
                 }}
               >
                 Decline
               </button>
-              <button
-                type="button"
-                className={`${ui.btn} ${ui.btnPrimary}`}
-                disabled={reject.isPending || approve.isPending}
-                onClick={() => {
-                  if (!detailId) return;
-                  setDetailId(null);
-                  setActionNote("");
-                  setActionModal({ approvalId: detailId, kind: "approve" });
-                }}
-              >
-                Approve
-              </button>
+              {isHardStopApproval(detailApproval.metadata) ? (
+                <button
+                  type="button"
+                  className={`${ui.btn} ${ui.btnPrimary}`}
+                  disabled={
+                    reject.isPending || approve.isPending || release.isPending
+                  }
+                  onClick={() => {
+                    if (!detailId) return;
+                    setDetailId(null);
+                    openAction(detailId, "release");
+                  }}
+                >
+                  Release
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={`${ui.btn} ${ui.btnPrimary}`}
+                  disabled={
+                    reject.isPending || approve.isPending || release.isPending
+                  }
+                  onClick={() => {
+                    if (!detailId) return;
+                    setDetailId(null);
+                    openAction(detailId, "approve");
+                  }}
+                >
+                  Approve
+                </button>
+              )}
             </>
           ) : (
             <button
@@ -947,7 +1224,7 @@ export default function ApprovalsPage() {
                         color: "var(--console-fg-muted)",
                       }}
                     >
-                      {new Date(detailApproval.decided_at).toLocaleString()}
+                      <ConsoleTime iso={detailApproval.decided_at} />
                     </p>
                   ) : null}
                 </div>
@@ -998,7 +1275,7 @@ export default function ApprovalsPage() {
 
               <div className={ui.card} style={{ padding: "0.75rem 1rem" }}>
                 <p style={{ margin: "0 0 0.5rem", fontSize: "0.75rem", fontWeight: 600 }}>
-                  Full signed event payload
+                  Technical details: full signed event payload
                 </p>
                 <pre
                   className="mono"
@@ -1021,31 +1298,37 @@ export default function ApprovalsPage() {
 
       <Modal
         open={Boolean(actionModal)}
-        onClose={() => {
-          setActionModal(null);
-          setActionNote("");
-        }}
+        onClose={resetActionForm}
+        closeOnOverlayClick={false}
         title={
           actionModal?.kind === "approve"
             ? "Approve"
-            : actionModal?.kind === "reject"
-              ? "Decline"
-              : actionModal?.kind === "ask_more"
-                ? "Ask more"
-                : "Reassign"
+            : actionModal?.kind === "release"
+              ? "Release hard stop"
+              : actionModal?.kind === "reject"
+                ? "Decline"
+                : actionModal?.kind === "ask_more"
+                  ? "Ask more"
+                  : "Reassign"
         }
       >
         {actionModal ? (
           <div style={{ display: "grid", gap: "0.75rem" }}>
-            <label className={ui.field}>
-              {actionModal.kind === "reassign"
-                ? "Assignee email (org Admin, Owner, or Approver)"
-                : actionModal.kind === "reject"
-                  ? "Reason (required)"
-                  : actionModal.kind === "ask_more"
-                    ? "What do you need?"
-                    : "Reason (optional)"}
-              {actionModal.kind === "reassign" ? (
+            {actionModal.kind === "release" ? (
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "0.875rem",
+                  color: "var(--console-fg-subtle)",
+                }}
+              >
+                This case is a hard stop. It cannot be approved. Only an
+                authorised release with a reason code is accepted.
+              </p>
+            ) : null}
+            {actionModal.kind === "reassign" ? (
+              <label className={ui.field}>
+                Assignee email (org Admin, Owner, or Approver)
                 <input
                   className={ui.input}
                   type="email"
@@ -1055,7 +1338,34 @@ export default function ApprovalsPage() {
                   autoComplete="email"
                   aria-describedby="reassign-hint"
                 />
-              ) : (
+              </label>
+            ) : null}
+            {actionModal.kind !== "reassign" && modalNeedsReasonCode ? (
+              <label className={ui.field}>
+                Reason code (required)
+                <input
+                  className={ui.input}
+                  value={actionReasonCode}
+                  onChange={(e) => setActionReasonCode(e.target.value)}
+                  placeholder={
+                    actionModal.kind === "release"
+                      ? "FALSE_POSITIVE"
+                      : "WITHIN_BAND"
+                  }
+                  autoComplete="off"
+                  aria-required="true"
+                />
+              </label>
+            ) : null}
+            {actionModal.kind !== "reassign" ? (
+              <label className={ui.field}>
+                {actionModal.kind === "reject"
+                  ? "Reason (required)"
+                  : actionModal.kind === "ask_more"
+                    ? "What do you need?"
+                    : modalNeedsComment
+                      ? "Comment (required)"
+                      : "Comment (optional)"}
                 <textarea
                   className={ui.input}
                   rows={3}
@@ -1064,11 +1374,32 @@ export default function ApprovalsPage() {
                   placeholder={
                     actionModal.kind === "ask_more"
                       ? "Need order confirmation screenshot…"
-                      : "Why this decision?"
+                      : actionModal.kind === "release"
+                        ? "Why this hard stop is being released…"
+                        : "Why this decision?"
                   }
                 />
-              )}
-            </label>
+              </label>
+            ) : null}
+            {actionModal.kind === "approve" && modalNeedsCallback ? (
+              <label
+                className={ui.field}
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={actionCallbackVerified}
+                  onChange={(e) => setActionCallbackVerified(e.target.checked)}
+                  aria-required="true"
+                />
+                <span>Callback verified (beneficiary bank confirmed)</span>
+              </label>
+            ) : null}
             {actionModal.kind === "reassign" ? (
               <p
                 id="reassign-hint"
@@ -1082,11 +1413,16 @@ export default function ApprovalsPage() {
                 are rejected.
               </p>
             ) : null}
-            {(approve.error || reject.error || askMore.error || reassign.error) && (
+            {(approve.error ||
+              release.error ||
+              reject.error ||
+              askMore.error ||
+              reassign.error) && (
               <ErrorAlert
                 message={
                   (
                     (approve.error ||
+                      release.error ||
                       reject.error ||
                       askMore.error ||
                       reassign.error) as Error
@@ -1098,10 +1434,7 @@ export default function ApprovalsPage() {
               <button
                 type="button"
                 className={`${ui.btn} ${ui.btnSecondary}`}
-                onClick={() => {
-                  setActionModal(null);
-                  setActionNote("");
-                }}
+                onClick={resetActionForm}
               >
                 Cancel
               </button>
@@ -1110,19 +1443,37 @@ export default function ApprovalsPage() {
                 className={`${ui.btn} ${ui.btnPrimary}`}
                 disabled={
                   approve.isPending ||
+                  release.isPending ||
                   reject.isPending ||
                   askMore.isPending ||
                   reassign.isPending ||
+                  (modalNeedsReasonCode && !actionReasonCode.trim()) ||
                   ((actionModal.kind === "reject" ||
                     actionModal.kind === "ask_more" ||
-                    actionModal.kind === "reassign") &&
-                    !actionNote.trim())
+                    actionModal.kind === "reassign" ||
+                    (actionModal.kind !== "approve" && modalNeedsComment) ||
+                    (actionModal.kind === "approve" &&
+                      modalNeedsComment)) &&
+                    !actionNote.trim()) ||
+                  (actionModal.kind === "approve" &&
+                    modalNeedsCallback &&
+                    !actionCallbackVerified)
                 }
                 onClick={() => {
                   if (actionModal.kind === "approve") {
                     approve.mutate({
                       approvalId: actionModal.approvalId,
                       reason: actionNote.trim() || undefined,
+                      reason_code: actionReasonCode.trim() || undefined,
+                      callback_verified: modalNeedsCallback
+                        ? actionCallbackVerified
+                        : undefined,
+                    });
+                  } else if (actionModal.kind === "release") {
+                    release.mutate({
+                      approvalId: actionModal.approvalId,
+                      reason: actionNote.trim() || undefined,
+                      reason_code: actionReasonCode.trim(),
                     });
                   } else if (actionModal.kind === "reject") {
                     reject.mutate({
@@ -1142,7 +1493,7 @@ export default function ApprovalsPage() {
                   }
                 }}
               >
-                Confirm
+                {actionModal.kind === "release" ? "Release" : "Confirm"}
               </button>
             </div>
           </div>

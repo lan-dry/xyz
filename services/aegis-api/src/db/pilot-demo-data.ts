@@ -41,7 +41,7 @@ function pilotIngestKeyMaterial(): { rawKey: string; prefix: string; keyHash: st
   };
 }
 
-async function pilotSigningPublicKeyB64(): Promise<string> {
+export async function pilotSigningPublicKeyB64(): Promise<string> {
   const privateKeyB64 =
     process.env.DEV_SIGNING_PRIVATE_KEY_B64?.trim() ||
     process.env.AEGIS_SIGNING_PRIVATE_KEY_B64?.trim() ||
@@ -55,7 +55,7 @@ async function pilotSigningPublicKeyB64(): Promise<string> {
   return Buffer.from(await ed.getPublicKeyAsync(privateKey)).toString("base64");
 }
 
-async function upsertAgent(
+export async function upsertAgent(
   client: pg.Pool | pg.PoolClient,
   input: {
     organizationId: string;
@@ -66,7 +66,8 @@ async function upsertAgent(
     publicKeyB64: string;
     keyId: string;
     verifyPath: string;
-    policyId: string;
+    /** null when the org policy is created later (e.g. pack:apply). */
+    policyId: string | null;
   },
 ): Promise<void> {
   await client.query(
@@ -140,10 +141,12 @@ async function upsertAgent(
     );
   }
 
-  await client.query(
-    `UPDATE agent SET default_policy_id = $1 WHERE agent_id = $2 AND organization_id = $3`,
-    [input.policyId, input.agentId, input.organizationId],
-  );
+  if (input.policyId) {
+    await client.query(
+      `UPDATE agent SET default_policy_id = $1 WHERE agent_id = $2 AND organization_id = $3`,
+      [input.policyId, input.agentId, input.organizationId],
+    );
+  }
 }
 
 /** Agents, ingest key, policies, DID — on an existing org (local pilot / demos). */

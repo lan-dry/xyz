@@ -24,7 +24,15 @@ import {
   type ApprovalDecisionBody,
 } from "../../bank/console-approval-guard.js";
 import { roleSatisfies } from "../../bank/authority-matrix.js";
-import { loadBankApprovalRoleContext } from "../../bank/repo.js";
+import { escalateDueApprovals } from "../../bank/escalation.js";
+import {
+  findDelegationRelied,
+  type DelegationRecord,
+} from "../../bank/approval-delegate.js";
+import {
+  listMembershipBankRoles,
+  loadBankApprovalRoleContext,
+} from "../../bank/repo.js";
 import {
   requireConsoleSession,
   type ConsoleVariables,
@@ -34,6 +42,16 @@ import { getOrCreateApprovalSigningKeyId } from "../../repo/signing-keys.js";
 import { verifyApprovalActionToken } from "../../approvals/action-token.js";
 import { getGovernanceSettings } from "../../repo/governance-settings.js";
 import { dispatchOrgWebhookEvent } from "../../webhooks/dispatch.js";
+
+/** Expire stale approvals, then raise any whose configured escalation window has elapsed. */
+async function expireAndEscalate(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+): Promise<number> {
+  const expired = await expireStaleApprovals(client, organizationId);
+  await escalateDueApprovals(client, organizationId);
+  return expired;
+}
 
 const BRIDGE_KEY_SETUP_ERROR =
   "AEGIS_BRIDGE_MASTER_KEY is not configured on aegis-api. Add a 32-byte secret (base64 or hex) to the repo-root .env and restart aegis-api.";
@@ -87,6 +105,8 @@ async function finalizeHumanApproval(
     email: string;
     decision: "approved" | "rejected";
     reason?: string;
+    /** Set when the approver relied on a time-bound delegation (not a permanent role). */
+    delegation?: DelegationRecord | null;
   },
 ) {
   const decided = await decideApproval(
@@ -95,7 +115,11 @@ async function finalizeHumanApproval(
     params.approvalId,
     params.userId,
     params.decision,
-    { reason: params.reason, voterEmail: params.email },
+    {
+      reason: params.reason,
+      voterEmail: params.email,
+      delegation: params.delegation ?? null,
+    },
   );
   if (!decided) return null;
 
@@ -117,10 +141,44 @@ async function finalizeHumanApproval(
       decision: params.decision,
       toolName: decided.detail.tool_name ?? undefined,
       reason: params.reason,
+      delegation: params.delegation ?? null,
     });
   }
 
   return decided;
+}
+
+/**
+ * If the approver only satisfies the required role through an active delegation,
+ * return that delegation so both names land on the vote and the signed receipt.
+ */
+async function delegationRelied(
+  client: pg.PoolClient,
+  session: ConsoleSession,
+  approvalId: string,
+): Promise<DelegationRecord | null> {
+  const rich = await getApprovalRich(client, session.organizationId, approvalId);
+  const requiredRole =
+    typeof rich?.metadata?.required_role === "string" ? rich.metadata.required_role : null;
+  if (!requiredRole) return null;
+  const ctx = await loadBankApprovalRoleContext(
+    client,
+    session.organizationId,
+    session.userId,
+  );
+  if (!ctx.available) return null;
+  const permanent = await listMembershipBankRoles(
+    client,
+    session.organizationId,
+    session.userId,
+  );
+  return findDelegationRelied(client, {
+    organizationId: session.organizationId,
+    membershipId: session.userId,
+    requiredRole,
+    permanentRoles: permanent,
+    satisfies: (actorRole, required) => roleSatisfies(ctx.ladder, actorRole, required),
+  });
 }
 
 function emitApprovalDecidedWebhook(
@@ -182,6 +240,8 @@ export const approvalRoutes = new Hono<{ Variables: ConsoleVariables }>();
 approvalRoutes.get("/approvals", requireConsoleSession, async (c) => {
   const orgId = c.get("consoleSession").organizationId;
   const status = c.req.query("status") ?? "pending";
+  const envRaw = c.req.query("environment");
+  const environment = envRaw === "sandbox" ? "sandbox" : "production";
 
   if (status === "history") {
     const limit = Math.min(Math.max(Number(c.req.query("limit") || "25"), 1), 100);
@@ -200,12 +260,14 @@ approvalRoutes.get("/approvals", requireConsoleSession, async (c) => {
       offset,
       decision,
       tool,
+      environment,
     });
     return c.json({
       approvals: result.rows.map(serializeApproval),
       total: result.total,
       limit,
       offset,
+      environment,
     });
   }
 
@@ -213,14 +275,15 @@ approvalRoutes.get("/approvals", requireConsoleSession, async (c) => {
     return c.json({ error: "Use status=pending or status=history" }, 422);
   }
 
-  await expireStaleApprovals(getPool(), orgId);
-  const rows = await listPendingApprovals(getPool(), orgId);
+  await expireAndEscalate(getPool(), orgId);
+  const rows = await listPendingApprovals(getPool(), orgId, environment);
   const governance = await getGovernanceSettings(getPool(), orgId);
   const blocked = rows.length;
   return c.json({
     approvals: rows.map(serializeApproval),
     blocked_traces: blocked,
     required_approvers: governance.required_approvers,
+    environment,
   });
 });
 
@@ -258,7 +321,7 @@ approvalRoutes.post("/approvals/act", requireConsoleSession, async (c) => {
   const client = await getPool().connect();
   try {
     await client.query("BEGIN");
-    await expireStaleApprovals(client, session.organizationId);
+    await expireAndEscalate(client, session.organizationId);
     const guard = await enforceApprovalGuard(
       client,
       session,
@@ -361,7 +424,7 @@ approvalRoutes.post(
     const client = await getPool().connect();
     try {
       await client.query("BEGIN");
-      await expireStaleApprovals(client, session.organizationId);
+      await expireAndEscalate(client, session.organizationId);
       const guard = await enforceApprovalGuard(
         client,
         session,
@@ -373,6 +436,7 @@ approvalRoutes.post(
         await client.query("COMMIT");
         return c.json({ error: guard.message, code: guard.code }, 403);
       }
+      const delegation = await delegationRelied(client, session, approvalId);
       const decided = await finalizeHumanApproval(client, {
         organizationId: session.organizationId,
         approvalId,
@@ -380,6 +444,7 @@ approvalRoutes.post(
         email: session.email,
         decision: "approved",
         reason: body.reason?.trim() ?? body.comment?.trim(),
+        delegation,
       });
       if (!decided) {
         await client.query("ROLLBACK");
@@ -457,7 +522,7 @@ approvalRoutes.post(
     const client = await getPool().connect();
     try {
       await client.query("BEGIN");
-      await expireStaleApprovals(client, session.organizationId);
+      await expireAndEscalate(client, session.organizationId);
       const guard = await enforceApprovalGuard(
         client,
         session,
@@ -605,7 +670,7 @@ approvalRoutes.post(
     const client = await getPool().connect();
     try {
       await client.query("BEGIN");
-      await expireStaleApprovals(client, session.organizationId);
+      await expireAndEscalate(client, session.organizationId);
       const rich = await getApprovalRich(
         client,
         session.organizationId,

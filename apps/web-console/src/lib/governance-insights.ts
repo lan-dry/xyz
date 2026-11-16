@@ -1,3 +1,4 @@
+import { userFacingSummary } from "./event-provenance";
 /** Browser-safe governance insights (keep in sync with sdks/typescript/src/governance-insights.ts). */
 
 export type InsightSeverity = "info" | "attention" | "critical";
@@ -91,7 +92,7 @@ export function buildGovernanceInsights(
       const classification = str(p?.data_classification);
       if (classification) stats.data_classifications.push(classification);
 
-      const summary = str(p?.investor_summary) ?? str(p?.business_context);
+      const summary = userFacingSummary(p?.investor_summary) ?? str(p?.business_context);
       if (summary && stats.llm_steps <= 3) {
         insights.push({
           id: `llm-${stats.llm_steps}`,
@@ -108,7 +109,7 @@ export function buildGovernanceInsights(
         stats.tools_denied += 1;
         const tool = e.tool_name?.trim() || "unknown tool";
         const summary =
-          str(p?.investor_summary) ??
+          userFacingSummary(p?.investor_summary) ??
           str(p?.business_context) ??
           str(p?.trigger_detail);
         const trigger = str(p?.trigger_source);

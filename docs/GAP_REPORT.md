@@ -14,11 +14,11 @@
 |-------|--------|-------|
 | 0 Baseline / branch / tag | Done | `pre-forensic-demo` tag; golden evaluate-rules tests |
 | 1 Engine / adapter / matrix / field policy | Done | Pack-driven; unit + multi-tenant insurance E2E |
-| 2 Approvals / receipts / aegis-verify | Done (Partial UX) | APS seal when org agent key exists; forensic receipts; `aegis-verify`; console guards; escalation/delegation incomplete |
+| 2 Approvals / receipts / aegis-verify | Done (Pass 2 screens captured) | Evidence bundle + Demo Bank verify; B1 rule validate; B2 fail-safe default; Rules matrix/v3–v4; runbook-walk screens captured 2026-11-15. One bank-ready item (3.5 case/replay) still has no automated test, see FINAL_REPORT |
 | 3 Integration / batch import | Done (Partial delivery) | HTTP batch record-only + dry_run; bank-core stub labelled; webhook retry incomplete |
-| 4 Search / admin UI / i18n | Partial | Canned CSV + Stub reports UI; i18n file partial |
-| 5 P1–P10 hardening | Partial | Threat model, retention/legal hold, load-test script; backup-restore drill / prod TSA open |
-| 6 Demo ops | Done | `scenario:run` in-process; `scenario:live` 12/12 via live HTTP + sealed intake |
+| 4 Search / admin UI / i18n | Partial | Canned CSV + real reports page (stub label removed); i18n file partial |
+| 5 P1–P10 hardening | Partial | Production boot guards, KMS Ed25519 Plan A/B, RFC 3161 client, `DEPLOY_PRODUCTION.md`, `is_demo` + Delegations, bank-simulator login/deploy docs, Approvals Release/callback UI + screens, `demo:full-menu` Present; live KMS Sign, public TSA, and hosted `smoke:production` wait on founder credentials |
+| 6 Demo ops | Partial | Pass 2 + production P0/P7 screens; Partial only because 3.10 / 3.14 / 3.15 have no screen proof |
 | 7 Website | Partial | Claim honesty + `/banks`; **no live publish** |
 
 ---
@@ -30,14 +30,14 @@
 | R1 Event intake | Present | `/governed/events` + `/bank/events`; sealed when agent key exists |
 | R2 Policy engine | Present (Partial dual-publish UX) | `all_matching` opt-in; content_hash; dual_publish_required on activate |
 | R3 Authority matrix | Present | Pack data only (`demo.banking` / `demo.insurance`) |
-| R4 Approvals | Present (Partial clock/delegation) | Role/SoD/required fields + HTTP session approve test; escalate_to_role / delegation incomplete |
-| R5 Evidence | Present | Forensic receipts cite sealed APS events; append-only 015 |
-| R6 Verifier | Present | `pnpm aegis-verify`; scenario 12 |
+| R4 Approvals | Present | Role/SoD/required fields + HTTP session approve test; escalate_to_role + time-bound delegation (scenario 10) |
+| R5 Evidence | Present | Forensic receipts + console evidence-bundle/PDF; decision_basis; append-only 015 |
+| R6 Verifier | Present | `pnpm aegis-verify`; Verify page drop-zone; scenario 12 |
 | R7 Field policy | Present | store/mask/hash/evaluate_only/omit + scenario 8 |
-| R8 Search / reports | Present (stub UI) | Canned CSV API; console **Stub** page |
+| R8 Search / reports | Present | Canned CSV API; real console Reports page with filters (stub label removed) |
 | R9 Admin / security | Partial | Access-log helpers+tests; not every receipt view wired |
 | R10 Integration | Partial | Batch HTTP; bank-core stub; webhook retry incomplete |
-| R11 Demo ops | Present | Live theatre + `demo:reset` + pack:apply |
+| R11 Demo ops | Present | Demo Bank + bank_demo UI + simulator + seed-story + witness in demo:up |
 | P1–P12 | Partial | See table below |
 | Website E | Partial | Preview only; await founder |
 
@@ -67,12 +67,12 @@
 | R2.6 Dual-approver publish | Partial | Table + `dual_publish_required` wire; full UX incomplete |
 | R3.* Authority | Present | Pack seed via `pack:apply` |
 | R4.1–R4.4 Role/SoD/fields | Present (unit + console guards + HTTP) | `scenario:live --approvals=http`; `console-approval-http.integration.test.ts` officer 403 / manager 200 |
-| R4.5 Escalation / clock | Partial | Demo clock exists; escalate_to_role incomplete |
-| R4.6 Delegation | Missing | Manual reassign only |
+| R4.5 Escalation / clock | Present | Demo clock + `escalate_to_role` console guard and route; scenario 10 PASS |
+| R4.6 Delegation | Present | Time-bound `approval_delegate` (migration 016); outside the window the delegate gets 403 (scenario 10 `delegateAfter=403`) |
 | R5.* Receipts / append-only | Present | Migrations 014/015; issue + seal |
 | R6.* Verifier | Present | `tools/aegis-verify` |
 | R7.* Field policy | Present | + leak tests / scenario 8 |
-| R8.2–R8.4 Canned CSV | Present (stub UI) | `canned-reports.ts` + console Stub |
+| R8.2–R8.4 Canned CSV | Present | `canned-reports.ts` + console Reports page (stub label removed) |
 | R9.2 Access log | Partial→helpers Done | Tests for log/list; not every view |
 | R10.3 Bank-core stub | Present (labelled stub) | `examples/bank-core-stub` |
 | R10.4 Measured latency | Present | Raw output **only** in FINAL_REPORT § latency |
@@ -86,15 +86,15 @@
 |------|--------|-----------------|
 | Batch CSV/JSONL record-only | **Done** | `batch import` tests + `POST .../events/batch` |
 | Tenant isolation | **Done** | `TestOrgIsolation` (events, bank_case, forensic_receipt) |
-| Role enforcement every endpoint | **Partial** | governed/batch 401 + report 403; not all console routes |
+| Role enforcement every endpoint | **Partial** | route auth matrix test covers console + aegis routes; not every mutate route has its own role middleware |
 | Record-only mode tests | **Done** | `bank-evaluate` record-only cases + batch commit |
 | Access-log tests | **Done** | `receipt access log` unit tests |
-| Backup/restore + verify | **Not done** | — |
+| Backup/restore + verify | **Done** | `pnpm backup-restore-drill` (`tools/backup-restore-drill/run.mts`); restored receipts verify |
 | Threat model | **Done** | `docs/THREAT_MODEL.md` |
 | Retention / legal hold | **Done** | Phase 6 legal hold purge tests |
-| OIDC role mapping | **Partial** | Doc contract; no automated mapper |
+| OIDC role mapping | **Done** | `src/auth/oidc-claim-mapper.ts` + `oidc-claim-mapper.test.ts` |
 | Demo clock on receipts | **Done** | `demo_clock flags` tests |
-| Canned reports + CSV | **Done** | API + Stub UI |
+| Canned reports + CSV | **Done** | API + real Reports page (stub label removed) |
 
 ---
 
@@ -102,14 +102,14 @@
 
 | ID | Status | Note |
 |----|--------|------|
-| P1 KeyProvider | Partial | local/dev + env; AWS/GCP/Vault Sign incomplete / stubs |
-| P2 RFC 3161 | Partial | Local test TSA; **production TSA not done** |
-| P3 Approver notifications | Partial | Safe payload + unit; **production email/Teams delivery incomplete** |
-| P4 Identity / OIDC mapping | Partial | Doc; automated claim→role incomplete |
+| P1 KeyProvider | Partial | AWS KMS Ed25519 signer (`kms-ed25519.ts`), production boot guards, custody recorded in receipts (`docs/KEY_CUSTODY.md`); live KMS Sign proof waits on founder AWS credentials |
+| P2 RFC 3161 | Partial | Client + local test TSA; public TSA via `AEGIS_TSA_URL` (Sectigo recommended, no SLA); live public-TSA proof waits on the founder setting the URL |
+| P3 Approver notifications | Partial | Safe payload + unit; real email/Teams delivery waits on staging credentials |
+| P4 Identity / OIDC mapping | Present | `oidc-claim-mapper.ts` + tests + `docs/OIDC_ROLE_MAPPING.md` |
 | P5 Batch import | Present | HTTP record-only |
-| P6 Operability | Partial | Health/ready; **backup restore proof not done** |
+| P6 Operability | Partial | Health/ready + backup → restore → verify drill Present; remaining operability work is listed in FINAL_REPORT 2.9 and `docs/OPERABILITY.md` |
 | P7 Security | Partial | Threat model + SBOM workflow; more hardening open |
-| P8 OpenAPI + Java/C# | Partial | OpenAPI + smoke; **Java/C# clients not generated/CI-smoked** |
+| P8 OpenAPI + Java/C# | Partial | OpenAPI + smoke; Java/C# generate and smoke scripts exist (container), not yet gated in CI |
 | P9 Load test | Present | Script; figures only in FINAL_REPORT |
 | P10 Legal hold + retention | Present | |
 | P11 Docs | Present | FINAL / GAP / DEMO / DECISIONS / WEBSITE_CHANGES |
@@ -142,7 +142,8 @@ Corrected after implementation pass (explore inventory of “Missing” for esca
 | Item | Status |
 |------|--------|
 | Backup → restore → verify drill | **Present** — `tools/backup-restore-drill/run.mts` |
-| Console/aegis route auth matrix | **Present** — `test/console-route-auth-matrix.test.ts` (+ forensic-role-auth); not every mutate route has role middleware |
+| Console/aegis route auth matrix | **Partial** — `test/console-route-auth-matrix.test.ts` (+ forensic-role-auth) passes; not every mutate route has its own role middleware |
+| Reports UI | **Present** — real canned CSV + filters (stub label removed) |
 | OIDC claim → role | **Present** — `src/auth/oidc-claim-mapper.ts` + tests + `docs/OIDC_ROLE_MAPPING.md` |
 | Production RFC 3161 TSA | **Present client** — `requestRfc3161Timestamp` / `AEGIS_TSA_URL`; ops TSA still customer-provided |
 | KeyProvider AWS/GCP/Vault Sign | **Present** — `key-provider.ts` calls SDKs when creds exist |

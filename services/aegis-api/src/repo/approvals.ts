@@ -101,15 +101,28 @@ export async function createApprovalRequest(
       deferred_request: params.deferred,
       obligation_tool: params.toolName,
     };
-    const resigned = await patchSignedEventPayload(client, {
-      organizationId: params.organizationId,
-      eventId: params.eventId,
-      patch,
-    });
-    if (!resigned) {
-      console.warn(
-        `[approvals] deferred_request not on event ${params.eventId} and bridge resign unavailable; leaving seal intact`,
-      );
+    try {
+      const resigned = await patchSignedEventPayload(client, {
+        organizationId: params.organizationId,
+        eventId: params.eventId,
+        patch,
+      });
+      if (!resigned) {
+        console.warn(
+          `[approvals] deferred_request not on event ${params.eventId} and bridge resign unavailable; leaving seal intact`,
+        );
+      }
+    } catch (err) {
+      // Sealed forensic events cannot have identity/hash fields rewritten
+      // (append-only trigger). Leave the seal intact; the approval row still stands.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/append_only|immutable/i.test(msg)) {
+        console.warn(
+          `[approvals] deferred_request not attached to sealed event ${params.eventId}; leaving seal intact`,
+        );
+      } else {
+        throw err;
+      }
     }
   }
 
@@ -167,6 +180,22 @@ function approvalSelectJoin(): string {
      LEFT JOIN membership m ON m.membership_id = a.approver_user_id
      LEFT JOIN account acc ON acc.account_id = m.account_id`;
 }
+
+/** Same ledger rule as traces: agent.environment, missing → production. */
+function agentEnvironmentClause(
+  eventAlias: string,
+  orgAlias: string,
+  paramIndex: number,
+): string {
+  return `COALESCE(
+      (SELECT ag.environment FROM agent ag
+       WHERE ag.agent_id = ${eventAlias}.agent_id
+         AND ag.organization_id = ${orgAlias}.organization_id),
+      'production'
+    ) = $${paramIndex}`;
+}
+
+export type ApprovalEnvironment = "production" | "sandbox";
 
 export async function getApprovalRich(
   client: pg.Pool | pg.PoolClient,
@@ -264,17 +293,20 @@ export async function syncPendingApprovalsWithTraces(
 export async function listPendingApprovals(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
+  environment: ApprovalEnvironment = "production",
 ): Promise<ApprovalRichDetail[]> {
   await expireStaleApprovals(client, organizationId);
   await syncPendingApprovalsWithTraces(client, organizationId);
+  const env = environment === "sandbox" ? "sandbox" : "production";
   const result = await client.query<ApprovalRichDetail & { event_payload: unknown }>(
     `${approvalSelectJoin()}
      WHERE a.organization_id = $1 AND a.status IN ('pending', 'needs_info')
+       AND ${agentEnvironmentClause("e", "a", 2)}
      ORDER BY
        CASE WHEN a.expires_at IS NULL THEN 1 ELSE 0 END,
        a.expires_at ASC NULLS LAST,
        a.created_at ASC`,
-    [organizationId],
+    [organizationId, env],
   );
   return result.rows.map((row) => {
     const meta = (row as { metadata?: unknown }).metadata;
@@ -312,19 +344,22 @@ export async function listRecentApprovalsPaginated(
     offset?: number;
     decision?: "approved" | "rejected" | "expired" | "all";
     tool?: string;
+    environment?: ApprovalEnvironment;
   },
 ): Promise<{ rows: ApprovalRichDetail[]; total: number }> {
   const limit = Math.min(Math.max(opts.limit ?? 25, 1), 100);
   const offset = Math.max(opts.offset ?? 0, 0);
   const decision = opts.decision ?? "all";
   const tool = opts.tool?.trim() ?? "";
+  const env = opts.environment === "sandbox" ? "sandbox" : "production";
 
   const statuses =
     decision === "all"
       ? ["approved", "rejected", "expired"]
       : [decision];
 
-  const params: unknown[] = [organizationId, statuses];
+  const params: unknown[] = [organizationId, statuses, env];
+  const envClause = ` AND ${agentEnvironmentClause("e", "a", 3)}`;
   let toolClause = "";
   if (tool) {
     params.push(`%${tool}%`);
@@ -337,6 +372,7 @@ export async function listRecentApprovalsPaginated(
      JOIN event e ON e.event_id = a.event_id
      WHERE a.organization_id = $1
        AND a.status = ANY($2::text[])
+       ${envClause}
        ${toolClause}`,
     params,
   );
@@ -349,6 +385,7 @@ export async function listRecentApprovalsPaginated(
     `${approvalSelectJoin()}
      WHERE a.organization_id = $1
        AND a.status = ANY($2::text[])
+       ${envClause}
        ${toolClause}
      ORDER BY COALESCE(a.decided_at, a.created_at) DESC
      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
@@ -424,14 +461,31 @@ export type DecideApprovalResult = {
 async function ensureApprovalMetadataColumn(
   client: pg.Pool | pg.PoolClient,
 ): Promise<void> {
-  // Soft-guard for DBs that have not run 006 yet — vote path still works via metadata.
+  // Soft-guard for DBs that have not run 006 yet. Never run DDL inside a caller
+  // transaction: a failed ALTER (e.g. least-privilege aegis_app) aborts the whole
+  // TX even when the JS catch swallows the error (25P02).
+  const exists = await client.query<{ ok: number }>(
+    `SELECT 1 AS ok
+       FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'approval'
+        AND column_name = 'metadata'
+      LIMIT 1`,
+  );
+  if (exists.rows[0]) return;
   try {
+    await client.query("SAVEPOINT ensure_approval_metadata");
     await client.query(
       `ALTER TABLE approval
        ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb`,
     );
+    await client.query("RELEASE SAVEPOINT ensure_approval_metadata");
   } catch {
-    // ignore if lacking privilege; subsequent queries may still succeed if migrated
+    try {
+      await client.query("ROLLBACK TO SAVEPOINT ensure_approval_metadata");
+    } catch {
+      /* not in a transaction or savepoint missing */
+    }
   }
 }
 
@@ -441,7 +495,12 @@ export async function decideApproval(
   approvalId: string,
   approverUserId: string,
   decision: "approved" | "rejected",
-  options?: { reason?: string; voterEmail?: string | null },
+  options?: {
+    reason?: string;
+    voterEmail?: string | null;
+    /** Delegation relied on to satisfy the required role (recorded on the vote). */
+    delegation?: Record<string, unknown> | null;
+  },
 ): Promise<DecideApprovalResult | null> {
   await ensureApprovalMetadataColumn(client);
   const governance = await getGovernanceSettings(client, organizationId);
@@ -483,6 +542,7 @@ export async function decideApproval(
     decision,
     reason: options?.reason ?? null,
     at: new Date().toISOString(),
+    ...(options?.delegation ? { delegation: options.delegation } : {}),
   };
   const votes = [...priorVotes, vote];
   metadata.votes = votes;

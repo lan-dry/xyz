@@ -44,6 +44,14 @@ export type PackWorkflow = {
   on_unreachable?: "hold" | "proceed_and_flag";
 };
 
+/** Optional display strings — configuration, never engine defaults. */
+export type PackLabels = {
+  rule_titles?: Record<string, string>;
+  role_labels?: Record<string, string>;
+  product_labels?: Record<string, string>;
+  event_type_labels?: Record<string, string>;
+};
+
 export type PolicyPack = {
   /** Pack id, e.g. demo.banking, demo.insurance */
   id: string;
@@ -60,6 +68,8 @@ export type PolicyPack = {
   field_policies: PackFieldPolicy[];
   rules: PackRule[];
   workflows: PackWorkflow[];
-  /** Default currency for this pack's products — configuration, not engine default. */
+  /** Currencies used by this pack's products — configuration, not engine default. */
   currencies: string[];
+  /** Plain-language titles for rules/roles/products (optional). */
+  labels?: PackLabels;
 };

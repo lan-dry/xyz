@@ -1,0 +1,14 @@
+{
+  "name": "@salanor/bank-simulator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone bank system simulator: sends governed events to a hosted Aegis tenant (port 4000).",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/key-leak.test.mjs"
+  },
+  "dependencies": {
+    "@salanor/aegis": "workspace:*"
+  }
+}

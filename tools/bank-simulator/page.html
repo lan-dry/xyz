@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulated core banking system</title>
+<style>
+  :root { --fg:#16202a; --muted:#5b6773; --line:#d9dee3; --bg:#f6f7f9; --card:#fff; --accent:#1a5fb4;
+          --ok:#1f7a45; --warn:#9a6700; --bad:#b42318; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui, "Segoe UI", sans-serif; color:var(--fg); background:var(--bg); }
+  header { padding:1rem 1.5rem; background:var(--card); border-bottom:1px solid var(--line);
+           display:flex; flex-wrap:wrap; gap:1rem; align-items:center; justify-content:space-between; }
+  h1 { font-size:1.15rem; margin:0; }
+  .sub { color:var(--muted); font-size:.85rem; margin:.15rem 0 0; }
+  main { max-width:1100px; margin:0 auto; padding:1.25rem 1.5rem 3rem; display:grid; gap:1.25rem; }
+  .bar { display:flex; flex-wrap:wrap; gap:1rem; align-items:center; background:var(--card);
+         border:1px solid var(--line); border-radius:8px; padding:.75rem 1rem; }
+  .bar.offline { border-color:var(--warn); background:#fff8e6; }
+  .switch { display:flex; gap:.5rem; align-items:center; font-weight:600; cursor:pointer; }
+  .meta { color:var(--muted); font-size:.85rem; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:1rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:1rem;
+          display:flex; flex-direction:column; gap:.5rem; }
+  .card h3 { margin:0; font-size:1rem; }
+  .card p { margin:0; color:var(--muted); font-size:.875rem; }
+  .chip { display:inline-block; padding:.1rem .5rem; border-radius:999px; font-size:.75rem; font-weight:600;
+          border:1px solid var(--line); }
+  .chip.allow { color:var(--ok); border-color:var(--ok); }
+  .chip.hold { color:var(--warn); border-color:var(--warn); }
+  .chip.stop, .chip.reject { color:var(--bad); border-color:var(--bad); }
+  .attrs { font-size:.8rem; color:var(--muted); }
+  button { font:inherit; padding:.45rem .8rem; border-radius:6px; border:1px solid var(--accent);
+           background:var(--accent); color:#fff; cursor:pointer; }
+  button:disabled { opacity:.55; cursor:default; }
+  button.secondary { background:#fff; color:var(--accent); }
+  .row { display:flex; gap:.5rem; align-items:center; margin-top:auto; }
+  #result { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:1rem; }
+  #result.hidden { display:none; }
+  #result h2 { margin:0 0 .5rem; font-size:1rem; }
+  #result ul { margin:.5rem 0; padding-left:1.1rem; color:var(--muted); font-size:.875rem; }
+  .err { color:var(--bad); }
+  a { color:var(--accent); }
+  #login { max-width:380px; margin:3rem auto; background:var(--card); border:1px solid var(--line);
+           border-radius:8px; padding:1.25rem; display:grid; gap:.75rem; }
+  #login input { font:inherit; padding:.45rem .6rem; border:1px solid var(--line); border-radius:6px; width:100%; }
+  [hidden] { display:none !important; }
+  .status { padding:.45rem 1.5rem; font-size:.9rem; font-weight:600; border-bottom:1px solid var(--line);
+            background:#eaf6ee; color:var(--ok); }
+  .status.off { background:#fdecea; color:var(--bad); }
+  details.setup { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.75rem 1rem; }
+  details.setup summary { cursor:pointer; font-weight:600; }
+  #setupForm { display:grid; gap:.6rem; margin-top:.75rem; max-width:560px; }
+  #setupForm label { font-size:.8rem; color:var(--muted); display:grid; gap:.2rem; }
+  #setupForm input { font:inherit; padding:.45rem .6rem; border:1px solid var(--line); border-radius:6px; width:100%; }
+  .sent { margin-top:.75rem; border-top:1px solid var(--line); padding-top:.75rem; }
+  .sent h3 { margin:0 0 .4rem; font-size:.9rem; }
+  .sent .call { border:1px solid var(--line); border-radius:6px; padding:.5rem .7rem; margin:.4rem 0; background:#fbfcfd; }
+  .sent .ep { font-weight:600; font-size:.85rem; word-break:break-all; }
+  .sent pre { margin:.25rem 0 0; padding:.4rem .5rem; background:#f1f3f5; border-radius:4px; overflow:auto;
+              font:12px/1.4 ui-monospace, Consolas, monospace; max-height:240px; }
+  .sent .lbl { font-size:.75rem; color:var(--muted); margin-top:.4rem; }
+  .sent .st { font-weight:700; }
+  .sent .st.bad { color:var(--bad); } .sent .st.good { color:var(--ok); }
+  .banner { background:#eef4ff; border-bottom:1px solid var(--line); padding:.35rem 1.5rem;
+            font-size:.8rem; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Simulated core banking system</h1>
+    <p class="sub">Plays a bank's core system. Every button sends a real event to the hosted tenant. Outcomes come from the API, not from this page.</p>
+  </div>
+  <div class="meta"><span id="target"></span> <button class="secondary" id="logout" hidden>Sign out</button></div>
+</header>
+<div class="banner">Simulated core banking system. Synthetic data only. This is not a real bank.</div>
+<div class="status off" id="statusLine" role="status">Connecting&hellip;</div>
+<form id="login" hidden>
+  <h2 style="margin:0;font-size:1rem">Sign in</h2>
+  <label for="passphrase" class="meta">Passphrase</label>
+  <input id="passphrase" type="password" autocomplete="current-password" required>
+  <button type="submit">Sign in</button>
+  <p class="err" id="loginError" role="alert"></p>
+</form>
+<main id="app">
+  <details class="setup" id="setup">
+    <summary>Setup: API base, ingest key, organisation, agent</summary>
+    <p class="meta">Overrides the server's environment values. The ingest key is stored on this server only and is never shown again; leave it blank to keep the saved key.</p>
+    <form id="setupForm" autocomplete="off">
+      <label>API base<input id="cfgApiBase" type="url" placeholder="https://api.salanor.com" required></label>
+      <label>Ingest key <span id="keyHint"></span><input id="cfgKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="paste to set or replace"></label>
+      <label>Organisation id<input id="cfgOrg" type="text" required></label>
+      <label>Agent id<input id="cfgAgent" type="text" required></label>
+      <div class="row">
+        <button type="submit" id="cfgSave">Save</button>
+        <button type="button" class="secondary" id="cfgReset">Use environment defaults</button>
+      </div>
+      <p class="meta" id="cfgMsg" role="status"></p>
+    </form>
+  </details>
+
+  <section class="bar" id="bar">
+    <label class="switch"><input type="checkbox" id="offline"> Aegis unreachable</label>
+    <span class="meta" id="offlineHint">Link to Aegis is up.</span>
+    <span class="meta" id="queueInfo"></span>
+  </section>
+
+  <section id="result" class="hidden" aria-live="polite"></section>
+
+  <section>
+    <div class="grid" id="stories"></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var storiesEl = document.getElementById("stories");
+  var resultEl = document.getElementById("result");
+  var offlineEl = document.getElementById("offline");
+  var barEl = document.getElementById("bar");
+  var state = {};
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (k) {
+      if (k === "text") node.textContent = attrs[k];
+      else if (k === "class") node.className = attrs[k];
+      else node.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) { node.appendChild(c); });
+    return node;
+  }
+
+  function api(path, body) {
+    var init = body === undefined
+      ? { method: "GET" }
+      : { method: "POST", headers: { "Content-Type": "application/json", "X-Simulator": "1" }, body: JSON.stringify(body) };
+    return fetch(path, init).then(function (r) {
+      return r.json().then(function (data) {
+        if (r.status === 401 && data.login_required) { showLogin(); throw new Error("Login required"); }
+        if (!r.ok) { var err = new Error(data.error || r.statusText); err.data = data; throw err; }
+        return data;
+      });
+    });
+  }
+
+  var loginEl = document.getElementById("login");
+  var appEl = document.getElementById("app");
+  var logoutEl = document.getElementById("logout");
+
+  function showLogin() {
+    loginEl.hidden = false;
+    appEl.hidden = true;
+    logoutEl.hidden = true;
+  }
+
+  function start() {
+    loginEl.hidden = true;
+    appEl.hidden = false;
+    Promise.all([api("/api/stories"), refreshState(), loadConfig()])
+      .then(function (res) {
+        logoutEl.hidden = !state.auth_enabled;
+        renderStories(res[0].stories);
+      })
+      .catch(function (e) { if (e.message !== "Login required") storiesEl.textContent = "Could not load: " + e.message; });
+  }
+
+  loginEl.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var errEl = document.getElementById("loginError");
+    errEl.textContent = "";
+    fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Simulator": "1" },
+      body: JSON.stringify({ passphrase: document.getElementById("passphrase").value })
+    }).then(function (r) {
+      return r.json().then(function (data) {
+        if (!r.ok) throw new Error(data.error || "Sign in failed");
+        document.getElementById("passphrase").value = "";
+        start();
+      });
+    }).catch(function (e) { errEl.textContent = e.message; });
+  });
+
+  logoutEl.addEventListener("click", function () {
+    fetch("/api/logout", { method: "POST", headers: { "X-Simulator": "1" } }).then(function () { showLogin(); });
+  });
+
+  function rwf(n) { return "RWF " + Number(n).toLocaleString("en-US"); }
+
+  function preview(a) {
+    var parts = [];
+    if (typeof a.amount === "number") parts.push(rwf(a.amount));
+    ["applicant_name", "branch", "loan_purpose", "purpose"].forEach(function (k) {
+      if (typeof a[k] === "string") parts.push(a[k]);
+    });
+    return parts.join(" \u00b7 ");
+  }
+
+  function renderState() {
+    offlineEl.checked = !!state.offline;
+    barEl.className = "bar" + (state.offline ? " offline" : "");
+    document.getElementById("offlineHint").textContent = state.offline
+      ? "Simulated outage: the bank proceeds under its own fallback and queues each event."
+      : "Link to Aegis is up.";
+    var q = [];
+    if (state.queued) q.push(state.queued + " queued for replay");
+    if (state.sdk_buffered) q.push(state.sdk_buffered + " in the SDK buffer");
+    document.getElementById("queueInfo").textContent = q.join(" \u00b7 ");
+    document.getElementById("target").textContent = state.api_base ? "Aegis API: " + state.api_base : "";
+    var st = document.getElementById("statusLine");
+    st.textContent = state.status_line || "";
+    st.className = "status" + (state.configured ? "" : " off");
+  }
+
+  var cfgEl = {
+    apiBase: document.getElementById("cfgApiBase"), key: document.getElementById("cfgKey"),
+    org: document.getElementById("cfgOrg"), agent: document.getElementById("cfgAgent"),
+    msg: document.getElementById("cfgMsg"), hint: document.getElementById("keyHint")
+  };
+
+  // Fill the form from the server. The key is never returned, only whether one is present.
+  function applyConfig(c) {
+    cfgEl.apiBase.value = c.apiBase || "";
+    cfgEl.org.value = c.orgId || "";
+    cfgEl.agent.value = c.agentId || "";
+    cfgEl.key.value = "";
+    cfgEl.hint.textContent = c.keyPresent ? "(saved: " + c.keyHint + ")" : "(not set)";
+    if (!c.configured) document.getElementById("setup").open = true;
+  }
+
+  function loadConfig() { return api("/api/config").then(applyConfig); }
+
+  document.getElementById("setupForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    cfgEl.msg.textContent = "Saving\u2026";
+    api("/api/config", {
+      apiBase: cfgEl.apiBase.value, ingestKey: cfgEl.key.value,
+      orgId: cfgEl.org.value, agentId: cfgEl.agent.value
+    }).then(function (c) {
+      applyConfig(c); cfgEl.msg.textContent = "Saved. The key stays on the server."; return refreshState();
+    }).catch(function (e) { cfgEl.msg.textContent = e.message; cfgEl.key.value = ""; });
+  });
+
+  document.getElementById("cfgReset").addEventListener("click", function () {
+    api("/api/config/reset", {}).then(function (c) {
+      applyConfig(c); cfgEl.msg.textContent = "Saved override removed."; return refreshState();
+    }).catch(function (e) { cfgEl.msg.textContent = e.message; });
+  });
+
+  function pretty(v) { try { return JSON.stringify(v, null, 2); } catch (e) { return String(v); } }
+
+  // "What was sent": endpoint, payload, response status and body. The key is masked by the server.
+  function renderSent(requests) {
+    if (!requests || !requests.length) return null;
+    var wrap = el("div", { class: "sent" }, [el("h3", { text: "What was sent" })]);
+    requests.forEach(function (c) {
+      var status = c.response && c.response.status;
+      var good = status >= 200 && status < 300;
+      var box = el("div", { class: "call" }, [
+        el("div", { class: "ep", text: c.method + " " + c.endpoint }),
+        el("div", { class: "lbl", text: "Headers" }),
+        el("pre", { text: pretty(c.headers) }),
+        el("div", { class: "lbl", text: "Payload" }),
+        el("pre", { text: pretty(c.payload) }),
+        el("div", { class: "lbl" }, [
+          el("span", { text: "Response status: " }),
+          el("span", { class: "st " + (good ? "good" : "bad"), text: String(status || "no response") })
+        ]),
+        el("div", { class: "lbl", text: "Response body" }),
+        el("pre", { text: pretty(c.response && c.response.body) })
+      ]);
+      wrap.appendChild(box);
+    });
+    return wrap;
+  }
+
+  function refreshState() {
+    return api("/api/state").then(function (s) { state = s; renderState(); });
+  }
+
+  function showResult(title, node) {
+    resultEl.className = "";
+    resultEl.textContent = "";
+    resultEl.appendChild(el("h2", { text: title }));
+    resultEl.appendChild(node);
+    resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function caseLink(r) {
+    return el("a", { href: r.console_url, target: "_blank", rel: "noreferrer noopener", text: "Open the case in the console" });
+  }
+
+  function steps(list) {
+    return el("ul", {}, (list || []).map(function (s) { return el("li", { text: s }); }));
+  }
+
+  function renderStoryResult(r) {
+    var box = el("div");
+    var head = r.case_id
+      ? "Case " + r.case_id + " \u00b7 outcome: " + r.outcome + " (expected: " + r.expected + ")"
+      : "No case created \u00b7 outcome: " + r.outcome + " (expected: " + r.expected + ")";
+    box.appendChild(el("p", { text: head }));
+    if (r.plain_summary) box.appendChild(el("p", { text: r.plain_summary }));
+    if (r.expect_detail) box.appendChild(el("p", { class: "meta", text: r.expect_detail }));
+    if (r.resolver) box.appendChild(el("p", { class: "meta", text: "Resolved by: " + r.resolver }));
+    box.appendChild(steps(r.steps));
+    if (r.console_url) box.appendChild(caseLink(r));
+    var sent = renderSent(r.requests);
+    if (sent) box.appendChild(sent);
+    showResult(r.queued ? "Queued while Aegis is unreachable" : "Sent", box);
+  }
+
+  function send(story, btn) {
+    btn.disabled = true;
+    api("/api/story", { story_id: story.id })
+      .then(function (r) { renderStoryResult(r); return refreshState(); })
+      .catch(function (e) {
+        var box = el("div", {}, [el("p", { class: "err", text: e.message })]);
+        var sent = renderSent(e.data && e.data.requests);
+        if (sent) box.appendChild(sent);
+        showResult("Could not send", box);
+      })
+      .then(function () { btn.disabled = false; });
+  }
+
+  function renderStories(list) {
+    storiesEl.textContent = "";
+    list.forEach(function (s) {
+      var btn = el("button", { text: s.wrong_key ? "Send with a wrong key" : "Send this case" });
+      btn.addEventListener("click", function () { send(s, btn); });
+      var children = [
+        el("div", {}, [el("span", { class: "chip " + s.expect, text: "Expect: " + s.expect })]),
+        el("h3", { text: s.title }),
+        el("p", { text: s.blurb }),
+        el("p", { class: "attrs", text: preview(s.attributes || {}) }),
+        el("p", { text: s.expect_detail })
+      ];
+      if (s.resolver) children.push(el("p", { class: "attrs", text: "Resolved by: " + s.resolver }));
+      var row = el("div", { class: "row" }, [btn]);
+      if (s.console_hint) {
+        row.appendChild(el("span", { class: "meta", text: "Set up in the console: " + s.console_hint }));
+      }
+      children.push(row);
+      storiesEl.appendChild(el("article", { class: "card" }, children));
+    });
+  }
+
+  offlineEl.addEventListener("change", function () {
+    var on = offlineEl.checked;
+    offlineEl.disabled = true;
+    api("/api/unreachable", { on: on })
+      .then(function (r) {
+        if (!on && r.replayed) {
+          var box = el("div");
+          box.appendChild(el("p", { text: r.replayed.length + " event(s) replayed and sealed, marked decided without Aegis." }));
+          box.appendChild(steps(r.steps));
+          r.replayed.forEach(function (c) {
+            box.appendChild(el("p", {}, [
+              el("span", { text: c.case_id + " \u00b7 " + c.outcome + " \u00b7 " }),
+              el("a", { href: c.console_url, target: "_blank", rel: "noreferrer noopener", text: "open case" })
+            ]));
+          });
+          var sentReplay = renderSent(r.requests);
+          if (sentReplay) box.appendChild(sentReplay);
+          showResult("Link restored", box);
+        }
+        return refreshState();
+      })
+      .catch(function (e) { showResult("Could not change the link state", el("p", { class: "err", text: e.message })); })
+      .then(function () { offlineEl.disabled = false; return refreshState(); });
+  });
+
+  start();
+})();
+</script>
+</body>
+</html>

@@ -75,6 +75,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/audit-logs", label: "Audit log", icon: ClipboardList },
       { href: "/workers", label: "Workers", icon: ServerCog },
       { href: "/commands", label: "Commands", icon: Terminal },
+      { href: "/settings/email", label: "Email", icon: Mail },
       { href: "/settings", label: "Profile", icon: UserCircle },
     ],
   },
@@ -82,6 +83,8 @@ const NAV_SECTIONS: NavSection[] = [
 
 function isActivePath(pathname: string, href: string): boolean {
   if (href === "/") return pathname === "/";
+  // Profile is /settings; Email is /settings/email — do not highlight Profile for Email.
+  if (href === "/settings") return pathname === "/settings";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

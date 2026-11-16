@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type pg from "pg";
 import { getActivePoliciesWithRules } from "../repo/policies.js";
 import { issueForensicReceipt } from "../forensic/issue.js";
+import { isReceiptSigningConfigured } from "../crypto/receipt-signing.js";
 import { applyFieldPolicy } from "./field-policy.js";
 import { evaluateBankEvent } from "./evaluate.js";
 import { policyContentHash } from "./policy-hash.js";
@@ -17,6 +18,7 @@ import {
 import type { BankEvent, BankDecisionResponse } from "./types.js";
 import type { RuleCombineMode } from "../policy/evaluate-rules.js";
 import { isDemoClockActive } from "./demo-clock.js";
+import { describeDecision } from "./describe-decision.js";
 
 function demoClockActive(): boolean {
   return isDemoClockActive();
@@ -25,6 +27,11 @@ function demoClockActive(): boolean {
 export type HandleBankEventOptions = {
   /** Force evaluate/seal in record-only mode (batch import pilot). */
   forceRecordOnly?: boolean;
+  /**
+   * The bank system decided under its own fallback while Aegis was unreachable and is
+   * replaying the queued event now. The receipt is marked "decided without Aegis".
+   */
+  decidedWithoutAegis?: boolean;
 };
 
 export async function handleBankEvent(
@@ -66,15 +73,13 @@ export async function handleBankEvent(
   const matrix = await listAuthorityMatrix(client, organizationId);
   const ladder = await listBankRoleLadder(client, organizationId);
 
-  // Active policies now return combine + content_hash and fetch rules in one query
-  // (avoids N+1 policy_rule round-trips and a second policy SELECT).
   const actives = await getActivePoliciesWithRules(client, organizationId);
   const primary = actives[0];
-  let policyCombine: RuleCombineMode =
+  const policyCombine: RuleCombineMode =
     primary?.policy.combine === "all_matching" ? "all_matching" : "top_priority";
   let contentHash: string | null = primary?.policy.content_hash ?? null;
-  let policyVersion = primary?.policy.version ?? 0;
-  let policyId = primary?.policy.policy_id ?? "pol_none";
+  const policyVersion = primary?.policy.version ?? 0;
+  const policyId = primary?.policy.policy_id ?? "pol_none";
 
   if (primary && !contentHash) {
     contentHash = policyContentHash({
@@ -152,6 +157,8 @@ export async function handleBankEvent(
         outcome: evalResult.outcome,
         mode: evalResult.mode,
         would_have: evalResult.would_have,
+        product: event.product,
+        event_type: event.event_type,
         tool_name: toolName,
         attributes: fielded.stored,
         matched_rules: matched,
@@ -166,8 +173,13 @@ export async function handleBankEvent(
         eventHash = sealed.event_hash;
         sequenceNum = sealed.sequence_num;
       }
-    } catch {
-      // Fall through to provisional citation
+    } catch (err) {
+      // Fall through to provisional citation. Log so demo/ops can see seal races
+      // (duplicate sequence) vs missing signing material.
+      console.error(
+        "[governed] APS seal failed; issuing provisional citation",
+        err instanceof Error ? err.message : err,
+      );
     }
   }
 
@@ -189,12 +201,45 @@ export async function handleBankEvent(
     sequenceNum = 1;
   }
 
-  if (process.env.AEGIS_RECEIPT_SIGNING_KEY_B64) {
+  const amountRaw =
+    fielded.stored.amount ??
+    fielded.stored.amount_rwf ??
+    fielded.stored.loan_amount;
+  const amountNum =
+    typeof amountRaw === "number"
+      ? amountRaw
+      : typeof amountRaw === "string"
+        ? Number(amountRaw)
+        : null;
+  const currency =
+    typeof fielded.stored.currency === "string"
+      ? fielded.stored.currency
+      : null;
+  const plainSummary = describeDecision({
+    outcome: evalResult.outcome,
+    product: event.product,
+    event_type: event.event_type,
+    amount: amountNum != null && Number.isFinite(amountNum) ? amountNum : null,
+    currency,
+    policy_version: policyVersion,
+    policy_label: `v${policyVersion}`,
+    matched_rules: matched,
+    decided_by_rule_id: evalResult.decision_basis.decided_by_rule_id,
+    decision_basis: evalResult.decision_basis,
+    required_role: evalResult.required_roles[0] ?? null,
+    would_have: evalResult.would_have,
+    mode: evalResult.mode,
+  });
+
+  let evidenceStatus: "ok" | "failed" | "skipped" = "skipped";
+  if (isReceiptSigningConfigured()) {
     try {
       const issued = await issueForensicReceipt(client, {
         organization_id: organizationId,
         case_id: event.case_id,
         decision_id: decisionId,
+        product: event.product,
+        event_type: event.event_type,
         outcome: evalResult.outcome,
         mode: evalResult.mode,
         would_have: evalResult.would_have,
@@ -204,6 +249,8 @@ export async function handleBankEvent(
           content_hash: contentHash,
         },
         matched_rules: matched,
+        decision_basis: evalResult.decision_basis,
+        plain_summary: plainSummary,
         sealed_events: [
           {
             event_id: eventId,
@@ -220,12 +267,60 @@ export async function handleBankEvent(
             reason: evalResult.reason,
           },
         ],
-        flags: provisional ? { provisional: true } : undefined,
+        flags:
+          provisional || options?.decidedWithoutAegis
+            ? {
+                ...(provisional ? { provisional: true } : {}),
+                ...(options?.decidedWithoutAegis ? { decided_without_aegis: true } : {}),
+              }
+            : undefined,
       });
       receiptId = issued.receipt_id;
-    } catch {
-      // Keep case without sealed receipt if signing/migration unavailable
+      evidenceStatus = "ok";
+    } catch (err) {
+      evidenceStatus = "failed";
+      console.error(
+        "[governed] forensic receipt write failed",
+        err instanceof Error ? err.message : err,
+      );
     }
+  }
+
+  // F13: when receipt signing is configured, enforce mode must not return a
+  // final allow/stop if the evidence record failed to write.
+  if (
+    evalResult.mode === "enforce" &&
+    evidenceStatus === "failed" &&
+    process.env.AEGIS_ENFORCE_REQUIRE_EVIDENCE !== "0"
+  ) {
+    return {
+      case_id: event.case_id,
+      decision_id: decisionId,
+      receipt_id: receiptId,
+      outcome: "hold",
+      mode: "enforce",
+      would_have: evalResult.outcome,
+      matched_rules: matched,
+      decision_basis: evalResult.decision_basis,
+      plain_summary: plainSummary,
+      policy: {
+        policy_id: policyId,
+        version: policyVersion,
+        content_hash: contentHash,
+      },
+      approval: {
+        required_roles: evalResult.required_roles,
+        approval_id: null,
+      },
+      event_id: eventId,
+      event_hash: eventHash,
+      sequence_num: sequenceNum,
+      flags: {
+        ...(demoClockActive() ? { demo_clock: true } : {}),
+        ...(provisional ? { provisional: true } : {}),
+        evidence_status: "failed",
+      },
+    };
   }
 
   const status =
@@ -287,6 +382,8 @@ export async function handleBankEvent(
     mode: evalResult.mode,
     would_have: evalResult.would_have,
     matched_rules: matched,
+    decision_basis: evalResult.decision_basis,
+    plain_summary: plainSummary,
     policy: {
       policy_id: policyId,
       version: policyVersion,
@@ -305,6 +402,10 @@ export async function handleBankEvent(
     flags: {
       ...(demoClockActive() ? { demo_clock: true } : {}),
       ...(provisional ? { provisional: true } : {}),
+      ...(options?.decidedWithoutAegis ? { decided_without_aegis: true } : {}),
+      ...(evidenceStatus !== "skipped"
+        ? { evidence_status: evidenceStatus }
+        : {}),
     },
   };
 }

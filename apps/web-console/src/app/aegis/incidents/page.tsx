@@ -49,7 +49,7 @@ export default function IncidentsPage() {
     queryKey: ["console", "incidents", environment],
     queryFn: () =>
       consoleApi<{ incidents: IncidentRow[]; error?: string }>(
-        `/incidents?environment=${environment}&ensure=duplicate-payout`,
+        `/incidents?environment=${environment}`,
       ),
   });
 

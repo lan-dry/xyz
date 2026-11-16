@@ -1,11 +1,142 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { getPool } from "../../db/pool.js";
+import { isDemoModeAllowed } from "../../bank/demo-clock.js";
+import {
+  DEMO_BANK_REHEARSAL_SLUG,
+  DEMO_BANK_SLUG,
+} from "../../db/demo-bank-fixture.js";
+import { loadDemoSampleBundles } from "../../demo/sample-bundles.js";
+import {
+  auditReceiptAccess,
+  caseIdFromPayload,
+  RECEIPT_ACCESS_ACTIONS,
+} from "../../console/receipt-access-audit.js";
+import {
+  trustedReceiptKeys,
+  verifyBundleFile,
+} from "../../forensic/evidence-bundle.js";
+import {
+  collectPublicKeys,
+  RECEIPT_SIGNATURE_SCHEME,
+} from "../../forensic/public-keys.js";
 import { getDidDocumentByAgent, getDidDocumentByDid } from "../../repo/did.js";
 import { buildPublicVerificationBundle } from "../../transparency/bundle.js";
 import { verifyPublicVerificationBundle } from "../../transparency/verify-public.js";
 
 export const publicRoutes = new Hono();
+
+const MAX_BUNDLE_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Stateless check of a dropped evidence bundle. No login and no database:
+ * everything needed is in the file; keys Aegis published are pinned from env.
+ */
+publicRoutes.post("/evidence-bundle/verify", async (c) => {
+  const text = await c.req.text();
+  if (text.length > MAX_BUNDLE_BYTES) {
+    return c.json(
+      { error: "not_a_bundle", message: "The file is too large to be an evidence bundle." },
+      413,
+    );
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return c.json(
+      {
+        ok: false,
+        error: "not_a_bundle",
+        message:
+          "The file could not be read. It is not valid evidence data, or it was damaged or edited.",
+        checks: [],
+        findings: [],
+      },
+      400,
+    );
+  }
+  const result = await verifyBundleFile(parsed, {
+    trustedKeys: await trustedReceiptKeys(),
+  });
+  return c.json(result, result.error ? 400 : 200);
+});
+
+/**
+ * Public receipt signing keys: key id, raw Ed25519 public key, fingerprint and
+ * custody (AWS KMS vs software). Includes retired keys so old receipts verify.
+ * Pin these out of band; compare fingerprints with the ones in evidence bundles.
+ */
+publicRoutes.get("/keys", async (c) => {
+  const keys = await collectPublicKeys();
+  return c.json(
+    {
+      generated_at: new Date().toISOString(),
+      signature_scheme: RECEIPT_SIGNATURE_SCHEME,
+      keys,
+    },
+    200,
+    { "Cache-Control": "public, max-age=300" },
+  );
+});
+
+/** Flat key_id -> public key map; drop-in for `aegis-verify --keys keys.json`. */
+publicRoutes.get("/keys.json", async (c) => {
+  const keys = await collectPublicKeys();
+  return c.json(
+    Object.fromEntries(keys.map((k) => [k.key_id, k.public_key_b64])),
+    200,
+    { "Cache-Control": "public, max-age=300" },
+  );
+});
+
+/**
+ * Demo only: the latest real Demo Bank evidence bundle and a copy with one RWF
+ * amount digit changed after signing, for the "Try with a Demo Bank bundle"
+ * panel on Verify. Refused unless AEGIS_DEMO_MODE is on (never in production).
+ */
+publicRoutes.get("/demo/sample-bundles", async (c) => {
+  const slug = c.req.query("org")?.trim() || DEMO_BANK_SLUG;
+  if (slug !== DEMO_BANK_SLUG && slug !== DEMO_BANK_REHEARSAL_SLUG) {
+    return c.json(
+      { error: "not_a_demo_org", message: "Sample bundles exist only for Demo Bank." },
+      404,
+    );
+  }
+  const client = await getPool().connect();
+  try {
+    // Local AEGIS_DEMO_MODE or a hosted Demo Bank (organization.is_demo) may serve
+    // the try-a-bundle samples. Other orgs never.
+    const org = await client.query<{ is_demo: boolean }>(
+      `SELECT is_demo FROM organization WHERE slug = $1`,
+      [slug],
+    );
+    const demoOrg = org.rows[0]?.is_demo === true;
+    if (!isDemoModeAllowed() && !demoOrg) {
+      return c.json(
+        {
+          error: "demo_mode_required",
+          message: "Sample bundles are only available for Demo Bank.",
+        },
+        403,
+      );
+    }
+    const samples = await loadDemoSampleBundles(client, slug);
+    if (!samples) {
+      return c.json(
+        {
+          error: "no_demo_receipt",
+          message:
+            "Demo Bank has no signed case yet. Run the demo seed, then try again.",
+        },
+        404,
+      );
+    }
+    return c.json(samples, 200, { "Cache-Control": "no-store" });
+  } finally {
+    client.release();
+  }
+});
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -420,6 +551,22 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
       ev.payload && typeof ev.payload === "object"
         ? (ev.payload as Record<string, unknown>)
         : {};
+    await auditReceiptAccess(
+      client,
+      { organizationId: row.organization_id, membershipId: null, email: null },
+      {
+        action: RECEIPT_ACCESS_ACTIONS.shareOpened,
+        resourceId: row.share_id,
+        resourceType: "receipt_share",
+        metadata: {
+          event_id: row.event_id,
+          trace_id: ev.trace_id,
+          case_id: caseIdFromPayload(payload),
+          via: "share_link",
+        },
+      },
+    );
+
     const amountRaw = payload.amount_usd ?? payload.amount;
     const amountUsd =
       typeof amountRaw === "number"

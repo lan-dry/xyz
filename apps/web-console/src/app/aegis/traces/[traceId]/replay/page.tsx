@@ -130,14 +130,7 @@ export default function TraceReplayPage() {
               color: "var(--console-fg-muted)",
             }}
           >
-            Rebuilt from <strong>{data.step_count}</strong> sealed record(s)
-            {data.reconstruction_ms != null ? (
-              <>
-                {" "}
-                in <strong>{data.reconstruction_ms}ms</strong>
-              </>
-            ) : null}
-            . Step {step.step_index} of {data.step_count}.
+            Rebuilt from <strong>{data.step_count}</strong> sealed record(s). Step {step.step_index} of {data.step_count}.
           </p>
 
           <div className={styles.playbackBar} aria-hidden>

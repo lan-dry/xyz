@@ -1,5 +1,12 @@
 # Production TSA + managed KMS Sign
 
+Current production guidance lives in:
+
+- [`KEY_CUSTODY.md`](KEY_CUSTODY.md): AWS KMS Ed25519 receipt key, interim software key, APS agent seal keys, rotation, CloudTrail, IAM policy ([`kms-iam-policy.json`](kms-iam-policy.json)).
+- [`TRUSTED_TIME.md`](TRUSTED_TIME.md): choice of public TSA (Sectigo), per-receipt stamping with retry, what is and is not verified.
+
+The notes below describe the lower-level providers.
+
 ## RFC 3161 TSA
 
 | Env | Purpose |

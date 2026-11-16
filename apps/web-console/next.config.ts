@@ -1,10 +1,13 @@
 import type { NextConfig } from "next";
 
 /** Server-side proxy targets (browser uses same-origin `/api/*`: see src/lib/*.ts). */
+// Browser always calls same-origin `/api/console/*`; this is the server-side
+// rewrite target only. Prefer AEGIS_API_URL. Default :8088 matches the local
+// production-like API boot (demo:up still uses :8080 — set AEGIS_API_URL there).
 const aegisApiUrl =
   process.env.AEGIS_API_URL ??
   process.env.NEXT_PUBLIC_AEGIS_API_URL ??
-  "http://127.0.0.1:8080";
+  "http://127.0.0.1:8088";
 const idApiUrl =
   process.env.SALANOR_ID_URL ?? "http://127.0.0.1:8091";
 const insuranceApiUrl =
@@ -24,6 +27,11 @@ function isUsableBackendUrl(url: string): boolean {
 }
 
 const nextConfig: NextConfig = {
+  // `AEGIS_UI_PROFILE=bank_demo` works as well as NEXT_PUBLIC_AEGIS_UI_PROFILE.
+  env: {
+    NEXT_PUBLIC_AEGIS_UI_PROFILE:
+      process.env.NEXT_PUBLIC_AEGIS_UI_PROFILE ?? process.env.AEGIS_UI_PROFILE ?? "",
+  },
   transpilePackages: ["@salanor/ui"],
   // API routes only (never client). External avoids bundling Node SDK into webpack.
   serverExternalPackages: ["@salanor/aegis"],

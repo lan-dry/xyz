@@ -5,20 +5,19 @@
  *   pnpm --filter aegis-api pack:apply -- --pack banking --org <uuid> --seed-approvers
  * (--seed-approvers is implied when AEGIS_DEMO_MODE=true and process is non-production)
  */
-import { randomUUID } from "node:crypto";
 import "../db/load-env.js";
-import { seedAuthorityFromPack } from "../bank/repo.js";
-import { policyContentHash } from "../bank/policy-hash.js";
 import { isDemoModeAllowed } from "../bank/demo-clock.js";
 import { seedDemoApprovalActors } from "../demo/seed-approval-actors.js";
 import { getPool } from "../db/pool.js";
-import { loadDemoPack, packMatrixRows, packRoles } from "./load.js";
+import { applyDemoPack } from "./apply-pack.js";
+import { loadDemoPack } from "./load.js";
 
 async function main() {
   const args = process.argv.slice(2);
   const packIdx = args.indexOf("--pack");
   const orgIdx = args.indexOf("--org");
   const seedActors = args.includes("--seed-approvers") || isDemoModeAllowed();
+  const force = args.includes("--force");
   const packName = (packIdx >= 0 ? args[packIdx + 1] : "banking") as
     | "banking"
     | "insurance";
@@ -62,102 +61,17 @@ async function main() {
     }
     if (!receiptKey) {
       console.warn(
-        "WARN: AEGIS_RECEIPT_SIGNING_KEY_B64 not set — forensic receipts will not be issued.",
+        "WARN: AEGIS_RECEIPT_SIGNING_KEY_B64 not set \u2014 forensic receipts will not be issued.",
       );
     }
 
     await client.query("BEGIN");
-    await seedAuthorityFromPack(
-      client,
-      orgId,
-      packRoles(pack),
-      packMatrixRows(pack),
-    );
-
-    for (const fp of pack.field_policies) {
-      await client.query(
-        `INSERT INTO field_policy (
-           organization_id, field_path, mode, mask_keep_last
-         ) VALUES ($1, $2, $3, $4)
-         ON CONFLICT (organization_id, field_path) DO UPDATE SET
-           mode = EXCLUDED.mode,
-           mask_keep_last = EXCLUDED.mask_keep_last`,
-        [orgId, fp.field_path, fp.mode, fp.mask_keep_last ?? null],
-      );
-    }
-
-    // Deactivate other active policies so pack rules are primary.
-    await client.query(
-      `UPDATE policy SET status = 'archived'
-       WHERE organization_id = $1 AND status = 'active'`,
-      [orgId],
-    );
-
-    const policyId = `pol_pack_${pack.id.replace(/\W/g, "_")}_${randomUUID().replace(/-/g, "").slice(0, 8)}`;
-    const contentHash = policyContentHash({
-      policy_id: policyId,
-      name: pack.name,
-      version: pack.version,
-      combine: pack.combine,
-      rules: pack.rules.map((r) => ({
-        rule_id: r.rule_id,
-        tool_pattern: r.tool_pattern,
-        decision: r.decision,
-        priority: r.priority,
-        conditions: r.conditions ?? null,
-      })),
-    });
-
-    await client.query(
-      `INSERT INTO policy (
-         policy_id, organization_id, name, version, status, combine, content_hash, activated_at
-       ) VALUES ($1, $2, $3, $4, 'active', $5, $6, now())`,
-      [policyId, orgId, pack.name, pack.version, pack.combine, contentHash],
-    );
-
-    for (const rule of pack.rules) {
-      const conditions = {
-        ...(rule.conditions ?? {}),
-        ...(rule.obligations ? { obligations: rule.obligations } : {}),
-      };
-      const ruleId = `${policyId}_${rule.rule_id}`.slice(0, 64);
-      await client.query(
-        `INSERT INTO policy_rule (
-           rule_id, policy_id, tool_pattern, decision, priority, conditions
-         ) VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
-        [
-          ruleId,
-          policyId,
-          rule.tool_pattern,
-          rule.decision,
-          rule.priority,
-          Object.keys(conditions).length > 0 ? JSON.stringify(conditions) : null,
-        ],
-      );
-    }
-
-    for (const wf of pack.workflows) {
-      const workflowId = `wf_${pack.id.replace(/\W/g, "_")}_${wf.product}`;
-      await client.query(
-        `INSERT INTO governed_workflow (
-           workflow_id, organization_id, name, description, record_only
-         ) VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (workflow_id) DO UPDATE SET
-           name = EXCLUDED.name,
-           description = EXCLUDED.description,
-           record_only = EXCLUDED.record_only`,
-        [
-          workflowId,
-          orgId,
-          wf.name,
-          `pack:${pack.id} product=${wf.product} on_unreachable=${wf.on_unreachable ?? "hold"}`,
-          Boolean(wf.record_only),
-        ],
-      );
-    }
-
+    const applied = await applyDemoPack(client, orgId, packName, { force });
     await client.query("COMMIT");
-    console.log(`Done. Active policy ${policyId} combine=${pack.combine}`);
+    console.log(
+      `Done. Active policy ${applied.policyId} pack=${applied.packId}@v${applied.packVersion} combine=${applied.combine}` +
+        (force ? " (force overwrite)" : " (insert-only for existing tenant config)"),
+    );
 
     if (seedActors) {
       if (!isDemoModeAllowed()) {
@@ -172,7 +86,7 @@ async function main() {
       }
     }
   } catch (err) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => undefined);
     throw err;
   } finally {
     client.release();

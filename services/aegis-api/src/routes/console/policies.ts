@@ -112,12 +112,29 @@ policyRoutes.post("/policies", requireConsoleSession, async (c) => {
   }
 
   const pool = getPool();
-  const created = await createPolicy(pool, session.organizationId, session.userId, {
-    name: body.name.trim(),
-    rego_source: body.rego_source ?? null,
-    environment: body.environment === "sandbox" ? "sandbox" : "production",
-    rules: body.rules,
-  });
+  let created;
+  try {
+    created = await createPolicy(pool, session.organizationId, session.userId, {
+      name: body.name.trim(),
+      rego_source: body.rego_source ?? null,
+      environment: body.environment === "sandbox" ? "sandbox" : "production",
+      rules: body.rules,
+    });
+  } catch (err) {
+    if (err && typeof err === "object" && (err as { name?: string }).name === "PolicyRuleValidationError") {
+      const issues = (err as { issues: unknown }).issues;
+      return c.json(
+        {
+          error: "validation_error",
+          code: "invalid_policy_rules",
+          message: err instanceof Error ? err.message : "Invalid policy rules",
+          fields: issues,
+        },
+        422,
+      );
+    }
+    throw err;
+  }
 
   await auditFromConsoleSession(pool, session, {
     action: "policy.created",
@@ -305,10 +322,13 @@ policyRoutes.post(
       });
       if (!result.published) {
         return c.json({
+          published: false,
           pending_confirmation: true,
           approvals: result.count,
-          message:
-            "Dual-publish required. A second distinct authorised publisher must approve.",
+          already_approved: Boolean(result.already_approved),
+          message: result.already_approved
+            ? "You have already approved this version. One approver cannot publish alone: a second, different authorised approver must also activate it."
+            : "Dual-publish required. A second distinct authorised publisher must approve.",
         });
       }
       const activated = await getPolicyWithRules(
@@ -380,7 +400,27 @@ policyRoutes.post(
       );
     }
 
-    const activated = await activatePolicy(pool, session.organizationId, policyId);
+    let activated;
+    try {
+      activated = await activatePolicy(pool, session.organizationId, policyId);
+    } catch (err) {
+      if (
+        err &&
+        typeof err === "object" &&
+        (err as { name?: string }).name === "PolicyRuleValidationError"
+      ) {
+        return c.json(
+          {
+            error: "validation_error",
+            code: "invalid_policy_rules",
+            message: err instanceof Error ? err.message : "Invalid policy rules",
+            fields: (err as { issues: unknown }).issues,
+          },
+          422,
+        );
+      }
+      throw err;
+    }
     if (!activated) {
       return c.json({ error: "Not found" }, 404);
     }

@@ -3,6 +3,7 @@ import {
   exportCannedReportCsv,
   getCannedReport,
   listCannedReports,
+  previewCannedReport,
   type CannedReportId,
 } from "../../forensic/canned-reports.js";
 import { getPool } from "../../db/pool.js";
@@ -34,6 +35,30 @@ reportRoutes.get("/reports/canned", requireConsoleSession, async (c) => {
     reports: listCannedReports(),
   });
 });
+
+/** First rows and total count, so people see what the CSV holds before downloading. */
+reportRoutes.get(
+  "/reports/canned/:reportId/preview",
+  requireConsoleSession,
+  async (c) => {
+    const session = c.get("consoleSession");
+    if (!canExportReports(session.role)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    const reportId = c.req.param("reportId")?.trim() ?? "";
+    if (!getCannedReport(reportId)) {
+      return c.json({ error: "Unknown report", code: "unknown_report" }, 404);
+    }
+    const limitRaw = Number(c.req.query("limit") ?? "10");
+    const preview = await previewCannedReport(
+      getPool(),
+      session.organizationId,
+      reportId as CannedReportId,
+      Number.isFinite(limitRaw) ? limitRaw : 10,
+    );
+    return c.json({ preview });
+  },
+);
 
 reportRoutes.get(
   "/reports/canned/:reportId/csv",

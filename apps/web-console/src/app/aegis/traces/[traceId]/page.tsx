@@ -18,10 +18,14 @@ import {
 import { CaseFourAnswersPanel } from "@/components/console/case-four-answers";
 import { ChainRootPanel } from "@/components/console/chain-root-panel";
 import { SpanTreePanel } from "@/components/console/span-tree-panel";
+import { ConsoleTime } from "@/components/console/console-time";
+import { EvidenceDownloads } from "@/components/console/evidence-downloads";
+import { SealChip } from "@/components/console/seal-chip";
+import { useCaseSummaries } from "@/hooks/use-case-summaries";
 import { consoleApi } from "@/lib/api";
 import { idApi } from "@/lib/id-api";
 import { agentLabel } from "@/lib/agent-label";
-import { buildCaseStory } from "@/lib/case-story";
+import { buildCaseStory, TREATMENT_LABEL } from "@/lib/case-story";
 import type {
   EventDetail,
   EventSpanGroup,
@@ -51,8 +55,23 @@ export default function TraceDetailPage() {
     retry: false,
   });
 
+  const summaryQuery = useCaseSummaries([traceId]);
+  const caseSummary = summaryQuery.data?.[traceId];
+
   const story = data
     ? buildCaseStory(data.events, {
+        summary: caseSummary
+          ? {
+              required_role: caseSummary.required_role,
+              amount: caseSummary.amount,
+              currency: caseSummary.currency,
+              product: caseSummary.product,
+              event_type: caseSummary.event_type,
+              rules: caseSummary.rules,
+              decided_by_rule_id: caseSummary.decided_by_rule_id ?? null,
+              approvers: caseSummary.approvers,
+            }
+          : null,
         traceId: data.trace.trace_id,
         agentId: data.trace.agent_id,
         agentName: agentLabel(data.trace.agent_name, data.trace.agent_id),
@@ -62,6 +81,37 @@ export default function TraceDetailPage() {
         startedAt: data.trace.started_at,
       })
     : null;
+
+  /** Reading-only summary. The signed evidence bundle is the independently verifiable file. */
+  const summaryJson = () => ({
+    note: "Summary for reading. Not independently verifiable.",
+    case_id: data?.trace.trace_id,
+    headline: story?.headline,
+    outcome: story?.outcome.label,
+    four_answers: story?.fourAnswers,
+    data_seen: story?.dataSeen.map((f) => ({
+      field: f.field,
+      treatment: f.treatment,
+      value: f.value,
+    })),
+    data_sensitivity: story?.dataSensitivity,
+    anomaly: story?.anomalyReason
+      ? { reason: story.anomalyReason, severity: story.anomalySeverity }
+      : null,
+    approval: story?.approver
+      ? { by: story.approver, decision: story.approvalDecision, at: story.approvalAt }
+      : null,
+    evaluation_context: story?.evaluationContext,
+    events: data?.events.map((e) => ({
+      event_id: e.event_id,
+      action_kind: e.action_kind,
+      policy_decision: e.policy_decision,
+      tool_name: e.tool_name,
+      payload: e.payload,
+      event_hash: e.event_hash,
+      chain_valid: e.chain_valid,
+    })),
+  });
 
   const firstEventId = data?.events[0]?.event_id;
   const orgSlug = meQuery.data?.organization?.slug;
@@ -99,46 +149,23 @@ export default function TraceDetailPage() {
                 ) : null}
                 <OutcomeChip chip={story.outcome.chip} kind={story.outcome.kind} />
                 <span style={{ marginLeft: "0.65rem" }}>
-                  {new Date(data.trace.started_at).toLocaleString()}
+                  <ConsoleTime iso={data.trace.started_at} />
                   <span
                     style={{ color: "var(--console-fg-subtle)", marginLeft: "0.35rem" }}
                     title="UTC"
                   >
-                    ({new Date(data.trace.started_at).toISOString()})
+                    (UTC {new Date(data.trace.started_at).toISOString()})
                   </span>
                 </span>
               </>
             }
             actions={
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                <a
-                  className={`${ui.btn} ${ui.btnPrimary}`}
-                  href={`data:application/json;charset=utf-8,${encodeURIComponent(
-                    JSON.stringify(
-                      {
-                        case_id: data.trace.trace_id,
-                        headline: story.headline,
-                        outcome: story.outcome.label,
-                        four_answers: story.fourAnswers,
-                        data_seen: story.dataTouched,
-                        data_sensitivity: story.dataSensitivity,
-                        events: data.events.map((e) => ({
-                          event_id: e.event_id,
-                          action_kind: e.action_kind,
-                          policy_decision: e.policy_decision,
-                          tool_name: e.tool_name,
-                          event_hash: e.event_hash,
-                          chain_valid: e.chain_valid,
-                        })),
-                      },
-                      null,
-                      2,
-                    ),
-                  )}`}
-                  download={`aegis-receipt-${data.trace.trace_id.slice(0, 12)}.json`}
-                >
-                  Download receipt
-                </a>
+                <EvidenceDownloads
+                  traceId={traceId}
+                  caseId={data.trace.trace_id}
+                  summaryJson={summaryJson}
+                />
                 <Link
                   href={`/aegis/traces/${encodeURIComponent(traceId)}/replay`}
                   className={`${ui.btn} ${ui.btnSecondary}`}
@@ -172,9 +199,9 @@ export default function TraceDetailPage() {
             className={`${ui.alert} ${ui.alertSuccess}`}
             style={{ marginBottom: "1.25rem" }}
           >
-            <strong>Seal:</strong> every step in this case is append-only. Use{" "}
-            <em>Verify seal</em> or open a step → Verify now. Changing a field after signing
-            fails verification.
+            <strong>Seal:</strong> each step is signed and the record is append-only.
+            Changing a field after signing fails verification. Download the evidence bundle
+            to check it independently.
           </div>
 
           {story.flagSummary ? (
@@ -222,7 +249,7 @@ export default function TraceDetailPage() {
           >
             <section className={`${ui.card} ${ui.cardPad}`}>
               <h2 className={ui.panelTitle}>What data was seen</h2>
-              {story.dataTouched.length > 0 ? (
+              {story.dataSeen.length > 0 ? (
                 <>
                   <ul
                     style={{
@@ -232,8 +259,19 @@ export default function TraceDetailPage() {
                       lineHeight: 1.5,
                     }}
                   >
-                    {story.dataTouched.map((field) => (
-                      <li key={field}>{field.replace(/_/g, " ")}</li>
+                    {story.dataSeen.map((f) => (
+                      <li key={f.field}>
+                        {f.label}
+                        {f.value ? `: ${f.value}` : ""}{" "}
+                        <span
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "var(--console-fg-muted)",
+                          }}
+                        >
+                          ({TREATMENT_LABEL[f.treatment]})
+                        </span>
+                      </li>
                     ))}
                   </ul>
                   {story.dataSensitivity ? (
@@ -256,7 +294,7 @@ export default function TraceDetailPage() {
                     color: "var(--console-fg-muted)",
                   }}
                 >
-                  No fields were recorded on this case.
+                  This case did not send any data fields to Aegis.
                 </p>
               )}
             </section>
@@ -314,13 +352,18 @@ export default function TraceDetailPage() {
               <h2 className={ui.panelTitle}>Who approved</h2>
               {story.approver ? (
                 <p style={{ margin: 0, fontSize: "0.875rem" }}>
-                  {story.approvalDecision ?? "Decision"} by{" "}
+                  {story.approvalDecision === "rejected" ? "Declined" : "Approved"} by{" "}
                   <strong>{story.approver}</strong>
-                  {story.approvalAt
-                    ? ` at ${new Date(story.approvalAt).toLocaleString()}`
-                    : ""}
+                  {story.approvalAt ? (
+                    <>
+                      {" "}
+                      at <ConsoleTime iso={story.approvalAt} />
+                    </>
+                  ) : null}
                   .
                 </p>
+              ) : story.noApprovalNeeded ? (
+                <p style={{ margin: 0, fontSize: "0.875rem" }}>{story.noApprovalNeeded}</p>
               ) : story.waitingForPerson || data.trace.pending_approval ? (
                 <p style={{ margin: 0, fontSize: "0.875rem" }}>
                   Waiting for a person.{" "}
@@ -360,53 +403,27 @@ export default function TraceDetailPage() {
                   Chain check failed on at least one step. Open Technical details.
                 </>
               )}{" "}
-              Signatures are append-only; changing a field after signing fails
-              verification.
+              Each step is signed and the record is append-only. Changing a field after
+              signing fails verification.
             </p>
+            {caseSummary && caseSummary.seal !== "unknown" ? (
+              <p style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem" }}>
+                Seal status: <SealChip seal={caseSummary.seal} />
+                {caseSummary.seal === "sealed_pending_witness" ? (
+                  <span style={{ color: "var(--console-warning)", marginLeft: "0.5rem" }}>
+                    The outside witness has not confirmed yet. This does not change the
+                    signature check above.
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-              <a
-                className={`${ui.btn} ${ui.btnPrimary}`}
-                href={`data:application/json;charset=utf-8,${encodeURIComponent(
-                  JSON.stringify(
-                    {
-                      case_id: data.trace.trace_id,
-                      headline: story.headline,
-                      outcome: story.outcome.label,
-                      four_answers: story.fourAnswers,
-                      data_seen: story.dataTouched,
-                      data_sensitivity: story.dataSensitivity,
-                      anomaly: story.anomalyReason
-                        ? {
-                            reason: story.anomalyReason,
-                            severity: story.anomalySeverity,
-                          }
-                        : null,
-                      approval: story.approver
-                        ? {
-                            by: story.approver,
-                            decision: story.approvalDecision,
-                            at: story.approvalAt,
-                          }
-                        : null,
-                      evaluation_context: story.evaluationContext,
-                      events: data.events.map((e) => ({
-                        event_id: e.event_id,
-                        action_kind: e.action_kind,
-                        policy_decision: e.policy_decision,
-                        tool_name: e.tool_name,
-                        payload: e.payload,
-                        event_hash: e.event_hash,
-                        chain_valid: e.chain_valid,
-                      })),
-                    },
-                    null,
-                    2,
-                  ),
-                )}`}
-                download={`aegis-receipt-${data.trace.trace_id.slice(0, 12)}.json`}
-              >
-                Download receipt
-              </a>
+              <EvidenceDownloads
+                traceId={traceId}
+                caseId={data.trace.trace_id}
+                summaryJson={summaryJson}
+                showCaptions
+              />
               {firstEventId && orgSlug ? (
                 <Link
                   href={`/verify?org=${encodeURIComponent(orgSlug)}&event=${encodeURIComponent(firstEventId)}`}

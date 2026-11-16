@@ -139,7 +139,7 @@ export function actionKindPlain(actionKind: string, toolName?: string | null): s
     case "decision":
       return "The agent decided";
     case "policy_decision":
-      return "Rule check";
+      return "Rule decision";
     case "human_approval":
       return "Approved by a person";
     case "result":
@@ -155,6 +155,7 @@ export function actionKindPlain(actionKind: string, toolName?: string | null): s
 
 function shortTool(tool: string): string {
   if (tool.startsWith("stripe.")) return tool.replace("stripe.", "Stripe ");
+  if (tool === "governed.action") return "Action";
   if (tool.startsWith("aegis.")) return tool.replace("aegis.", "");
   return tool;
 }

@@ -117,6 +117,7 @@ There is **no** `NEXT_PUBLIC_PLATFORM_OPS` flag on the customer console anymore.
 | `/content/careers` | Open roles CMS (Prisma `open_roles`) |
 | `/audit-logs` | Cross-tenant console audit trail (paginated) |
 | `/commands` | Command reference — all pnpm scripts, roles, scenario cheat sheet |
+| `/settings/email` | Transactional email (SMTP or Resend) for invites / resets / approvals; includes Send test email |
 | `/accounts/:id` | Account profile + memberships |
 
 **UI:** Same design tokens and components as Aegis Console (`console.css` + shared patterns). Fixed sidebar + top bar (theme **M**). List pages use URL query params: `?page=1&limit=25&q=search` (shareable, back-button friendly). Light/dark theme: `salanor.console.theme` in localStorage.
@@ -158,6 +159,8 @@ See [.env.example](../.env.example).
 
 - Members, invites, API keys, policies, traces, approvals, exports, org settings
 - **Org plan & usage** (read-only for the customer’s own org) — not cross-tenant admin
+
+Console routes `/aegis/platform` and `/aegis/settings/provision` redirect to Platform Ops. Do not rebuild cross-tenant admin inside the customer console.
 
 ---
 

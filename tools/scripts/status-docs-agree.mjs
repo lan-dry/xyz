@@ -2,7 +2,7 @@
 /**
  * Fails if status docs disagree across files OR contradict themselves.
  */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -127,12 +127,28 @@ if (/## 3\./.test(final)) {
 
 if (/## 4\./.test(final)) {
   const sec4 = final.split(/## 4\./)[1]?.split(/## 5\./)[0] ?? "";
+  // Any §9 item id referenced in §4 (e.g. **1.1**, 2.4) must not be Done in §9.
+  const idRefs = [
+    ...sec4.matchAll(/\*\*(\d+\.\d+)\*\*/g),
+    ...sec4.matchAll(/(?:^|\n)\s*\d+\.\s+\*\*(\d+\.\d+)\*\*/g),
+  ].map((m) => m[1]);
+  for (const id of new Set(idRefs)) {
+    const st = section9Status(id);
+    if (st === "done") {
+      fail(
+        `FINAL §4 still lists ${id} as not done while §9 marks Done`,
+      );
+    }
+  }
+  // Legacy phrase checks (also catch Done items without bold ids).
   const stillLists = [
-    [/Backup → restore/i, s92_4 === "done", "2.4 backup"],
+    [/Backup → restore|Backup\/restore drill/i, s92_4 === "done", "2.4 backup"],
     [/OIDC claim/i, s92_3 === "done", "2.3 OIDC"],
     [/Webhook retry/i, s92_5 === "done", "2.5 webhook"],
-    [/Escalation to a role/i, /1\.3[^\n]*\*\*Done\*\*/i.test(final), "1.3 escalate"],
-    [/Time-bound delegation/i, /1\.3[^\n]*\*\*Done\*\*/i.test(final), "1.3 delegation"],
+    [/Escalation to a role|scenario 10 HTTP/i, section9Status("1.3") === "done", "1.3 escalate"],
+    [/Time-bound delegation/i, section9Status("1.3") === "done", "1.3 delegation"],
+    [/demo:rehearse green|1\.2.*rehearse/i, section9Status("1.2") === "done", "1.2 rehearse"],
+    [/Scenarios 3,\s*8|receipt_kind=none|1\.1.*FAIL/i, section9Status("1.1") === "done", "1.1 live sealed"],
     [/Expand `--approvals=http` beyond scenario 2/i, true, "http beyond 2"],
   ];
   for (const [re, isDone, label] of stillLists) {
@@ -158,6 +174,157 @@ if (row11) {
     fail("§9 1.1 Done without proof language");
   } else {
     ok("§9 1.1 status language");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Intra-GAP contradictions: one requirement must not be "Missing" / "Not done"
+// in one row and "Present" / "Done" in another (or in the same row).
+// ---------------------------------------------------------------------------
+const gap = texts.GAP ?? "";
+const POSITIVE = /\b(Present|Done|Corrected)\b/i;
+const NEGATIVE = /\b(Missing|Not done|Doc only)\b|\bnot (?:yet )?(?:done|implemented|generated)\b/i;
+const gapRows = gap
+  .split(/\r?\n/)
+  .map((line, i) => ({ line: line.trim(), n: i + 1 }))
+  .filter(
+    ({ line }) =>
+      line.startsWith("|") && !/^\|[\s:|-]+\|?$/.test(line) && !/^\|\s*(ID|Item|Area|Phase|Path|Surface)\s*\|/i.test(line),
+  );
+
+/** topic = a requirement that the GAP report talks about in several tables. */
+const gapTopics = [
+  { name: "R4.5 escalation", match: /R4\.5|escalat/i },
+  { name: "R4.6 delegation", match: /R4\.6|delegat/i },
+  { name: "Backup / restore", match: /backup/i },
+  { name: "OIDC role mapping", match: /OIDC/i },
+  {
+    name: "Stub UI (reports)",
+    match: /canned|reports?\b/i,
+    // "stub" counts as a limitation only when it describes the reports UI;
+    // "stub label removed" and "bank-core stub" are fine.
+    negative: /\bstub\s+(?:UI|page|reports)\b|\*\*Stub\*\*|console\s+Stub\b|\(stub UI\)/i,
+  },
+];
+
+for (const topic of gapTopics) {
+  const neg = topic.negative ?? NEGATIVE;
+  const hits = gapRows.filter(({ line }) => topic.match.test(line));
+  const negRows = hits.filter(({ line }) => neg.test(line));
+  const posRows = hits.filter(({ line }) => POSITIVE.test(line));
+  if (negRows.length && posRows.length) {
+    const cite = (rows) => rows.map((r) => `GAP:${r.n}`).join(", ");
+    fail(
+      `GAP_REPORT contradicts itself on "${topic.name}": negative at ${cite(negRows)} vs Present/Done at ${cite(posRows)}`,
+    );
+  } else {
+    ok(`GAP_REPORT consistent on "${topic.name}" (${hits.length} rows)`);
+  }
+}
+
+// The GAP report must not call the reports page a stub if FINAL says it is real.
+if (/reports[^\n]*Real canned/i.test(final) && /\bstub reports\b|\*\*Stub\*\* page|Stub UI/i.test(gap)) {
+  fail("GAP_REPORT still labels the reports UI a stub while FINAL §8 says it is real");
+} else {
+  ok("GAP reports-UI label agrees with FINAL §8");
+}
+
+// GAP must not mark a bank item Present/Done that FINAL §9 still calls Partial / Not done, for the
+// ids both documents name directly.
+const gapVsFinal = [
+  { label: "backup/restore", finalId: "2\\.4", gap: /Backup\/restore \+ verify[^\n]*\*\*(Done|Not done)\*\*/i },
+  { label: "OIDC role mapping", finalId: "2\\.3", gap: /OIDC role mapping[^\n]*\*\*(Done|Partial)\*\*/i },
+];
+for (const g of gapVsFinal) {
+  const m = gap.match(g.gap);
+  const fin = section9Status(g.finalId);
+  if (m && fin && m[1].toLowerCase() !== fin) {
+    fail(`GAP "${g.label}" is ${m[1]} but FINAL §9 ${g.finalId.replace("\\", "")} is ${fin}`);
+  } else {
+    ok(`GAP vs FINAL §9: ${g.label}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bank-ready table vs screens on disk (Pass 2 completion notes).
+//   Done      -> every screen file the row cites must exist and be non-empty.
+//   Partial   -> not allowed when the row has a real test AND all its cited
+//                screens exist (it would be understating finished work).
+// "Partial — reason" rows with no test ("—") or no screen cited stay Partial.
+// ---------------------------------------------------------------------------
+{
+  const failedBefore = failed;
+  const start = final.indexOf("### Bank-ready item status");
+  const end = final.indexOf("\n### ", start + 5);
+  const block = start >= 0 ? final.slice(start, end > start ? end : undefined) : "";
+  if (!block) {
+    fail("FINAL_REPORT has no 'Bank-ready item status' section");
+  } else {
+    const rows = block
+      .split(/\r?\n/)
+      .filter((l) => /^\|\s*(\d+\.\d+|[A-Z]\d*)\s/.test(l) && !/^\|\s*Item\s*\|/i.test(l));
+    let checked = 0;
+    for (const row of rows) {
+      const cells = row.split("|").slice(1, -1).map((c) => c.trim());
+      const [item, statusCell, tests = "", proof = ""] = cells;
+      const status = /^done\b/i.test(statusCell) ? "done" : /^partial\b/i.test(statusCell) ? "partial" : "other";
+      const pngs = [...proof.matchAll(/`(docs\/screens\/[^`]+\.png)`/g)].map((m) => m[1]);
+      const missing = pngs.filter((p) => {
+        const abs = join(root, p);
+        return !existsSync(abs) || statSync(abs).size === 0;
+      });
+      const hasTest = tests && tests !== "—" && tests !== "-";
+      checked++;
+      if (status === "done" && missing.length) {
+        fail(`FINAL bank-ready "${item}" is Done but screens are missing: ${missing.join(", ")}`);
+      } else if (status === "partial" && pngs.length && !missing.length && hasTest) {
+        fail(
+          `FINAL bank-ready "${item}" is Partial although its test (${tests}) and all ${pngs.length} screens exist — mark Done or name the missing proof`,
+        );
+      } else if (status === "other") {
+        fail(`FINAL bank-ready "${item}" has unreadable status "${statusCell}"`);
+      }
+    }
+    // Pass 2 note must exist and must not contradict the table.
+    const pass2Pending = /pass 2[^\n]*stay Partial[^\n]*until[^\n]*screens exist/i.test(block);
+    const screensDir = join(root, "docs/screens");
+    const runbookDir = join(screensDir, "runbook");
+    const haveScreens =
+      existsSync(runbookDir) && readdirSync(runbookDir).some((f) => f.endsWith(".png")) &&
+      readdirSync(screensDir).some((f) => f.endsWith(".png"));
+    if (pass2Pending && haveScreens) {
+      fail("FINAL bank-ready note says items stay Partial until screens exist, but docs/screens/ already has them");
+    }
+    if (haveScreens && !/pass 2 completion/i.test(block)) {
+      fail("FINAL bank-ready section has no 'Pass 2 completion' note although docs/screens/ has screens");
+    }
+    if (/Capture checklist only/i.test(final) && haveScreens) {
+      fail("FINAL §8 still says screens are a capture checklist only");
+    }
+    if (failed === failedBefore) ok(`FINAL bank-ready table vs docs/screens (${checked} rows)`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DEMO.md must carry the P10 truth statements.
+// ---------------------------------------------------------------------------
+{
+  const demo = texts.DEMO ?? "";
+  const section = demo.split(/^## P10 truth statements/m)[1]?.split(/^## /m)[0] ?? "";
+  const needs = [
+    ["key custody", /key custody/i, /KMS/i, /interim/i],
+    ["public TSA / no SLA", /RFC 3161|time authority/i, /no SLA/i],
+    ["hosting region placeholder", /HOSTING_REGION/],
+    ["SOC 2 / EU AI Act mapping only", /SOC 2/i, /EU AI Act/i, /mapping/i],
+    ["no latency SLA", /no latency SLA/i],
+    ["no FedRAMP / HIPAA", /FedRAMP/i, /HIPAA/i],
+  ];
+  if (!section) fail("DEMO.md has no 'P10 truth statements' section");
+  else {
+    for (const [label, ...res] of needs) {
+      if (res.every((re) => re.test(section))) ok(`DEMO P10: ${label}`);
+      else fail(`DEMO P10 truth statements missing: ${label}`);
+    }
   }
 }
 

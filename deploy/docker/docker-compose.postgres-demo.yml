@@ -1,0 +1,31 @@
+# Single local Postgres for Demo Bank / production-style proofs.
+# Apps (API, console, simulator, witness) run as plain Node — not in this compose.
+#
+#   docker compose -f deploy/docker/docker-compose.postgres-demo.yml up -d
+#   docker compose -f deploy/docker/docker-compose.postgres-demo.yml ps
+#
+# Healthcheck must report "healthy" before provision / seed / runbook.
+
+services:
+  aegis-pg-demo:
+    image: postgres:16-alpine
+    container_name: aegis-pg-demo
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: salanor
+      POSTGRES_PASSWORD: salanor
+      POSTGRES_DB: aegis
+    volumes:
+      - aegis_pg_demo_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salanor -d aegis"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  aegis_pg_demo_data:
+    name: aegis_pg_demo_data

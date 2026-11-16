@@ -13,6 +13,7 @@ export function useAuditListParams(defaultLimit: AuditPageSize = 25) {
 
   const q = searchParams.get("q") ?? "";
   const action = searchParams.get("action") ?? "";
+  const caseId = searchParams.get("case") ?? "";
 
   const limit = useMemo(() => {
     const raw = Number(searchParams.get("limit") ?? String(defaultLimit));
@@ -58,6 +59,13 @@ export function useAuditListParams(defaultLimit: AuditPageSize = 25) {
     [replaceParams],
   );
 
+  const setCaseId = useCallback(
+    (next: string) => {
+      replaceParams({ case: next.trim() || null, page: "1" });
+    },
+    [replaceParams],
+  );
+
   const setPage = useCallback(
     (nextPage: number) => {
       replaceParams({ page: String(Math.max(1, nextPage)) });
@@ -76,20 +84,23 @@ export function useAuditListParams(defaultLimit: AuditPageSize = 25) {
     const params = new URLSearchParams();
     if (q.trim()) params.set("q", q.trim());
     if (action) params.set("action", action);
+    if (caseId.trim()) params.set("case_id", caseId.trim());
     params.set("page", String(page));
     params.set("limit", String(limit));
     return params.toString();
-  }, [q, action, page, limit]);
+  }, [q, action, caseId, page, limit]);
 
   return {
     q,
     action,
+    caseId,
     page,
     limit,
     offset,
     queryString,
     setQuery,
     setAction,
+    setCaseId,
     setPage,
     setLimit,
   };

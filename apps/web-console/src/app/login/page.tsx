@@ -96,7 +96,7 @@ function PlatformLoginForm() {
   function startSso() {
     const slug = ssoOrg.trim().toLowerCase();
     if (!slug) {
-      setError("Enter your organization slug for SSO (e.g. acme-corp).");
+      setError("Enter your organization slug for SSO (e.g. meridian-clearing).");
       return;
     }
     const url = `/api/id/auth/sso/start?org=${encodeURIComponent(slug)}&return=${encodeURIComponent(returnTo)}`;

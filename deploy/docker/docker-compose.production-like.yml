@@ -1,0 +1,61 @@
+# Local production-like API + witness (demo mode OFF).
+# Postgres: reuse host port 5435 (aegis-pg-demo) with an app role, or set DATABASE_URL.
+#
+#   docker compose -f deploy/docker/docker-compose.production-like.yml up --build
+#
+# Then: curl http://127.0.0.1:8088/ready
+
+services:
+  aegis-api:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.aegis-api
+    ports:
+      - "8088:8080"
+    environment:
+      NODE_ENV: production
+      AEGIS_ENV: production
+      PORT: "8080"
+      # Demo mode must stay unset/false — boot guards refuse AEGIS_DEMO_MODE=true.
+      AEGIS_DEMO_MODE: "false"
+      AEGIS_EMAIL_REQUIRED: "false"
+      CONSOLE_ORIGIN: "http://console.local.test:3000"
+      MARKETING_ORIGIN: "http://marketing.local.test:3001"
+      AEGIS_ALLOW_SOFTWARE_KEY_IN_PRODUCTION: interim
+      AEGIS_RECEIPT_KEY_ID: receipt_prod_local
+      AEGIS_RECEIPT_SIGNING_KEY_B64: ${AEGIS_RECEIPT_SIGNING_KEY_B64}
+      AEGIS_BRIDGE_MASTER_KEY: ${AEGIS_BRIDGE_MASTER_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      MIGRATION_DATABASE_URL: ${MIGRATION_DATABASE_URL:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 40s
+
+  aegis-witness:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.aegis-witness
+    environment:
+      NODE_ENV: production
+      AEGIS_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      WITNESS_INTERVAL_MS: "10000"
+      AEGIS_ALLOW_SOFTWARE_KEY_IN_PRODUCTION: interim
+      AEGIS_RECEIPT_KEY_ID: receipt_prod_local
+      AEGIS_RECEIPT_SIGNING_KEY_B64: ${AEGIS_RECEIPT_SIGNING_KEY_B64}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      aegis-api:
+        condition: service_healthy

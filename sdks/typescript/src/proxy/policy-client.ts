@@ -9,6 +9,10 @@ export type PolicyEvaluateResult = {
   decision_layer?: "ceiling" | "contextual" | "override" | "default" | "agent";
   signals?: Record<string, unknown>;
   evaluation_context?: Record<string, unknown>;
+  /** F13: set when the gate/evidence record failed to write. */
+  evidence_status?: "ok" | "failed";
+  recorded?: boolean;
+  record_error?: string;
 };
 
 export async function evaluatePolicyViaApi(
@@ -34,11 +38,23 @@ export async function evaluatePolicyViaApi(
 
   const body = (await res.json().catch(() => ({}))) as PolicyEvaluateResult & {
     error?: string;
+    evidence_status?: string;
   };
 
   if (!res.ok) {
     throw new Error(
-      `Policy evaluate failed (${res.status}): ${body.error ?? JSON.stringify(body)}`,
+      `Policy evaluate failed (${res.status}): ${
+        body.evidence_status === "failed"
+          ? `evidence_status=failed ${body.record_error ?? body.error ?? ""}`.trim()
+          : (body.error ?? JSON.stringify(body))
+      }`,
+    );
+  }
+
+  // F13: even a 200 must not be treated as a final decision if evidence failed.
+  if (body.evidence_status === "failed") {
+    throw new Error(
+      `Policy evaluate evidence_status=failed: ${body.record_error ?? "record failed"}`,
     );
   }
 

@@ -1,6 +1,7 @@
 /**
  * Product surface must not name real institutions.
  * Customer-specific outreach decks live under docs/presentations/ and are excluded.
+ * Demo / synthetic names are allow-listed (they may appear in seed/demo code).
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
@@ -27,6 +28,20 @@ const FORBIDDEN = [
   "NCBA",
   "Urwego",
 ];
+
+/**
+ * Synthetic / demo names that are allowed on the product surface
+ * (seed CLIs, Demo Bank fixture, docs). Not real customers.
+ */
+const DEMO_ALLOWLIST = [
+  "Northwind",
+  "Northwind Payments",
+  "Demo Bank",
+  "demo-bank",
+  "Meridian",
+  "salanor-platform",
+  "Patience Ingabire",
+] as const;
 
 const SCAN_ROOTS = [
   "services/aegis-api/src",
@@ -124,5 +139,12 @@ describe("no real institution names in product surface", () => {
       }
     }
     expect(hits).toEqual([]);
+  });
+
+  it("documents demo allow-list (synthetic names are not forbidden)", () => {
+    expect(DEMO_ALLOWLIST.length).toBeGreaterThan(0);
+    expect(FORBIDDEN.some((n) => DEMO_ALLOWLIST.includes(n as never))).toBe(
+      false,
+    );
   });
 });

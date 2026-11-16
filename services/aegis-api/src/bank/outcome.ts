@@ -24,6 +24,7 @@ export function isHumanApprovalObligation(
     return (
       kind === "human_approval" ||
       kind === "approval" ||
+      kind === "require_approval" ||
       kind === "human" ||
       kind === "ask_person"
     );
@@ -33,6 +34,7 @@ export function isHumanApprovalObligation(
     return (
       kind === "human_approval" ||
       kind === "approval" ||
+      kind === "require_approval" ||
       kind === "human" ||
       kind === "ask_person"
     );

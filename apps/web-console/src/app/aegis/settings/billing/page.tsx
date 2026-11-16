@@ -213,7 +213,8 @@ function BillingSettingsInner() {
       <section className={settings.settingCard}>
         <h2>Plan and billing</h2>
         <p>
-          Free covers evaluation. Team is $299/month for production volume. See{" "}
+          Free covers evaluation. Paid plans are billed monthly for production
+          volume. See{" "}
           <a href={`${MARKETING_URL}/pricing`}>full plan comparison</a>.
         </p>
         {banner ? (

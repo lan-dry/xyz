@@ -4,6 +4,7 @@ import type pg from "pg";
 import { signApsEventWithKey } from "../crypto/signing-provider.js";
 import { persistSignedEvent } from "../ingest/persist.js";
 import { getSigningKeyMaterial } from "../repo/signing-keys.js";
+import type { DelegationRecord } from "../bank/approval-delegate.js";
 
 async function withClient<T>(
   client: pg.Pool | pg.PoolClient,
@@ -35,6 +36,8 @@ export async function ingestHumanApprovalEvent(
     decision: "approved" | "rejected";
     toolName?: string;
     reason?: string;
+    /** Time-bound delegation relied on: both people are named in the signed event. */
+    delegation?: DelegationRecord | null;
   },
 ): Promise<string> {
   const keyMaterial = await getSigningKeyMaterial(client, params.organizationId, params.keyId);
@@ -62,6 +65,17 @@ export async function ingestHumanApprovalEvent(
       tool_name: params.toolName,
       approver_email: params.approverEmail,
       ...(params.reason ? { reason: params.reason } : {}),
+      ...(params.delegation
+        ? {
+            acting_under_delegation: {
+              delegate_id: params.delegation.delegate_id,
+              role_key: params.delegation.role_key,
+              expires_at: params.delegation.expires_at,
+              acted_by: params.delegation.delegate,
+              delegated_by: params.delegation.delegator,
+            },
+          }
+        : {}),
       investor_summary:
         params.decision === "approved"
           ? `Human approved ${params.toolName ?? "tool call"}`

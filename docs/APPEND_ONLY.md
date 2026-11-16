@@ -1,6 +1,6 @@
 # Append-only sealed events
 
-**Migration:** `services/aegis-api/migrations/015_forensic_receipt.sql`  
+**Schema:** `services/aegis-api/migrations/001_baseline.sql` (append-only triggers + forbid functions)  
 **Rule:** After an event is sealed, identity and hash-chain columns must not change.
 
 ## Application database role
@@ -26,6 +26,15 @@ Used **only in test teardown / intentional tamper fixtures**:
 
 **Critical:** While `session_replication_role = replica`, PostgreSQL disables user triggers **and FK CASCADE**. Never `DELETE FROM organization` in that mode — orphan policies will remain and can flip deny→allow in later tests. Clear events under replica, then delete org/policies under `DEFAULT`.
 
+## Tenant wipe (demo/test tenants only): the one sanctioned deletion path
+
+`001_baseline.sql` defines `platform_wipe_tenant()`, a SECURITY DEFINER function owned by the
+schema owner and callable only through the owner connection (`pnpm pilot:wipe-tenant`). It refuses any
+organisation that is not `is_demo`/`is_test`, deletes only that organisation's rows, and disables the
+`trg_*_append_only` triggers with `ALTER TABLE ... DISABLE TRIGGER` **inside its own transaction** (re-enabled
+before return; never visible to other sessions; rolled back on error). It does not use
+`session_replication_role`, and the app role is granted nothing. See `docs/DEPLOY_PRODUCTION.md` §10.1.
+
 ## Verify
 
 ```sql
@@ -35,3 +44,7 @@ UPDATE event SET event_hash = event_hash WHERE false; -- should be allowed (no-o
 ```
 
 Ops: provision the app role without bypass privileges; keep migrations/superuser for DDL only.
+
+## Backup restore with `--disable-triggers`
+
+`pg_restore --disable-triggers` bypasses append-only triggers and is **demo-only**. The backup-restore drill refuses when `NODE_ENV`/`AEGIS_ENV` is `production` or `AEGIS_DEMO_MODE` is not `true` (same guard as `demo:reset`).

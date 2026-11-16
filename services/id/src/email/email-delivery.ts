@@ -1,5 +1,7 @@
+import { resolvePlatformEmailDelivery } from "@salanor/platform-auth";
 import nodemailer from "nodemailer";
 
+import { getPool } from "../db/pool.js";
 import {
   resolveOrgEmailDelivery,
   type OrgEmailDelivery,
@@ -15,22 +17,41 @@ export class EmailDeliveryError extends Error {
   }
 }
 
-export function getResendApiKey(): string {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
+/**
+ * Effective platform delivery (SMTP or Resend). Database Platform admin → Email wins;
+ * RESEND_API_KEY / INVITE_EMAIL_FROM are the Resend fallback. A database failure falls
+ * back to env Resend when present.
+ */
+export async function resolveResendConfig(): Promise<{
+  apiKey: string | null;
+  from: string;
+}> {
+  let pool: ReturnType<typeof getPool> | null = null;
+  try {
+    pool = getPool();
+  } catch {
+    pool = null;
+  }
+  const resolved = await resolvePlatformEmailDelivery(pool);
+  return {
+    apiKey: resolved.mode === "resend" ? resolved.apiKey : null,
+    from: resolved.from,
+  };
+}
+
+export async function getResendApiKey(): Promise<string> {
+  const { apiKey } = await resolveResendConfig();
   if (!apiKey) {
     throw new EmailDeliveryError(
       "email_not_configured",
-      "Transactional email is not configured (RESEND_API_KEY).",
+      "Transactional email is not configured (set SMTP or a Resend key in Platform admin > Email, or RESEND_API_KEY).",
     );
   }
   return apiKey;
 }
 
-export function getInviteFromAddress(): string {
-  return (
-    process.env.INVITE_EMAIL_FROM ??
-    "Salanor <invites@notifications.salanor.com>"
-  );
+export async function getInviteFromAddress(): Promise<string> {
+  return (await resolveResendConfig()).from;
 }
 
 export type SendEmailInput = {
@@ -45,6 +66,7 @@ export type SendEmailInput = {
 };
 
 async function sendViaResend(input: {
+  apiKey: string;
   from: string;
   to: string;
   replyTo?: string;
@@ -52,11 +74,10 @@ async function sendViaResend(input: {
   text: string;
   html: string;
 }): Promise<void> {
-  const apiKey = getResendApiKey();
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${input.apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -72,12 +93,25 @@ async function sendViaResend(input: {
   if (!response.ok) {
     const errText = await response.text().catch(() => "");
     console.error("[salanor-id] Resend delivery failed:", response.status, errText);
-    throw new EmailDeliveryError("email_send_failed", "Failed to send email");
+    let detail = "Failed to send email via Resend.";
+    try {
+      const parsed = JSON.parse(errText) as { message?: string };
+      if (parsed.message?.trim()) detail = parsed.message.trim();
+    } catch {
+      /* keep default */
+    }
+    throw new EmailDeliveryError("email_send_failed", detail);
   }
 }
 
 async function sendViaSmtp(
-  delivery: NonNullable<OrgEmailDelivery["smtp"]>,
+  delivery: {
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    password: string;
+  },
   input: {
     from: string;
     to: string;
@@ -114,7 +148,7 @@ async function sendViaSmtp(
   }
 }
 
-/** Send using the org's SMTP when configured; otherwise Salanor Resend. */
+/** Org SMTP (Stoa) when set; else platform SMTP or Resend from Platform admin. */
 export async function sendTransactionalEmail(
   input: SendEmailInput,
 ): Promise<void> {
@@ -123,11 +157,20 @@ export async function sendTransactionalEmail(
     orgDelivery = await resolveOrgEmailDelivery(input.organizationId);
   }
 
+  let pool: ReturnType<typeof getPool> | null = null;
+  try {
+    pool = getPool();
+  } catch {
+    pool = null;
+  }
+  const platform = await resolvePlatformEmailDelivery(pool);
+
   const from =
     input.fromAddress?.trim() ||
     orgDelivery?.from ||
-    getInviteFromAddress();
-  const replyTo = input.replyTo?.trim() || orgDelivery?.replyTo;
+    platform.from;
+  const replyTo =
+    input.replyTo?.trim() || orgDelivery?.replyTo || platform.replyTo;
 
   if (orgDelivery?.mode === "smtp") {
     if (!orgDelivery.smtp) {
@@ -147,12 +190,33 @@ export async function sendTransactionalEmail(
     return;
   }
 
-  await sendViaResend({
-    from,
-    to: input.to,
-    replyTo,
-    subject: input.subject,
-    text: input.text,
-    html: input.html,
-  });
+  if (platform.mode === "smtp" && platform.smtp) {
+    await sendViaSmtp(platform.smtp, {
+      from,
+      to: input.to,
+      replyTo,
+      subject: input.subject,
+      text: input.text,
+      html: input.html,
+    });
+    return;
+  }
+
+  if (platform.mode === "resend" && platform.apiKey) {
+    await sendViaResend({
+      apiKey: platform.apiKey,
+      from,
+      to: input.to,
+      replyTo,
+      subject: input.subject,
+      text: input.text,
+      html: input.html,
+    });
+    return;
+  }
+
+  throw new EmailDeliveryError(
+    "email_not_configured",
+    "Transactional email is not configured (set SMTP or a Resend key in Platform admin > Email, or RESEND_API_KEY).",
+  );
 }

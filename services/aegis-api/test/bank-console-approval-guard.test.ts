@@ -115,4 +115,25 @@ describe("console approval guard wiring (no DB)", () => {
       ),
     ).toBe(false);
   });
+
+  it("isRequesterFromPayload reads nested attributes.requester_email (sealed APS payload)", () => {
+    expect(
+      isRequesterFromPayload(
+        {
+          case_id: "c1",
+          attributes: { requester_email: "manager@demo.test", amount: 1 },
+        },
+        "manager@demo.test",
+      ),
+    ).toBe(true);
+    expect(
+      isRequesterFromPayload(
+        {
+          attributes: { requester_email: "other@demo.test" },
+        },
+        "manager@demo.test",
+      ),
+    ).toBe(false);
+  });
 });
+

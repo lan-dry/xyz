@@ -28,6 +28,16 @@ WHERE grantee = :'app_role'
   AND privilege_type IN ('DELETE', 'TRUNCATE', 'TRIGGER')
 ORDER BY table_name, privilege_type;
 
+\echo '=== Tenant wipe (migration 020): app role must NOT be able to execute platform_wipe_tenant (expect f) ==='
+SELECT has_function_privilege(:'app_role', 'platform_wipe_tenant(text,boolean,text)', 'EXECUTE') AS app_role_can_wipe;
+
+\echo '=== Wipe audit table: app role should have no privileges (expect no rows) ==='
+SELECT privilege_type
+FROM information_schema.role_table_grants
+WHERE grantee = :'app_role'
+  AND table_schema = 'public'
+  AND table_name = 'platform_tenant_wipe_audit';
+
 \echo '=== FAIL if app role is superuser ==='
 DO $$
 DECLARE

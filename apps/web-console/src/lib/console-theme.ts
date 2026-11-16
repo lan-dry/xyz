@@ -1,3 +1,5 @@
+import { isBankDemoProfile } from "./ui-profile";
+
 export const CONSOLE_THEME_KEY = "salanor.console.theme";
 
 export type ConsoleTheme = "light" | "dark";
@@ -11,6 +13,8 @@ export function readStoredConsoleTheme(): ConsoleTheme | null {
 export function resolveConsoleTheme(): ConsoleTheme {
   const stored = readStoredConsoleTheme();
   if (stored) return stored;
+  // bank_demo defaults to light regardless of OS preference.
+  if (isBankDemoProfile()) return "light";
   if (
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-color-scheme: dark)").matches

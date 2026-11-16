@@ -110,7 +110,7 @@ function SignupForm() {
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
                 required
-                placeholder="Acme Inc"
+                placeholder="Meridian Clearing"
               />
             </label>
             <label className={styles.field}>

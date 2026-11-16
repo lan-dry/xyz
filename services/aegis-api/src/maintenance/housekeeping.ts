@@ -5,6 +5,7 @@ import {
   markEscalationDue,
   syncPendingApprovalsWithTraces,
 } from "../repo/approvals.js";
+import { escalateDueApprovals } from "../bank/escalation.js";
 import { getGovernanceSettings } from "../repo/governance-settings.js";
 import {
   purgeExpiredForOrganization,
@@ -25,6 +26,8 @@ export async function runOrganizationHousekeeping(
   organizationId: string,
 ): Promise<HousekeepingResult> {
   const settings = await getGovernanceSettings(client, organizationId);
+  // Configured per-rule escalation (approval metadata) before the org-wide hours-based nudge.
+  await escalateDueApprovals(client, organizationId);
   const escalatedIds = await markEscalationDue(client, organizationId);
   for (const approvalId of escalatedIds) {
     const row = await client.query<{

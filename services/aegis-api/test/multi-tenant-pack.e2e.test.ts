@@ -34,6 +34,10 @@ describe("multi-tenant policy packs (banking + insurance)", () => {
     const matrix = packMatrixRows(pack);
     const ladder = packRoles(pack);
     const currency = pack.currencies[0]!;
+    // Prove currency is pack config, not an engine default (banking pack uses RWF).
+    expect(currency).toBe("EUR");
+    expect(currency).not.toBe("RWF");
+    expect(pack.name.toLowerCase()).toContain("illustrative");
     const tenantId = "00000000-0000-0000-0000-0000000000aa";
 
     const fielded = applyFieldPolicy(

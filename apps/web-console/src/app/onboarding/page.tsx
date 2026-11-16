@@ -142,7 +142,7 @@ function OnboardingForm() {
                 required
                 minLength={2}
                 maxLength={120}
-                placeholder="Acme Inc"
+                placeholder="Meridian Clearing"
                 autoFocus
               />
             </label>
@@ -159,7 +159,7 @@ function OnboardingForm() {
                 minLength={2}
                 maxLength={48}
                 pattern="[a-z0-9][a-z0-9-]*"
-                placeholder="acme-inc"
+                placeholder="meridian-clearing"
               />
             </label>
             <p className={styles.oauthHint} style={{ marginBottom: "1rem" }}>

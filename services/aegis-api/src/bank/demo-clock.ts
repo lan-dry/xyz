@@ -35,6 +35,11 @@ export function assertDemoMode(operation: string): void {
   }
 }
 
+/** pg_restore --disable-triggers bypasses append-only; same refuse rule as demo:reset. */
+export function assertDisableTriggersRestoreAllowed(): void {
+  assertDemoMode("pg_restore --disable-triggers");
+}
+
 export function setDemoClock(isoOrOffsetMs: string | number): void {
   assertDemoMode("demo clock");
   if (typeof isoOrOffsetMs === "number") {

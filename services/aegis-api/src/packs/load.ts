@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { PolicyPack } from "./types.js";
@@ -16,11 +16,39 @@ export function loadPackFromJson(raw: unknown): PolicyPack {
   if (!Array.isArray(p.roles) || !Array.isArray(p.authority_matrix)) {
     throw new Error("pack requires roles and authority_matrix arrays");
   }
+  if (typeof p.version !== "number") {
+    throw new Error("pack requires numeric version");
+  }
   return p;
 }
 
+/**
+ * Resolve a pack.json path. Versioned folders under `src/packs/`:
+ * - `_template/` — blank sector starter
+ * - `insurance/` — illustrative insurance (preferred)
+ * - `demo/<sector>/` — demo seeds (banking, insurance mirror)
+ */
+export function resolvePackJsonPath(sector: "banking" | "insurance"): string {
+  const candidates = [
+    // Preferred illustrative insurance pack at packs/insurance
+    ...(sector === "insurance"
+      ? [
+          join(here, "insurance", "pack.json"),
+          join(here, "..", "..", "src", "packs", "insurance", "pack.json"),
+        ]
+      : []),
+    join(here, "demo", sector, "pack.json"),
+    join(here, "..", "..", "src", "packs", "demo", sector, "pack.json"),
+  ];
+  const path = candidates.find((p) => existsSync(p));
+  if (!path) {
+    throw new Error(`pack.json not found for sector=${sector}`);
+  }
+  return path;
+}
+
 export function loadDemoPack(sector: "banking" | "insurance"): PolicyPack {
-  const path = join(here, "demo", sector, "pack.json");
+  const path = resolvePackJsonPath(sector);
   const raw = JSON.parse(readFileSync(path, "utf8")) as unknown;
   const pack = loadPackFromJson(raw);
   if (!pack.demo_only) {

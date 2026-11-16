@@ -1,0 +1,110 @@
+{
+  "_readme": "Synthetic Demo Bank history seeded by `pnpm pilot:seed-history` / `pnpm demo:fresh`. All names, amounts and branches are invented. Real people's emails and passwords never go in this file: they live only in the uncommitted .demo-tenant-emails.local.json. Point DEMO_HISTORY_FILE at another JSON file with the same shape to change the story. `decide.by` is a persona key from that local file (manager, head, ...). Case ids and idempotency keys are derived from `n`, so a re-run never duplicates a case.",
+  "version": 1,
+  "stories": [
+    {
+      "n": "01",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": { "amount": 1200000, "currency": "RWF", "applicant_name": "Uwase Aline", "branch": "Kigali - Nyarugenge", "loan_purpose": "School fees bridge loan" }
+    },
+    {
+      "n": "02",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": { "amount": 850000, "currency": "RWF", "applicant_name": "Habimana Jean Claude", "branch": "Huye", "loan_purpose": "Motorcycle taxi licence" }
+    },
+    {
+      "n": "03",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": { "amount": 3400000, "currency": "RWF", "applicant_name": "Mukeshimana Joselyne", "branch": "Musanze", "loan_purpose": "Tailoring workshop" }
+    },
+    {
+      "n": "04",
+      "event_type": "data_access",
+      "product": "customer_data",
+      "agent": "customer-data",
+      "attributes": { "amount": 1000000, "currency": "RWF", "national_id": "1199880045123456", "purpose": "kyc_refresh", "applicant_name": "Ishimwe Grace" }
+    },
+    {
+      "n": "05",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": { "amount": 18000000, "currency": "RWF", "applicant_name": "Mukamana Divine", "branch": "Rubavu", "loan_purpose": "Dairy cooperative equipment" },
+      "decide": { "by": "manager", "decision": "approve", "reason": "Cooperative accounts reviewed, repayment plan fits cash flow.", "reason_code": "within_policy" }
+    },
+    {
+      "n": "06",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": { "amount": 9500000, "currency": "RWF", "applicant_name": "Nkurunziza Alexis", "branch": "Rwamagana", "loan_purpose": "Poultry house expansion" },
+      "decide": { "by": "manager", "decision": "approve", "reason": "Collateral verified on site.", "reason_code": "within_policy" }
+    },
+    {
+      "n": "07",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": { "amount": 28000000, "currency": "RWF", "applicant_name": "Kamanzi Emmanuel", "branch": "Rwamagana", "loan_purpose": "Commercial property fit-out" },
+      "decide": { "by": "manager", "decision": "decline", "reason": "Collateral does not cover the exposure." }
+    },
+    {
+      "n": "08",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 12000000,
+        "currency": "RWF",
+        "applicant_name": "Niyonsenga Eric",
+        "branch": "Kigali - Gasabo",
+        "loan_purpose": "Minibus (public transport) purchase",
+        "model": { "id": "risk-v2", "version": "2.1", "score": 0.82, "recommendation": "decline" }
+      },
+      "decide": { "by": "head", "decision": "approve", "reason": "Model override reviewed: stable licensed route income.", "reason_code": "model_override_reviewed" }
+    },
+    {
+      "n": "09",
+      "event_type": "payment_transfer",
+      "product": "retail_loan",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 4800000,
+        "currency": "RWF",
+        "applicant_name": "Nsengiyumva Patrick",
+        "branch": "Kigali - Kicukiro",
+        "loan_purpose": "Disbursement to settlement account",
+        "payment": { "callback_verified": false, "beneficiary_bank": "Synthetic Bank Kigali" }
+      },
+      "decide": { "by": "manager", "decision": "decline", "reason": "Beneficiary bank callback not verified." }
+    },
+    {
+      "n": "10",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 2500000,
+        "currency": "RWF",
+        "applicant_name": "Test Subject (screening hit)",
+        "branch": "Kigali - Nyarugenge",
+        "loan_purpose": "Personal loan",
+        "screening": { "sanctions_hit": false, "pep_hit": true, "list": "PEP watchlist (synthetic)" }
+      }
+    },
+    {
+      "n": "11",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": { "amount": 15000000, "currency": "RWF", "applicant_name": "Mutesi Chantal", "branch": "Huye", "loan_purpose": "Agro-processing equipment" },
+      "decide": { "by": "manager", "decision": "approve", "reason": "Cash-flow forecast reviewed.", "reason_code": "within_policy" }
+    }
+  ]
+}

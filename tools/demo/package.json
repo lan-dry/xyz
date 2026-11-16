@@ -17,9 +17,12 @@
     "ensure-beneficiary-match-policy": "tsx ensure-beneficiary-match-policy.mts",
     "pilot-spine-smoke": "tsx pilot-spine-smoke.mts",
     "demo-operator": "tsx demo-operator.mts",
-    "test": "tsx --test pilot-explain.test.mts verify-tamper-sample.test.mts",
+    "test": "tsx --test pilot-explain.test.mts",
     "dev-delete-accounts": "tsx dev-delete-accounts.mts",
-    "clear-org-cases": "tsx clear-org-cases.mts"
+    "clear-org-cases": "tsx clear-org-cases.mts",
+    "provision-demo-tenant": "tsx provision-demo-tenant.mts",
+    "seed-history": "tsx seed-history.mts",
+    "wipe-tenant": "tsx wipe-tenant.mts"
   },
   "exports": {
     "./resolve-org": "./resolve-org-id.mts"

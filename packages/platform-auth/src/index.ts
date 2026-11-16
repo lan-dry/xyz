@@ -5,6 +5,12 @@ export {
 } from "./impersonation.js";
 export { sessionCookieOptions } from "./cookie.js";
 export {
+  DemoIngestKeyError,
+  MIN_STABLE_INGEST_KEY_LENGTH,
+  platformSetStableIngestKey,
+  type DemoIngestKeyResult,
+} from "./demo-ingest-key.js";
+export {
   SALANOR_SESSION_COOKIE,
   createSession,
   deleteSession,
@@ -147,6 +153,23 @@ export {
   PlatformRoleError,
   type PlatformStaffSession,
 } from "./platform-staff.js";
+export {
+  DEFAULT_INVITE_FROM,
+  PlatformEmailSettingsError,
+  getPlatformEmailSettings,
+  isPlatformEmailDeliveryConfigured,
+  isPlatformEmailKeyStored,
+  isPlatformEmailMasterKeyConfigured,
+  resolvePlatformEmailConfig,
+  resolvePlatformEmailDelivery,
+  savePlatformEmailSettings,
+  type PlatformEmailDeliveryMode,
+  type PlatformEmailSettingsView,
+  type ResolvedPlatformEmailConfig,
+  type ResolvedPlatformEmailDelivery,
+  type ResolvedPlatformSmtp,
+  type SavePlatformEmailSettingsInput,
+} from "./platform-email-settings.js";
 export {
   PLATFORM_ROLES,
   PLATFORM_ROLE_DESCRIPTIONS,

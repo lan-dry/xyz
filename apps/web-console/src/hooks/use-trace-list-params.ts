@@ -23,6 +23,12 @@ export function useTraceListParams(defaultLimit: TracePageSize = 25) {
   const q = searchParams.get("q") ?? "";
   const agentId = searchParams.get("agent_id") ?? "";
   const status = searchParams.get("status") ?? "";
+  // Live feed filters: outcome / product are applied to the loaded page, the date
+  // range (Kigali calendar days, YYYY-MM-DD) is sent to the API as from / to.
+  const outcome = searchParams.get("outcome") ?? "";
+  const product = searchParams.get("product") ?? "";
+  const dateFrom = searchParams.get("date_from") ?? "";
+  const dateTo = searchParams.get("date_to") ?? "";
 
   const limit = useMemo(() => {
     const raw = Number(searchParams.get("limit") ?? String(defaultLimit));
@@ -84,6 +90,37 @@ export function useTraceListParams(defaultLimit: TracePageSize = 25) {
     [replaceParams],
   );
 
+  const setOutcome = useCallback(
+    (next: string) => replaceParams({ outcome: next || null, page: "1" }),
+    [replaceParams],
+  );
+
+  const setProduct = useCallback(
+    (next: string) => replaceParams({ product: next || null, page: "1" }),
+    [replaceParams],
+  );
+
+  const setDateRange = useCallback(
+    (from: string, to: string) =>
+      replaceParams({ date_from: from || null, date_to: to || null, page: "1" }),
+    [replaceParams],
+  );
+
+  const clearFilters = useCallback(
+    () =>
+      replaceParams({
+        q: null,
+        agent_id: null,
+        status: null,
+        outcome: null,
+        product: null,
+        date_from: null,
+        date_to: null,
+        page: "1",
+      }),
+    [replaceParams],
+  );
+
   const setPage = useCallback(
     (nextPage: number) => {
       replaceParams({ page: String(Math.max(1, nextPage)) });
@@ -122,5 +159,13 @@ export function useTraceListParams(defaultLimit: TracePageSize = 25) {
     setPage,
     setLimit,
     replaceParams,
+    outcome,
+    product,
+    dateFrom,
+    dateTo,
+    setOutcome,
+    setProduct,
+    setDateRange,
+    clearFilters,
   };
 }

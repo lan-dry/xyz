@@ -1,17 +1,28 @@
 # Console projector screens
 
-Capture after `pnpm demo:up` (demo mode + seeded bank pack).
+Capture after `pnpm demo:up` (Demo Bank + `bank_demo` profile).
 
 ```powershell
-# Suggested filenames (1920x1080, no PII beyond @demo.test)
-# docs/screens/01-rules.png
-# docs/screens/02-live-queue.png
-# docs/screens/03-cases.png
-# docs/screens/04-receipt-sealed.png
-# docs/screens/05-reports.png
-# docs/screens/06-access-log.png
+pnpm demo:up
+pnpm demo:screens
 ```
 
-Run: open each Aegis console page, ensure contrast is readable on a projector, then save PNGs here.
+Writes 1920×1080 PNGs (and `*-zoom125.png` variants) under this folder:
 
-Last verified: 2026-11-15 — pages implemented; PNG capture is an operator checklist (no network assets).
+| File | Page |
+|------|------|
+| `01-overview.png` | Overview |
+| `02-live-feed.png` | Live feed |
+| `03-approvals.png` | Approvals |
+| `04-rules.png` | Rules / policies |
+| `05-simulator.png` | Bank simulator |
+| `06-verify.png` | Verify |
+| `07-reports.png` | Reports |
+| `08-access-log.png` | Access log |
+
+| `approvals-ui/` | Hard-stop **Release** modal + PAY-03 callback checkbox (`tmp/capture` after raising simulator stories) |
+| `menu/` | Full bank_demo nav walk (`pnpm demo:full-menu`) |
+
+Manual extras for the pitch (officer refusal, manager approve, held-then-released case, tampered bundle): capture while walking `docs/DEMO_RUNBOOK.md`.
+
+Last updated: production-style P0/P7 screens — `pnpm demo:screens`, `pnpm demo:full-menu`, approvals-ui Release/callback.

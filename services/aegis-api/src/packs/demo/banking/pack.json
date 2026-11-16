@@ -3,15 +3,37 @@
   "name": "Demo banking pack (illustrative retail lending)",
   "demo_only": true,
   "sector": "banking",
-  "version": 1,
+  "version": 3,
   "combine": "all_matching",
-  "currencies": ["RWF"],
+  "currencies": [
+    "RWF"
+  ],
   "roles": [
-    { "role_key": "credit_officer", "display_name": "Credit Officer", "level": 10 },
-    { "role_key": "credit_manager", "display_name": "Credit Manager", "level": 20 },
-    { "role_key": "compliance_officer", "display_name": "Compliance Officer", "level": 25 },
-    { "role_key": "dpo", "display_name": "Data Protection Officer", "level": 30 },
-    { "role_key": "head_of_compliance", "display_name": "Head of Compliance", "level": 40 }
+    {
+      "role_key": "credit_officer",
+      "display_name": "Credit Officer",
+      "level": 10
+    },
+    {
+      "role_key": "credit_manager",
+      "display_name": "Credit Manager",
+      "level": 20
+    },
+    {
+      "role_key": "compliance_officer",
+      "display_name": "Compliance Officer",
+      "level": 25
+    },
+    {
+      "role_key": "dpo",
+      "display_name": "Data Protection Officer",
+      "level": 30
+    },
+    {
+      "role_key": "head_of_compliance",
+      "display_name": "Head of Compliance",
+      "level": 40
+    }
   ],
   "authority_matrix": [
     {
@@ -52,7 +74,11 @@
     }
   ],
   "field_policies": [
-    { "field_path": "national_id", "mode": "mask", "mask_keep_last": 4 }
+    {
+      "field_path": "national_id",
+      "mode": "mask",
+      "mask_keep_last": 4
+    }
   ],
   "rules": [
     {
@@ -66,11 +92,67 @@
       "tool_pattern": "governed.action",
       "decision": "allow_with_obligation",
       "priority": 50,
-      "conditions": { "expr": { "gt": ["model.score", 0.7] } },
+      "conditions": {
+        "expr": {
+          "gt": [
+            "model.score",
+            0.7
+          ]
+        }
+      },
       "obligations": {
         "kind": "human_approval",
         "required_role": "credit_manager",
-        "required_fields": ["reason_code", "comment"]
+        "required_fields": [
+          "reason_code",
+          "comment"
+        ]
+      }
+    },
+    {
+      "rule_id": "SANC-01",
+      "tool_pattern": "governed.action",
+      "decision": "deny",
+      "priority": 100,
+      "conditions": {
+        "hard_stop": true,
+        "expr": {
+          "or": [
+            {
+              "eq": [
+                "screening.sanctions_hit",
+                true
+              ]
+            },
+            {
+              "eq": [
+                "screening.pep_hit",
+                true
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule_id": "PAY-03",
+      "tool_pattern": "governed.action",
+      "decision": "allow_with_obligation",
+      "priority": 60,
+      "conditions": {
+        "expr": {
+          "eq": [
+            "payment.callback_verified",
+            false
+          ]
+        }
+      },
+      "obligations": {
+        "kind": "human_approval",
+        "required_role": "credit_manager",
+        "required_fields": [
+          "callback_verified"
+        ]
       }
     }
   ],
@@ -81,5 +163,28 @@
       "record_only": false,
       "on_unreachable": "hold"
     }
-  ]
+  ],
+  "labels": {
+    "rule_titles": {
+      "AUTH-RL": "Within officer limit",
+      "AUTH-RL-HIGH": "Above manager band",
+      "LN-07": "High model score requires Credit Manager",
+      "PAY-03": "Payment callback verification",
+      "SANC-01": "Sanctions / PEP hard stop"
+    },
+    "role_labels": {
+      "credit_officer": "Credit Officer",
+      "credit_manager": "Credit Manager",
+      "compliance_officer": "Compliance Officer",
+      "head_of_compliance": "Head of Compliance",
+      "dpo": "DPO"
+    },
+    "product_labels": {
+      "retail_loan": "Loan disbursement"
+    },
+    "event_type_labels": {
+      "loan_decision": "Loan disbursement",
+      "loan_disbursement": "Loan disbursement"
+    }
+  }
 }

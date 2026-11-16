@@ -310,3 +310,87 @@
   color: var(--console-accent-bright);
   background: var(--console-accent-soft);
 }
+
+.demoStrip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.375rem 1rem;
+  border-bottom: 1px solid var(--console-warning);
+  background: var(--console-warning-soft);
+  color: var(--console-fg);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+
+/*
+ * bank_demo: projector / meeting-room legibility (A9).
+ * Keyed by data-ui-profile on the shell root (set when NEXT_PUBLIC_AEGIS_UI_PROFILE=bank_demo).
+ * Floors: body text 16px, secondary text 14px, and stronger grey contrast.
+ * `!important` is deliberate for the floors: several components set small sizes inline.
+ */
+.shell[data-ui-profile="bank_demo"] {
+  font-size: 1rem;
+  line-height: 1.5;
+  --console-fg-muted: #36443f;
+  --console-fg-subtle: #4a5a56;
+  --console-border: #b4c2be;
+  --console-sidebar-w: 16.5rem;
+  --console-nav-font-size: 1rem;
+  --console-nav-line-height: 1.4rem;
+  --console-nav-row-min: 2.5rem;
+}
+
+html.dark .shell[data-ui-profile="bank_demo"] {
+  --console-fg-muted: #c9d6d2;
+  --console-fg-subtle: #b0c0bc;
+  --console-border: rgba(67, 194, 169, 0.32);
+}
+
+/* Body: 16px minimum */
+.shell[data-ui-profile="bank_demo"] :is(p, li, td, dd, dt, input, select, textarea, button) {
+  font-size: 1rem !important;
+}
+
+/* Secondary (labels, hints, captions, chips, table headers, ids): 14px minimum */
+.shell[data-ui-profile="bank_demo"]
+  :is(
+    th,
+    small,
+    label,
+    code,
+    [class*="Hint"],
+    [class*="hint"],
+    [class*="muted"],
+    [class*="Muted"],
+    [class*="Subtitle"],
+    [class*="subtitle"],
+    [class*="badge"],
+    [class*="Badge"],
+    [class*="cardTitle"],
+    [class*="statStrip"],
+    [class*="tableFooter"],
+    [class*="tokenPill"],
+    [class*="caption"],
+    [class*="meta"],
+    [class*="Meta"],
+    [class*="backLink"]
+  ) {
+  font-size: 0.875rem !important;
+}
+
+.shell[data-ui-profile="bank_demo"] :global(.mono) {
+  font-size: 0.875rem !important;
+}
+
+/* Chips and buttons keep their shape; text stays readable */
+.shell[data-ui-profile="bank_demo"] :is([class*="_btn"], [class*="badge"]) {
+  min-height: 2rem;
+}
+
+.shell[data-ui-profile="bank_demo"] .demoStrip {
+  font-size: 0.9375rem;
+}

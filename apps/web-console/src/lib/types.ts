@@ -183,3 +183,48 @@ export type IngestKeySummary = {
   last_used_at: string | null;
   revoked_at: string | null;
 };
+
+export type CaseSealStatus =
+  | "sealed"
+  | "sealed_pending_witness"
+  | "provisional"
+  | "broken"
+  | "unknown";
+
+/** One approve/decline vote on a case. Email is for Technical details only. */
+export type CaseApprover = {
+  email: string | null;
+  name?: string | null;
+  /** Bank role key, e.g. credit_manager. */
+  role?: string | null;
+  decision: string;
+  decided_at?: string | null;
+  reason?: string | null;
+  /** Set when this person decided under a time-limited delegation: who they acted for. */
+  delegated_from_name?: string | null;
+  delegated_from_email?: string | null;
+};
+
+/** GET /v1/console/cases/summary ? plain facts per case (Live feed, approvals). */
+export type CaseSummary = {
+  trace_id: string;
+  case_id: string | null;
+  outcome: string | null;
+  mode: string | null;
+  amount: number | null;
+  currency: string | null;
+  product: string | null;
+  event_type: string | null;
+  rules: string[];
+  /** Rule that drove the outcome (the hold rule, not the AUTH-RL allow). */
+  decided_by_rule_id?: string | null;
+  approvers: CaseApprover[];
+  approval_status: string | null;
+  required_role: string | null;
+  requester: string | null;
+  seal: CaseSealStatus;
+  demo_filler: boolean;
+  /** Synthetic back-dated history from the demo seed. */
+  demo_history?: boolean;
+  created_at: string | null;
+};

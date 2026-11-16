@@ -1,8 +1,14 @@
 import { getCookie, setCookie } from "hono/cookie";
 import { Hono } from "hono";
 import {
+  DemoIngestKeyError,
   getPlanCatalog,
+  getPlatformEmailSettings,
   hashPassword,
+  PlatformEmailSettingsError,
+  resolvePlatformEmailDelivery,
+  savePlatformEmailSettings,
+  platformSetStableIngestKey,
   ImpersonationError,
   isPlatformRole,
   platformGetAccount,
@@ -33,6 +39,10 @@ import {
   type PlatformStaffSession,
   updatePlanCatalogRow,
 } from "@salanor/platform-auth";
+import {
+  EmailDeliveryError,
+  sendTransactionalEmail,
+} from "../email/email-delivery.js";
 import { getPool } from "../db/pool.js";
 import {
   listContactLeads,
@@ -101,6 +111,8 @@ platformRoutes.post("/organizations", async (c) => {
     admin_display_name?: string;
     admin_password?: string;
     plan?: string;
+    is_demo?: boolean;
+    is_test?: boolean;
   };
   try {
     body = await c.req.json();
@@ -111,6 +123,11 @@ platformRoutes.post("/organizations", async (c) => {
   if (!body.name?.trim() || !body.slug?.trim() || !body.admin_email?.trim()) {
     return c.json({ error: "name, slug, and admin_email required" }, 422);
   }
+
+  // Disposable test tenants (wipeable, migration 020): explicit flag, or a smoke-test slug
+  // (the runbook requires smoke slugs to contain "smoke"). Platform provisioning only:
+  // self-serve signup never sets this, so a customer cannot make their own tenant wipeable.
+  const isTest = body.is_test === true || /smoke/i.test(body.slug);
 
   const client = await getPool().connect();
   try {
@@ -124,6 +141,8 @@ platformRoutes.post("/organizations", async (c) => {
         ? hashPassword(body.admin_password)
         : null,
       plan: body.plan,
+      isDemo: body.is_demo === true,
+      isTest,
     });
     await client.query("COMMIT");
     return c.json({
@@ -131,6 +150,8 @@ platformRoutes.post("/organizations", async (c) => {
       admin_email: body.admin_email.trim().toLowerCase(),
       membership_id: result.membership_id,
       plan: body.plan?.trim().toLowerCase() || "free",
+      is_demo: body.is_demo === true,
+      is_test: isTest,
       default_agent: result.default_agent,
       sdk_config: {
         organization_id: result.default_agent.organization_id,
@@ -196,11 +217,21 @@ platformRoutes.patch("/organizations/:organizationId", async (c) => {
   const access = await requirePlatformPermission(c, "platform:orgs.write");
   if (!access.ok) return c.json({ error: access.error }, 403);
   const organizationId = c.req.param("organizationId");
-  let body: { plan?: string; active?: boolean; plan_overrides?: Record<string, unknown> | null };
+  let body: {
+    plan?: string;
+    active?: boolean;
+    plan_overrides?: Record<string, unknown> | null;
+    is_demo?: boolean;
+    is_test?: boolean;
+  };
   try {
     body = await c.req.json();
   } catch {
     return c.json({ error: "Invalid JSON" }, 422);
+  }
+  // is_test makes a tenant wipeable: only the bootstrap-secret holder may change it.
+  if (body.is_test !== undefined && !access.bootstrap) {
+    return c.json({ error: "Forbidden" }, 403);
   }
   if (body.plan) {
     const planOk = await getPool().query(
@@ -211,22 +242,293 @@ platformRoutes.patch("/organizations/:organizationId", async (c) => {
       return c.json({ error: "Invalid plan" }, 422);
     }
   }
+  // The internal platform organisation is never a demo/test (wipeable) tenant.
+  if (body.is_demo === true || body.is_test === true) {
+    const slugRow = await getPool().query<{ slug: string }>(
+      `SELECT slug FROM organization WHERE organization_id = $1`,
+      [organizationId],
+    );
+    if (slugRow.rows[0]?.slug === "salanor-platform") {
+      return c.json(
+        { error: "The platform organisation cannot be a demo or test organisation" },
+        422,
+      );
+    }
+  }
   const ok = await platformUpdateOrganization(getPool(), organizationId, {
     plan: body.plan,
     active: body.active,
     plan_overrides: body.plan_overrides,
+    is_demo: typeof body.is_demo === "boolean" ? body.is_demo : undefined,
+    is_test: typeof body.is_test === "boolean" ? body.is_test : undefined,
   });
   if (!ok) return c.json({ error: "Not found" }, 404);
-  if (access.staff && (body.plan !== undefined || body.active !== undefined)) {
+  if (
+    access.staff &&
+    (body.plan !== undefined ||
+      body.active !== undefined ||
+      typeof body.is_demo === "boolean" ||
+      typeof body.is_test === "boolean")
+  ) {
     await writePlatformAuditEvent(getPool(), {
       actorAccountId: access.staff.accountId,
       action: "organization.patch",
       resourceType: "organization",
       resourceId: organizationId,
-      metadata: { plan: body.plan, active: body.active },
+      metadata: {
+        plan: body.plan,
+        active: body.active,
+        is_demo: typeof body.is_demo === "boolean" ? body.is_demo : undefined,
+        is_test: typeof body.is_test === "boolean" ? body.is_test : undefined,
+      },
     });
   }
   return c.json({ ok: true });
+});
+
+/**
+ * Platform transactional email (Resend and/or SMTP). GET never returns secrets.
+ * PUT accepts write-only Resend key / SMTP password. DELETE clears the Resend key
+ * (env fallback still applies for platform mode). Writes need platform:email.write.
+ */
+platformRoutes.get("/email-settings", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:read");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  try {
+    return c.json({ settings: await getPlatformEmailSettings(getPool()) });
+  } catch (err) {
+    if ((err as { code?: string }).code === "42P01") {
+      return c.json(
+        { error: "Email settings table is missing. Run pnpm db:migrate (reset empty DB if baseline changed)." },
+        503,
+      );
+    }
+    // Older DBs missing SMTP columns — surface a clear migrate hint.
+    if ((err as { code?: string }).code === "42703") {
+      return c.json(
+        {
+          error:
+            "Email settings schema is outdated. Reset an empty database and run pnpm db:migrate (or ALTER platform_email_settings to match 001_baseline).",
+        },
+        503,
+      );
+    }
+    console.error("[id] email settings read", err);
+    return c.json({ error: "Failed to load email settings" }, 500);
+  }
+});
+
+platformRoutes.put("/email-settings", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:email.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+  const delivery =
+    body.delivery === "smtp" || body.delivery === "platform"
+      ? body.delivery
+      : undefined;
+  try {
+    const settings = await savePlatformEmailSettings(getPool(), {
+      delivery,
+      fromName:
+        body.from_name === null
+          ? null
+          : typeof body.from_name === "string"
+            ? body.from_name
+            : undefined,
+      fromAddress:
+        typeof body.from_address === "string" ? body.from_address : undefined,
+      replyTo:
+        body.reply_to === null
+          ? null
+          : typeof body.reply_to === "string"
+            ? body.reply_to
+            : undefined,
+      resendApiKey:
+        typeof body.resend_api_key === "string" ? body.resend_api_key : undefined,
+      clearKey: body.clear_key === true,
+      smtpHost:
+        body.smtp_host === null
+          ? null
+          : typeof body.smtp_host === "string"
+            ? body.smtp_host
+            : undefined,
+      smtpPort:
+        typeof body.smtp_port === "number" ? body.smtp_port : undefined,
+      smtpSecure:
+        typeof body.smtp_secure === "boolean" ? body.smtp_secure : undefined,
+      smtpUser:
+        body.smtp_user === null
+          ? null
+          : typeof body.smtp_user === "string"
+            ? body.smtp_user
+            : undefined,
+      smtpPassword:
+        body.smtp_password === null
+          ? null
+          : typeof body.smtp_password === "string"
+            ? body.smtp_password
+            : undefined,
+      clearSmtpPassword: body.clear_smtp_password === true,
+      updatedBy: access.staff?.email ?? "platform-bootstrap",
+    });
+    if (access.staff) {
+      await writePlatformAuditEvent(getPool(), {
+        actorAccountId: access.staff.accountId,
+        action: "platform.email_settings.update",
+        resourceType: "platform_email_settings",
+        resourceId: "1",
+        metadata: {
+          delivery: settings.delivery,
+          from_address_changed: body.from_address !== undefined,
+          key_replaced:
+            typeof body.resend_api_key === "string" &&
+            body.resend_api_key.trim() !== "",
+          key_cleared: body.clear_key === true,
+          smtp_password_replaced:
+            typeof body.smtp_password === "string" &&
+            body.smtp_password !== "",
+          smtp_password_cleared:
+            body.clear_smtp_password === true || body.smtp_password === null,
+        },
+      });
+    }
+    return c.json({ ok: true, settings });
+  } catch (err) {
+    if (err instanceof PlatformEmailSettingsError) {
+      return c.json({ error: err.message, code: err.code }, err.code === "master_key_missing" ? 503 : 422);
+    }
+    if ((err as { code?: string }).code === "42P01" || (err as { code?: string }).code === "42703") {
+      return c.json(
+        {
+          error:
+            "Email settings schema is missing or outdated. Reset an empty database and run pnpm db:migrate.",
+        },
+        503,
+      );
+    }
+    console.error("[id] email settings save failed");
+    return c.json({ error: "Failed to save email settings" }, 500);
+  }
+});
+
+platformRoutes.delete("/email-settings", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:email.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  try {
+    const settings = await savePlatformEmailSettings(getPool(), {
+      clearKey: true,
+      clearSmtpPassword: true,
+      updatedBy: access.staff?.email ?? "platform-bootstrap",
+    });
+    if (access.staff) {
+      await writePlatformAuditEvent(getPool(), {
+        actorAccountId: access.staff.accountId,
+        action: "platform.email_settings.update",
+        resourceType: "platform_email_settings",
+        resourceId: "1",
+        metadata: { key_cleared: true, smtp_password_cleared: true },
+      });
+    }
+    return c.json({ ok: true, settings });
+  } catch (err) {
+    console.error("[id] email settings clear failed", err instanceof Error ? err.name : "error");
+    return c.json({ error: "Failed to clear email secrets" }, 500);
+  }
+});
+
+/** Send a test message using currently saved platform email settings (SMTP or Resend). */
+platformRoutes.post("/email-settings/test", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:email.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  if (!access.staff?.email) {
+    return c.json({ error: "Sign in as platform staff to send a test email." }, 401);
+  }
+
+  const to = access.staff.email.trim();
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!EMAIL_RE.test(to) || to.length > 254) {
+    return c.json({ error: "Your account email is not a valid destination for a test." }, 422);
+  }
+
+  try {
+    const delivery = await resolvePlatformEmailDelivery(getPool());
+    if (delivery.mode === "none" || (delivery.mode === "resend" && !delivery.apiKey)) {
+      return c.json(
+        {
+          error:
+            "Transactional email is not configured (set SMTP or a Resend key, or RESEND_API_KEY).",
+        },
+        422,
+      );
+    }
+    await sendTransactionalEmail({
+      to,
+      subject: "Salanor platform email test",
+      text:
+        "This is a test message from Platform Ops Email. Your transactional email settings are working.",
+      html: `<p>This is a test message from <strong>Platform Ops Email</strong>.</p><p>Your transactional email settings are working.</p>`,
+    });
+    if (access.staff) {
+      await writePlatformAuditEvent(getPool(), {
+        actorAccountId: access.staff.accountId,
+        action: "platform.email_settings.test",
+        resourceType: "platform_email_settings",
+        resourceId: "1",
+        metadata: {
+          to_domain: to.split("@")[1] ?? null,
+          delivery_mode: delivery.mode,
+          from: delivery.from,
+        },
+      });
+    }
+    return c.json({
+      ok: true,
+      to,
+      from: delivery.from,
+      delivery_mode: delivery.mode,
+    });
+  } catch (err) {
+    if (err instanceof EmailDeliveryError) {
+      return c.json({ error: err.message, code: err.code }, 422);
+    }
+    console.error("[id] email settings test failed", err instanceof Error ? err.name : "error");
+    return c.json({ error: "Failed to send test email" }, 500);
+  }
+});
+
+/**
+ * Stable ingest key for a DEMO/TEST tenant (pnpm pilot:provision-demo-tenant with
+ * DEMO_BANK_INGEST_KEY). Bootstrap secret only. The operator-held secret is hashed and stored
+ * like any ingest key; the same secret again is a no-op, so the key survives `pnpm demo:fresh`.
+ * Refused for customer tenants (neither is_demo nor is_test).
+ */
+platformRoutes.put("/organizations/:organizationId/stable-ingest-key", async (c) => {
+  if (!platformSecretOk(c)) return c.json({ error: "Forbidden" }, 403);
+  let body: { name?: string; secret?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+  try {
+    const result = await platformSetStableIngestKey(getPool(), c.req.param("organizationId"), {
+      name: body.name ?? "",
+      secret: body.secret ?? "",
+    });
+    return c.json({ ok: true, ...result });
+  } catch (err) {
+    if (err instanceof DemoIngestKeyError) {
+      const status = err.code === "not_found" ? 404 : err.code === "not_demo_or_test" ? 403 : 422;
+      return c.json({ error: err.message, code: err.code }, status);
+    }
+    console.error("[id] stable ingest key", err);
+    return c.json({ error: "Failed to set ingest key" }, 500);
+  }
 });
 
 platformRoutes.get("/organizations/:organizationId/billing/events", async (c) => {

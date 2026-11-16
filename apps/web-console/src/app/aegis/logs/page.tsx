@@ -13,10 +13,19 @@ import {
   PageHeader,
   ui,
 } from "@/components/console/console-ui";
+import { ConsoleTime } from "@/components/console/console-time";
 import { AUDIT_PAGE_SIZES, useAuditListParams } from "@/hooks/use-audit-list-params";
 import { TruncatedId } from "@/components/console/truncated-id";
 import { consoleApi } from "@/lib/api";
 import { formatAuditLocation } from "@/lib/audit-location";
+import {
+  auditActionLabel,
+  auditCaseId,
+  auditTraceId,
+  BANK_HIDDEN_ACTIONS,
+  describeAuditEntry,
+} from "@/lib/describe-audit";
+import { isBankDemoProfile } from "@/lib/ui-profile";
 
 type AuditLogRow = {
   audit_id: string;
@@ -44,14 +53,41 @@ const AUDIT_PRESETS = [
   { label: "Invite accepted", action: "invitation.accepted" },
 ] as const;
 
+/** bank_demo: chips about who touched a case record, not member admin. */
+const BANK_PRESETS = [
+  { label: "Receipt opened", action: "receipt.viewed" },
+  { label: "Receipt verified", action: "receipt.verified" },
+  { label: "Evidence downloaded", action: "evidence.downloaded" },
+  { label: "Share link opened", action: "receipt.share_opened" },
+  { label: "Rules activated", action: "policy.activated" },
+  { label: "Sign-in success", action: "auth.login.success" },
+] as const;
+
 export default function AuditLogsPage() {
-  const { q, action, page, limit, queryString, setQuery, setAction, setPage, setLimit } =
-    useAuditListParams(25);
+  const bank = isBankDemoProfile();
+  const {
+    q,
+    action,
+    caseId,
+    page,
+    limit,
+    queryString,
+    setQuery,
+    setAction,
+    setCaseId,
+    setPage,
+    setLimit,
+  } = useAuditListParams(25);
   const [searchInput, setSearchInput] = useState(q);
+  const [caseInput, setCaseInput] = useState(caseId);
 
   useEffect(() => {
     setSearchInput(q);
   }, [q]);
+
+  useEffect(() => {
+    setCaseInput(caseId);
+  }, [caseId]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -59,6 +95,13 @@ export default function AuditLogsPage() {
     }, 300);
     return () => window.clearTimeout(t);
   }, [searchInput, q, setQuery]);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (caseInput.trim() !== caseId.trim()) setCaseId(caseInput);
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [caseInput, caseId, setCaseId]);
 
   const actionsQuery = useQuery({
     queryKey: ["console", "audit-log-actions"],
@@ -73,13 +116,22 @@ export default function AuditLogsPage() {
 
   const logs = logsQuery.data?.logs ?? [];
   const total = logsQuery.data?.total ?? 0;
-  const actions = actionsQuery.data?.actions ?? [];
+  const allActions = actionsQuery.data?.actions ?? [];
+  const actions = bank ? allActions.filter((a) => !BANK_HIDDEN_ACTIONS.has(a)) : allActions;
+  const presets = bank ? BANK_PRESETS : AUDIT_PRESETS;
+  // Hide the Location column when no row on this page has one.
+  const showLocation = !bank || logs.some((row) => formatAuditLocation(row.metadata) !== "-");
+  const filtered = Boolean(action || caseId.trim() || q.trim());
 
   return (
     <ConsolePage>
       <PageHeader
-        title="Logs"
-        subtitle="Human and admin actions in the console (sign-in, members, policies, keys, exports, approvals). Agent runtime activity lives under Traces and Search."
+        title={bank ? "Access log" : "Logs"}
+        subtitle={
+          bank
+            ? "Who opened, verified or downloaded a case record, and who changed the rules. Filter by case to see everything that touched it."
+            : "Human and admin actions in the console (sign-in, members, policies, keys, exports, approvals). Agent runtime activity lives under Traces and Search."
+        }
       />
 
       <div
@@ -93,24 +145,40 @@ export default function AuditLogsPage() {
             <input
               type="search"
               className={ui.input}
-              placeholder="Action, resource, metadata…"
+              placeholder={bank ? "Person, case, what happened…" : "Action, resource, metadata…"}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               style={{ width: "100%" }}
             />
           </span>
         </label>
+        {bank ? (
+          <label style={{ flex: "0 1 12rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+            <span style={{ fontSize: "0.75rem", color: "var(--console-fg-subtle)" }}>Case ID</span>
+            <input
+              type="search"
+              className={ui.input}
+              placeholder="e.g. CASE-1042"
+              value={caseInput}
+              onChange={(e) => setCaseInput(e.target.value)}
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </label>
+        ) : null}
         <label style={{ flex: "0 1 14rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-          <span style={{ fontSize: "0.75rem", color: "var(--console-fg-subtle)" }}>Action</span>
+          <span style={{ fontSize: "0.75rem", color: "var(--console-fg-subtle)" }}>
+            {bank ? "What happened" : "Action"}
+          </span>
           <select
             className={ui.input}
             value={action}
             onChange={(e) => setAction(e.target.value)}
           >
-            <option value="">All actions</option>
+            <option value="">{bank ? "Everything" : "All actions"}</option>
             {actions.map((a) => (
               <option key={a} value={a}>
-                {a}
+                {bank ? auditActionLabel(a) : a}
               </option>
             ))}
           </select>
@@ -118,7 +186,7 @@ export default function AuditLogsPage() {
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.25rem" }}>
-        {AUDIT_PRESETS.map((preset) => (
+        {presets.map((preset) => (
           <button
             key={preset.label}
             type="button"
@@ -133,30 +201,41 @@ export default function AuditLogsPage() {
             {preset.label}
           </button>
         ))}
-        {action ? (
+        {action || (bank && caseId.trim()) ? (
           <button
             type="button"
             className={`${ui.btn} ${ui.btnSecondary}`}
             style={{ fontSize: "0.8125rem", padding: "0.35rem 0.75rem" }}
-            onClick={() => setAction("")}
+            onClick={() => {
+              setAction("");
+              if (bank) setCaseId("");
+            }}
           >
             Clear filter
           </button>
         ) : null}
-        <Link href="/aegis/members" className={ui.tableLink} style={{ alignSelf: "center", fontSize: "0.8125rem" }}>
-          Manage members →
-        </Link>
+        {bank ? null : (
+          <Link href="/aegis/members" className={ui.tableLink} style={{ alignSelf: "center", fontSize: "0.8125rem" }}>
+            Manage members →
+          </Link>
+        )}
       </div>
 
       {logsQuery.isPending && !logsQuery.data ? <LoadingBlock /> : null}
-      {logsQuery.error ? <ErrorAlert message="Failed to load audit logs." /> : null}
+      {logsQuery.error ? (
+        <ErrorAlert message={bank ? "Failed to load the access log." : "Failed to load audit logs."} />
+      ) : null}
 
       {!logsQuery.isPending && !logsQuery.error ? (
         <div className={ui.tableWrap} style={{ opacity: logsQuery.isFetching ? 0.65 : 1 }}>
           {logs.length === 0 ? (
             <div className={ui.cardPad}>
               <p className={ui.cardHint}>
-                No audit events match. Member invites, API keys, and agent changes appear here.
+                {bank
+                  ? filtered
+                    ? "Nothing in the access log matches. Clear the filter to see everything."
+                    : "Nothing here yet. Opening a receipt, checking it or downloading evidence is recorded here."
+                  : "No audit events match. Member invites, API keys, and agent changes appear here."}
               </p>
             </div>
           ) : (
@@ -165,33 +244,73 @@ export default function AuditLogsPage() {
                 <thead>
                   <tr>
                     <th>Time</th>
-                    <th>Action</th>
-                    <th>Resource</th>
-                    <th>Actor</th>
-                    <th>Location</th>
+                    <th>{bank ? "What happened" : "Action"}</th>
+                    <th>{bank ? "Case" : "Resource"}</th>
+                    <th>{bank ? "Who" : "Actor"}</th>
+                    {showLocation ? <th>Location</th> : null}
                   </tr>
                 </thead>
                 <tbody>
-                  {logs.map((row) => (
-                    <tr key={row.audit_id}>
-                      <td className="mono" style={{ whiteSpace: "nowrap" }}>
-                        {new Date(row.created_at).toLocaleString()}
-                      </td>
-                      <td>{row.action}</td>
-                      <td>
-                        <span>{row.resource_type}</span>
-                        {row.resource_id ? (
-                          <div style={{ marginTop: "0.2rem" }}>
-                            <TruncatedId value={row.resource_id} />
-                          </div>
+                  {logs.map((row) => {
+                    const location = formatAuditLocation(row.metadata);
+                    const rowCase = auditCaseId(row);
+                    const trace = auditTraceId(row);
+                    return (
+                      <tr key={row.audit_id}>
+                        <td className="mono" style={{ whiteSpace: "nowrap" }}>
+                          {bank ? (
+                            <ConsoleTime iso={row.created_at} seconds />
+                          ) : (
+                            new Date(row.created_at).toLocaleString()
+                          )}
+                        </td>
+                        <td>{bank ? describeAuditEntry(row) : row.action}</td>
+                        <td>
+                          {bank ? (
+                            rowCase ? (
+                              trace ? (
+                                <Link href={`/aegis/traces/${encodeURIComponent(trace)}`} className={ui.tableLink}>
+                                  {rowCase}
+                                </Link>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className={ui.tableLink}
+                                  onClick={() => setCaseId(rowCase)}
+                                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                                  title="Show only this case"
+                                >
+                                  {rowCase}
+                                </button>
+                              )
+                            ) : (
+                              "-"
+                            )
+                          ) : (
+                            <>
+                              <span>{row.resource_type}</span>
+                              {row.resource_id ? (
+                                <div style={{ marginTop: "0.2rem" }}>
+                                  <TruncatedId value={row.resource_id} />
+                                </div>
+                              ) : null}
+                            </>
+                          )}
+                        </td>
+                        <td>{row.actor_email ??
+                          (bank
+                            ? row.action === "receipt.share_opened"
+                              ? "Someone with a share link"
+                              : "System"
+                            : "-")}</td>
+                        {showLocation ? (
+                          <td style={{ fontSize: "0.8125rem", maxWidth: "14rem" }}>
+                            {bank && location === "-" ? "" : location}
+                          </td>
                         ) : null}
-                      </td>
-                      <td>{row.actor_email ?? "-"}</td>
-                      <td style={{ fontSize: "0.8125rem", maxWidth: "14rem" }}>
-                        {formatAuditLocation(row.metadata)}
-                      </td>
-                    </tr>
-                  ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               <ConsolePagination
@@ -201,6 +320,7 @@ export default function AuditLogsPage() {
                 onPageChange={setPage}
                 onLimitChange={(n) => setLimit(n as (typeof AUDIT_PAGE_SIZES)[number])}
                 noun="entry"
+                nounPlural="entries"
                 pageSizes={AUDIT_PAGE_SIZES}
               />
             </>

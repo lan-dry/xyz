@@ -4,6 +4,11 @@ import {
   requireConsoleSession,
   type ConsoleVariables,
 } from "../../middleware/console-session.js";
+import {
+  auditReceiptAccess,
+  caseIdFromPayload,
+  RECEIPT_ACCESS_ACTIONS,
+} from "../../console/receipt-access-audit.js";
 import { getInclusionProofByEvent } from "../../repo/witness.js";
 import {
   verifyEventFull,
@@ -63,6 +68,25 @@ verifyRoutes.get(
       if (!row) {
         return c.json({ error: "Not found" }, 404);
       }
+
+      const session = c.get("consoleSession");
+      await auditReceiptAccess(
+        client,
+        {
+          organizationId: orgId,
+          membershipId: session.userId,
+          email: session.email,
+        },
+        {
+          action: RECEIPT_ACCESS_ACTIONS.verified,
+          resourceId: eventId,
+          metadata: {
+            event_id: eventId,
+            trace_id: row.trace_id,
+            case_id: caseIdFromPayload(row.payload),
+          },
+        },
+      );
 
       const verification = await verifyEventFull(client, row);
       const proof = await getInclusionProofByEvent(client, orgId, eventId);

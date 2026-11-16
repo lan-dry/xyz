@@ -268,8 +268,8 @@ export default function GetStartedPage() {
           Advanced: sample data for demo operators
         </summary>
         <p style={{ fontSize: "0.8125rem", color: "var(--console-fg-muted)", marginTop: "0.75rem" }}>
-          Clients never need this. Salanor (or your integration engineer) seeds Northwind sample
-          actions from the repo while API + Console are running.
+          Clients never need this. Demo operators can seed illustrative sample actions from the
+          repo (local/demo only) while API + Console are running.
         </p>
         <ol style={{ margin: "0 0 0.75rem", paddingLeft: "1.25rem", fontSize: "0.8125rem" }}>
           <li style={{ marginBottom: "0.35rem" }}>

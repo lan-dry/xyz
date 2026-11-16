@@ -13,7 +13,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
-import { AEGIS_NAV, isNavActive, type ConsoleNavItem } from "@/lib/console-nav";
+import { isNavActive, navForProfile, type ConsoleNavItem } from "@/lib/console-nav";
+import { useOrgProfile } from "@/hooks/use-org-profile";
+import { isBankDemoProfile } from "@/lib/ui-profile";
 import {
   applyConsoleTheme,
   persistConsoleTheme,
@@ -70,9 +72,9 @@ function TopLink({
 
 export function ConsoleShell({
   product,
-  navItems = AEGIS_NAV,
+  navItems = navForProfile(),
   user,
-  platformStaff: _platformStaff = false,
+  platformStaff = false,
   impersonation = null,
   onEndImpersonation,
   organization,
@@ -98,9 +100,11 @@ export function ConsoleShell({
   const [environment, setEnvironment] = useState<ConsoleEnvironment>("production");
 
   const pendingApprovalsQuery = useQuery({
-    queryKey: ["console", "approvals", "pending", "nav-badge"],
+    queryKey: ["console", "approvals", "pending", "nav-badge", environment],
     queryFn: () =>
-      consoleApi<{ approvals: unknown[] }>("/approvals?status=pending"),
+      consoleApi<{ approvals: unknown[] }>(
+        `/approvals?status=pending&environment=${environment}`,
+      ),
     refetchInterval: 15_000,
     enabled: product === "aegis",
   });
@@ -112,6 +116,12 @@ export function ConsoleShell({
     applyConsoleTheme(resolved);
     setTheme(resolved);
     setEnvironment(readConsoleEnvironment());
+    function onEnv(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail === "sandbox" || detail === "production") setEnvironment(detail);
+    }
+    window.addEventListener("salanor:console-environment", onEnv);
+    return () => window.removeEventListener("salanor:console-environment", onEnv);
   }, []);
 
   useEffect(() => {
@@ -140,12 +150,17 @@ export function ConsoleShell({
   }
 
   const productTitle = product === "aegis" ? "Aegis" : "Insurance";
+  const bankDemo = isBankDemoProfile() && product === "aegis";
+  // A hosted demo tenant (organization.is_demo) shows a quiet tag in the org display
+  // instead of the loud strip, and no misleading Production/Sandbox switch.
+  const { isDemo: demoOrg } = useOrgProfile();
 
   return (
     <div
       className={shell.shell}
       data-console-shell
       data-console-app
+      data-ui-profile={bankDemo ? "bank_demo" : undefined}
     >
       <aside
         className={`${shell.sidebar} ${collapsed ? shell.sidebarCollapsed : ""}`}
@@ -226,7 +241,7 @@ export function ConsoleShell({
           </nav>
         </div>
 
-        <div className={shell.productBlock}>
+        {bankDemo ? null : <div className={shell.productBlock}>
           {!collapsed ? <p className={shell.productLabel}>Products</p> : null}
           {PLATFORM_PRODUCTS.map((p) => {
             const active =
@@ -263,14 +278,14 @@ export function ConsoleShell({
               </Link>
             );
           })}
-        </div>
+        </div>}
       </aside>
 
       <div className={shell.main}>
         <header className={shell.topBar}>
           <div className={shell.topBarLeft}>
             <OrgDisplay organization={organization} organizations={organizations} />
-            {product === "aegis" ? (
+            {product === "aegis" && !bankDemo && !demoOrg ? (
               <label className={shell.envSwitcher}>
                 <span className={shell.envLabel}>Env</span>
                 <select
@@ -296,7 +311,12 @@ export function ConsoleShell({
           </div>
           <div className={shell.topBarRight}>
             <TopLink href={docsUrl("aegis")} label="Documentation" icon={BookOpen} external />
-            <TopLink href={MARKETING_URL} label="Marketing" icon={ExternalLink} external />
+            {platformStaff ? (
+              <TopLink href={PLATFORM_URL} label="Platform Ops" icon={ExternalLink} external />
+            ) : null}
+            {bankDemo ? null : (
+              <TopLink href={MARKETING_URL} label="Marketing" icon={ExternalLink} external />
+            )}
             <button
               type="button"
               className={`${ui.btn} ${ui.btnGhost} ${shell.utilityLink}`}
@@ -319,6 +339,11 @@ export function ConsoleShell({
             </button>
           </div>
         </header>
+        {bankDemo && !demoOrg ? (
+          <div className={shell.demoStrip} role="status" data-demo-strip>
+            Demo environment, synthetic data
+          </div>
+        ) : null}
         {impersonation ? (
           <div className={shell.impersonationBanner} role="status">
             <div>

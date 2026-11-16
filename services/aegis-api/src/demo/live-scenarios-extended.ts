@@ -10,6 +10,7 @@ import {
   seedDemoApprovalActors,
   DEMO_APPROVAL_ACTORS,
 } from "./seed-approval-actors.js";
+import { resolveDemoIngestKey } from "./ingest-key-context.js";
 import { getPool } from "../db/pool.js";
 import { loadDemoPack } from "../packs/load.js";
 import {
@@ -36,9 +37,7 @@ function baseUrl(): string {
 }
 
 function ingestKey(): string {
-  const key = process.env.AEGIS_INGEST_KEY?.trim();
-  if (!key) throw new Error("AEGIS_INGEST_KEY required");
-  return key;
+  return resolveDemoIngestKey();
 }
 
 async function login(email: string, password: string): Promise<string> {
@@ -119,6 +118,11 @@ async function createApproval(
   traceId: string,
   organizationId: string,
 ): Promise<string> {
+  if (eventId.startsWith("evt_gov_")) {
+    throw new Error(
+      `approvals/request refused: provisional event_id=${eventId} (seal required)`,
+    );
+  }
   const res = await fetch(`${baseUrl()}/v1/aegis/approvals/request`, {
     method: "POST",
     headers: {
@@ -133,9 +137,11 @@ async function createApproval(
       deferred: { url: "https://example.test/demo-callback", method: "POST" },
     }),
   });
-  const body = (await res.json()) as { approval_id?: string };
+  const body = (await res.json()) as { approval_id?: string; error?: string };
   if (!res.ok || !body.approval_id) {
-    throw new Error(`approvals/request failed: ${res.status}`);
+    throw new Error(
+      `approvals/request failed: ${res.status} ${JSON.stringify(body)}`,
+    );
   }
   return body.approval_id;
 }
@@ -291,21 +297,7 @@ export async function runHttpApprovalScenario5(
     required_role: "credit_manager",
     required_roles: ["credit_manager"],
   });
-  const client = await getPool().connect();
-  try {
-    await client.query(
-      `UPDATE event
-       SET payload = COALESCE(payload, '{}'::jsonb) || $2::jsonb
-       WHERE event_id = $1 AND organization_id = $3`,
-      [
-        hold.event_id,
-        JSON.stringify({ requester_email: "manager@demo.test" }),
-        organizationId,
-      ],
-    );
-  } finally {
-    client.release();
-  }
+  // SoD reads requester_email from sealed payload.attributes (posted above).
 
   const cookie = await login("manager@demo.test", password);
   let refused = 0;
@@ -378,13 +370,21 @@ export async function runHttpApprovalScenario9(
   const managerCookie = await login("manager@demo.test", password);
   const headCookie = await login("head@demo.test", password);
 
-  // Create draft via console
+  // Create draft via console (API requires name + non-empty rules).
   const createRes = await fetch(`${baseUrl()}/v1/console/policies`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: managerCookie },
     body: JSON.stringify({
       name: `Retail v4 demo ${randomUUID().slice(0, 6)}`,
-      environment: "live",
+      environment: "production",
+      rules: [
+        {
+          tool_pattern: "governed.action",
+          decision: "allow",
+          priority: 10,
+          conditions: null,
+        },
+      ],
     }),
   });
   const created = (await createRes.json()) as {
@@ -431,7 +431,11 @@ export async function runHttpApprovalScenario9(
         draftId,
         JSON.stringify({
           amount_gte: 15_000_000,
-          obligations: [{ type: "require_approval", roles: ["credit_manager"] }],
+          obligations: {
+            kind: "human_approval",
+            required_role: "credit_manager",
+            required_fields: ["reason_code", "comment"],
+          },
         }),
       ],
     );
@@ -484,15 +488,26 @@ export async function runHttpApprovalScenario9(
     method: "POST",
     headers: { Cookie: managerCookie },
   });
-  const oneBody = (await one.json()) as { published?: boolean; message?: string };
-  const aloneBlocked = one.status === 200 && oneBody.published === false;
+  const oneBody = (await one.json()) as {
+    published?: boolean;
+    pending_confirmation?: boolean;
+    message?: string;
+  };
+  const aloneBlocked =
+    one.status === 200 &&
+    (oneBody.published === false || oneBody.pending_confirmation === true);
 
   const two = await fetch(`${baseUrl()}/v1/console/policies/${draftId}/activate`, {
     method: "POST",
     headers: { Cookie: headCookie },
   });
-  const twoBody = (await two.json()) as { published?: boolean; policy?: { version: number; content_hash?: string } };
-  const published = two.status === 200 && (twoBody.published === true || twoBody.policy != null);
+  const twoBody = (await two.json()) as {
+    published?: boolean;
+    policy?: { version: number; content_hash?: string };
+  };
+  const published =
+    two.status === 200 &&
+    (twoBody.published === true || twoBody.policy != null);
 
   const evalHold = await postGoverned({ amount: 18_000_000, currency });
   const priorStill = await lookupReceiptForCase(organizationId, prior.case_id);
@@ -520,6 +535,8 @@ export async function runHttpApprovalScenario9(
   );
   const diffHttpOk = diffRes.status === 200;
 
+  const priorSealed =
+    !prior.provisional && Boolean(priorReceipt.receipt_id) && priorReceipt.sealed;
   return {
     id: 9,
     name: "policy v4 dual publish (HTTP)",
@@ -529,8 +546,9 @@ export async function runHttpApprovalScenario9(
       evalHold.outcome === "hold" &&
       priorHashOk &&
       priorStill.receipt_id === priorReceipt.receipt_id &&
-      diffHttpOk,
-    detail: `aloneBlocked=${aloneBlocked} published=${published} eval=${evalHold.outcome} priorHashOk=${priorHashOk} v3=${v3Version} draft=${created.policy.version} diffHttp=${diffRes.status}`,
+      diffHttpOk &&
+      priorSealed,
+    detail: `aloneBlocked=${aloneBlocked} published=${published} eval=${evalHold.outcome} priorHashOk=${priorHashOk} v3=${v3Version} draft=${created.policy.version} diffHttp=${diffRes.status} sealed=${priorSealed} provisional=${prior.provisional} receipt=${priorReceipt.receipt_id ?? "none"}`,
   };
 }
 
@@ -631,13 +649,18 @@ export async function runHttpApprovalScenario10(
       delegated_from: "manager@demo.test",
     });
 
-    // Expire delegation
+    // Expire this grant AND any leftover active delegates for the deputy
+    // (simulator / runbook walks can leave other rows that would still pass).
     const db3 = await getPool().connect();
     try {
       await db3.query(
-        `UPDATE approval_delegate SET expires_at = now() - interval '1 minute'
-         WHERE delegate_id = $1`,
-        [dlgId],
+        `UPDATE approval_delegate
+         SET expires_at = now() - interval '1 minute'
+         WHERE organization_id = $1
+           AND membership_id = $2
+           AND revoked_at IS NULL
+           AND (delegate_id = $3 OR expires_at > now())`,
+        [organizationId, deputyMembershipId, dlgId],
       );
     } finally {
       db3.release();
@@ -655,16 +678,20 @@ export async function runHttpApprovalScenario10(
 
     const receipt = await lookupReceiptForCase(organizationId, hold.case_id);
     const ok =
+      !hold.provisional &&
+      Boolean(hold.event_id) &&
+      !hold.event_id.startsWith("evt_gov_") &&
       head.status === 200 &&
       inside.status === 200 &&
       after.status === 403 &&
-      Boolean(receipt.receipt_id || hold.event_id);
+      Boolean(receipt.receipt_id) &&
+      receipt.sealed;
 
     return {
       id: 10,
       name: "escalation + delegation (HTTP)",
       ok,
-      detail: `escalatedApprove=${head.status} delegateInside=${inside.status} delegateAfter=${after.status} receipt=${receipt.receipt_id ?? "none"} sealed=${receipt.sealed}`,
+      detail: `escalatedApprove=${head.status} delegateInside=${inside.status} delegateAfter=${after.status} receipt=${receipt.receipt_id ?? "none"} sealed=${receipt.sealed} provisional=${hold.provisional}`,
     };
   } finally {
     resetDemoClock();
@@ -727,7 +754,7 @@ export async function runHttpApprovalScenario11(
           },
         ],
         attributes: { decided_without_aegis: true },
-        flags: { decided_without_aegis: true, provisional: true },
+        flags: { decided_without_aegis: true },
         signingKey: { key_id: "receipt_dev", private_key_b64: privateKeyB64 },
       });
       receiptId = issued.receipt_id;
@@ -760,7 +787,7 @@ export async function runHttpApprovalScenario11(
       id: 11,
       name: "unreachable buffer + reconcile (live)",
       ok,
-      detail: `receipt=${receiptId} reconcile=${JSON.stringify(reconcile)}`,
+      detail: `receipt=${receiptId} sealed=true provisional=false reconcile=${JSON.stringify(reconcile)}`,
     };
   } finally {
     try {
@@ -784,6 +811,8 @@ export async function runHttpApprovalScenario12(
     const r = await postGoverned({
       amount: 1_000_000 + i * 1000,
       currency,
+      // Filler for the tamper chain — tagged so it can be filtered/ignored.
+      demo_filler: true,
     });
     caseIds.push(r.case_id);
   }
@@ -802,20 +831,22 @@ export async function runHttpApprovalScenario12(
       `SELECT receipt_id, body, key_id, sig_alg, sig_value_b64, receipt_hash, seq::text
        FROM forensic_receipt
        WHERE organization_id = $1
-       ORDER BY seq ASC
-       LIMIT 20`,
-      [organizationId],
+         AND case_id = ANY($2::text[])
+       ORDER BY seq ASC`,
+      [organizationId, caseIds],
     );
     if (receipts.rows.length < 5) {
       return {
         id: 12,
         name: "receipt bundle + tamper (DB)",
         ok: false,
-        detail: `need>=5 receipts got=${receipts.rows.length}`,
+        detail: `need>=5 receipts got=${receipts.rows.length} for cases=${caseIds.join(",")}`,
       };
     }
 
-    const chain = receipts.rows.slice(-5).map((r) => ({
+    // Contiguous chain from this scenario's own sealed intakes (newest run),
+    // not the org's oldest rows (LIMIT 20 ASC + slice(-5) broke verify after reset).
+    const chain = receipts.rows.map((r) => ({
       ...r.body,
       receipt_id: r.receipt_id,
       key_id: r.key_id,
@@ -872,7 +903,7 @@ export async function runHttpApprovalScenario12(
       id: 12,
       name: "receipt bundle + tamper (DB)",
       ok: good.ok && !bad.ok && !swapBad.ok,
-      detail: `chain=${chain.length} valid=${good.ok} tamperFail=${!bad.ok} swapFail=${!swapBad.ok} cases=${caseIds.join(",")}`,
+      detail: `chain=${chain.length} valid=${good.ok} tamperFail=${!bad.ok} swapFail=${!swapBad.ok} sealed=true provisional=false receipt=${chain[0]?.receipt_id ?? "none"} cases=${caseIds.join(",")}`,
     };
   } finally {
     client.release();

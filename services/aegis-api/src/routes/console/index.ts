@@ -30,7 +30,13 @@ import {
   rateLimitResponse,
   readRateLimitEnv,
 } from "@salanor/platform-auth";
+import { isDemoModeAllowed } from "../../bank/demo-clock.js";
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
+import {
+  auditReceiptAccess,
+  caseIdFromPayload,
+  RECEIPT_ACCESS_ACTIONS,
+} from "../../console/receipt-access-audit.js";
 import {
   createIngestKey,
   listIngestKeys,
@@ -65,6 +71,7 @@ import { groupEventsIntoSpans } from "../../trace/span-grouping.js";
 import { agentRoutes } from "./agents.js";
 import { organizationRoutes } from "./organization.js";
 import { policyRoutes } from "./policies.js";
+import { ruleRoutes } from "./rules.js";
 import { approvalRoutes } from "./approvals.js";
 import { verifyRoutes } from "./verify.js";
 import { exportRoutes } from "./exports.js";
@@ -78,6 +85,10 @@ import { proofRoutes } from "./proof.js";
 import { auditorRoutes } from "./auditor.js";
 import { shareRoutes } from "./share.js";
 import { reportRoutes } from "./reports.js";
+import { evidenceBundleRoutes } from "./evidence-bundle.js";
+import { caseRoutes } from "./cases.js";
+import { delegationRoutes } from "./delegations.js";
+import { demoTenantRoutes } from "./demo-tenant.js";
 import { getOverviewMetrics } from "../../repo/overview.js";
 
 const LEGACY_SESSION_COOKIE = "aegis_session";
@@ -222,6 +233,7 @@ export const consoleRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
 consoleRoutes.route("/", agentRoutes);
 consoleRoutes.route("/", organizationRoutes);
+consoleRoutes.route("/", ruleRoutes);
 consoleRoutes.route("/", policyRoutes);
 consoleRoutes.route("/", approvalRoutes);
 consoleRoutes.route("/", verifyRoutes);
@@ -236,11 +248,19 @@ consoleRoutes.route("/", proofRoutes);
 consoleRoutes.route("/", auditorRoutes);
 consoleRoutes.route("/", shareRoutes);
 consoleRoutes.route("/", reportRoutes);
+consoleRoutes.route("/", evidenceBundleRoutes);
+consoleRoutes.route("/", caseRoutes);
+consoleRoutes.route("/", delegationRoutes);
+consoleRoutes.route("/", demoTenantRoutes);
 
 consoleRoutes.post("/auth/login", async (c) => {
   const ip = getClientIp(c.req.raw.headers);
   const geo = getClientGeoFromHeaders(c.req.raw.headers);
-  const loginLimit = readRateLimitEnv("LOGIN_RATE_LIMIT", 20);
+  // Demo theatre logs in many times per rehearse/live run. .env often has
+  // LOGIN_RATE_LIMIT=20 which would 429 mid-run — ignore that floor in demo.
+  const loginLimit = isDemoModeAllowed()
+    ? Math.max(readRateLimitEnv("LOGIN_RATE_LIMIT", 100_000), 100_000)
+    : readRateLimitEnv("LOGIN_RATE_LIMIT", 20);
   const windowMs = readRateLimitEnv("LOGIN_RATE_WINDOW_MS", 900_000);
   const rl = checkRateLimit(loginRateLimitKey(ip), { limit: loginLimit, windowMs });
   if (!rl.ok) {
@@ -501,6 +521,24 @@ consoleRoutes.get("/events/:eventId", requireConsoleSession, async (c) => {
   if (!event) {
     return c.json({ error: "Not found" }, 404);
   }
+  const session = c.get("consoleSession");
+  await auditReceiptAccess(
+    getPool(),
+    {
+      organizationId: orgId,
+      membershipId: session.userId,
+      email: session.email,
+    },
+    {
+      action: RECEIPT_ACCESS_ACTIONS.viewed,
+      resourceId: eventId,
+      metadata: {
+        event_id: eventId,
+        trace_id: event.trace_id,
+        case_id: caseIdFromPayload(event.payload),
+      },
+    },
+  );
   return c.json({ event: serializeEvent(event) });
 });
 
@@ -514,6 +552,7 @@ consoleRoutes.get("/audit-logs", requireConsoleSession, async (c) => {
   const orgId = c.get("consoleSession").organizationId;
   const q = c.req.query("q")?.trim();
   const action = c.req.query("action")?.trim();
+  const caseId = c.req.query("case_id")?.trim();
   const limitRaw = Number(c.req.query("limit") ?? "25");
   const pageRaw = Number(c.req.query("page") ?? "1");
   const limit = Number.isFinite(limitRaw)
@@ -524,6 +563,7 @@ consoleRoutes.get("/audit-logs", requireConsoleSession, async (c) => {
   const { logs, total } = await listAuditLogs(getPool(), orgId, {
     q: q || undefined,
     action: action || undefined,
+    caseId: caseId || undefined,
     limit,
     offset: (page - 1) * limit,
   });

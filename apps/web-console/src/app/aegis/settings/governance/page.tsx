@@ -198,7 +198,7 @@ export default function GovernanceSettingsPage() {
 
             <div className={settings.settingsRow}>
               <label className={settings.settingsRowLabel} htmlFor="gov-escalation">
-                Escalate after (hours, 0 = off)
+                Re-notify after (hours, 0 = off)
               </label>
               <input
                 id="gov-escalation"
@@ -210,7 +210,9 @@ export default function GovernanceSettingsPage() {
                 onChange={(e) => setEscalationHours(e.target.value)}
               />
               <p className={settings.settingsRowHint}>
-                Housekeeping re-notifies Slack/Teams/email once when a hold is still open.
+                Escalate after: re-sends the notification only. It does not escalate to
+                another role or change who is allowed to approve. Housekeeping re-notifies
+                Slack, Teams or email once when a hold is still open.
               </p>
             </div>
 
@@ -316,11 +318,13 @@ export default function GovernanceSettingsPage() {
               />
               <div className={settings.settingsToggleCopy}>
                 <label className={settings.settingsRowLabel} htmlFor="gov-email">
-                  Email organization admins
+                  Email people who can approve
                 </label>
                 <p className={settings.settingsRowHint}>
-                  Sends to every active admin (and owner) on this org: the same people
-                  who can Approve or Reject. Requires Resend on the Aegis API host.
+                  When a hold needs a human, email active members who can act: org
+                  owners, admins, approvers, and bank-role holders (resolved from
+                  membership — not a hardcoded address list). Requires Resend on the
+                  Aegis API host. Toggle only; recipients stay role-based.
                 </p>
               </div>
             </div>

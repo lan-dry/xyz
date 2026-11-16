@@ -62,11 +62,21 @@ export function isRequesterFromPayload(
   approverEmail: string | null | undefined,
 ): boolean {
   if (!approverEmail?.trim() || !payload) return false;
+  const attrs =
+    payload.attributes &&
+    typeof payload.attributes === "object" &&
+    !Array.isArray(payload.attributes)
+      ? (payload.attributes as Record<string, unknown>)
+      : {};
   const candidates = [
     payload.requester_email,
     payload.on_behalf_of_email,
     payload.on_behalf_of,
     payload.actor_email,
+    attrs.requester_email,
+    attrs.on_behalf_of_email,
+    attrs.on_behalf_of,
+    attrs.actor_email,
   ]
     .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
     .map((v) => v.trim().toLowerCase());

@@ -25,16 +25,16 @@ export async function sendContactLeadEmail(
 ): Promise<{ sent: boolean; skipped?: string }> {
   let apiKey: string;
   try {
-    apiKey = getResendApiKey();
+    apiKey = await getResendApiKey();
   } catch (err) {
     if (err instanceof EmailDeliveryError && err.code === "email_not_configured") {
-      return { sent: false, skipped: "RESEND_API_KEY not configured" };
+      return { sent: false, skipped: "Resend not configured" };
     }
     throw err;
   }
 
   const to = notifyTo(input.reason);
-  const from = getInviteFromAddress();
+  const from = await getInviteFromAddress();
   const subject = `[Salanor contact] ${input.reason.replace(/_/g, " ")} · ${input.name}`;
   const text = [
     `New contact form submission (${input.id})`,

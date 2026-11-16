@@ -5,6 +5,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { demoApprovalPassword, seedDemoApprovalActors } from "./seed-approval-actors.js";
+import { resolveDemoIngestKey } from "./ingest-key-context.js";
 import { getPool } from "../db/pool.js";
 import { loadDemoPack } from "../packs/load.js";
 import {
@@ -23,12 +24,10 @@ function baseUrl(): string {
 }
 
 function ingestKey(): string {
-  const key = process.env.AEGIS_INGEST_KEY?.trim();
-  if (!key) throw new Error("AEGIS_INGEST_KEY required for HTTP approvals");
-  return key;
+  return resolveDemoIngestKey();
 }
 
-async function login(email: string, password: string): Promise<string> {
+export async function login(email: string, password: string): Promise<string> {
   const res = await fetch(`${baseUrl()}/v1/console/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -48,13 +47,27 @@ async function login(email: string, password: string): Promise<string> {
   return cookieHeader;
 }
 
-async function postGoverned(attrs: Record<string, unknown>): Promise<{
+export type PostGovernedOptions = {
+  caseId?: string;
+  agentId?: string;
+  eventType?: string;
+  product?: string;
+  emittedAt?: string;
+};
+
+export async function postGoverned(
+  attrs: Record<string, unknown>,
+  opts: PostGovernedOptions = {},
+): Promise<{
   event_id: string;
   trace_id: string | null;
   case_id: string;
   outcome: string;
+  receipt_id?: string;
+  provisional: boolean;
+  sealed: boolean;
 }> {
-  const caseId = `apr_http_${randomUUID().slice(0, 8)}`;
+  const caseId = opts.caseId ?? `apr_http_${randomUUID().slice(0, 8)}`;
   const idem = `idem_apr_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   const res = await fetch(`${baseUrl()}/v1/aegis/governed/events`, {
     method: "POST",
@@ -67,9 +80,10 @@ async function postGoverned(attrs: Record<string, unknown>): Promise<{
       schema_version: 1,
       case_id: caseId,
       idempotency_key: idem,
-      event_type: "loan_decision",
-      product: "retail_loan",
-      emitted_at: new Date().toISOString(),
+      event_type: opts.eventType ?? "loan_decision",
+      product: opts.product ?? "retail_loan",
+      ...(opts.agentId ? { agent_id: opts.agentId } : {}),
+      emitted_at: opts.emittedAt ?? new Date().toISOString(),
       attributes: attrs,
     }),
   });
@@ -79,6 +93,14 @@ async function postGoverned(attrs: Record<string, unknown>): Promise<{
       `governed event failed: http=${res.status} body=${JSON.stringify(body)}`,
     );
   }
+  const eventId = body.event_id;
+  const provisional =
+    eventId.startsWith("evt_gov_") ||
+    Boolean((body.flags as { provisional?: boolean } | undefined)?.provisional);
+  const sealed =
+    !provisional &&
+    typeof body.event_hash === "string" &&
+    body.sequence_num != null;
   let traceId =
     typeof body.trace_id === "string" ? body.trace_id : null;
   if (!traceId) {
@@ -92,7 +114,7 @@ async function postGoverned(attrs: Record<string, unknown>): Promise<{
       if (!traceId) {
         const ev = await client.query<{ trace_id: string }>(
           `SELECT trace_id FROM event WHERE event_id = $1`,
-          [body.event_id],
+          [eventId],
         );
         traceId = ev.rows[0]?.trace_id ?? `tr_demo_${randomUUID().slice(0, 8)}`;
       }
@@ -101,18 +123,26 @@ async function postGoverned(attrs: Record<string, unknown>): Promise<{
     }
   }
   return {
-    event_id: body.event_id,
+    event_id: eventId,
     trace_id: traceId,
     case_id: caseId,
     outcome: String(body.outcome ?? ""),
+    receipt_id: typeof body.receipt_id === "string" ? body.receipt_id : undefined,
+    provisional,
+    sealed,
   };
 }
 
-async function createApproval(
+export async function createApproval(
   eventId: string,
   traceId: string,
   organizationId: string,
 ): Promise<string> {
+  if (eventId.startsWith("evt_gov_")) {
+    throw new Error(
+      `approvals/request refused: provisional event_id=${eventId} (seal required)`,
+    );
+  }
   const res = await fetch(`${baseUrl()}/v1/aegis/approvals/request`, {
     method: "POST",
     headers: {
@@ -139,7 +169,7 @@ async function createApproval(
   return body.approval_id;
 }
 
-async function patchApprovalMetadata(
+export async function patchApprovalMetadata(
   approvalId: string,
   organizationId: string,
   metadata: Record<string, unknown>,
@@ -157,7 +187,7 @@ async function patchApprovalMetadata(
   }
 }
 
-async function decide(
+export async function decide(
   cookie: string,
   approvalId: string,
   action: "approve" | "reject" | "release",
@@ -183,7 +213,7 @@ async function decide(
   return { status: res.status, json };
 }
 
-async function seedAndTouch(organizationId: string): Promise<string> {
+export async function seedAndTouch(organizationId: string): Promise<string> {
   const client = await getPool().connect();
   try {
     await seedDemoApprovalActors(client, organizationId);
@@ -254,8 +284,12 @@ export async function runHttpApprovalScenario2(
   return {
     id: 2,
     name: "hold credit_manager (HTTP approvals)",
-    ok: hold.outcome === "hold" && officer.status === 403 && manager.status === 200,
-    detail: `hold=${hold.outcome} officer=${officer.status} manager=${manager.status} approval=${approvalId}`,
+    ok:
+      hold.outcome === "hold" &&
+      hold.sealed &&
+      officer.status === 403 &&
+      manager.status === 200,
+    detail: `hold=${hold.outcome} officer=${officer.status} manager=${manager.status} approval=${approvalId} sealed=${hold.sealed} provisional=${hold.provisional} receipt=${hold.receipt_id ?? "none"}`,
   };
 }
 
@@ -289,22 +323,7 @@ export async function runHttpApprovalScenario3(
     required_fields: ["reason_code", "comment"],
   });
 
-  // Patch event payload so SoD sees requester_email (if not already stored).
-  const client = await getPool().connect();
-  try {
-    await client.query(
-      `UPDATE event
-       SET payload = COALESCE(payload, '{}'::jsonb) || $2::jsonb
-       WHERE event_id = $1 AND organization_id = $3`,
-      [
-        hold.event_id,
-        JSON.stringify({ requester_email: "manager@demo.test" }),
-        organizationId,
-      ],
-    );
-  } finally {
-    client.release();
-  }
+  // SoD reads requester_email from sealed payload.attributes (posted above).
 
   const managerCookie = await login("manager@demo.test", password);
   const self = await decide(managerCookie, approvalId, "approve", {
@@ -338,8 +357,8 @@ export async function runHttpApprovalScenario3(
   return {
     id: 3,
     name: "LN-07 model override (HTTP approvals)",
-    ok,
-    detail: `outcome=${hold.outcome} self=${self.status} noReason=${noReason.status}/${noReasonHead.status} ok=${okApprove.status} approval=${approvalId}`,
+    ok: ok && hold.sealed,
+    detail: `outcome=${hold.outcome} self=${self.status} noReason=${noReason.status}/${noReasonHead.status} ok=${okApprove.status} approval=${approvalId} sealed=${hold.sealed} provisional=${hold.provisional} receipt=${hold.receipt_id ?? "none"}`,
   };
 }
 
@@ -392,8 +411,8 @@ export async function runHttpApprovalScenario4(
     return {
       id: 4,
       name: "dual approver reject (HTTP approvals)",
-      ok: manager.status === 200 && compliance.status === 200,
-      detail: `manager=${manager.status} compliance=${compliance.status} approval=${approvalId}`,
+      ok: manager.status === 200 && compliance.status === 200 && hold.sealed,
+      detail: `manager=${manager.status} compliance=${compliance.status} approval=${approvalId} sealed=${hold.sealed} provisional=${hold.provisional} receipt=${hold.receipt_id ?? "none"}`,
     };
   } finally {
     const restore = await getPool().connect();
@@ -441,8 +460,8 @@ export async function runHttpApprovalScenario6(
   return {
     id: 6,
     name: "PAY-03 callback (HTTP approvals)",
-    ok: bad.status === 403 && reject.status === 200,
-    detail: `approve=${bad.status} reject=${reject.status} approval=${approvalId}`,
+    ok: bad.status === 403 && reject.status === 200 && hold.sealed,
+    detail: `approve=${bad.status} reject=${reject.status} approval=${approvalId} sealed=${hold.sealed} provisional=${hold.provisional} receipt=${hold.receipt_id ?? "none"}`,
   };
 }
 
@@ -491,8 +510,9 @@ export async function runHttpApprovalScenario7(
     ok:
       manager.status === 403 &&
       (headNoReason.status === 403 || headNoReason.status === 422) &&
-      released.status === 200,
-    detail: `manager=${manager.status} headNoReason=${headNoReason.status} released=${released.status} approval=${approvalId}`,
+      released.status === 200 &&
+      hold.sealed,
+    detail: `manager=${manager.status} headNoReason=${headNoReason.status} released=${released.status} approval=${approvalId} sealed=${hold.sealed} provisional=${hold.provisional} receipt=${hold.receipt_id ?? "none"}`,
   };
 }
 

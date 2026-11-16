@@ -41,6 +41,7 @@ pnpm pilot:e2e
 | Approval notify | Console → Settings → Governance: Slack webhook and/or Email org admins (`RESEND_API_KEY` on API). Trigger obligation tool; confirm Slack/email + console link. |
 | Contextual policy | Confirm retail consumer refund above USD 200 blocks or requires approval while another context is allowed |
 | Payout hero | `pnpm pilot:agent:payout` — USD 2,500 to a merchant younger than 30 days pauses for approval |
+| Requester identity | Production SoD must use **authenticated identity mapping** (session/OIDC → membership), not client-supplied `requester_email` alone |
 | Public verify | Open `/verify?org=northwind-payments&event=<id>` for an event from the pilot run; use **Try tamper sample** on `/verify` |
 | Compliance export | Console → Exports → one-time ZIP download |
 | Service readiness | `GET /ready` returns 200 with witness, housekeeping, and compliance workers current |

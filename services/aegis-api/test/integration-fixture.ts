@@ -75,6 +75,20 @@ export async function applyIntegrationFixture(
     await client.query(`DELETE FROM event WHERE organization_id = $1`, [
       INTEGRATION_ORG_A,
     ]);
+    await client.query(`DELETE FROM forensic_receipt WHERE organization_id = $1`, [
+      INTEGRATION_ORG_A,
+    ]);
+    await client.query(
+      `DELETE FROM forensic_receipt_seq WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(
+      `DELETE FROM forensic_checkpoint WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(`DELETE FROM bank_case WHERE organization_id = $1`, [
+      INTEGRATION_ORG_A,
+    ]);
     await client.query(`DELETE FROM trace WHERE agent_id = 'agent-dev-01'`);
     await client.query(`DELETE FROM trace WHERE organization_id = $1`, [
       INTEGRATION_ORG_A,

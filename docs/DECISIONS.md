@@ -43,7 +43,11 @@ Other obligation kinds must not become `hold`.
 
 ## D5 — Demo clock and reset production guard
 
-**Decision:** `reset` and demo clock refuse to run unless `AEGIS_DEMO_MODE=true` (or equivalent) and the database is not a production target. Receipts created under demo clock include `flags.demo_clock = true`.
+**Decision:** `reset`, demo clock, and `pg_restore --disable-triggers` refuse to run unless `AEGIS_DEMO_MODE=true` (or equivalent) and the process is not production (`NODE_ENV` / `AEGIS_ENV`). The database must not be a production target. Receipts created under demo clock include `flags.demo_clock = true`.
+
+## D5b — Requester identity for SoD (production)
+
+**Decision:** In production, the requester for self-approve / four-eyes checks must come from **authenticated identity mapping** (console session or OIDC → membership / bank role). Client-supplied `attributes.requester_email` is demo theatre only and must not be trusted alone in production.
 
 ---
 

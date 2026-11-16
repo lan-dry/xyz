@@ -19,6 +19,8 @@ export type SealDecisionInput = {
   outcome: BankOutcome;
   mode: "enforce" | "record_only";
   would_have?: BankOutcome;
+  product?: string;
+  event_type?: string;
   tool_name: string;
   attributes: Record<string, unknown>;
   matched_rules: Array<{ rule_id: string; policy_id: string; decision: string }>;
@@ -36,15 +38,14 @@ export type SealDecisionResult = {
   sequence_num: number;
 };
 
-async function resolveAgentKey(
+async function lookupSignableAgentKey(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
-  preferredAgentId?: string,
-  preferredKeyId?: string,
+  preferredAgentId?: string | null,
 ): Promise<{ agent_id: string; key_id: string } | null> {
-  if (preferredAgentId && preferredKeyId) {
-    return { agent_id: preferredAgentId, key_id: preferredKeyId };
-  }
+  // Prefer keys that can actually sign server-side (bridge ciphertext, KMS, or
+  // local/dev). Preferred agent first; fall back to any org agent so a missing
+  // preferred-agent key never forces provisional evt_gov_ citations.
   const result = await client.query<{ agent_id: string; key_id: string }>(
     `SELECT a.agent_id, sk.key_id
      FROM agent a
@@ -52,14 +53,53 @@ async function resolveAgentKey(
        ON sk.agent_id = a.agent_id
       AND sk.organization_id = a.organization_id
       AND sk.revoked = false
+      AND sk.valid_from <= now()
+      AND (sk.valid_until IS NULL OR sk.valid_until > now())
      WHERE a.organization_id = $1
        AND a.active = true
        AND ($2::text IS NULL OR a.agent_id = $2)
-     ORDER BY sk.valid_from DESC NULLS LAST
+       AND (
+         sk.private_key_ciphertext IS NOT NULL
+         OR lower(COALESCE(sk.kms_provider, 'dev')) IN ('dev', 'aws', 'gcp', 'vault')
+       )
+     ORDER BY
+       CASE WHEN $2::text IS NOT NULL AND a.agent_id = $2 THEN 0 ELSE 1 END,
+       CASE WHEN sk.private_key_ciphertext IS NOT NULL THEN 0 ELSE 1 END,
+       sk.valid_from DESC NULLS LAST
      LIMIT 1`,
     [organizationId, preferredAgentId ?? null],
   );
   return result.rows[0] ?? null;
+}
+
+async function resolveAgentKey(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  preferredAgentId?: string,
+  preferredKeyId?: string,
+): Promise<{ agent_id: string; key_id: string } | null> {
+  if (preferredAgentId && preferredKeyId) {
+    const preferred = await client.query<{ agent_id: string; key_id: string }>(
+      `SELECT a.agent_id, sk.key_id
+       FROM agent a
+       JOIN signing_key sk
+         ON sk.agent_id = a.agent_id
+        AND sk.organization_id = a.organization_id
+        AND sk.key_id = $3
+        AND sk.revoked = false
+       WHERE a.organization_id = $1
+         AND a.agent_id = $2
+         AND a.active = true
+       LIMIT 1`,
+      [organizationId, preferredAgentId, preferredKeyId],
+    );
+    if (preferred.rows[0]) return preferred.rows[0];
+  }
+  const forPreferred = preferredAgentId
+    ? await lookupSignableAgentKey(client, organizationId, preferredAgentId)
+    : null;
+  if (forPreferred) return forPreferred;
+  return lookupSignableAgentKey(client, organizationId, null);
 }
 
 export async function sealGovernedDecision(
@@ -102,6 +142,8 @@ export async function sealGovernedDecision(
       outcome: input.outcome,
       mode: input.mode,
       ...(input.would_have ? { would_have: input.would_have } : {}),
+      ...(input.product ? { product: input.product } : {}),
+      ...(input.event_type ? { event_type: input.event_type } : {}),
       matched_rules: input.matched_rules,
       attributes: input.attributes,
       ...(input.policy_version != null

@@ -576,6 +576,8 @@ export async function platformListOrganizations(
     billing_status: BillingStatus;
     current_period_start: Date | null;
     current_period_end: Date | null;
+    is_demo: boolean;
+    is_test: boolean;
   }>
 > {
   const period = monthStart();
@@ -593,9 +595,12 @@ export async function platformListOrganizations(
     billing_status: BillingStatus;
     current_period_start: Date | null;
     current_period_end: Date | null;
+    is_demo: boolean;
+    is_test: boolean;
   }>(
     `SELECT o.organization_id, o.name, o.slug, o.plan, o.active, o.created_at,
             o.billing_source, o.billing_status, o.current_period_start, o.current_period_end,
+            o.is_demo, o.is_test,
             (SELECT COUNT(*)::text FROM membership m
              WHERE m.organization_id = o.organization_id AND m.status = 'active') AS member_count,
             COALESCE(u.event_count::text, '0') AS events_this_month
@@ -621,6 +626,8 @@ export async function platformListOrganizations(
     billing_status: r.billing_status ?? "none",
     current_period_start: r.current_period_start,
     current_period_end: r.current_period_end,
+    is_demo: r.is_demo === true,
+    is_test: r.is_test === true,
   }));
 }
 
@@ -734,11 +741,23 @@ export async function platformUpdateOrganization(
     plan?: string;
     active?: boolean;
     plan_overrides?: Record<string, unknown> | null;
+    /** Hosted demonstration tenant flag (migration 018). */
+    is_demo?: boolean;
+    /** Disposable test/smoke tenant flag (migration 020); platform-only. */
+    is_test?: boolean;
   },
 ): Promise<boolean> {
   const fields: string[] = [];
   const values: unknown[] = [];
   let i = 1;
+  if (patch.is_demo !== undefined) {
+    fields.push(`is_demo = $${i++}`);
+    values.push(patch.is_demo);
+  }
+  if (patch.is_test !== undefined) {
+    fields.push(`is_test = $${i++}`);
+    values.push(patch.is_test);
+  }
   if (patch.plan !== undefined) {
     fields.push(`plan = $${i++}`);
     values.push(patch.plan);

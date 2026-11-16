@@ -238,44 +238,78 @@ export async function seedAuthorityFromPack(
   organizationId: string,
   ladder: BankRole[],
   matrix: Array<Omit<AuthorityMatrixRow, "matrix_id"> & { matrix_id?: string }>,
+  options?: { force?: boolean },
 ): Promise<void> {
+  const force = options?.force === true;
   for (const role of ladder) {
-    await client.query(
-      `INSERT INTO bank_role_ladder (organization_id, role_key, display_name, level)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (organization_id, role_key) DO UPDATE
-         SET display_name = EXCLUDED.display_name, level = EXCLUDED.level`,
-      [organizationId, role.role_key, role.display_name, role.level],
-    );
+    if (force) {
+      await client.query(
+        `INSERT INTO bank_role_ladder (organization_id, role_key, display_name, level)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (organization_id, role_key) DO UPDATE
+           SET display_name = EXCLUDED.display_name, level = EXCLUDED.level`,
+        [organizationId, role.role_key, role.display_name, role.level],
+      );
+    } else {
+      // Never overwrite a customer's renamed role silently.
+      await client.query(
+        `INSERT INTO bank_role_ladder (organization_id, role_key, display_name, level)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (organization_id, role_key) DO NOTHING`,
+        [organizationId, role.role_key, role.display_name, role.level],
+      );
+    }
   }
   for (const row of matrix) {
     const id =
       row.matrix_id ??
       `mtx_${organizationId.replace(/-/g, "").slice(0, 8)}_${row.product}_${row.amount_min}`;
-    await client.query(
-      `INSERT INTO authority_matrix (
-         matrix_id, organization_id, product, amount_min, amount_max, currency,
-         risk_tier, required_role, outcome, rule_code, active
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true)
-       ON CONFLICT (matrix_id) DO UPDATE SET
-         amount_min = EXCLUDED.amount_min,
-         amount_max = EXCLUDED.amount_max,
-         required_role = EXCLUDED.required_role,
-         outcome = EXCLUDED.outcome,
-         rule_code = EXCLUDED.rule_code,
-         active = true`,
-      [
-        id,
-        organizationId,
-        row.product,
-        row.amount_min,
-        row.amount_max,
-        row.currency,
-        row.risk_tier,
-        row.required_role,
-        row.outcome,
-        row.rule_code,
-      ],
-    );
+    if (force) {
+      await client.query(
+        `INSERT INTO authority_matrix (
+           matrix_id, organization_id, product, amount_min, amount_max, currency,
+           risk_tier, required_role, outcome, rule_code, active
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true)
+         ON CONFLICT (matrix_id) DO UPDATE SET
+           amount_min = EXCLUDED.amount_min,
+           amount_max = EXCLUDED.amount_max,
+           required_role = EXCLUDED.required_role,
+           outcome = EXCLUDED.outcome,
+           rule_code = EXCLUDED.rule_code,
+           active = true`,
+        [
+          id,
+          organizationId,
+          row.product,
+          row.amount_min,
+          row.amount_max,
+          row.currency,
+          row.risk_tier,
+          row.required_role,
+          row.outcome,
+          row.rule_code,
+        ],
+      );
+    } else {
+      await client.query(
+        `INSERT INTO authority_matrix (
+           matrix_id, organization_id, product, amount_min, amount_max, currency,
+           risk_tier, required_role, outcome, rule_code, active
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true)
+         ON CONFLICT (matrix_id) DO NOTHING`,
+        [
+          id,
+          organizationId,
+          row.product,
+          row.amount_min,
+          row.amount_max,
+          row.currency,
+          row.risk_tier,
+          row.required_role,
+          row.outcome,
+          row.rule_code,
+        ],
+      );
+    }
   }
 }

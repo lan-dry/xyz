@@ -37,6 +37,9 @@ export type ForensicReceiptBody = {
   prev_hash: string | null;
   case_id: string;
   decision_id: string;
+  /** Business context for plain-language wording (optional; absent on older receipts). */
+  product?: string;
+  event_type?: string;
   outcome: string;
   mode: "enforce" | "record_only";
   would_have?: string;
@@ -50,6 +53,21 @@ export type ForensicReceiptBody = {
     policy_id: string;
     decision: string;
   }>;
+  /** Why the outcome was chosen given matched rules (plain examiner wording). */
+  decision_basis?: {
+    outcome: string;
+    decided_by_rule_id: string | null;
+    explanation: string;
+    matched: Array<{
+      rule_id: string;
+      policy_id: string;
+      decision: string;
+      effect: string;
+      note?: string;
+    }>;
+  };
+  /** Plain-language summary for humans; not a substitute for verification. */
+  plain_summary?: string;
   sealed_events: SealedEventRef[];
   approvals?: Array<Record<string, unknown>>;
   timeline?: Array<Record<string, unknown>>;
@@ -59,6 +77,13 @@ export type ForensicReceiptBody = {
     decided_without_aegis?: boolean;
     /** True when citing a provisional (non-APS) event or missing agent key. */
     provisional?: boolean;
+    /**
+     * Where the signing key lives. Part of the signed body so it cannot be
+     * stripped after the fact. Absent on dev/test (plain software) receipts.
+     * "kms": AWS KMS Ed25519 key (private key never leaves KMS).
+     * "software_interim": software key accepted in production as a stop-gap.
+     */
+    key_custody?: "kms" | "software_interim";
   };
   issued_at: string;
   key_id: string;
@@ -80,6 +105,14 @@ export function stripReceiptSig(body: Record<string, unknown>): Record<string, u
   return out;
 }
 
+/**
+ * Canonical (key-sorted JSON) text of the facts the receipt hash is computed over.
+ * Included in evidence bundles so a reviewer can re-hash it with any SHA-256 tool.
+ */
+export function canonicalReceiptPayload(body: Record<string, unknown>): string {
+  return canonicalize(stripReceiptSig(body));
+}
+
 export function receiptSigningDigest(
   body: Record<string, unknown>,
   keyId: string,
@@ -96,9 +129,14 @@ export function computeReceiptHash(body: Record<string, unknown>): string {
   return `sha256:${createHash("sha256").update(jcs, "utf8").digest("hex")}`;
 }
 
-export async function signForensicReceipt(
+/** Anything that can produce a pure Ed25519 signature over the receipt digest (software or KMS). */
+export type ReceiptDigestSigner = {
+  sign(digest: Uint8Array): Promise<Uint8Array>;
+};
+
+export async function signForensicReceiptWith(
   body: ForensicReceiptBody,
-  privateKeyB64: string,
+  signer: ReceiptDigestSigner,
 ): Promise<SignedForensicReceipt> {
   const receipt_hash = computeReceiptHash(body as unknown as Record<string, unknown>);
   const withHash = { ...body, receipt_hash };
@@ -106,16 +144,28 @@ export async function signForensicReceipt(
     withHash as unknown as Record<string, unknown>,
     body.key_id,
   );
-  const privateKey = Buffer.from(privateKeyB64, "base64");
-  if (privateKey.length !== 32) {
-    throw new Error("Ed25519 private key must be 32 bytes");
+  const signature = await signer.sign(digest);
+  if (signature.length !== 64) {
+    throw new Error("Ed25519 signature must be 64 bytes");
   }
-  const signature = await ed.signAsync(digest, privateKey);
   return {
     ...withHash,
     sig_alg: "ed25519",
     sig_value_b64: Buffer.from(signature).toString("base64"),
   };
+}
+
+export async function signForensicReceipt(
+  body: ForensicReceiptBody,
+  privateKeyB64: string,
+): Promise<SignedForensicReceipt> {
+  const privateKey = Buffer.from(privateKeyB64, "base64");
+  if (privateKey.length !== 32) {
+    throw new Error("Ed25519 private key must be 32 bytes");
+  }
+  return signForensicReceiptWith(body, {
+    sign: (digest) => ed.signAsync(digest, privateKey),
+  });
 }
 
 export async function verifyForensicReceiptSignature(
@@ -151,11 +201,15 @@ export function buildReceiptBody(input: {
   prev_hash: string | null;
   case_id: string;
   decision_id: string;
+  product?: string;
+  event_type?: string;
   outcome: string;
   mode: "enforce" | "record_only";
   would_have?: string;
   policy?: ForensicReceiptBody["policy"];
   matched_rules: ForensicReceiptBody["matched_rules"];
+  decision_basis?: ForensicReceiptBody["decision_basis"];
+  plain_summary?: string;
   sealed_events: SealedEventRef[];
   approvals?: ForensicReceiptBody["approvals"];
   timeline?: ForensicReceiptBody["timeline"];
@@ -173,11 +227,15 @@ export function buildReceiptBody(input: {
     prev_hash: input.prev_hash,
     case_id: input.case_id,
     decision_id: input.decision_id,
+    product: input.product,
+    event_type: input.event_type,
     outcome: input.outcome,
     mode: input.mode,
     would_have: input.would_have,
     policy: input.policy,
     matched_rules: input.matched_rules,
+    decision_basis: input.decision_basis,
+    plain_summary: input.plain_summary,
     sealed_events: input.sealed_events,
     approvals: input.approvals,
     timeline: input.timeline,

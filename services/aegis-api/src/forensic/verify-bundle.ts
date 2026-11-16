@@ -34,6 +34,13 @@ export type ForensicBundle = {
     sig_value_b64?: string;
   } | null;
   keys: KeySet;
+  /**
+   * Single-case extract of the org receipt chain. Other cases' receipts are
+   * deliberately absent, so gaps between non-adjacent seq numbers are expected.
+   * Adjacent seq numbers must still link via prev_hash, and order must ascend.
+   * Each receipt still verifies on its own (hash, signature, cited events).
+   */
+  subset?: boolean;
 };
 
 export type VerifyFinding = {
@@ -59,9 +66,10 @@ export async function verifyForensicBundle(
     return { ok: false, findings };
   }
 
+  const subset = bundle.subset === true;
   const sortedSeqs = [...receipts.map((r) => r.seq)].sort((a, b) => a - b);
   for (let i = 1; i < sortedSeqs.length; i++) {
-    if (sortedSeqs[i]! !== sortedSeqs[i - 1]! + 1) {
+    if (!subset && sortedSeqs[i]! !== sortedSeqs[i - 1]! + 1) {
       findings.push({
         code: "missing_sequence",
         message: `Missing sequence number ${sortedSeqs[i - 1]! + 1}`,
@@ -109,17 +117,21 @@ export async function verifyForensicBundle(
     }
 
     if (i > 0) {
-      if (r.prev_hash !== expectedPrev) {
+      const prevSeq = receipts[i - 1]!.seq;
+      // Subset extracts only link receipts that are adjacent in the org chain.
+      const mustLink = !subset || r.seq === prevSeq + 1;
+      if (mustLink && r.prev_hash !== expectedPrev) {
         findings.push({
           code: "chain_failure",
           message: "prev_hash chain failure (records may be swapped or modified)",
           record: r.receipt_id,
         });
       }
-      if (r.seq !== receipts[i - 1]!.seq + 1) {
+      const orderOk = subset ? r.seq > prevSeq : r.seq === prevSeq + 1;
+      if (!orderOk) {
         findings.push({
           code: "sequence_order",
-          message: `Sequence out of order at ${r.seq} (after ${receipts[i - 1]!.seq})`,
+          message: `Sequence out of order at ${r.seq} (after ${prevSeq})`,
           record: r.receipt_id,
         });
       }

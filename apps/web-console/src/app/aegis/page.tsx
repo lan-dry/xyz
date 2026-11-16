@@ -14,9 +14,12 @@ import {
   PageHeader,
   ui,
 } from "@/components/console/console-ui";
+import { ConsoleTime } from "@/components/console/console-time";
 import { SystemStatusStrip } from "@/components/console/system-status-strip";
+import { useCaseSummaries } from "@/hooks/use-case-summaries";
 import { consoleApi } from "@/lib/api";
 import { agentLabel } from "@/lib/agent-label";
+import { bankVocabChip, chipFromSummary, whatFromSummary } from "@/lib/case-row";
 import { listSentenceFromTrace } from "@/lib/case-story";
 import {
   environmentLabel,
@@ -71,7 +74,7 @@ export default function AegisDashboardPage() {
   });
 
   const approvalsQuery = useQuery({
-    queryKey: ["console", "approvals", "pending"],
+    queryKey: ["console", "approvals", "pending", environment],
     queryFn: () =>
       consoleApi<{
         approvals: Array<{
@@ -80,7 +83,7 @@ export default function AegisDashboardPage() {
           trace_id: string;
           request_preview: { summary?: string; fields: Array<{ key: string; value: string }> };
         }>;
-      }>("/approvals?status=pending"),
+      }>(`/approvals?status=pending&environment=${environment}`),
   });
 
   const overview = overviewQuery.data?.overview;
@@ -93,11 +96,14 @@ export default function AegisDashboardPage() {
       Boolean(t.preview_anomaly_reason || t.preview_anomaly_type) &&
       t.status !== "blocked",
   ).length;
-  const recent = [...traces]
-    .sort(
-      (a, b) =>
-        new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
-    )
+  const sortedTraces = [...traces].sort(
+    (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
+  );
+  // Same plain facts and wording as the Live feed (amount, rule, approver names).
+  const summariesQuery = useCaseSummaries(sortedTraces.map((t) => t.trace_id));
+  const summaries = summariesQuery.data;
+  const recent = sortedTraces
+    .filter((t) => !summaries?.[t.trace_id]?.demo_filler)
     .slice(0, 6);
 
   const needsAttention = pending > 0 || blocked > 0 || flagged > 0;
@@ -264,9 +270,6 @@ export default function AegisDashboardPage() {
               <h2 id="activity-heading" className={ui.panelTitle} style={{ margin: 0 }}>
                 Recent activity
               </h2>
-              <Link href="/aegis/live" className={`${ui.btn} ${ui.btnSecondary}`}>
-                Open live feed
-              </Link>
             </div>
 
             <p style={{ margin: "0 0 1rem", fontSize: "0.9375rem" }}>
@@ -299,6 +302,9 @@ export default function AegisDashboardPage() {
               <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
                 {recent.map((t) => {
                   const row = listSentenceFromTrace(t);
+                  const s = summaries?.[t.trace_id];
+                  const chip =
+                    chipFromSummary(s) ?? bankVocabChip(row.outcome.chip, row.outcome.kind);
                   return (
                     <li
                       key={t.trace_id}
@@ -318,7 +324,7 @@ export default function AegisDashboardPage() {
                       >
                         <div style={{ flex: "1 1 16rem" }}>
                           <div style={{ marginBottom: "0.35rem" }}>
-                            <OutcomeChip chip={row.outcome.chip} kind={row.outcome.kind} />
+                            <OutcomeChip chip={chip.chip} kind={chip.kind} />
                             <span
                               style={{
                                 marginLeft: "0.65rem",
@@ -326,11 +332,11 @@ export default function AegisDashboardPage() {
                                 color: "var(--console-fg-subtle)",
                               }}
                             >
-                              {new Date(t.started_at).toLocaleString()}
+                              <ConsoleTime iso={t.started_at} />
                             </span>
                           </div>
                           <p style={{ margin: 0, fontWeight: 600, fontSize: "0.9375rem" }}>
-                            {row.sentence}
+                            {whatFromSummary(s) ?? row.sentence}
                           </p>
                           <p
                             style={{
@@ -356,11 +362,6 @@ export default function AegisDashboardPage() {
             )}
           </section>
 
-          <p style={{ margin: 0 }}>
-            <Link href="/aegis/live" className={`${ui.btn} ${ui.btnPrimary}`}>
-              Open live feed
-            </Link>
-          </p>
         </>
       ) : null}
     </ConsolePage>

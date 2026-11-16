@@ -16,7 +16,15 @@ import {
   type BankRole,
   type MatrixMatch,
 } from "./authority-matrix.js";
-import { toBankOutcome, type BankOutcome } from "./outcome.js";
+import {
+  isHumanApprovalObligation,
+  toBankOutcome,
+  type BankOutcome,
+} from "./outcome.js";
+import {
+  buildDecisionBasis,
+  type DecisionBasis,
+} from "./decision-basis.js";
 
 export type BankEvalInput = {
   policy_id: string;
@@ -49,21 +57,55 @@ export type BankEvalResult = {
   matrix?: MatrixMatch | null;
   required_roles: string[];
   obligations: unknown[];
+  decision_basis: DecisionBasis;
 };
 
+function readAmount(attributes: Record<string, unknown>): number | undefined {
+  const amountRaw =
+    attributes.amount ?? attributes.amount_rwf ?? attributes.loan_amount;
+  if (typeof amountRaw === "number" && Number.isFinite(amountRaw)) return amountRaw;
+  if (typeof amountRaw === "string") {
+    const n = Number(amountRaw);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+/** Match bank rule attribute / amount conditions (incl. amount_gte used by demo v4). */
 function ruleMatchesAttributes(
   rule: BankEvalInput["rules"][number],
   attributes: Record<string, unknown>,
 ): boolean {
-  if (!rule.attr_expr) {
-    // Also accept conditions.expr for bank rules stored in policy_rule.conditions
-    const cond = rule.conditions;
-    if (cond && typeof cond === "object" && "expr" in (cond as object)) {
-      return evalExpr(attributes, (cond as { expr: Expr }).expr);
-    }
-    return true;
+  const cond =
+    rule.conditions && typeof rule.conditions === "object"
+      ? (rule.conditions as Record<string, unknown>)
+      : null;
+
+  if (rule.attr_expr) {
+    if (!evalExpr(attributes, rule.attr_expr)) return false;
+  } else if (cond && "expr" in cond) {
+    if (!evalExpr(attributes, cond.expr as Expr)) return false;
   }
-  return evalExpr(attributes, rule.attr_expr);
+
+  if (cond) {
+    const amount = readAmount(attributes);
+    const checks: Array<[string, (a: number, t: number) => boolean]> = [
+      ["amount_gte", (a, t) => a >= t],
+      ["amount_gt", (a, t) => a > t],
+      ["amount_lte", (a, t) => a <= t],
+      ["amount_lt", (a, t) => a < t],
+      ["amount_eq", (a, t) => a === t],
+    ];
+    for (const [key, cmp] of checks) {
+      if (key in cond) {
+        const threshold = Number(cond[key]);
+        if (!Number.isFinite(threshold)) return false;
+        if (amount === undefined || !cmp(amount, threshold)) return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 function mostRestrictive(
@@ -89,20 +131,35 @@ export function evaluateBankEvent(input: BankEvalInput): BankEvalResult {
   const matchedRuleRows = applicable.filter((r) =>
     combined.matched_rules.some((m) => m.rule_id === r.rule_id),
   );
-  const obligations = matchedRuleRows
-    .map((r) => r.obligations)
-    .filter((o) => o != null);
+  const ruleObligations: Record<string, unknown> = {};
+  for (const rule of matchedRuleRows) {
+    if (rule.obligations != null) {
+      ruleObligations[rule.rule_id] = rule.obligations;
+    } else if (
+      rule.conditions &&
+      typeof rule.conditions === "object" &&
+      (rule.conditions as { obligations?: unknown }).obligations != null
+    ) {
+      ruleObligations[rule.rule_id] = (
+        rule.conditions as { obligations: unknown }
+      ).obligations;
+    }
+  }
+  const obligations = Object.values(ruleObligations);
 
-  let outcome = toBankOutcome(combined.decision, obligations[0] ?? undefined);
+  // Prefer human-approval obligations when mapping the combined decision (D2).
+  const humanObl =
+    obligations.find((o) => isHumanApprovalObligation(o)) ?? obligations[0];
+  let outcome = toBankOutcome(combined.decision, humanObl);
   let required_roles: string[] = [];
 
   for (const rule of matchedRuleRows) {
-    const obl = rule.obligations;
+    const obl = ruleObligations[rule.rule_id] ?? rule.obligations;
     if (obl && typeof obl === "object") {
       const o = obl as Record<string, unknown>;
       const role = o.required_role ?? o.role;
       if (typeof role === "string") required_roles.push(role);
-      const roles = o.required_roles;
+      const roles = o.required_roles ?? o.roles;
       if (Array.isArray(roles)) {
         for (const rr of roles) {
           if (typeof rr === "string") required_roles.push(rr);
@@ -180,10 +237,32 @@ export function evaluateBankEvent(input: BankEvalInput): BankEvalResult {
   required_roles = [...new Set(required_roles)];
 
   const recordOnly = Boolean(input.record_only);
-  if (recordOnly && (outcome === "hold" || outcome === "stop")) {
+  const finalOutcome =
+    recordOnly && (outcome === "hold" || outcome === "stop") ? "allow" : outcome;
+  const would_have =
+    recordOnly && (outcome === "hold" || outcome === "stop") ? outcome : undefined;
+
+  // Include matrix-synthesised rules in obligation map as empty
+  for (const m of combined.matched_rules) {
+    if (!(m.rule_id in ruleObligations) && m.decision === "allow_with_obligation") {
+      // Matrix hold rows imply human approval
+      ruleObligations[m.rule_id] = { kind: "human_approval" };
+    }
+  }
+
+  const decision_basis = buildDecisionBasis({
+    outcome: finalOutcome,
+    matched_rules: combined.matched_rules,
+    rule_obligations: ruleObligations,
+    decided_rule_id: combined.rule_id,
+    reason: combined.reason,
+    matrix_rule_id: matrix?.row.rule_code ?? null,
+  });
+
+  if (recordOnly && would_have) {
     return {
       outcome: "allow",
-      would_have: outcome,
+      would_have,
       mode: "record_only",
       decision_internal: combined.decision,
       matched_rules: combined.matched_rules,
@@ -193,11 +272,12 @@ export function evaluateBankEvent(input: BankEvalInput): BankEvalResult {
       matrix,
       required_roles,
       obligations,
+      decision_basis,
     };
   }
 
   return {
-    outcome,
+    outcome: finalOutcome,
     mode: "enforce",
     decision_internal: combined.decision,
     matched_rules: combined.matched_rules,
@@ -207,5 +287,6 @@ export function evaluateBankEvent(input: BankEvalInput): BankEvalResult {
     matrix,
     required_roles,
     obligations,
+    decision_basis,
   };
 }

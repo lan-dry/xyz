@@ -1,0 +1,16 @@
+{
+  "_readme": "Copy to .demo-tenant-emails.local.json (gitignored) and replace every placeholder. Never commit real addresses or passwords. PLATFORM_BOOTSTRAP_SECRET comes from your environment, not this file.",
+  "api_base": "https://api.example.invalid",
+  "id_base": "https://id.example.invalid",
+  "console_origin": "https://app.example.invalid",
+  "organization": { "name": "Demo Bank", "slug": "demo-bank" },
+  "personas": {
+    "admin":      { "email": "admin@example.invalid",      "display_name": "Theogene Rugamba",      "password": "REPLACE-min-10-chars" },
+    "officer":    { "email": "officer@example.invalid",    "display_name": "Patience Ingabire",     "password": "REPLACE-min-10-chars" },
+    "manager":    { "email": "manager@example.invalid",    "display_name": "Jean Mutabazi",         "password": "REPLACE-min-10-chars" },
+    "compliance": { "email": "compliance@example.invalid", "display_name": "Diane Uwizeye",         "password": "REPLACE-min-10-chars" },
+    "head":       { "email": "head@example.invalid",       "display_name": "Olivier Kayitesi",      "password": "REPLACE-min-10-chars" },
+    "dpo":        { "email": "dpo@example.invalid",        "display_name": "Sandra Murekatete",     "password": "REPLACE-min-10-chars" },
+    "deputy":     { "email": "deputy@example.invalid",     "display_name": "Aimee Nyirahabimana",   "password": "REPLACE-min-10-chars" }
+  }
+}

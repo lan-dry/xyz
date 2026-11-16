@@ -4,8 +4,23 @@ import { Eye, Pencil, Plus, Shield, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 
+import {
+  ActivatedCell,
+  AuthorityMatrixTable,
+  BankRuleEvaluator,
+  DualPublishExplainer,
+  PolicyDiffModal,
+  PublishedByCell,
+  TypedConfirmModal,
+  useIsAdmin,
+  useRuleVersions,
+  type RuleVersion,
+} from "@/components/console/bank-rules-panels";
 import { EmptyStatePanel } from "@/components/console/empty-state-panel";
 import { Modal } from "@/components/console/modal";
+import { ConsoleTime } from "@/components/console/console-time";
+import { formatRuleLabel, RULE_EFFECT_LABELS } from "@/lib/describe-decision";
+import { isBankDemoProfile } from "@/lib/ui-profile";
 import {
   ConsolePage,
   ConsolePagination,
@@ -84,6 +99,13 @@ const DEFAULT_FORM: PolicyFormState = {
   maxAmountUsd: "10000",
   blockedBeneficiaries: "",
   when: EMPTY_WHEN,
+};
+
+/** bank_demo: a new rule set starts from the generic governed action, not a payment tool. */
+const BANK_DEFAULT_FORM: PolicyFormState = {
+  ...DEFAULT_FORM,
+  name: "New rule set",
+  toolPattern: "governed.action",
 };
 
 const POLICY_TEMPLATES: Array<{
@@ -258,15 +280,46 @@ function ruleSummary(rule: PolicyRule): string {
   return `${rule.tool_pattern}, then ${decisionLabel}`;
 }
 
+/** bank_demo wording: rule code and title, then what the rule does. */
+function bankRuleSummary(rule: PolicyRule): string {
+  const effect =
+    rule.decision === "allow_with_obligation"
+      ? "hold"
+      : rule.decision === "deny"
+        ? "stop"
+        : rule.decision;
+  const label = formatRuleLabel(rule.rule_id, effect) ?? rule.rule_id;
+  const does = RULE_EFFECT_LABELS[rule.decision] ?? rule.decision.replace(/_/g, " ");
+  const cond = rule.conditions as { amount_gte?: number; amount_gt?: number } | null;
+  const from =
+    typeof cond?.amount_gte === "number"
+      ? ` from ${Math.round(cond.amount_gte).toLocaleString("en-US")}`
+      : typeof cond?.amount_gt === "number"
+        ? ` above ${Math.round(cond.amount_gt).toLocaleString("en-US")}`
+        : "";
+  return `${label}: ${does}${from}`;
+}
+
 export default function PoliciesPage() {
   const queryClient = useQueryClient();
+  // Bank Rules surface (authority matrix, v3/v4 versions, diff) is the default
+  // Aegis Rules page — including production-style Demo Bank without bank_demo.
+  // bank_demo only changes projector wording / CREATE confirm.
+  const bankDemo = isBankDemoProfile();
+  const bank = true;
+  const baseForm = bankDemo || bank ? BANK_DEFAULT_FORM : DEFAULT_FORM;
+  const isAdmin = useIsAdmin(bank);
+  const versionsQuery = useRuleVersions(bank);
   const [environment, setEnvironment] = useState<ConsoleEnvironment>("production");
   const [createOpen, setCreateOpen] = useState(false);
+  const [createConfirmOpen, setCreateConfirmOpen] = useState(false);
+  const [diffPolicyId, setDiffPolicyId] = useState<string | null>(null);
+  const [activateNotice, setActivateNotice] = useState<string | null>(null);
   const [editPolicyId, setEditPolicyId] = useState<string | null>(null);
   const [viewPolicyId, setViewPolicyId] = useState<string | null>(null);
   const [deletePolicyId, setDeletePolicyId] = useState<string | null>(null);
   const [retirePolicyId, setRetirePolicyId] = useState<string | null>(null);
-  const [form, setForm] = useState<PolicyFormState>(DEFAULT_FORM);
+  const [form, setForm] = useState<PolicyFormState>(baseForm);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [policyPage, setPolicyPage] = useState(1);
@@ -300,7 +353,17 @@ export default function PoliciesPage() {
     enabled: Boolean(viewPolicyId ?? editPolicyId),
   });
 
-  const resetForm = useCallback(() => setForm(DEFAULT_FORM), []);
+  const resetForm = useCallback(() => setForm(baseForm), [baseForm]);
+
+  /** bank_demo: creating a rule set is admin-only and needs a typed CREATE. */
+  const requestCreate = useCallback(() => {
+    if (bank) {
+      setCreateConfirmOpen(true);
+      return;
+    }
+    resetForm();
+    setCreateOpen(true);
+  }, [bank, resetForm]);
 
   const openEdit = useCallback((policyId: string) => {
     setEditPolicyId(policyId);
@@ -348,19 +411,23 @@ export default function PoliciesPage() {
       consoleApi<{
         policy?: PolicySummary;
         pending_confirmation?: boolean;
+        already_approved?: boolean;
         message?: string;
       }>(`/policies/${encodeURIComponent(policyId)}/activate`, {
         method: "POST",
       }),
+    onMutate: () => setActivateNotice(null),
     onSuccess: (data) => {
       if (data.pending_confirmation) {
         const msg =
           data.message ??
           "Dual-publish required. A second distinct authorised publisher must confirm Activate.";
-        window.alert(msg);
+        // bank_demo shows this inline (banner); no blocking browser alert.
+        if (!bank) window.alert(msg);
         setDualPublishBanner(msg);
       } else {
         setDualPublishBanner(null);
+        if (bank) setActivateNotice("Version is now live.");
       }
       void queryClient.invalidateQueries({ queryKey: ["console", "policies"] });
     },
@@ -414,6 +481,18 @@ export default function PoliciesPage() {
   useEffect(() => {
     setPolicyPage(1);
   }, [statusFilter, searchQuery]);
+
+  // bank_demo: version history (who published / co-approved) and the diff pair.
+  const versions = versionsQuery.data?.versions ?? [];
+  const versionById = new Map<string, RuleVersion>(versions.map((v) => [v.policy_id, v]));
+  const byVersionDesc = [...policies].sort((a, b) => b.version - a.version);
+  function previousOf(policyId: string): RuleVersion | null {
+    const me = policies.find((p) => p.policy_id === policyId);
+    if (!me) return null;
+    const prev = byVersionDesc.find((p) => p.version < me.version);
+    return prev ? (versionById.get(prev.policy_id) ?? null) : null;
+  }
+  const diffVersion = diffPolicyId ? (versionById.get(diffPolicyId) ?? null) : null;
 
   const populateEditForm = useCallback(() => {
     const detail = detailQuery.data;
@@ -580,7 +659,7 @@ export default function PoliciesPage() {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, blockedBeneficiaries: e.target.value }))
                 }
-                placeholder="ACME Corp, BLOCKED_CO"
+                placeholder="Harborline Trading, BLOCKED_CO"
               />
             </label>
             <label className={ui.field} style={{ marginTop: "1rem" }}>
@@ -817,8 +896,12 @@ export default function PoliciesPage() {
   return (
     <ConsolePage>
       <PageHeader
-        title="Policies"
-        subtitle="Draft, review, activate. Multiple policies can be active at once; rules from all active policies are enforced together."
+        title={bank ? "Rules" : "Policies"}
+        subtitle={
+          bank
+            ? "The rules every case is checked against: who can approve what, which version is live, and who published it."
+            : "Draft, review, activate. Multiple policies can be active at once; rules from all active policies are enforced together."
+        }
       />
 
       {dualPublishBanner ? (
@@ -832,7 +915,7 @@ export default function PoliciesPage() {
           }}
         >
           <strong style={{ display: "block", marginBottom: "0.35rem" }}>
-            Waiting for a second publisher
+            {bank ? "Waiting for a second approver" : "Waiting for a second publisher"}
           </strong>
           <p style={{ margin: 0, fontSize: "0.875rem" }}>{dualPublishBanner}</p>
           <button
@@ -846,6 +929,22 @@ export default function PoliciesPage() {
         </div>
       ) : null}
 
+      {bank && activate.error ? (
+        <ErrorAlert message={(activate.error as Error).message} />
+      ) : null}
+      {bank && activateNotice ? (
+        <p className={`${ui.alert} ${ui.alertSuccess}`} role="status">
+          {activateNotice}
+        </p>
+      ) : null}
+
+      {bank ? (
+        <>
+          <BankRuleEvaluator />
+          <AuthorityMatrixTable />
+          <DualPublishExplainer />
+        </>
+      ) : (
       <section className={`${ui.card} ${ui.cardPad}`} style={{ marginBottom: "1.25rem" }}>
         <h2 className={ui.panelTitle} style={{ marginTop: 0 }}>
           Test a sample action
@@ -903,6 +1002,7 @@ export default function PoliciesPage() {
           </p>
         ) : null}
       </section>
+      )}
 
       {draftConflicts.length > 0 ? (
         <div
@@ -979,17 +1079,16 @@ export default function PoliciesPage() {
             </p>
           ) : null}
         </div>
-        <button
-          type="button"
-          className={`${ui.btn} ${ui.btnPrimary}`}
-          onClick={() => {
-            resetForm();
-            setCreateOpen(true);
-          }}
-        >
-          <Plus size={16} aria-hidden />
-          Create policy
-        </button>
+        {!bank || isAdmin ? (
+          <button
+            type="button"
+            className={`${ui.btn} ${ui.btnPrimary}`}
+            onClick={requestCreate}
+          >
+            <Plus size={16} aria-hidden />
+            {bank ? "Create rule set…" : "Create policy"}
+          </button>
+        ) : null}
       </div>
 
       {policiesQuery.isLoading ? <LoadingBlock /> : null}
@@ -998,26 +1097,33 @@ export default function PoliciesPage() {
       {!policiesQuery.isLoading && !hasPolicies ? (
         <EmptyStatePanel
           icon={Shield}
-          title="Create your first policy for payments or data access"
+          title={
+            bank
+              ? "No rule versions yet"
+              : "Create your first policy for payments or data access"
+          }
           description={
-            <>
-              Start from a ready-made template (payment, refund, or data access), review the
-              draft, then <strong>Activate</strong>. Rules can use customer context such as
-              tier — not only a flat amount.
-            </>
+            bank ? (
+              <>An administrator creates the first rule set. Until then no case is checked.</>
+            ) : (
+              <>
+                Start from a ready-made template (payment, refund, or data access), review the
+                draft, then <strong>Activate</strong>. Rules can use customer context such as
+                tier — not only a flat amount.
+              </>
+            )
           }
           action={
-            <button
-              type="button"
-              className={`${ui.btn} ${ui.btnPrimary}`}
-              onClick={() => {
-                resetForm();
-                setCreateOpen(true);
-              }}
-            >
-              <Plus size={16} aria-hidden />
-              Create your first policy
-            </button>
+            !bank || isAdmin ? (
+              <button
+                type="button"
+                className={`${ui.btn} ${ui.btnPrimary}`}
+                onClick={requestCreate}
+              >
+                <Plus size={16} aria-hidden />
+                {bank ? "Create rule set…" : "Create your first policy"}
+              </button>
+            ) : undefined
           }
         />
       ) : null}
@@ -1038,6 +1144,7 @@ export default function PoliciesPage() {
                 <th>Name</th>
                 <th>Version</th>
                 <th>Status</th>
+                {bank ? <th>Published by</th> : null}
                 <th>Activated</th>
                 <th />
               </tr>
@@ -1057,14 +1164,32 @@ export default function PoliciesPage() {
                       {p.policy_id}
                     </span>
                   </td>
-                  <td>{p.version}</td>
+                  <td>{bank ? `v${p.version}` : p.version}</td>
                   <td>
                     <StatusBadge status={p.status} />
+                    {bank && versionById.get(p.policy_id)?.awaiting_second_approver ? (
+                      <div style={{ fontSize: "0.75rem", color: "var(--console-fg-muted)", marginTop: "0.25rem" }}>
+                        Waiting for a second approver
+                      </div>
+                    ) : null}
                   </td>
+                  {bank ? (
+                    <td>
+                      {versionById.get(p.policy_id) ? (
+                        <PublishedByCell v={versionById.get(p.policy_id)!} />
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  ) : null}
                   <td>
-                    {p.activated_at
-                      ? new Date(p.activated_at).toLocaleString()
-                      : "n/a"}
+                    {bank ? (
+                      <ActivatedCell v={versionById.get(p.policy_id)} />
+                    ) : p.activated_at ? (
+                      new Date(p.activated_at).toLocaleString()
+                    ) : (
+                      "n/a"
+                    )}
                   </td>
                   <td style={{ textAlign: "right" }}>
                     <div
@@ -1083,6 +1208,15 @@ export default function PoliciesPage() {
                       >
                         <Eye size={14} aria-hidden />
                       </button>
+                      {bank && previousOf(p.policy_id) ? (
+                        <button
+                          type="button"
+                          className={`${ui.btn} ${ui.btnSecondary}`}
+                          onClick={() => setDiffPolicyId(p.policy_id)}
+                        >
+                          What changed
+                        </button>
+                      ) : null}
                       {p.status === "draft" ? (
                         <>
                           <button
@@ -1101,14 +1235,16 @@ export default function PoliciesPage() {
                           >
                             <Trash2 size={14} aria-hidden />
                           </button>
-                          <button
-                            type="button"
-                            className={`${ui.btn} ${ui.btnPrimary}`}
-                            onClick={() => activate.mutate(p.policy_id)}
-                            disabled={activate.isPending}
-                          >
-                            Activate
-                          </button>
+                          {!bank || isAdmin ? (
+                            <button
+                              type="button"
+                              className={`${ui.btn} ${ui.btnPrimary}`}
+                              onClick={() => activate.mutate(p.policy_id)}
+                              disabled={activate.isPending}
+                            >
+                              Activate
+                            </button>
+                          ) : null}
                         </>
                       ) : null}
                       {p.status === "active" ? (
@@ -1123,16 +1259,18 @@ export default function PoliciesPage() {
                           >
                             Live
                           </span>
-                          <button
-                            type="button"
-                            className={`${ui.btn} ${ui.btnSecondary}`}
-                            onClick={() => setRetirePolicyId(p.policy_id)}
-                          >
-                            Retire
-                          </button>
+                          {!bank || isAdmin ? (
+                            <button
+                              type="button"
+                              className={`${ui.btn} ${ui.btnSecondary}`}
+                              onClick={() => setRetirePolicyId(p.policy_id)}
+                            >
+                              {bank ? "Retire…" : "Retire"}
+                            </button>
+                          ) : null}
                         </>
                       ) : null}
-                      {p.status === "archived" ? (
+                      {p.status === "archived" && (!bank || isAdmin) ? (
                         <button
                           type="button"
                           className={`${ui.btn} ${ui.btnSecondary}`}
@@ -1197,6 +1335,7 @@ export default function PoliciesPage() {
           </>
         }
       >
+        {bank ? null : (
         <div style={{ marginBottom: "1rem" }}>
           <p
             style={{
@@ -1233,12 +1372,13 @@ export default function PoliciesPage() {
             <button
               type="button"
               className={`${ui.btn} ${ui.btnGhost}`}
-              onClick={() => setForm({ ...DEFAULT_FORM, when: { ...EMPTY_WHEN } })}
+              onClick={() => setForm({ ...baseForm, when: { ...EMPTY_WHEN } })}
             >
               Start from a blank form
             </button>
           </div>
         </div>
+        )}
         <PolicyFormFields />
         {createPolicy.isError ? (
           <ErrorAlert message={(createPolicy.error as Error).message} />
@@ -1290,8 +1430,8 @@ export default function PoliciesPage() {
 
       <Modal
         open={Boolean(viewPolicyId)}
-        title={detailQuery.data?.policy.name ?? "Policy details"}
-        description={detailQuery.data?.policy.policy_id}
+        title={detailQuery.data?.policy.name ?? (bank ? "Rule details" : "Policy details")}
+        description={bank ? undefined : detailQuery.data?.policy.policy_id}
         wide
         closeOnOverlayClick={false}
         onClose={() => setViewPolicyId(null)}
@@ -1309,16 +1449,27 @@ export default function PoliciesPage() {
         {detailQuery.data ? (
           <>
             <p style={{ marginBottom: "1rem", color: "var(--console-fg-muted)" }}>
-              Version {detailQuery.data.policy.version} ·{" "}
+              {bank ? `Version v${detailQuery.data.policy.version}` : `Version ${detailQuery.data.policy.version}`} ·{" "}
               <StatusBadge status={detailQuery.data.policy.status} />
-              {detailQuery.data.policy.activated_at
-                ? ` · Activated ${new Date(detailQuery.data.policy.activated_at).toLocaleString()}`
-                : null}
+              {detailQuery.data.policy.activated_at ? (
+                <>
+                  {" · Activated "}
+                  {bank ? (
+                    <ConsoleTime iso={detailQuery.data.policy.activated_at} />
+                  ) : (
+                    new Date(detailQuery.data.policy.activated_at).toLocaleString()
+                  )}
+                </>
+              ) : null}
             </p>
             <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
               {detailQuery.data.rules.map((rule) => (
-                <li key={rule.rule_id} className="mono" style={{ marginBottom: "0.5rem" }}>
-                  {ruleSummary(rule)}
+                <li
+                  key={rule.rule_id}
+                  className={bank ? undefined : "mono"}
+                  style={{ marginBottom: "0.5rem" }}
+                >
+                  {bank ? bankRuleSummary(rule) : ruleSummary(rule)}
                 </li>
               ))}
             </ul>
@@ -1356,8 +1507,41 @@ export default function PoliciesPage() {
         ) : null}
       </Modal>
 
+      {bank ? (
+        <TypedConfirmModal
+          open={Boolean(retirePolicyId)}
+          title="Retire this live rule version?"
+          description="Retiring takes the version out of force: new cases are no longer checked against it. This is recorded in the access log."
+          word="RETIRE"
+          confirmLabel="Retire version"
+          busy={archivePolicy.isPending}
+          error={archivePolicy.isError ? (archivePolicy.error as Error).message : null}
+          onClose={() => setRetirePolicyId(null)}
+          onConfirm={() => retirePolicyId && archivePolicy.mutate(retirePolicyId)}
+        />
+      ) : null}
+      <TypedConfirmModal
+        open={bank && createConfirmOpen}
+        title="Create a new rule set?"
+        description="A new rule set starts as a draft and changes nothing until two authorised people activate it."
+        word="CREATE"
+        confirmLabel="Continue"
+        onClose={() => setCreateConfirmOpen(false)}
+        onConfirm={() => {
+          setCreateConfirmOpen(false);
+          resetForm();
+          setCreateOpen(true);
+        }}
+      />
+      <PolicyDiffModal
+        open={Boolean(diffPolicyId)}
+        version={diffVersion}
+        against={diffPolicyId ? previousOf(diffPolicyId) : null}
+        onClose={() => setDiffPolicyId(null)}
+      />
+
       <Modal
-        open={Boolean(retirePolicyId)}
+        open={!bank && Boolean(retirePolicyId)}
         title="Retire active policy?"
         description="This policy will stop being enforced. Other active policies remain in effect."
         onClose={() => setRetirePolicyId(null)}

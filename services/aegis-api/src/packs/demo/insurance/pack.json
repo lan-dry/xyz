@@ -1,11 +1,28 @@
 {
   "id": "demo.insurance",
-  "name": "Demo insurance pack (illustrative claims payout)",
+  "name": "Illustrative insurance pack (claims payout)",
   "demo_only": true,
   "sector": "insurance",
   "version": 1,
   "combine": "all_matching",
-  "currencies": ["USD"],
+  "currencies": ["EUR"],
+  "labels": {
+    "rule_titles": {
+      "CLM-01": "Within claims handler limit",
+      "CLM-02": "Requires claims supervisor",
+      "CLM-03": "Requires chief claims officer",
+      "CLM-STAFF": "Staff or related claimant requires fraud review"
+    },
+    "role_labels": {
+      "claims_handler": "Claims Handler",
+      "claims_supervisor": "Claims Supervisor",
+      "fraud_analyst": "Fraud Analyst",
+      "chief_claims": "Chief Claims Officer"
+    },
+    "product_labels": {
+      "claim_payout": "Claim payout"
+    }
+  },
   "roles": [
     { "role_key": "claims_handler", "display_name": "Claims Handler", "level": 10 },
     { "role_key": "claims_supervisor", "display_name": "Claims Supervisor", "level": 20 },
@@ -18,7 +35,7 @@
       "product": "claim_payout",
       "amount_min": 0,
       "amount_max": 2500,
-      "currency": "USD",
+      "currency": "EUR",
       "risk_tier": null,
       "required_role": null,
       "outcome": "allow",
@@ -30,7 +47,7 @@
       "product": "claim_payout",
       "amount_min": 2500,
       "amount_max": 25000,
-      "currency": "USD",
+      "currency": "EUR",
       "risk_tier": null,
       "required_role": "claims_supervisor",
       "outcome": "hold",
@@ -42,7 +59,7 @@
       "product": "claim_payout",
       "amount_min": 25000,
       "amount_max": null,
-      "currency": "USD",
+      "currency": "EUR",
       "risk_tier": null,
       "required_role": "chief_claims",
       "outcome": "hold",

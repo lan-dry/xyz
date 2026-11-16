@@ -1,3 +1,4 @@
+import { isBankDemoProfile } from "./ui-profile";
 /** Client-side environment preference (Phase 3). Production is the default ledger. */
 
 export type ConsoleEnvironment = "production" | "sandbox";
@@ -15,5 +16,7 @@ export function persistConsoleEnvironment(env: ConsoleEnvironment): void {
 }
 
 export function environmentLabel(env: ConsoleEnvironment): string {
+  // bank_demo is never presented as Production.
+  if (isBankDemoProfile()) return "the demo environment";
   return env === "sandbox" ? "Sandbox" : "Production";
 }

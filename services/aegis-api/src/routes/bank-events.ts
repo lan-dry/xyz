@@ -83,8 +83,20 @@ export async function postBankEvent(c: Context): Promise<Response> {
       return c.json({ error: "Invalid API key" }, 401);
     }
 
-    const decision = await handleBankEvent(client, auth.organizationId, event);
-    return c.json(decision, 200);
+    await client.query("BEGIN");
+    try {
+      // A bank system replaying events it decided under its own fallback while Aegis was
+      // unreachable says so (attributes.decided_without_aegis). That only ever makes the
+      // receipt more conservative ("decided without Aegis"); it can never relax a rule.
+      const decision = await handleBankEvent(client, auth.organizationId, event, {
+        decidedWithoutAegis: event.attributes.decided_without_aegis === true,
+      });
+      await client.query("COMMIT");
+      return c.json(decision, 200);
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    }
   } finally {
     client.release();
   }

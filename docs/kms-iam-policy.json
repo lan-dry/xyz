@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AegisReceiptSigningOnly",
+      "Effect": "Allow",
+      "Action": ["kms:Sign", "kms:GetPublicKey"],
+      "Resource": "arn:aws:kms:REGION:ACCOUNT_ID:key/KEY_ID"
+    }
+  ]
+}

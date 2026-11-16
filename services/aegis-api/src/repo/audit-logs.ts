@@ -13,6 +13,8 @@ export type AuditLogRow = {
 export type AuditLogFilters = {
   action?: string;
   q?: string;
+  /** Entries about one case: metadata.case_id, or the resource itself is the case. */
+  caseId?: string;
   limit?: number;
   offset?: number;
 };
@@ -30,6 +32,14 @@ export async function listAuditLogs(
   if (filters.action?.trim()) {
     params.push(filters.action.trim());
     parts.push(`a.action = $${params.length}`);
+  }
+
+  if (filters.caseId?.trim()) {
+    params.push(filters.caseId.trim());
+    const n = params.length;
+    parts.push(
+      `(a.metadata->>'case_id' = $${n} OR (a.resource_type = 'case' AND a.resource_id = $${n}))`,
+    );
   }
 
   if (filters.q?.trim()) {

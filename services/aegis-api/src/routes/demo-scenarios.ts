@@ -14,6 +14,7 @@ import { resolveIngestKey } from "../auth/ingest-key.js";
 import { isDemoModeAllowed } from "../bank/demo-clock.js";
 import { handleBankEvent } from "../bank/handle-event.js";
 import { getPool } from "../db/pool.js";
+import { runWithDemoIngestKey } from "../demo/ingest-key-context.js";
 import { runHttpApprovalScenario } from "../demo/live-approvals-http.js";
 import { runScenarios, scenarioRunners } from "../demo/scenario-runners.js";
 import { loadDemoPack } from "../packs/load.js";
@@ -175,7 +176,11 @@ export async function postDemoScenariosRun(c: Context): Promise<Response> {
 
     if (approvalsMode === "http" && HTTP_APPROVAL_SCENARIOS.has(row.id)) {
       try {
-        const http = await runHttpApprovalScenario(organizationId, row.id);
+        // Run in the caller's ingest-key context so intake lands in the SAME
+        // org the caller authenticated as (rehearsal scratch org vs Demo Bank).
+        const http = await runWithDemoIngestKey(token, () =>
+          runHttpApprovalScenario(organizationId, row.id),
+        );
         if (!http) {
           throw new Error(`no HTTP approval runner for scenario ${row.id}`);
         }

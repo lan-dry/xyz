@@ -10,6 +10,7 @@ Your system calls `POST /v1/aegis/governed/events` with an ingest API key
 - On `hold`, wait for human approval before completing the action
 - On `stop`, do not proceed
 - Malformed events return **HTTP 400** with machine-readable `error` / `code` / `fields`
+- **Production SoD:** requester identity for self-approve / four-eyes checks must come from **authenticated identity mapping** (console session or OIDC claim → membership), not from client-supplied `attributes.requester_email` alone. Demo packs may post requester attributes for theatre only.
 
 See `examples/bank-core-stub` (**stub** — demo client only).
 

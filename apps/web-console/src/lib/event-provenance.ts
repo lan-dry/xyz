@@ -1,3 +1,7 @@
+import { describeDecision, OUTCOME_LABELS } from "./describe-decision";
+import { formatRwf } from "./format-display";
+import { actionKindPlain, outcomeFromPolicyDecision } from "./outcome-vocab";
+
 export type EventProvenance = {
   summary: string;
   lines: Array<{ label: string; value: string }>;
@@ -8,6 +12,13 @@ function str(v: unknown): string | null {
     return v.trim();
   }
   return null;
+}
+
+/** investor_summary text like "Governed decision allow for case X" is internal wording. */
+export function userFacingSummary(v: unknown): string | null {
+  const s = str(v);
+  if (!s || /^governed decision\b/i.test(s)) return null;
+  return s;
 }
 
 function num(v: unknown): number | null {
@@ -33,6 +44,46 @@ export function buildEventProvenance(input: {
       ? (input.payload as Record<string, unknown>)
       : null;
 
+  // Sealed bank decisions: plain sentence, never governed.action / policy_decision wording.
+  if (
+    payload &&
+    typeof payload.outcome === "string" &&
+    Array.isArray(payload.matched_rules) &&
+    payload.attributes &&
+    typeof payload.attributes === "object"
+  ) {
+    const attrs = payload.attributes as Record<string, unknown>;
+    const rules = (payload.matched_rules as Array<{ rule_id?: string }>)
+      .map((r) => r.rule_id)
+      .filter((r): r is string => typeof r === "string" && r !== "");
+    const amt = num(attrs.amount ?? attrs.amount_rwf ?? attrs.loan_amount);
+    const cur = str(attrs.currency) ?? null;
+    const summary = describeDecision({
+      outcome: payload.outcome as string,
+      product: str(payload.product),
+      event_type: str(payload.event_type),
+      amount: amt,
+      currency: cur,
+      policy_version:
+        typeof payload.policy_version === "number" ? payload.policy_version : null,
+      matched_rules: rules.map((rule_id) => ({ rule_id })),
+      decided_by_rule_id: rules[0] ?? null,
+      mode: str(payload.mode),
+      would_have: str(payload.would_have),
+    });
+    const bankLines: Array<{ label: string; value: string }> = [];
+    if (amt !== null) bankLines.push({ label: "Amount", value: formatRwf(amt, cur.toUpperCase()) });
+    if (rules.length > 0) bankLines.push({ label: "Rules that applied", value: rules.join(", ") });
+    bankLines.push({
+      label: "Outcome",
+      value: OUTCOME_LABELS[payload.outcome as string] ?? String(payload.outcome),
+    });
+    if (payload.mode === "record_only") {
+      bankLines.push({ label: "Mode", value: "Record only (not blocked)" });
+    }
+    return { summary, lines: bankLines };
+  }
+
   const provider =
     str(payload?.provider) ??
     str(payload?.vendor) ??
@@ -40,7 +91,7 @@ export function buildEventProvenance(input: {
   const action =
     str(payload?.action) ??
     str(payload?.action_description) ??
-    input.action_kind;
+    actionKindPlain(input.action_kind, input.tool_name);
   const amount = num(payload?.amount_usd ?? payload?.amount);
   const currency = str(payload?.currency) ?? (amount !== null ? "USD" : null);
   const trigger =
@@ -50,7 +101,7 @@ export function buildEventProvenance(input: {
   const triggerDetail = str(payload?.trigger_detail) ?? str(payload?.trigger_reason);
   const resource = str(payload?.resource_id) ?? str(payload?.transaction_id);
   const businessContext = str(payload?.business_context);
-  const investorSummary = str(payload?.investor_summary);
+  const investorSummary = userFacingSummary(payload?.investor_summary);
   const riskIfUnmonitored = str(payload?.risk_if_unmonitored);
   const purpose = str(payload?.purpose);
   const dataTouched = Array.isArray(payload?.data_touched)
@@ -70,7 +121,7 @@ export function buildEventProvenance(input: {
   if (provider) {
     lines.push({ label: "Provider", value: provider });
   }
-  if (input.tool_name) {
+  if (input.tool_name && input.tool_name !== "governed.action") {
     lines.push({ label: "Tool", value: input.tool_name });
   }
   lines.push({ label: "Action", value: action });
@@ -124,7 +175,10 @@ export function buildEventProvenance(input: {
     }
   }
 
-  lines.push({ label: "Policy", value: input.policy_decision });
+  lines.push({
+    label: "Policy",
+    value: outcomeFromPolicyDecision(input.policy_decision).label,
+  });
 
   if (lines.length <= 1 && !input.tool_name && input.action_kind !== "llm_invocation") {
     return null;
@@ -147,7 +201,7 @@ export function buildEventProvenance(input: {
   if (trigger) {
     parts.push(`triggered by ${trigger}${triggerDetail ? ` (${triggerDetail})` : ""}`);
   }
-  parts.push(`policy: ${input.policy_decision}`);
+  parts.push(outcomeFromPolicyDecision(input.policy_decision).label.toLowerCase());
 
   return { summary: parts.join(" · "), lines };
 }

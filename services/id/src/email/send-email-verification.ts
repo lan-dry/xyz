@@ -22,7 +22,7 @@ export function buildVerifyEmailHtml(verifyUrl: string): string {
 export async function sendEmailVerificationEmail(
   input: VerifyEmailInput,
 ): Promise<void> {
-  const from = getInviteFromAddress();
+  const from = await getInviteFromAddress();
   const subject = "Verify your Salanor account";
   const html = buildVerifyEmailHtml(input.verifyUrl);
   const bodyText = [
@@ -35,7 +35,7 @@ export async function sendEmailVerificationEmail(
     "If you did not create a Salanor account, ignore this email.",
   ].join("\n");
 
-  const apiKey = getResendApiKey();
+  const apiKey = await getResendApiKey();
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {

@@ -185,12 +185,28 @@ export async function postPolicyEvaluate(c: Context): Promise<Response> {
     } catch (recordErr) {
       await client.query("ROLLBACK");
       console.error("[aegis] policy evaluate record failed", recordErr);
-      return c.json({
-        ...result,
+      // B2 / F13: fail-safe by default. Opt out only with
+      // AEGIS_ENFORCE_REQUIRE_EVIDENCE=0 (unsafe for production).
+      const optOut =
+        process.env.AEGIS_ENFORCE_REQUIRE_EVIDENCE === "0" ||
+        process.env.AEGIS_ENFORCE_REQUIRE_EVIDENCE === "false";
+      const body = {
+        decision: result.decision,
+        policy_id: result.policy_id,
+        rule_id: result.rule_id,
+        reason: result.reason,
+        engine: result.engine,
+        decision_layer: result.decision_layer,
+        signals: result.signals,
+        evaluation_context: result.evaluation_context,
         recorded: false,
+        evidence_status: "failed" as const,
         record_error:
-          recordErr instanceof Error ? recordErr.message : "Failed to record gate",
-      });
+          recordErr instanceof Error
+            ? recordErr.message
+            : "Failed to record gate",
+      };
+      return c.json(body, optOut ? 200 : 503);
     }
   } finally {
     client.release();

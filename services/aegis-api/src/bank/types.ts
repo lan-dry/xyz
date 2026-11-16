@@ -40,6 +40,19 @@ export type BankDecisionResponse = {
     policy_id: string;
     decision: string;
   }>;
+  decision_basis?: {
+    outcome: string;
+    decided_by_rule_id: string | null;
+    explanation: string;
+    matched: Array<{
+      rule_id: string;
+      policy_id: string;
+      decision: string;
+      effect: string;
+      note?: string;
+    }>;
+  };
+  plain_summary?: string;
   policy?: {
     policy_id: string;
     version: number;
@@ -56,6 +69,8 @@ export type BankDecisionResponse = {
     demo_clock?: boolean;
     decided_without_aegis?: boolean;
     provisional?: boolean;
+    /** F13: evidence / receipt write failed — not a final enforceable decision. */
+    evidence_status?: "ok" | "failed";
   };
 };
 

@@ -8,30 +8,9 @@ const MIGRATIONS_DIR = join(
   "../../migrations",
 );
 
-/** Forward-only SQL migrations (one `.sql` file per version). Greenfield: `001_baseline` only. */
+/** Forward-only SQL migrations. Greenfield: single `001_baseline` only. */
 const MIGRATIONS = [
   { version: "001_baseline", file: "001_baseline.sql" },
-  { version: "002_account_byline_social", file: "002_account_byline_social.sql" },
-  { version: "004_organization_scim", file: "004_organization_scim.sql" },
-  {
-    version: "005_organization_scim_groups",
-    file: "005_organization_scim_groups.sql",
-  },
-  { version: "006_phase2_control", file: "006_phase2_control.sql" },
-  { version: "007_phase3_ia", file: "007_phase3_ia.sql" },
-  { version: "008_phase4_coverage", file: "008_phase4_coverage.sql" },
-  { version: "009_phase5_proof", file: "009_phase5_proof.sql" },
-  { version: "010_phase6_enterprise", file: "010_phase6_enterprise.sql" },
-  { version: "011_phase8_share_receipt", file: "011_phase8_share_receipt.sql" },
-  { version: "012_anomaly_signal", file: "012_anomaly_signal.sql" },
-  { version: "013_blog_database_source", file: "013_blog_database_source.sql" },
-  { version: "014_forensic_bank", file: "014_forensic_bank.sql" },
-  { version: "015_forensic_receipt", file: "015_forensic_receipt.sql" },
-  { version: "016_approval_delegate", file: "016_approval_delegate.sql" },
-  {
-    version: "017_workflow_run_org_cascade",
-    file: "017_workflow_run_org_cascade.sql",
-  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {
@@ -57,10 +36,19 @@ function readMigration(filename: string): string {
   return readFileSync(join(MIGRATIONS_DIR, filename), "utf8");
 }
 
-export async function migrateUp(): Promise<void> {
+export async function migrateUp(options?: {
+  /** Stop after applying this version (inclusive). */
+  throughVersion?: string;
+}): Promise<void> {
   await ensureMigrationTable();
   for (const migration of MIGRATIONS) {
     if (await isApplied(migration.version)) {
+      if (
+        options?.throughVersion &&
+        migration.version === options.throughVersion
+      ) {
+        break;
+      }
       continue;
     }
     const sql = readMigration(migration.file);
@@ -74,6 +62,12 @@ export async function migrateUp(): Promise<void> {
       console.log(`Applied migration ${migration.version}`);
     } finally {
       client.release();
+    }
+    if (
+      options?.throughVersion &&
+      migration.version === options.throughVersion
+    ) {
+      break;
     }
   }
 }

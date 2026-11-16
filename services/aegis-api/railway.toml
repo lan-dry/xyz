@@ -1,10 +1,16 @@
-# [build]
-# Prefer Nixpacks defaults from service settings.
-# If builds fail, set Root Directory to repo root and:
-#   Build:  pnpm install && pnpm --filter aegis-api build
-#   Start:  pnpm --filter aegis-api start
-#   OR from services/aegis-api after monorepo install: node dist/index.js
+# Railway service: aegis-api  (api.salanor.com)
+# Root Directory = repo root. Config path = services/aegis-api/railway.toml
+# Full runbook: docs/DEPLOY_PRODUCTION.md
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "deploy/docker/Dockerfile.aegis-api"
 
 [deploy]
+# Release step: forward-only migrations run BEFORE the new version takes traffic.
+# Uses MIGRATION_DATABASE_URL (schema owner) when set, else DATABASE_URL.
+preDeployCommand = ["node dist/db/migrate-cli.js"]
+healthcheckPath = "/health"
+healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3

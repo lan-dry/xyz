@@ -4,11 +4,15 @@ One greenfield SQL file. **No `ALTER` upgrade path** — reset an empty database
 
 | File | Purpose |
 |------|---------|
-| `001_baseline.sql` | Full schema: Aegis, platform, web CMS (research byline on `account`, newsletter, careers, …). Seeds `plan_catalog` + internal org `salanor-platform`. |
+| `001_baseline.sql` | Full schema: Aegis, platform, web CMS (research byline on `account`, newsletter, careers, forensic bank, tenant wipe, platform email settings, …). Seeds `plan_catalog` + internal org `salanor-platform`. |
 | `001_baseline.dbml` | [dbdiagram.io](https://dbdiagram.io) diagram (Import → DBML). Regenerate: `python docs/tools/sql_to_dbdiagram.py`. |
 | `001_baseline.dbdiagram.sql` | Same schema, `CREATE TABLE` only (PostgreSQL import fallback). Omits indexes, seeds, `event.search_vector` generated column. |
 
-**Apply:** `pnpm db:migrate` (from repo root). Forward migrations after baseline: e.g. `002_account_byline_social` (author LinkedIn/X/Instagram on `account`).
+Migrations only ever insert the inactive `salanor-platform` org; Northwind/demo tenants are CLI-only (`demo:seed:northwind`, `db:local:pilot-fixture`).
+
+`platform_email_settings` is Salanor **Platform admin** transactional mail (`/aegis/platform` → Email): delivery `platform` (Resend) or `smtp` (any SMTP host). Secrets are AES-GCM under `AEGIS_BRIDGE_MASTER_KEY`. Customer Stoa tenants keep their own SMTP in `stoa_tenant.settings.email`.
+
+**Apply:** `pnpm db:migrate` (from repo root). When the baseline `CREATE TABLE` gains columns on an already-migrated DB, reset empty environments (`DROP SCHEMA public CASCADE`) or add the columns manually — there is no forward `ALTER` path.
 
 ## Reset + migrate + superadmin (prod or local Neon)
 
@@ -42,4 +46,4 @@ Local dev uses the same bootstrap path; optional `pnpm db:local:pilot-fixture` (
 
 ## Add schema later
 
-Add `002_short_name.sql`, register in `src/db/migrate.ts`. Prefer forward-only `ALTER` only when you cannot reset prod; otherwise squash into `001` for greenfield and reset dev/staging.
+Prefer squashing into `001_baseline` and resetting empty environments. If you cannot wipe prod, add `002_short_name.sql` and register it in `src/db/migrate.ts`.

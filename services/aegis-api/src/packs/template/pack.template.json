@@ -6,6 +6,14 @@
   "version": 1,
   "combine": "all_matching",
   "currencies": ["USD"],
+  "labels": {
+    "rule_titles": { "RULE-01": "Within operator limit" },
+    "role_labels": {
+      "operator": "Operator",
+      "supervisor": "Supervisor"
+    },
+    "product_labels": { "your_product": "Your product action" }
+  },
   "roles": [
     { "role_key": "operator", "display_name": "Operator", "level": 10 },
     { "role_key": "supervisor", "display_name": "Supervisor", "level": 20 }

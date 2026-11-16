@@ -11,6 +11,8 @@ export type PublishApproval = {
   membership_id: string;
   count: number;
   published: boolean;
+  /** True when this same person had already approved (one approver cannot publish alone). */
+  already_approved?: boolean;
 };
 
 export async function recordPolicyPublishApproval(
@@ -48,7 +50,7 @@ export async function recordPolicyPublishApproval(
     };
   }
 
-  await client.query(
+  const inserted = await client.query(
     `INSERT INTO policy_publish_approval (
        approval_id, policy_id, organization_id, membership_id
      ) VALUES ($1, $2, $3, $4)
@@ -80,5 +82,6 @@ export async function recordPolicyPublishApproval(
     membership_id: input.membership_id,
     count,
     published: false,
+    already_approved: (inserted.rowCount ?? 1) === 0,
   };
 }

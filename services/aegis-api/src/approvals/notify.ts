@@ -1,10 +1,97 @@
 import type pg from "pg";
+import nodemailer from "nodemailer";
+import { resolvePlatformEmailDelivery } from "@salanor/platform-auth";
 import {
   getGovernanceSettings,
   type GovernanceSettings,
 } from "../repo/governance-settings.js";
 import { buildRequestPreview } from "./request-preview.js";
 import { signApprovalActionToken } from "./action-token.js";
+
+type PlatformMailAttachment = {
+  filename: string;
+  /** Remote URL (Resend path-style) or local path for nodemailer. */
+  path?: string;
+  content?: Buffer;
+  content_id?: string;
+};
+
+/** Send via Platform admin SMTP or Resend (same resolver as services/id). */
+async function sendPlatformTransactionalEmail(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    to: string;
+    subject: string;
+    text: string;
+    html: string;
+    attachments?: PlatformMailAttachment[];
+  },
+): Promise<"sent" | "skipped"> {
+  const delivery = await resolvePlatformEmailDelivery(client);
+  if (delivery.mode === "none") {
+    return "skipped";
+  }
+
+  if (delivery.mode === "smtp" && delivery.smtp) {
+    const transporter = nodemailer.createTransport({
+      host: delivery.smtp.host,
+      port: delivery.smtp.port,
+      secure: delivery.smtp.secure,
+      auth: {
+        user: delivery.smtp.user,
+        pass: delivery.smtp.password,
+      },
+    });
+    try {
+      await transporter.sendMail({
+        from: delivery.from,
+        to: input.to,
+        ...(delivery.replyTo ? { replyTo: delivery.replyTo } : {}),
+        subject: input.subject,
+        text: input.text,
+        html: input.html,
+        // Skip remote URL logos over SMTP (fetch not required for delivery).
+        attachments: input.attachments
+          ?.filter((a) => a.content || (a.path && !/^https?:\/\//i.test(a.path)))
+          .map((a) => ({
+            filename: a.filename,
+            content: a.content,
+            path: a.path,
+            cid: a.content_id,
+          })),
+      });
+    } finally {
+      transporter.close();
+    }
+    return "sent";
+  }
+
+  if (delivery.mode === "resend" && delivery.apiKey) {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${delivery.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: delivery.from,
+        to: [input.to],
+        ...(delivery.replyTo ? { reply_to: [delivery.replyTo] } : {}),
+        subject: input.subject,
+        text: input.text,
+        html: input.html,
+        attachments: input.attachments,
+      }),
+    });
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(`Email delivery failed (${response.status}): ${errText}`);
+    }
+    return "sent";
+  }
+
+  return "skipped";
+}
 
 export type ApprovalNotifyContext = {
   organizationId: string;
@@ -54,9 +141,12 @@ async function enrichFromEvent(
 }
 
 /**
- * Email recipients for pending approvals: active org admins only.
- * Same people who can Approve/Reject in Console (org write roles).
- * Never use a global env override: that breaks multi-tenant orgs.
+ * Email recipients for pending approvals — role-based fan-out from membership
+ * (industry default), not a hardcoded address list or global env override.
+ *
+ * Includes console roles that can Approve/Reject (owner/admin/approver) plus
+ * anyone with an active bank ladder role (credit_manager, etc.).
+ * Channel on/off is org governance (`notifications.email_enabled`) in Settings.
  */
 async function listApproverEmails(
   client: pg.Pool | pg.PoolClient,
@@ -67,10 +157,17 @@ async function listApproverEmails(
      FROM membership m
      JOIN account a ON a.account_id = m.account_id
      WHERE m.organization_id = $1
-       AND lower(m.role) IN ('admin', 'owner')
        AND m.status = 'active'
        AND a.email IS NOT NULL
-       AND length(trim(a.email)) > 0`,
+       AND length(trim(a.email)) > 0
+       AND (
+         lower(m.role) IN ('admin', 'owner', 'approver')
+         OR EXISTS (
+           SELECT 1 FROM membership_bank_role mbr
+           WHERE mbr.membership_id = m.membership_id
+             AND mbr.organization_id = m.organization_id
+         )
+       )`,
     [organizationId],
   );
   return result.rows.map((r) => r.email.trim()).filter(Boolean);
@@ -483,6 +580,7 @@ function approvalEmailSubject(input: {
 }
 
 async function sendApprovalEmail(
+  client: pg.Pool | pg.PoolClient,
   to: string,
   input: {
     organizationId: string;
@@ -496,8 +594,6 @@ async function sendApprovalEmail(
     recipient?: string;
   },
 ): Promise<void> {
-  const from =
-    process.env.INVITE_EMAIL_FROM ?? "Salanor <invites@notifications.salanor.com>";
   const subject = approvalEmailSubject(input);
   const detailLines: string[] = [`Action: ${input.toolName}`];
   if (input.amountUsd != null) {
@@ -526,36 +622,20 @@ async function sendApprovalEmail(
   console.log(`  Tool:   ${input.toolName}`);
   console.log(`  Review: ${input.approveUrl}`);
 
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
+  const result = await sendPlatformTransactionalEmail(client, {
+    to,
+    subject,
+    text: bodyText,
+    html: approvalEmailHtml(input),
+    attachments: [emailLogoAttachment()],
+  });
+  if (result === "skipped") {
     console.log(
-      "  Delivery: skipped (RESEND_API_KEY not set: console log only)\n",
+      "  Delivery: skipped (no SMTP/Resend in Platform admin > Email or RESEND_API_KEY: console log only)\n",
     );
     return;
   }
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject,
-      text: bodyText,
-      html: approvalEmailHtml(input),
-      attachments: [emailLogoAttachment()],
-    }),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text().catch(() => "");
-    console.log(`  Delivery: Resend failed (${response.status})\n`);
-    throw new Error(`Email delivery failed (${response.status}): ${errText}`);
-  }
-  console.log("  Delivery: sent via Resend\n");
+  console.log("  Delivery: sent\n");
 }
 
 async function sendPagerDutyApproval(
@@ -706,7 +786,7 @@ async function dispatchNotifications(
     const emails = await listApproverEmails(client, enriched.organizationId);
     for (const email of emails) {
       try {
-        await sendApprovalEmail(email, payload);
+        await sendApprovalEmail(client, email, payload);
       } catch (err) {
         console.error(`[aegis-api] approval email to ${email} failed:`, err);
       }
@@ -875,7 +955,7 @@ async function deliverAnomalyFlag(
   const emails = await listApproverEmails(client, ctx.organizationId);
   for (const email of emails) {
     try {
-      await sendAnomalyEmail(email, {
+      await sendAnomalyEmail(client, email, {
         orgName: org.name,
         agentName,
         flagged,
@@ -948,6 +1028,7 @@ function anomalyEmailHtml(input: {
 }
 
 async function sendAnomalyEmail(
+  client: pg.Pool | pg.PoolClient,
   to: string,
   input: {
     orgName: string;
@@ -956,8 +1037,6 @@ async function sendAnomalyEmail(
     receiptUrl: string;
   },
 ): Promise<void> {
-  const from =
-    process.env.INVITE_EMAIL_FROM ?? "Salanor <invites@notifications.salanor.com>";
   const subject = `[${input.orgName}] Needs attention · ${input.agentName}`;
   const text = [
     `Needs attention in ${input.orgName}`,
@@ -977,29 +1056,18 @@ async function sendAnomalyEmail(
   console.log(`  Agent:   ${input.agentName}`);
   console.log(`  Receipt: ${input.receiptUrl}`);
 
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
-    console.log("  Delivery: skipped (RESEND_API_KEY not set: console log only)\n");
+  const result = await sendPlatformTransactionalEmail(client, {
+    to,
+    subject,
+    text,
+    html,
+    attachments: [emailLogoAttachment()],
+  });
+  if (result === "skipped") {
+    console.log(
+      "  Delivery: skipped (no SMTP/Resend in Platform admin > Email or RESEND_API_KEY: console log only)\n",
+    );
     return;
   }
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject,
-      text,
-      html,
-      attachments: [emailLogoAttachment()],
-    }),
-  });
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`Resend failed (${response.status}): ${body}`);
-  }
+  console.log("  Delivery: sent\n");
 }

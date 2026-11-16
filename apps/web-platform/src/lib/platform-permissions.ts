@@ -9,6 +9,7 @@ export type PlatformPermission =
   | "platform:accounts.write"
   | "platform:plans.write"
   | "platform:roles.write"
+  | "platform:email.write"
   | "platform:impersonate"
   | "platform:content.read"
   | "platform:content.write";
@@ -21,6 +22,7 @@ const ROLE_PERMISSIONS: Record<PlatformRole, PlatformPermission[]> = {
     "platform:accounts.write",
     "platform:plans.write",
     "platform:roles.write",
+    "platform:email.write",
     "platform:impersonate",
     "platform:content.read",
     "platform:content.write",
@@ -32,6 +34,7 @@ const ROLE_PERMISSIONS: Record<PlatformRole, PlatformPermission[]> = {
     "platform:accounts.write",
     "platform:plans.write",
     "platform:roles.write",
+    "platform:email.write",
     "platform:impersonate",
     "platform:content.read",
     "platform:content.write",

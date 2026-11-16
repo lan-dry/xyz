@@ -116,7 +116,7 @@ function CreateOrganizationForm() {
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Acme Insurance"
+                placeholder="Meridian Clearing"
                 required
                 autoFocus
               />
@@ -131,7 +131,7 @@ function CreateOrganizationForm() {
                   setSlugTouched(true);
                   setSlug(e.target.value);
                 }}
-                placeholder="acme-insurance"
+                placeholder="meridian-clearing"
                 pattern="[a-z0-9-]+"
               />
             </label>

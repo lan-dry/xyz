@@ -279,7 +279,7 @@ export default function OrganizationSettingsPage() {
                     maxLength={48}
                     pattern="[a-z0-9][a-z0-9-]*"
                     required
-                    placeholder="acme"
+                    placeholder="meridian"
                   />
                 </label>
               </div>
@@ -373,7 +373,7 @@ export default function OrganizationSettingsPage() {
                 className={ui.input}
                 value={newOrgName}
                 onChange={(e) => setNewOrgName(e.target.value)}
-                placeholder="Acme EU"
+                placeholder="Meridian EU"
                 required
               />
             </label>

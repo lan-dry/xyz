@@ -9,9 +9,24 @@ export async function platformApi<T>(path: string, init?: RequestInit): Promise<
       ...init?.headers,
     },
   });
-  const data = (await res.json()) as T & { error?: string };
+  const text = await res.text();
+  let data: (T & { error?: string }) | null = null;
+  if (text.trim()) {
+    try {
+      data = JSON.parse(text) as T & { error?: string };
+    } catch {
+      throw new Error(
+        res.ok
+          ? "Identity service returned a non-JSON response."
+          : `Request failed (${res.status}).`,
+      );
+    }
+  }
   if (!res.ok) {
-    throw new Error(data.error ?? `Request failed (${res.status})`);
+    throw new Error(data?.error ?? `Request failed (${res.status})`);
+  }
+  if (data === null) {
+    throw new Error("Identity service returned an empty response.");
   }
   return data;
 }

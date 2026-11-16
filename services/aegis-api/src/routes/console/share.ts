@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
+import { caseIdFromPayload } from "../../console/receipt-access-audit.js";
 import { getPool } from "../../db/pool.js";
 import {
   requireConsoleSession,
@@ -46,8 +47,12 @@ shareRoutes.post(
 
     const client = await getPool().connect();
     try {
-      const event = await client.query<{ event_id: string }>(
-        `SELECT event_id FROM event
+      const event = await client.query<{
+        event_id: string;
+        trace_id: string;
+        payload: unknown;
+      }>(
+        `SELECT event_id, trace_id, payload FROM event
          WHERE organization_id = $1 AND event_id = $2
          LIMIT 1`,
         [session.organizationId, eventId],
@@ -77,7 +82,13 @@ shareRoutes.post(
         action: "receipt.share_created",
         resourceType: "receipt_share",
         resourceId: shareId,
-        metadata: { event_id: eventId, hours, expires_at: expiresAt.toISOString() },
+        metadata: {
+          event_id: eventId,
+          trace_id: event.rows[0].trace_id,
+          case_id: caseIdFromPayload(event.rows[0].payload),
+          hours,
+          expires_at: expiresAt.toISOString(),
+        },
       });
 
       return c.json(

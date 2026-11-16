@@ -7,7 +7,6 @@ import {
   newTraceId,
   recordAgentDecision,
   recordLlmInvocation,
-  recordTicketDataRead,
   finishTraceSession,
   startTraceSession,
 } from "./governance.js";

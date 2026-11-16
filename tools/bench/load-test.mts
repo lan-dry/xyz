@@ -11,9 +11,35 @@
  *   - full_decision: POST /v1/aegis/bank/events (governed decision path)
  */
 import { cpus, totalmem } from "node:os";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Load repo .env so AEGIS_INGEST_DEV_KEY works without manual export.
+{
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+  const envPath = resolve(root, ".env");
+  if (existsSync(envPath)) {
+    for (const line of readFileSync(envPath, "utf8").split(/\r?\n/)) {
+      if (!line || line.trim().startsWith("#") || !line.includes("=")) continue;
+      const i = line.indexOf("=");
+      const k = line.slice(0, i).trim();
+      let v = line.slice(i + 1).trim();
+      if (
+        (v.startsWith('"') && v.endsWith('"')) ||
+        (v.startsWith("'") && v.endsWith("'"))
+      ) {
+        v = v.slice(1, -1);
+      }
+      if (k && process.env[k] === undefined) process.env[k] = v;
+    }
+  }
+}
 
 const base = process.env.AEGIS_API_BASE ?? "http://localhost:8080";
-const key = process.env.AEGIS_INGEST_KEY;
+const key =
+  process.env.AEGIS_INGEST_KEY?.trim() ||
+  process.env.AEGIS_INGEST_DEV_KEY?.trim();
 const n = Number(process.env.BENCH_N ?? "1000");
 const concurrency = Math.max(1, Number(process.env.BENCH_CONCURRENCY ?? "20"));
 

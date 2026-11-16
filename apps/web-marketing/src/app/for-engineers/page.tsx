@@ -37,7 +37,7 @@ export default function ForEngineersPage() {
         <h2>OPA / WASM</h2>
         <p>
           Open Policy Agent can compile Rego policies to WebAssembly. Aegis can
-          evaluate those bundles when you bring Rego; the default bank packs use
+          evaluate those bundles when you bring Rego; shipped policy packs use
           structured rules without requiring Rego.
         </p>
 

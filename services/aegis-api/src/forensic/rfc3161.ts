@@ -103,7 +103,7 @@ export type Rfc3161ClientResult = {
  */
 export async function requestRfc3161Timestamp(
   messageHash: string,
-  options?: { tsaUrl?: string; fetchImpl?: typeof fetch },
+  options?: { tsaUrl?: string; fetchImpl?: typeof fetch; timeoutMs?: number },
 ): Promise<Rfc3161ClientResult> {
   const tsaUrl =
     options?.tsaUrl?.trim() || process.env.AEGIS_TSA_URL?.trim() || "";
@@ -131,7 +131,7 @@ export async function requestRfc3161Timestamp(
       body: Buffer.from(req),
     };
     if (!options?.fetchImpl && typeof AbortSignal !== "undefined" && "timeout" in AbortSignal) {
-      init.signal = AbortSignal.timeout(20_000);
+      init.signal = AbortSignal.timeout(options?.timeoutMs ?? 20_000);
     }
     const response = await fetchFn(tsaUrl, init);
     if (!response.ok) {

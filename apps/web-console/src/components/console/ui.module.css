@@ -89,6 +89,21 @@
   margin-bottom: 1.75rem;
 }
 
+/* Three equal report chooser cards (full row width). */
+.reportGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  width: 100%;
+}
+
+@media (max-width: 56rem) {
+  .reportGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -427,6 +442,20 @@
   gap: 1rem;
   max-width: 28rem;
   width: 100%;
+}
+
+/* Forms that should breathe on large screens (delegations, similar). */
+.formGridWide {
+  display: grid;
+  gap: 1rem 1.25rem;
+  width: 100%;
+  max-width: 52rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  align-items: end;
+}
+
+.formGridWide .formRow {
+  grid-column: 1 / -1;
 }
 
 .formRow {

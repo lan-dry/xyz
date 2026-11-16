@@ -55,6 +55,7 @@ describe("console route auth matrix — 401 without session", () => {
     const path = route.path
       .replace(":policyId", "pol_x")
       .replace(":eventId", "evt_x")
+      .replace(":traceId", "tr_x")
       .replace(":reportId", "sealed_receipts")
       .replace(":id", "apr_x");
     it(`${route.method} ${route.path} → ${route.anon} without cookie`, async () => {

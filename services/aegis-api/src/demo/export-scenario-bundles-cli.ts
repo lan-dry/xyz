@@ -13,9 +13,10 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import * as ed from "@noble/ed25519";
+import "../db/load-env.js";
+import { applyExportDemoDb } from "./export-demo-db.js";
 import { getPool, closePool } from "../db/pool.js";
 import { verifyForensicBundle } from "../forensic/verify-bundle.js";
-import "../db/load-env.js";
 
 /** All scenarios that can produce DB receipts on the live path. */
 const SCENARIO_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -40,12 +41,24 @@ async function receiptDevPublicKeyB64(): Promise<{
 async function loadOrgId(client: {
   query: (
     sql: string,
-  ) => Promise<{ rows: Array<{ organization_id: string }> }>;
+    params?: unknown[],
+  ) => Promise<{ rows: Array<{ organization_id: string; n?: string }> }>;
 }): Promise<string> {
   const fromEnv =
     process.env.AEGIS_ORG_ID?.trim() ||
     process.env.AEGIS_ORGANIZATION_ID?.trim();
   if (fromEnv) return fromEnv;
+  // Prefer the org that actually has forensic receipts (not Northwind fixture).
+  const withReceipts = await client.query(
+    `SELECT organization_id, COUNT(*)::text AS n
+     FROM forensic_receipt
+     GROUP BY organization_id
+     ORDER BY COUNT(*) DESC
+     LIMIT 1`,
+  );
+  if (withReceipts.rows[0]?.organization_id) {
+    return withReceipts.rows[0].organization_id;
+  }
   const row = await client.query(
     `SELECT organization_id FROM organization ORDER BY created_at ASC NULLS LAST LIMIT 1`,
   );
@@ -62,6 +75,20 @@ async function exportBundles(outDir: string): Promise<{
   const bundlePaths: string[] = [];
   try {
     const orgId = await loadOrgId(client);
+    const total = await client.query<{ n: string }>(
+      `SELECT COUNT(*)::text AS n FROM forensic_receipt WHERE organization_id = $1`,
+      [orgId],
+    );
+    const dbHost = (() => {
+      try {
+        return new URL(process.env.DATABASE_URL!).host + new URL(process.env.DATABASE_URL!).pathname;
+      } catch {
+        return "(unparsed)";
+      }
+    })();
+    console.log(
+      `export DB=${dbHost} org=${orgId} forensic_receipts=${total.rows[0]?.n ?? "0"}`,
+    );
     mkdirSync(outDir, { recursive: true });
 
     const keys = await client.query<{ key_id: string; public_key_b64: string }>(
@@ -79,6 +106,8 @@ async function exportBundles(outDir: string): Promise<{
     for (const sid of SCENARIO_IDS) {
       // Latest single receipt for this scenario (preserves signature fields).
       // Bundle of one avoids cross-run seq gaps while still verifying seal + sig.
+      // Live HTTP runners use apr_http_% (and scenario 11 uses demo_s11_%);
+      // sealIntake uses demo_s{N}_%.
       const receipts = await client.query<{
         receipt_id: string;
         seq: string;
@@ -95,13 +124,40 @@ async function exportBundles(outDir: string): Promise<{
                 sig_value_b64, body, case_id, outcome
          FROM forensic_receipt
          WHERE organization_id = $1
-           AND (case_id LIKE $2 OR body->>'case_id' LIKE $2)
+           AND (
+             case_id LIKE $2 OR body->>'case_id' LIKE $2
+             OR case_id LIKE $3 OR body->>'case_id' LIKE $3
+           )
          ORDER BY issued_at DESC
          LIMIT 1`,
-        [orgId, `demo_s${sid}_%`],
+        [orgId, `demo_s${sid}_%`, "apr_http_%"],
       );
 
-      const rows = receipts.rows;
+      let rows = receipts.rows;
+      if (rows.length === 0) {
+        // Fallback: latest org receipt (HTTP scenarios that don't share a case prefix).
+        const fallback = await client.query<{
+          receipt_id: string;
+          seq: string;
+          prev_hash: string | null;
+          receipt_hash: string;
+          key_id: string;
+          sig_alg: string;
+          sig_value_b64: string;
+          body: Record<string, unknown>;
+          case_id: string | null;
+          outcome: string;
+        }>(
+          `SELECT receipt_id, seq::text, prev_hash, receipt_hash, key_id, sig_alg,
+                  sig_value_b64, body, case_id, outcome
+           FROM forensic_receipt
+           WHERE organization_id = $1
+           ORDER BY issued_at DESC
+           LIMIT 1`,
+          [orgId],
+        );
+        rows = fallback.rows;
+      }
 
       const sealed: Array<{
         event_id: string;
@@ -110,9 +166,10 @@ async function exportBundles(outDir: string): Promise<{
       }> = [];
       const signedReceipts = rows.map((r) => {
         const body =
-          r.body && typeof r.body === "object"
-            ? { ...r.body }
+          r.body && typeof r.body === "object" && !Array.isArray(r.body)
+            ? { ...(r.body as Record<string, unknown>) }
             : {};
+        delete body.seq;
         const sealedEvents = Array.isArray(
           (body as { sealed_events?: unknown }).sealed_events,
         )
@@ -146,7 +203,16 @@ async function exportBundles(outDir: string): Promise<{
       console.log(`wrote ${path} receipts=${signedReceipts.length}`);
     }
 
-    // Consecutive chain of at least five receipts for gap/swap/tamper tests.
+    // Consecutive tip chain of five receipts for gap/swap/tamper tests.
+    const tip = await client.query<{ seq: string }>(
+      `SELECT seq::text FROM forensic_receipt
+       WHERE organization_id = $1
+       ORDER BY seq DESC
+       LIMIT 1`,
+      [orgId],
+    );
+    const tipSeq = Number(tip.rows[0]?.seq ?? 0);
+    const chainStart = tipSeq >= 5 ? tipSeq - 4 : 1;
     const chain = await client.query<{
       receipt_id: string;
       seq: string;
@@ -162,19 +228,22 @@ async function exportBundles(outDir: string): Promise<{
               sig_value_b64, body, outcome
        FROM forensic_receipt
        WHERE organization_id = $1
-       ORDER BY seq ASC
-       LIMIT 20`,
-      [orgId],
+         AND seq >= $2 AND seq <= $3
+       ORDER BY seq ASC`,
+      [orgId, chainStart, tipSeq],
     );
     if (chain.rows.length >= 5) {
-      const slice = chain.rows.slice(-5);
       const sealed: Array<{
         event_id: string;
         event_hash: string;
         sequence_num: number;
       }> = [];
-      const signedReceipts = slice.map((r) => {
-        const body = r.body && typeof r.body === "object" ? { ...r.body } : {};
+      const signedReceipts = chain.rows.map((r) => {
+        const body =
+          r.body && typeof r.body === "object" && !Array.isArray(r.body)
+            ? { ...(r.body as Record<string, unknown>) }
+            : {};
+        delete body.seq;
         const sealedEvents = Array.isArray(
           (body as { sealed_events?: unknown }).sealed_events,
         )
@@ -210,10 +279,12 @@ async function exportBundles(outDir: string): Promise<{
         ),
       );
       bundlePaths.push(chainPath);
-      console.log(`wrote ${chainPath} receipts=${signedReceipts.length}`);
+      console.log(
+        `wrote ${chainPath} receipts=${signedReceipts.length} seq=${chainStart}..${tipSeq}`,
+      );
     } else {
       console.warn(
-        `chain-5 skipped: only ${chain.rows.length} receipts (need >=5)`,
+        `chain-5 skipped: only ${chain.rows.length} receipts in ${chainStart}..${tipSeq} (need >=5)`,
       );
     }
 
@@ -264,6 +335,9 @@ function tamperBundle(src: string, dest: string): void {
 }
 
 async function main() {
+  // After load-env: force demo DB/org (pool is created lazily on first getPool).
+  applyExportDemoDb();
+
   const args = process.argv.slice(2);
   const outIdx = args.indexOf("--out");
   const outDir = resolve(
@@ -277,23 +351,37 @@ async function main() {
 
   const { bundlePaths, keysPath } = await exportBundles(outDir);
   let failed = 0;
+  let withReceipts = 0;
 
   for (const path of bundlePaths) {
+    const bundle = JSON.parse(readFileSync(path, "utf8")) as {
+      receipts: unknown[];
+      scenario_id?: unknown;
+    };
+    if (bundle.receipts?.length) withReceipts++;
     const v = await runVerify(path, keysPath);
     console.log(`verify ${path}: ${v.ok ? "PASS" : "FAIL"}`);
     if (!v.ok) {
       console.log(v.output.slice(0, 800));
-      const bundle = JSON.parse(readFileSync(path, "utf8")) as {
-        receipts: unknown[];
-      };
       if (!bundle.receipts?.length) {
         console.log(
-          "  (no receipts in DB for this scenario — run scenario:live first)",
+          "  (no receipts in DB for this scenario — run scenario:live first; check DATABASE_URL matches the API)",
         );
+        failed++;
       } else {
         failed++;
       }
     }
+  }
+  if (withReceipts === 0) {
+    console.error(
+      "FAIL: no forensic receipts in DB for this org.\n" +
+        "  demo:up runs demo:reset (wipes receipts). Seed them first, then export:\n" +
+        "    pnpm --filter aegis-api scenario:live -- --approvals=http\n" +
+        "    pnpm --filter aegis-api export:scenario-bundles\n" +
+        "  (or: pnpm demo:rehearse, which includes export)",
+    );
+    failed++;
   }
 
   const sample = bundlePaths[0];
