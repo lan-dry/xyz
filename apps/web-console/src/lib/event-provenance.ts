@@ -72,7 +72,12 @@ export function buildEventProvenance(input: {
       would_have: str(payload.would_have),
     });
     const bankLines: Array<{ label: string; value: string }> = [];
-    if (amt !== null) bankLines.push({ label: "Amount", value: formatRwf(amt, cur.toUpperCase()) });
+    if (amt !== null) {
+      bankLines.push({
+        label: "Amount",
+        value: formatRwf(amt, cur?.toUpperCase() ?? null),
+      });
+    }
     if (rules.length > 0) bankLines.push({ label: "Rules that applied", value: rules.join(", ") });
     bankLines.push({
       label: "Outcome",
