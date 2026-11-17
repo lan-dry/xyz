@@ -78,9 +78,9 @@ the wrong-key story (401, no case), env-only start (key never written to disk) a
 
 ## Stories
 
-Same ids, titles and synthetic data as the console simulator (`/aegis/demo/simulator` on a local demo).
-The outcome of each story comes from the API. The escalation story shows a held case that escalates
-after **2 real minutes** (configuration on the tenant's held loan rules, not a demo clock). The two
+Story ids, titles and synthetic data live in `stories.mjs`. The outcome of each story comes from the
+normal API (organization.is_demo tenant). The escalation story shows a held case that escalates after
+**2 real minutes** (configuration on the tenant's held loan rules; there is no demo clock). The two
 delegation stories need a delegation granted on the console's **Delegations** page first.
 
 ## Aegis unreachable
@@ -104,6 +104,6 @@ simulator reports the same organisation id as the smoke-test tenant.
 
 ## Local fallback
 
-`pnpm demo:up` still starts the local stack with the in-console simulator. Use that when there is no
-network or the hosted tenant is unavailable. (The in-console simulator needs `AEGIS_DEMO_MODE`, which a
-production API refuses to start with; on the hosted stack this service is the simulator.)
+`pnpm demo:up` starts local Postgres and a **normal** API, then provisions/seeds Demo Bank
+(`pilot:provision-demo-tenant` + `pilot:seed-history`). Drive stories with this standalone simulator
+(`pnpm bank-simulator`) — there is no in-console simulator and no demo mode.

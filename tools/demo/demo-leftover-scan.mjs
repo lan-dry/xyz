@@ -7,18 +7,23 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolvePersonaPassword } from "./load-tenant.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const outDir = join(root, "docs", "screens", "menu");
 mkdirSync(outDir, { recursive: true });
 
-const pass = process.env.AEGIS_DEMO_APPROVAL_PASSWORD?.trim();
-if (!pass || pass.length < 10) {
-  console.error("Set AEGIS_DEMO_APPROVAL_PASSWORD (min 10 chars).");
+const resolved = resolvePersonaPassword(root, { preferLocal: true });
+if (resolved.error) {
+  console.error(resolved.error);
   process.exit(1);
 }
+const pass = resolved.password;
 const base = process.env.CONSOLE_ORIGIN?.trim() || "http://localhost:3000";
-const email = process.env.AEGIS_DEMO_SCREEN_USER?.trim() || "admin@demo.test";
+const email =
+  process.env.AEGIS_DEMO_SCREEN_USER?.trim() ||
+  resolved.data?.personas?.admin?.email?.trim() ||
+  "admin@demo.test";
 
 const PAGES = [
   ["01-overview.png", "/aegis", "Overview"],
@@ -48,6 +53,8 @@ const PAGES = [
 ];
 
 const REQUIRED_NAV = ["Rules", "Cases", "Reports", "Access log", "Delegations"];
+/** Must not appear in the console nav after demo-mode removal. */
+const FORBIDDEN_NAV = ["Simulator"];
 
 const script = `
 const { chromium } = require('playwright');
@@ -74,6 +81,7 @@ const LEFTOVERS = [
   const password = ${JSON.stringify(pass)};
   const pages = ${JSON.stringify(PAGES)};
   const requiredNav = ${JSON.stringify(REQUIRED_NAV)};
+  const forbiddenNav = ${JSON.stringify(FORBIDDEN_NAV)};
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
@@ -90,17 +98,22 @@ const LEFTOVERS = [
   await page.goto(base + '/aegis', { waitUntil: 'networkidle', timeout: 60000 });
   await page.waitForTimeout(800);
   const navText = await page.locator('[data-console-shell]').innerText();
+  const navPrimary = navText.split('PRODUCTS')[0] || navText;
   const navChecks = {
     demo_org_tag: await page.locator('[data-demo-org-tag]').count() > 0,
     no_demo_strip: await page.locator('[data-demo-strip]').count() === 0,
-    no_simulator_nav: !/\\bSimulator\\b/.test(navText.split('PRODUCTS')[0] || navText),
+    no_simulator_nav: !/\\bSimulator\\b/.test(navPrimary),
     required: Object.fromEntries(requiredNav.map((l) => [l, navText.includes(l)])),
+    forbidden: Object.fromEntries(forbiddenNav.map((l) => [l, !navPrimary.includes(l)])),
   };
   await page.screenshot({ path: path.join(outDir, '00-production-style-overview.png'), fullPage: false });
   fs.writeFileSync(path.join(outDir, 'production-style-checks.json'), JSON.stringify({ navChecks }, null, 2));
   console.log('NAV', JSON.stringify(navChecks));
   for (const [label, ok] of Object.entries(navChecks.required)) {
     console.log((ok ? 'PASS' : 'FAIL') + '  nav has ' + label);
+  }
+  for (const [label, ok] of Object.entries(navChecks.forbidden)) {
+    console.log((ok ? 'PASS' : 'FAIL') + '  nav has no ' + label);
   }
 
   function scan(text) {
@@ -178,7 +191,11 @@ const LEFTOVERS = [
   }, null, 2));
 
   const failed = results.filter((r) => r.status !== 'ok');
-  const navFail = Object.values(navChecks.required).some((v) => !v) || !navChecks.no_simulator_nav || !navChecks.no_demo_strip;
+  const navFail =
+    Object.values(navChecks.required).some((v) => !v) ||
+    Object.values(navChecks.forbidden).some((v) => !v) ||
+    !navChecks.no_simulator_nav ||
+    !navChecks.no_demo_strip;
   if (failed.length || navFail) {
     console.error('AUDIT_FAIL pages=' + failed.length + ' navFail=' + navFail);
     process.exit(1);

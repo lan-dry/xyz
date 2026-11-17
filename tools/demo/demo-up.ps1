@@ -1,8 +1,4 @@
-# PowerShell wrapper for demo:up
+# PowerShell wrapper for demo:up (local stack: normal API, real timers, no demo mode)
 $ErrorActionPreference = "Stop"
-if (-not $env:AEGIS_DEMO_APPROVAL_PASSWORD) {
-  Write-Error "Set AEGIS_DEMO_APPROVAL_PASSWORD (min 10 chars). No default."
-  exit 1
-}
-$env:AEGIS_DEMO_MODE = "true"
-node "$PSScriptRoot/demo-up.mjs"
+node "$PSScriptRoot/demo-up.mjs" @args
+exit $LASTEXITCODE

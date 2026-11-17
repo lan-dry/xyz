@@ -5,12 +5,13 @@
  * then triggers expire+escalate via the console approvals list and prints the
  * approval metadata / linked receipt evidence.
  *
- * Needs: API + ID + console session, BANK_SIMULATOR_URL, AEGIS_DEMO_APPROVAL_PASSWORD
+ * Needs: API + ID + console session, BANK_SIMULATOR_URL, and a provisioning tenant file.
  * Does NOT use the demo clock.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolvePersonaPassword } from "./load-tenant.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const envPath = join(root, ".env");
@@ -29,20 +30,31 @@ if (existsSync(envPath)) {
   }
 }
 
-const password = process.env.AEGIS_DEMO_APPROVAL_PASSWORD?.trim();
-if (!password || password.length < 10) {
-  console.error("Set AEGIS_DEMO_APPROVAL_PASSWORD");
+const resolved = resolvePersonaPassword(root, { preferLocal: true });
+if (resolved.error) {
+  console.error(resolved.error);
   process.exit(1);
 }
-const consoleOrigin = (process.env.CONSOLE_ORIGIN || "http://localhost:3000").replace(/\/+$/, "");
+const password = resolved.password;
+const local = resolved.data;
 const apiBase = (
   process.env.AEGIS_API_URL ||
   process.env.AEGIS_API_BASE ||
+  local?.api_base ||
   "http://127.0.0.1:8088"
 ).replace(/\/+$/, "");
 const simUrl = (process.env.BANK_SIMULATOR_URL || "http://127.0.0.1:4000").replace(/\/+$/, "");
 const simPass = process.env.BANK_SIMULATOR_PASS?.trim() || "";
 const waitMs = Number(process.env.ESCALATION_WAIT_MS || 2 * 60_000 + 15_000);
+const ingestKey =
+  process.env.AEGIS_INGEST_KEY?.trim() ||
+  process.env.DEMO_BANK_INGEST_KEY?.trim() ||
+  local?.ingest_key?.trim() ||
+  "";
+if (ingestKey) {
+  process.env.AEGIS_INGEST_KEY = ingestKey;
+  process.env.DEMO_BANK_INGEST_KEY = ingestKey;
+}
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));

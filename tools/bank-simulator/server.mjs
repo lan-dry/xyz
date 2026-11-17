@@ -36,7 +36,7 @@
  * DATA_DIR/config.json (mode 0600) because the server needs the plaintext to call the API.
  * Every JSON response is also scrubbed of the raw key as a last line of defence.
  * The passphrase and session secret are never logged or returned.
- * The local demo (pnpm demo:up) and its console simulator remain the offline fallback.
+ * Locally, pnpm demo:up provisions Demo Bank on a normal local API; point this simulator at it.
  */
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { existsSync } from "node:fs";

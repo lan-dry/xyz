@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Capture bank_demo console screenshots into docs/screens/.
- * Requires: demo:up (console on :3000), AEGIS_DEMO_APPROVAL_PASSWORD, Playwright.
+ * Capture Demo Bank console screenshots into docs/screens/.
+ * Requires: demo:up (console on :3000), Playwright, and a tenant file with persona passwords.
+ * The simulator is a standalone app (tools/bank-simulator), not a console page, so it has no shot here.
  *
  * Two passes, both written as 1920x1080 images:
  *   zoom 1    : viewport 1920x1080 @ deviceScaleFactor 1
@@ -20,19 +21,24 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolvePersonaPassword } from "./load-tenant.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const outDir = join(root, "docs", "screens");
 mkdirSync(outDir, { recursive: true });
 
-const pass = process.env.AEGIS_DEMO_APPROVAL_PASSWORD?.trim();
-if (!pass || pass.length < 10) {
-  console.error("Set AEGIS_DEMO_APPROVAL_PASSWORD (min 10 chars).");
+const resolved = resolvePersonaPassword(root, { preferLocal: true });
+if (resolved.error) {
+  console.error(resolved.error);
   process.exit(1);
 }
+const pass = resolved.password;
 
 const base = process.env.CONSOLE_ORIGIN?.trim() || "http://localhost:3000";
-const email = process.env.AEGIS_DEMO_SCREEN_USER?.trim() || "admin@demo.test";
+const email =
+  process.env.AEGIS_DEMO_SCREEN_USER?.trim() ||
+  resolved.data?.personas?.admin?.email?.trim() ||
+  "admin@demo.test";
 
 /** [file, path]. A path of "@first-case" opens the first case linked from the live feed. */
 const SHOTS = [
@@ -40,7 +46,7 @@ const SHOTS = [
   ["02-live-feed.png", "/aegis/live"],
   ["03-approvals.png", "/aegis/approvals"],
   ["04-rules.png", "/aegis/policies"],
-  ["05-simulator.png", "/aegis/demo/simulator"],
+  ["05-delegations.png", "/aegis/delegations"],
   ["06-verify.png", "/aegis/verify"],
   ["07-reports.png", "/aegis/reports"],
   ["08-access-log.png", "/aegis/logs"],
@@ -109,7 +115,7 @@ const path = require('path');
       if (pathName === '@first-case') target = casePath;
       if (pathName === '@first-case-replay') target = casePath ? casePath + '/replay' : null;
       if (!target) {
-        console.warn('skip ' + name + ' (no case on the live feed; run demo:seed-story)');
+        console.warn('skip ' + name + ' (no case on the live feed; run pilot:seed-history)');
         continue;
       }
       await page.goto(base + target, { waitUntil: 'networkidle', timeout: 60000 }).catch(() => {});
