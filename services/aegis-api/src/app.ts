@@ -12,12 +12,6 @@ import { consoleRoutes } from "./routes/console/index.js";
 import { postEvent } from "./routes/events.js";
 import { postBankEvent } from "./routes/bank-events.js";
 import { postBankEventBatch } from "./routes/bank-batch.js";
-import { postDemoScenariosRun } from "./routes/demo-scenarios.js";
-import {
-  getSimulatorStories,
-  postSimulatorReset,
-  postSimulatorStory,
-} from "./routes/demo-simulator.js";
 import { getEventInclusionProof } from "./routes/inclusion-proof.js";
 import { postPolicyEvaluate } from "./routes/policy-evaluate.js";
 import { gatewayRoutes } from "./routes/gateway.js";
@@ -98,12 +92,6 @@ export function createApp(): Hono {
   /** Batch CSV/JSONL import — always record-only; dry_run defaults true. */
   aegis.post("/bank/events/batch", postBankEventBatch);
   aegis.post("/governed/events/batch", postBankEventBatch);
-  /** Demo theatre — all 12 scenarios over HTTP (AEGIS_DEMO_MODE required). */
-  aegis.post("/demo/scenarios/run", postDemoScenariosRun);
-  /** Bank simulator (demo only; ingest key held by the console server route). */
-  aegis.get("/demo/simulator/stories", getSimulatorStories);
-  aegis.post("/demo/simulator/story", postSimulatorStory);
-  aegis.post("/demo/simulator/reset", postSimulatorReset);
   aegis.post("/policy/evaluate", postPolicyEvaluate);
   aegis.route("/", gatewayRoutes);
   aegis.post("/approvals/request", postApprovalRequest);

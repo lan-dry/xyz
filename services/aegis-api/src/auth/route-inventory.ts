@@ -45,11 +45,7 @@ export const AEGIS_ROUTE_RULES: RouteRule[] = [
   { method: "POST", path: "/v1/aegis/governed/events", anon: 401, allowRoles: ["ingest"] },
   { method: "POST", path: "/v1/aegis/bank/events", anon: 401, allowRoles: ["ingest"] },
   { method: "POST", path: "/v1/aegis/approvals/request", anon: 401, allowRoles: ["ingest"] },
-  { method: "POST", path: "/v1/aegis/demo/scenarios/run", anon: 401, allowRoles: ["ingest"] },
   { method: "POST", path: "/v1/aegis/bank/events/batch", anon: 401, allowRoles: ["ingest"] },
-  // Demo simulator: unauthenticated → 403 demo_mode_required (off) or 401 (on).
-  { method: "POST", path: "/v1/aegis/demo/simulator/story", anon: 401, allowRoles: ["ingest"] },
-  { method: "POST", path: "/v1/aegis/demo/simulator/reset", anon: 401, allowRoles: ["ingest"] },
 ];
 
 export const ALL_ROUTE_RULES = [...CONSOLE_ROUTE_RULES, ...AEGIS_ROUTE_RULES];

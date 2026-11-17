@@ -66,6 +66,7 @@ export type BankDecisionResponse = {
   event_hash: string | null;
   sequence_num: number | null;
   flags?: {
+    /** Historical only — new decisions never set this (demo clock removed). */
     demo_clock?: boolean;
     decided_without_aegis?: boolean;
     provisional?: boolean;

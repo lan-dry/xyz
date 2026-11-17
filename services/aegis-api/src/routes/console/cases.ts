@@ -44,7 +44,7 @@ export type CaseSummary = {
   requester: string | null;
   seal: CaseSealStatus;
   demo_filler: boolean;
-  /** Synthetic back-dated history from demo:seed-story (labelled on screens). */
+  /** Synthetic back-dated history from pilot:seed-history (labelled on screens). */
   demo_history: boolean;
   created_at: string | null;
 };

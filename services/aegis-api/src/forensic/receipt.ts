@@ -5,6 +5,7 @@
 
 import { createHash, randomUUID } from "node:crypto";
 import * as ed from "@noble/ed25519";
+import { nowIso } from "../time/clock.js";
 
 function canonicalize(value: unknown): string {
   return JSON.stringify(sortValue(value));
@@ -73,6 +74,7 @@ export type ForensicReceiptBody = {
   timeline?: Array<Record<string, unknown>>;
   attributes?: Record<string, unknown>;
   flags?: {
+    /** Historical only — new receipts never set this (demo clock removed). */
     demo_clock?: boolean;
     decided_without_aegis?: boolean;
     /** True when citing a provisional (non-APS) event or missing agent key. */
@@ -241,7 +243,7 @@ export function buildReceiptBody(input: {
     timeline: input.timeline,
     attributes: input.attributes,
     flags: input.flags,
-    issued_at: input.issued_at ?? new Date().toISOString(),
+    issued_at: input.issued_at ?? nowIso(),
     key_id: input.key_id,
   };
 }

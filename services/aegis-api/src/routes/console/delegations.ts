@@ -24,6 +24,7 @@ import {
   requireConsoleSession,
   type ConsoleVariables,
 } from "../../middleware/console-session.js";
+import { nowDate } from "../../time/clock.js";
 
 export const delegationRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
@@ -34,7 +35,7 @@ export const DELEGATION_REVOKER_ROLE = "credit_manager";
 
 export function resolveExpiry(
   body: { expires_at?: string; duration_minutes?: number },
-  now: Date = new Date(),
+  now: Date = nowDate(),
 ): Date | { error: string } {
   let expires: Date;
   if (typeof body.duration_minutes === "number" && Number.isFinite(body.duration_minutes)) {

@@ -3,6 +3,7 @@
  */
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
+import { nowDate } from "../time/clock.js";
 
 export type ApprovalDelegateRow = {
   delegate_id: string;
@@ -28,7 +29,7 @@ export async function listActiveDelegatedRoles(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
   membershipId: string,
-  now: Date = new Date(),
+  now: Date = nowDate(),
 ): Promise<string[]> {
   if (!(await tableExists(client))) return [];
   const result = await client.query<{ role_key: string }>(
@@ -118,7 +119,7 @@ export type DelegationListRow = {
 
 export function delegationStatus(
   row: { expires_at: Date; revoked_at: Date | null },
-  now: Date = new Date(),
+  now: Date = nowDate(),
 ): "active" | "expired" | "revoked" {
   if (row.revoked_at) return "revoked";
   return row.expires_at.getTime() > now.getTime() ? "active" : "expired";
@@ -147,7 +148,7 @@ export async function listApprovalDelegates(
       LIMIT $2`,
     [organizationId, limit],
   );
-  const now = new Date();
+  const now = nowDate();
   return result.rows.map((r) => ({ ...r, status: delegationStatus(r, now) }));
 }
 

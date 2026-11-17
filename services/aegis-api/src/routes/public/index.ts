@@ -1,11 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { getPool } from "../../db/pool.js";
-import { isDemoModeAllowed } from "../../bank/demo-clock.js";
 import {
-  DEMO_BANK_REHEARSAL_SLUG,
   DEMO_BANK_SLUG,
-} from "../../db/demo-bank-fixture.js";
+  sampleBundlesAccess,
+} from "../../bank/demo-tenant.js";
 import { loadDemoSampleBundles } from "../../demo/sample-bundles.js";
 import {
   auditReceiptAccess,
@@ -91,13 +90,13 @@ publicRoutes.get("/keys.json", async (c) => {
 });
 
 /**
- * Demo only: the latest real Demo Bank evidence bundle and a copy with one RWF
- * amount digit changed after signing, for the "Try with a Demo Bank bundle"
- * panel on Verify. Refused unless AEGIS_DEMO_MODE is on (never in production).
+ * Demo Bank only: latest real evidence bundle + a tampered copy for Verify.
+ * Requires organization.is_demo (not AEGIS_DEMO_MODE).
  */
 publicRoutes.get("/demo/sample-bundles", async (c) => {
   const slug = c.req.query("org")?.trim() || DEMO_BANK_SLUG;
-  if (slug !== DEMO_BANK_SLUG && slug !== DEMO_BANK_REHEARSAL_SLUG) {
+  const slugGate = sampleBundlesAccess(slug, true);
+  if (!slugGate.ok && slugGate.status === 404) {
     return c.json(
       { error: "not_a_demo_org", message: "Sample bundles exist only for Demo Bank." },
       404,
@@ -105,20 +104,18 @@ publicRoutes.get("/demo/sample-bundles", async (c) => {
   }
   const client = await getPool().connect();
   try {
-    // Local AEGIS_DEMO_MODE or a hosted Demo Bank (organization.is_demo) may serve
-    // the try-a-bundle samples. Other orgs never.
     const org = await client.query<{ is_demo: boolean }>(
       `SELECT is_demo FROM organization WHERE slug = $1`,
       [slug],
     );
-    const demoOrg = org.rows[0]?.is_demo === true;
-    if (!isDemoModeAllowed() && !demoOrg) {
+    const access = sampleBundlesAccess(slug, org.rows[0]?.is_demo === true);
+    if (!access.ok) {
       return c.json(
         {
-          error: "demo_mode_required",
+          error: "not_a_demo_org",
           message: "Sample bundles are only available for Demo Bank.",
         },
-        403,
+        access.status,
       );
     }
     const samples = await loadDemoSampleBundles(client, slug);
