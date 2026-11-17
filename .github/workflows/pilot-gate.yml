@@ -45,9 +45,11 @@ jobs:
           --health-timeout 5s
           --health-retries 12
     env:
+      # Superuser matches local demo Postgres (POSTGRES_USER=salanor is superuser there).
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/salanor_test
       AEGIS_BRIDGE_MASTER_KEY: pilot-gate-encryption-key
       NODE_ENV: test
+      CI: "true"
     steps:
       - uses: actions/checkout@v4
 
@@ -62,6 +64,16 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Typecheck in pilot:gate resolves workspace packages via built output.
+      - name: Build workspace dependencies
+        run: >-
+          pnpm
+          --filter "aegis-api^..."
+          --filter "id^..."
+          --filter "@salanor/web-console^..."
+          --filter "@salanor/pilot-agent^..."
+          build
 
       - name: Apply database migrations
         run: pnpm db:migrate

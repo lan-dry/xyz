@@ -58,12 +58,6 @@ import styles from "./workspace.module.css";
 const ACTIVE_THREAD_STORAGE_KEY = "stoa.workspace.activeThreadId";
 const SIDEBAR_COLLAPSED_KEY = "stoa.workspace.sidebarCollapsed";
 
-function formatSize(bytes: number): string {
-  return bytes >= 1024 * 1024
-    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-}
-
 export default function WorkspacePage() {
   const router = useRouter();
   const [session, setSession] = useState<SessionInfo | null>(null);

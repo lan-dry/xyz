@@ -1,0 +1,38 @@
+# False positives + test fixtures only.
+# Historical .env_deploy secrets are NOT allowlisted — rotate them
+# (.cursor-test-compare/remove-demo-mode/gitleaks-classification.txt).
+# CI uses --no-git (current tree). Note: gitleaks v8.21 still honors the
+# legacy singular [allowlist] block when extending the default config.
+title = "salanor"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "False positives and test fixtures"
+paths = [
+  '''kms-ed25519\.ts''',
+  '''key-provider\.ts''',
+  '''\.env\.example''',
+  '''\.example\.json''',
+  '''AEGIS_GOVERNANCE_BRIDGE_MVP\.md''',
+  '''upgrade-migrate-check\.mts''',
+  '''live-scenarios-extended\.ts''',
+  '''\.test\.ts''',
+  '''/test/''',
+  '''node_modules''',
+  '''\.next''',
+  '''\.nx''',
+  '''/dist/''',
+  '''\.cursor-test-compare''',
+]
+regexes = [
+  '''__SET_LOCAL_PASSWORD__''',
+  '''vitest-approval-pass''',
+  '''ECC_NIST_EDWARDS25519''',
+  '''privateKeyB64''',
+  '''1234abcd-12ab-34cd-56ef''',
+  '''AEGIS_SIGNING_PRIVATE_KEY''',
+  '''quality-gate-encryption-key''',
+  '''pilot-gate-encryption-key''',
+]

@@ -19,10 +19,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Free gitleaks CLI — org repos cannot use gitleaks-action without GITLEAKS_LICENSE.
+      - name: Gitleaks (current tree, free CLI)
+        run: |
+          set -euo pipefail
+          VER=8.21.2
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_x64.tar.gz" | tar -xz gitleaks
+          ./gitleaks version
+          if [ -f .gitleaks.toml ]; then
+            ./gitleaks detect --no-git --config=.gitleaks.toml --source=. -v
+          else
+            ./gitleaks detect --no-git --source=. -v
+          fi
 
   sbom:
     runs-on: ubuntu-latest

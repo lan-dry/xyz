@@ -21,7 +21,6 @@ import {
   consoleOrigin,
   oauthCallbackUrl,
   oauthEnabled,
-  type SocialOAuthProvider,
 } from "./oauth-config.js";
 import { generatePkcePair } from "./oauth-pkce.js";
 import { enforceOAuthRateLimit } from "./oauth-rate-limit.js";
