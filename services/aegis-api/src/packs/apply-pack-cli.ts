@@ -2,12 +2,11 @@
  * Apply a demo policy pack (roles, matrix, field policies, rules, workflow) to an org.
  * Usage:
  *   pnpm --filter aegis-api pack:apply -- --pack banking --org <uuid>
- *   pnpm --filter aegis-api pack:apply -- --pack banking --org <uuid> --seed-approvers
- * (--seed-approvers is implied when AEGIS_DEMO_MODE=true and process is non-production)
+ *   pnpm --filter aegis-api pack:apply -- --pack banking --org <uuid> --force
+ *
+ * Approvers come from pilot:provision-demo-tenant invitations, not a demo-mode password seed.
  */
 import "../db/load-env.js";
-import { isDemoModeAllowed } from "../bank/demo-clock.js";
-import { seedDemoApprovalActors } from "../demo/seed-approval-actors.js";
 import { getPool } from "../db/pool.js";
 import { applyDemoPack } from "./apply-pack.js";
 import { loadDemoPack } from "./load.js";
@@ -16,7 +15,11 @@ async function main() {
   const args = process.argv.slice(2);
   const packIdx = args.indexOf("--pack");
   const orgIdx = args.indexOf("--org");
-  const seedActors = args.includes("--seed-approvers") || isDemoModeAllowed();
+  if (args.includes("--seed-approvers")) {
+    console.warn(
+      "--seed-approvers was removed; provision personas via pilot:provision-demo-tenant instead",
+    );
+  }
   const force = args.includes("--force");
   const packName = (packIdx >= 0 ? args[packIdx + 1] : "banking") as
     | "banking"
@@ -51,7 +54,7 @@ async function main() {
     if (keyCount === 0) {
       console.error(
         "ERROR: No active agent signing_key for this org. APS seals will be provisional. " +
-          "Run db:local:pilot-fixture or create a signing key before a pilot demo.",
+          "Provision agents (pilot:provision-demo-tenant) or create a signing key first.",
       );
       if (process.env.AEGIS_PACK_REQUIRE_SIGNING_KEY === "true") {
         process.exit(1);
@@ -61,7 +64,7 @@ async function main() {
     }
     if (!receiptKey) {
       console.warn(
-        "WARN: AEGIS_RECEIPT_SIGNING_KEY_B64 not set \u2014 forensic receipts will not be issued.",
+        "WARN: AEGIS_RECEIPT_SIGNING_KEY_B64 not set — forensic receipts will not be issued.",
       );
     }
 
@@ -72,19 +75,6 @@ async function main() {
       `Done. Active policy ${applied.policyId} pack=${applied.packId}@v${applied.packVersion} combine=${applied.combine}` +
         (force ? " (force overwrite)" : " (insert-only for existing tenant config)"),
     );
-
-    if (seedActors) {
-      if (!isDemoModeAllowed()) {
-        console.warn(
-          "Skipping demo approver seed (need AEGIS_DEMO_MODE=true, non-production process)",
-        );
-      } else {
-        const seeded = await seedDemoApprovalActors(client, orgId);
-        console.log(
-          `Seeded demo approvers (${seeded.emails.join(", ")}); password from AEGIS_DEMO_APPROVAL_PASSWORD only`,
-        );
-      }
-    }
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw err;

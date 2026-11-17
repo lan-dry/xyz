@@ -12,19 +12,24 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolvePersonaPassword } from "./load-tenant.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const outDir = join(root, "docs", "screens", "menu");
 mkdirSync(outDir, { recursive: true });
 
-const pass = process.env.AEGIS_DEMO_APPROVAL_PASSWORD?.trim();
-if (!pass || pass.length < 10) {
-  console.error("Set AEGIS_DEMO_APPROVAL_PASSWORD (min 10 chars).");
+const resolved = resolvePersonaPassword(root, { preferLocal: true });
+if (resolved.error) {
+  console.error(resolved.error);
   process.exit(1);
 }
+const pass = resolved.password;
 
 const base = process.env.CONSOLE_ORIGIN?.trim() || "http://localhost:3000";
-const email = process.env.AEGIS_DEMO_SCREEN_USER?.trim() || "admin@demo.test";
+const email =
+  process.env.AEGIS_DEMO_SCREEN_USER?.trim() ||
+  resolved.data?.personas?.admin?.email?.trim() ||
+  "admin@demo.test";
 
 /** Leftover / pitch-forbidden strings (case-insensitive unless noted). */
 const LEFTOVERS = [

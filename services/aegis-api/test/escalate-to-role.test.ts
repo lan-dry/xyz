@@ -1,11 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   applyEscalateToRoleMetadata,
   evaluateConsoleApprovalAttempt,
 } from "../src/bank/console-approval-guard.js";
-import { listActiveDelegatedRoles } from "../src/bank/approval-delegate.js";
+import { delegationStatus, listActiveDelegatedRoles } from "../src/bank/approval-delegate.js";
 import { checkApprovalAttempt } from "../src/bank/approvals-guard.js";
+import { isEscalationDue } from "../src/bank/escalation.js";
 import { loadDemoPack, packRoles } from "../src/packs/load.js";
+import { getClock, setClockForTests, type Clock } from "../src/time/clock.js";
+
+afterEach(() => {
+  setClockForTests(null);
+});
+
+function fakeClock(ms: number): Clock {
+  return {
+    now: () => new Date(ms),
+    nowMs: () => ms,
+    nowIso: () => new Date(ms).toISOString(),
+  };
+}
 
 describe("escalate_to_role", () => {
   const ladder = packRoles(loadDemoPack("banking"));
@@ -90,6 +104,33 @@ describe("time-bound approval_delegate", () => {
       required_role: "credit_manager",
     });
     expect(expiredOnly.ok).toBe(false);
+  });
+
+  it("injected clock drives delegationStatus and escalation due", () => {
+    const created = new Date("2026-06-01T12:00:00.000Z");
+    const expires = new Date("2026-06-01T13:00:00.000Z");
+    setClockForTests(fakeClock(created.getTime() + 119_000));
+    expect(
+      isEscalationDue(
+        { escalate_after_ms: 120_000, escalate_to_role: "head_of_compliance" },
+        created,
+        getClock().now(),
+      ),
+    ).toBe(false);
+    expect(delegationStatus({ expires_at: expires, revoked_at: null }, getClock().now())).toBe(
+      "active",
+    );
+    setClockForTests(fakeClock(expires.getTime() + 1));
+    expect(
+      isEscalationDue(
+        { escalate_after_ms: 120_000, escalate_to_role: "head_of_compliance" },
+        created,
+        getClock().now(),
+      ),
+    ).toBe(true);
+    expect(delegationStatus({ expires_at: expires, revoked_at: null }, getClock().now())).toBe(
+      "expired",
+    );
   });
 
   it("listActiveDelegatedRoles returns [] when table missing", async () => {

@@ -3,6 +3,7 @@ import type pg from "pg";
 import { digestActionPayload } from "../approvals/action-digest.js";
 import { patchSignedEventPayload } from "../crypto/event-resign.js";
 import { getGovernanceSettings } from "./governance-settings.js";
+import { nowIso } from "../time/clock.js";
 
 export type ApprovalRow = {
   approval_id: string;
@@ -541,7 +542,7 @@ export async function decideApproval(
     voter_email: options?.voterEmail ?? null,
     decision,
     reason: options?.reason ?? null,
-    at: new Date().toISOString(),
+    at: nowIso(),
     ...(options?.delegation ? { delegation: options.delegation } : {}),
   };
   const votes = [...priorVotes, vote];
@@ -601,7 +602,7 @@ export async function decideApproval(
     const { digest, snapshot } = digestActionPayload(payload);
     metadata.approved_action_digest = digest;
     metadata.approved_action_snapshot = snapshot;
-    metadata.approved_action_bound_at = new Date().toISOString();
+    metadata.approved_action_bound_at = nowIso();
   }
 
   await client.query(
@@ -705,7 +706,7 @@ export async function askMoreOnApproval(
         needs_info: {
           note: trimmed,
           by: actorUserId,
-          at: new Date().toISOString(),
+          at: nowIso(),
         },
       }),
       organizationId,
@@ -725,7 +726,7 @@ export async function askMoreOnApproval(
           needs_info: {
             note: trimmed,
             by: actorUserId,
-            at: new Date().toISOString(),
+            at: nowIso(),
           },
         }),
         organizationId,
@@ -783,7 +784,7 @@ export async function reassignApproval(
         reassigned: {
           to: email,
           by: actorUserId,
-          at: new Date().toISOString(),
+          at: nowIso(),
         },
         assignee_email: email,
       }),
@@ -821,7 +822,7 @@ export async function markEscalationDue(
       row.metadata && typeof row.metadata === "object"
         ? { ...(row.metadata as Record<string, unknown>) }
         : {};
-    metadata.escalated_at = new Date().toISOString();
+    metadata.escalated_at = nowIso();
     await client.query(
       `UPDATE approval SET metadata = $1::jsonb
        WHERE organization_id = $2 AND approval_id = $3`,

@@ -4,8 +4,9 @@
  * Idempotent. Creates (or reuses) the hosted "Demo Bank" tenant through the platform
  * provisioning API, flagged is_demo, then: 4 agents + signing bridge, an ingest key,
  * the banking pack (held loan rules escalate after 2 minutes), and invitations for the
- * six personas and the deputy. Bank roles are assigned once each person is a member
- * (re-run after people accept their invitations).
+ * six personas and the deputy. Personas with a password in the tenant file are attached
+ * idempotently (account created or existing account re-joined after a wipe). Email-only
+ * personas still get an invitation. Bank roles are assigned for active members.
  *
  * Needs, in your shell (never in the repo):
  *   PLATFORM_BOOTSTRAP_SECRET   the ID service's bootstrap secret
@@ -28,7 +29,6 @@ import {
   PERSONA_KEYS,
   fail,
   findOrganizationId,
-  httpJson,
   loadTenantFile,
   orgName,
   orgSlug,
@@ -211,14 +211,6 @@ async function ensurePack(session: ConsoleSession): Promise<void> {
   }
 }
 
-function tokenFromInviteUrl(url: string): string | null {
-  try {
-    return new URL(url).searchParams.get("token");
-  } catch {
-    return null;
-  }
-}
-
 type Invite = { invitation_id: string; invite_url: string; email_delivered: boolean };
 
 async function invite(session: ConsoleSession, email: string): Promise<Invite | "exists"> {
@@ -234,41 +226,45 @@ async function invite(session: ConsoleSession, email: string): Promise<Invite | 
   }
 }
 
-async function revokePendingInvite(session: ConsoleSession, email: string): Promise<boolean> {
-  const res = await session.idCall<{
-    invitations: Array<{ invitation_id: string; email: string }>;
-  }>(`/orgs/${session.organizationId}/invitations`);
-  const found = res.data.invitations.find(
-    (i) => i.email.trim().toLowerCase() === email.trim().toLowerCase(),
-  );
-  if (!found) return false;
-  await session.idCall(`/invitations/${encodeURIComponent(found.invitation_id)}`, {
-    method: "DELETE",
-    okStatuses: [200, 204],
-  });
-  return true;
-}
-
-async function acceptForPersona(
+/**
+ * Attach a persona that has a password in the tenant file.
+ * Creates the account on first run; after a wipe, re-joins the surviving account
+ * (no signup-accept / account_exists path). Idempotent.
+ */
+async function ensurePersonaMembership(
   file: TenantFile,
-  token: string,
+  organizationId: string,
   key: PersonaKey,
-): Promise<"accepted" | "failed"> {
+): Promise<string> {
   const persona = file.personas[key];
-  const res = await httpJson<{ error?: string; code?: string }>(
-    `${file.id_base}/v1/id/invitations/signup-accept`,
+  if (!persona.password) {
+    throw new Error(`ensurePersonaMembership called without password for ${key}`);
+  }
+  const res = await platformCall<{ action: "created" | "reused" | "account_created" }>(
+    file,
+    `/organizations/${organizationId}/members`,
     {
-      method: "POST",
-      body: { token, display_name: persona.display_name, password: persona.password },
+      method: "PUT",
+      body: {
+        email: persona.email.trim(),
+        role: "approver",
+        display_name: persona.display_name.trim(),
+        password: persona.password,
+      },
     },
   );
-  if (res.status === 200) return "accepted";
-  log(`  ${key}: could not accept the invitation (${res.data?.code ?? res.status}).`);
-  return "failed";
+  if (res.data.action === "account_created") {
+    return "active (account created with the file password)";
+  }
+  if (res.data.action === "created") {
+    return "active (existing account joined with approver role)";
+  }
+  return "active (membership already present)";
 }
 
 async function inviteEveryone(
   file: TenantFile,
+  organizationId: string,
   admin: ConsoleSession,
 ): Promise<Record<PersonaKey, string>> {
   const status = {} as Record<PersonaKey, string>;
@@ -278,37 +274,41 @@ async function inviteEveryone(
       continue;
     }
     const persona = file.personas[key];
-    let sent = await invite(admin, persona.email.trim());
-    if (sent === "exists" && persona.password) {
-      // Already a member? Or a pending invite whose token we no longer have?
-      const revoked = await revokePendingInvite(admin, persona.email).catch(() => false);
-      if (revoked) sent = await invite(admin, persona.email.trim());
+    if (persona.password) {
+      status[key] = await ensurePersonaMembership(file, organizationId, key);
+      continue;
     }
+    const sent = await invite(admin, persona.email.trim());
     if (sent === "exists") {
       status[key] = "already a member or invited";
       continue;
     }
-    if (persona.password) {
-      const token = tokenFromInviteUrl(sent.invite_url);
-      const outcome = token ? await acceptForPersona(file, token, key) : "failed";
-      status[key] = outcome === "accepted" ? "active (account created with the file password)" : "invited";
-    } else {
-      status[key] = sent.email_delivered
-        ? "invited (email sent, waiting for acceptance)"
-        : "invited (EMAIL NOT DELIVERED: configure Resend, then resend from Members)";
-    }
+    status[key] = sent.email_delivered
+      ? "invited (email sent, waiting for acceptance)"
+      : "invited (EMAIL NOT DELIVERED: configure Resend, then resend from Members)";
   }
   return status;
 }
 
 async function syncBankRoles(session: ConsoleSession, file: TenantFile): Promise<void> {
-  const assignments = (Object.entries(PERSONA_BANK_ROLE) as Array<[PersonaKey, string]>).map(
-    ([key, role]) => ({ email: file.personas[key].email.trim(), role_key: role }),
-  );
+  const bankPersonas = Object.entries(PERSONA_BANK_ROLE) as Array<[PersonaKey, string]>;
+  const assignments = bankPersonas.map(([key, role]) => ({
+    email: file.personas[key].email.trim(),
+    role_key: role,
+  }));
   const res = await session.call<{ assigned_count: number; pending_count: number }>(
     "/demo-tenant/bank-roles",
     { method: "POST", body: { assignments } },
   );
+  const passwordBacked = bankPersonas.filter(([key]) => Boolean(file.personas[key].password)).length;
+  // When every bank-role persona has a password in the tenant file, memberships must already
+  // exist — pending means the ensure step failed.
+  if (res.data.pending_count > 0 && passwordBacked === bankPersonas.length) {
+    fail(
+      `Bank roles still pending for ${res.data.pending_count} persona(s) after membership ensure. ` +
+        `assigned=${res.data.assigned_count}. Check ID platform /organizations/:id/members.`,
+    );
+  }
   log(
     `Bank roles assigned: ${res.data.assigned_count}. Waiting for acceptance: ${res.data.pending_count}.` +
       (res.data.pending_count > 0 ? "\n    Re-run this command after those people accept." : ""),
@@ -352,8 +352,8 @@ async function main(): Promise<void> {
   if (args.has("--skip-invites")) {
     console.log("\nSkipped invitations (--skip-invites).");
   } else {
-    step(6, "Invitations");
-    const status = await inviteEveryone(file, admin);
+    step(6, "Personas (memberships / invitations)");
+    const status = await inviteEveryone(file, organizationId, admin);
     for (const key of PERSONA_KEYS) log(`${key.padEnd(10)} ${status[key]}`);
 
     step(7, "Bank roles");

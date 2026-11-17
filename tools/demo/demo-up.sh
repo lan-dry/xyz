@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
+# Wrapper for demo:up (local stack: normal API, real timers, no demo mode)
 set -euo pipefail
-if [[ -z "${AEGIS_DEMO_APPROVAL_PASSWORD:-}" ]]; then
-  echo "Set AEGIS_DEMO_APPROVAL_PASSWORD (min 10 chars). No default." >&2
-  exit 1
-fi
-export AEGIS_DEMO_MODE=true
-exec node "$(dirname "$0")/demo-up.mjs"
+exec node "$(dirname "$0")/demo-up.mjs" "$@"

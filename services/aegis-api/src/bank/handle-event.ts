@@ -17,12 +17,7 @@ import {
 } from "./repo.js";
 import type { BankEvent, BankDecisionResponse } from "./types.js";
 import type { RuleCombineMode } from "../policy/evaluate-rules.js";
-import { isDemoClockActive } from "./demo-clock.js";
 import { describeDecision } from "./describe-decision.js";
-
-function demoClockActive(): boolean {
-  return isDemoClockActive();
-}
 
 export type HandleBankEventOptions = {
   /** Force evaluate/seal in record-only mode (batch import pilot). */
@@ -56,7 +51,7 @@ export async function handleBankEvent(
       event_id: existing.event_id,
       event_hash: null,
       sequence_num: null,
-      flags: demoClockActive() ? { demo_clock: true } : undefined,
+      flags: undefined,
     };
   }
 
@@ -316,8 +311,7 @@ export async function handleBankEvent(
       event_hash: eventHash,
       sequence_num: sequenceNum,
       flags: {
-        ...(demoClockActive() ? { demo_clock: true } : {}),
-        ...(provisional ? { provisional: true } : {}),
+                ...(provisional ? { provisional: true } : {}),
         evidence_status: "failed",
       },
     };
@@ -367,8 +361,7 @@ export async function handleBankEvent(
         event_hash: null,
         sequence_num: null,
         flags: {
-          ...(demoClockActive() ? { demo_clock: true } : {}),
-          ...(provisional ? { provisional: true } : {}),
+                    ...(provisional ? { provisional: true } : {}),
         },
       };
     }
@@ -400,8 +393,7 @@ export async function handleBankEvent(
     event_hash: eventHash,
     sequence_num: sequenceNum,
     flags: {
-      ...(demoClockActive() ? { demo_clock: true } : {}),
-      ...(provisional ? { provisional: true } : {}),
+            ...(provisional ? { provisional: true } : {}),
       ...(options?.decidedWithoutAegis ? { decided_without_aegis: true } : {}),
       ...(evidenceStatus !== "skipped"
         ? { evidence_status: evidenceStatus }

@@ -1,10 +1,11 @@
 /**
  * Configured escalation: an approval whose metadata carries `escalate_after_ms` +
  * `escalate_to_role` (copied from the rule's obligations when the approval was
- * requested) is raised to that role once the window has elapsed. This reads real
- * elapsed time (created_at vs now()); it never uses the demo clock.
+ * requested) is raised to that role once the window has elapsed.
+ * Uses the injectable Clock (system clock in production; fake clock in tests only).
  */
 import type pg from "pg";
+import { nowDate } from "../time/clock.js";
 import { applyEscalateToRoleMetadata } from "./console-approval-guard.js";
 
 export const ESCALATION_ACTOR = {
@@ -16,7 +17,7 @@ export const ESCALATION_ACTOR = {
 export function isEscalationDue(
   metadata: Record<string, unknown> | null | undefined,
   createdAt: Date,
-  now: Date = new Date(),
+  now: Date = nowDate(),
 ): boolean {
   if (!metadata) return false;
   const after = Number(metadata.escalate_after_ms);
@@ -31,7 +32,7 @@ export function isEscalationDue(
 export async function escalateDueApprovals(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
-  now: Date = new Date(),
+  now: Date = nowDate(),
 ): Promise<string[]> {
   const candidates = await client.query<{
     approval_id: string;

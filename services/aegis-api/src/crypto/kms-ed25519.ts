@@ -22,7 +22,7 @@ import {
 } from "@aws-sdk/client-kms";
 import * as ed from "@noble/ed25519";
 
-export const KMS_KEY_SPEC = "ECC_NIST_EDWARDS25519" as const;
+export const KMS_KEY_SPEC = "ECC_NIST_EDWARDS25519" as const; // gitleaks:allow
 export const KMS_SIGNING_ALGORITHM = "ED25519_SHA_512" as const;
 export const KMS_MESSAGE_TYPE = "RAW" as const;
 

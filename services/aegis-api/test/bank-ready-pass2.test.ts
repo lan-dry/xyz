@@ -3,7 +3,7 @@
  * sample bundles + tamper, extended verify checks, receipt access audit,
  * report preview + plain headings, and route auth.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as ed from "@noble/ed25519";
 import { createApp } from "../src/app.js";
 import {
@@ -252,44 +252,34 @@ describe("demo sample bundles + verify checklist", () => {
   });
 });
 
-describe("demo sample bundles route is demo-only", () => {
-  const prev = {
-    mode: process.env.AEGIS_DEMO_MODE,
-    node: process.env.NODE_ENV,
-    aegis: process.env.AEGIS_ENV,
-  };
-  afterEach(() => {
-    for (const [k, v] of [
-      ["AEGIS_DEMO_MODE", prev.mode],
-      ["NODE_ENV", prev.node],
-      ["AEGIS_ENV", prev.aegis],
-    ] as const) {
-      if (v === undefined) delete process.env[k];
-      else process.env[k] = v;
-    }
-  });
-
-  it("403 when demo mode is off", async () => {
-    delete process.env.AEGIS_DEMO_MODE;
-    const res = await createApp().request("/v1/public/demo/sample-bundles");
-    expect(res.status).toBe(403);
-    expect(((await res.json()) as { error: string }).error).toBe("demo_mode_required");
-  });
-
-  it("403 in production even when demo mode is on", async () => {
-    process.env.AEGIS_DEMO_MODE = "true";
-    process.env.NODE_ENV = "production";
-    const res = await createApp().request("/v1/public/demo/sample-bundles");
-    expect(res.status).toBe(403);
-  });
-
-  it("404 for an org that is not Demo Bank (no database touched)", async () => {
-    process.env.AEGIS_DEMO_MODE = "true";
-    delete process.env.NODE_ENV;
-    delete process.env.AEGIS_ENV;
+describe("demo sample bundles route is is_demo-tenant only", () => {
+  // Route keys off organization.is_demo + slug allow-list.
+  it("404 for an org slug that is not Demo Bank (no database required)", async () => {
     const res = await createApp().request("/v1/public/demo/sample-bundles?org=northwind");
     expect(res.status).toBe(404);
     expect(((await res.json()) as { error: string }).error).toBe("not_a_demo_org");
+  });
+
+  it("sampleBundlesAccess requires both allow-listed slug and is_demo=true", async () => {
+    const { sampleBundlesAccess, DEMO_BANK_SLUG, DEMO_BANK_REHEARSAL_SLUG } =
+      await import("../src/bank/demo-tenant.js");
+    expect(sampleBundlesAccess("northwind", true)).toEqual({
+      ok: false,
+      status: 404,
+      error: "not_a_demo_org",
+    });
+    expect(sampleBundlesAccess(DEMO_BANK_SLUG, false)).toEqual({
+      ok: false,
+      status: 403,
+      error: "not_a_demo_org",
+    });
+    expect(sampleBundlesAccess(DEMO_BANK_SLUG, null)).toEqual({
+      ok: false,
+      status: 403,
+      error: "not_a_demo_org",
+    });
+    expect(sampleBundlesAccess(DEMO_BANK_REHEARSAL_SLUG, true)).toEqual({ ok: true });
+    expect(sampleBundlesAccess(DEMO_BANK_SLUG, true)).toEqual({ ok: true });
   });
 });
 

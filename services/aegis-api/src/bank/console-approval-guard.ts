@@ -12,6 +12,7 @@ import {
 import type { BankRole } from "./authority-matrix.js";
 import { loadBankApprovalRoleContext } from "./repo.js";
 import { getApprovalRich } from "../repo/approvals.js";
+import { nowIso } from "../time/clock.js";
 
 export type ApprovalDecisionBody = {
   reason?: string;
@@ -170,7 +171,7 @@ export function applyEscalateToRoleMetadata(
   next.escalate_to_role = role;
   next.required_role = role;
   next.required_roles = [role];
-  next.escalated_to_role_at = new Date().toISOString();
+  next.escalated_to_role_at = nowIso();
   next.escalated_to_role_by = {
     membership_id: actor.membership_id,
     email: actor.email,

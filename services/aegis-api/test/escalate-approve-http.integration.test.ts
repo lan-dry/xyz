@@ -12,9 +12,9 @@ import { applyEscalateToRoleMetadata } from "../src/bank/console-approval-guard.
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
 import {
-  demoApprovalPassword,
-  seedDemoApprovalActors,
-} from "../src/demo/seed-approval-actors.js";
+  testApprovalPassword,
+  seedTestApprovalActors,
+} from "./helpers/seed-test-approvers.js";
 import { loadDemoPack, packMatrixRows, packRoles } from "../src/packs/load.js";
 import { createApprovalRequest } from "../src/repo/approvals.js";
 import { consoleRoutes } from "../src/routes/console/index.js";
@@ -41,12 +41,10 @@ const privateKeyB64 =
   "mqUA8ONIg7SN0gL8luCakqehaIzp8Lys6ZHMjAoBx/M=";
 
 describeIfDb("escalated approve HTTP (scenario 10 root)", () => {
-  const prevDemo = process.env.AEGIS_DEMO_MODE;
-  const prevPass = process.env.AEGIS_DEMO_APPROVAL_PASSWORD;
+  const prevPass = process.env.AEGIS_TEST_APPROVAL_PASSWORD;
 
   beforeAll(async () => {
-    process.env.AEGIS_DEMO_MODE = "true";
-    process.env.AEGIS_DEMO_APPROVAL_PASSWORD =
+    process.env.AEGIS_TEST_APPROVAL_PASSWORD =
       prevPass && prevPass.length >= 10
         ? prevPass
         : "test-demo-approval-password";
@@ -65,17 +63,15 @@ describeIfDb("escalated approve HTTP (scenario 10 root)", () => {
         packRoles(pack),
         packMatrixRows(pack),
       );
-      await seedDemoApprovalActors(client, ORG);
+      await seedTestApprovalActors(client, ORG);
     } finally {
       client.release();
     }
   });
 
   afterAll(async () => {
-    if (prevDemo === undefined) delete process.env.AEGIS_DEMO_MODE;
-    else process.env.AEGIS_DEMO_MODE = prevDemo;
-    if (prevPass === undefined) delete process.env.AEGIS_DEMO_APPROVAL_PASSWORD;
-    else process.env.AEGIS_DEMO_APPROVAL_PASSWORD = prevPass;
+    if (prevPass === undefined) delete process.env.AEGIS_TEST_APPROVAL_PASSWORD;
+    else process.env.AEGIS_TEST_APPROVAL_PASSWORD = prevPass;
     await closePool();
   });
 
@@ -162,7 +158,7 @@ describeIfDb("escalated approve HTTP (scenario 10 root)", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: "head@demo.test",
-        password: demoApprovalPassword(),
+        password: testApprovalPassword(),
       }),
     });
     expect(login.status).toBe(200);

@@ -201,6 +201,7 @@ components:
           properties:
             demo_clock:
               type: boolean
+              description: Historical only — new receipts never set this (demo clock removed).
             decided_without_aegis:
               type: boolean
     ValidationError:

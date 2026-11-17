@@ -1,18 +1,19 @@
 ﻿# Bank demo runbook — browser only
 
 Presenter path for a bank audit / risk / forensic audience.  
-**Profile (loud demo):** `AEGIS_UI_PROFILE=bank_demo` (set by `pnpm demo:up`) — Simulator strip, demo filler.  
-**Profile (production-style proof):** default console UI + org `is_demo` quiet tag; stories via the **standalone** bank simulator (`BANK_SIMULATOR_URL`), not the in-console Simulator.  
+**Stories:** always from the **standalone bank simulator** (`pnpm bank-simulator`, default `http://127.0.0.1:4000`; hosted: `https://bank-demo.salanor.com`). There is **no** `/aegis/demo/simulator` page in the console and no demo mode, demo clock or reset on the API: the console and API are the normal ones, the tenant is **Demo Bank** (`is_demo`).  
+**Profile:** `AEGIS_UI_PROFILE=bank_demo` (set by `pnpm demo:up`) for the loud demo look, or the default console UI + the quiet `is_demo` tag for a production-style proof.  
 **Viewport:** 1920×1080 and browser zoom 125%. Clean Chrome profile. No terminal during the pitch.
 
-Standing: org **Demo Bank**, pending queue empty, live feed showing realistic historical cases (from `demo:seed-story` / `pilot:seed-history`), active policy labelled **v3**. **v4 is created live** in §4 (dual publish), never pre-seeded.
+Standing: org **Demo Bank**, pending queue empty, live feed showing realistic historical cases (from `pilot:seed-history`), active policy labelled **v3**. **v4 is created live** in §4 (dual publish), never pre-seeded.
 
 ---
 
 ## 0. Open clean
 
 1. Console: `http://localhost:3000/aegis` (after `pnpm demo:up`).
-2. Sign in as `admin@demo.test` (password = `AEGIS_DEMO_APPROVAL_PASSWORD`).
+1a. Simulator: `pnpm bank-simulator` in a second terminal (or open `https://bank-demo.salanor.com`), configured with Demo Bank's ingest key and organisation id (Setup, or `AEGIS_INGEST_KEY` / `AEGIS_ORGANIZATION_ID`). The status line must read `Connected to Demo Bank`. Keep it in its own browser tab; the "Simulator" below always means this tab.
+2. Sign in as `admin@demo.test` (password from `.demo-tenant-local-stack.local.json` after `pnpm demo:up`).
 3. Confirm strip: **Demo environment, synthetic data**. No “Production”, no plan badge, no Next.js “N” badge.
 4. Live feed: historical cases only; **Show demo filler** off; pending Approvals badge **0**.
 
@@ -20,7 +21,7 @@ Standing: org **Demo Bank**, pending queue empty, live feed showing realistic hi
 
 ## 1. Allowed within officer limit
 
-1. Open **Simulator** (`/aegis/demo/simulator`).
+1. Open the standalone **bank simulator** (`http://127.0.0.1:4000`, not a console page).
 2. Click **Loan RWF 1,200,000 within officer limit**.
 3. Outcome chip: **Allowed**. Open the case.
 4. Four answers show real facts: who/what amount/which rule/why allowed; **Who approved** = “No approval needed: allowed automatically by rule AUTH-RL”.
@@ -55,7 +56,7 @@ Standing: org **Demo Bank**, pending queue empty, live feed showing realistic hi
 3. Prepare a draft of the same pack with **dual publish** required. First authorised publisher activates → pending (“one alone cannot”). Second distinct publisher activates → **v4** goes live.
 4. Version list now shows **v3** and **v4**; who published / co-approved.
 5. Open the diff (v3 → v4). Earlier receipt from §1 still shows **v3** and its content hash.
-6. After demo reset / `demo:up` / pack re-apply, active policy is again **v3** (no leftover live v4).
+6. After `pnpm demo:fresh` / `demo:up` (wipe + re-provision) the active policy is again **v3** (no leftover live v4). A plain pack re-apply (`pack:apply`) alone does not remove a published v4.
 
 ---
 
@@ -98,22 +99,22 @@ Standing: org **Demo Bank**, pending queue empty, live feed showing realistic hi
 
 ## 10. Resilience (unreachable Aegis)
 
-1. Simulator: **Aegis unreachable, then replayed**. The bank system loses contact with Aegis.
+1. Bank simulator: **Aegis unreachable, then replayed**. The bank system loses contact with Aegis.
 2. Decision queued, then replayed; receipt marked **decided without Aegis**.
 
 ---
 
-## 11. More simulator stories (each card shows its expected outcome)
+## 11. More bank-simulator stories (each card shows its expected outcome)
 
 | Story | Expect | What to point at |
 | --- | --- | --- |
 | Payment callback not verified | Held | PAY-03: callback must be verified before release; approver supplies `callback_verified`. |
-| Escalation after the time limit | Held, then escalated | Simulated time: the approval moves to the next role up. In a live deployment this is the real approval time limit. |
+| Escalation after the time limit | Held, then escalated | Real time: on an `is_demo` tenant the held loan escalates to the next role up after **2 real minutes** (no demo clock, nothing to fast-forward). Start it, talk through another section, come back. |
 | Delegate inside the window | Held, approvable by the deputy | Aimee Nyirahabimana (`deputy@demo.test`) holds a delegation covering the case. |
 | Delegate outside the window | Held, deputy refused | Same deputy, delegation expired or not yet started. |
 | Aegis unreachable, then replayed | Allowed | Receipt flagged **decided without Aegis**. |
 
-Reset between rehearsals: simulator **Reset demo data** asks you to type `RESET`; the API refuses without it.
+Reset between rehearsals: there is no in-app reset. Run `pnpm demo:fresh` (wipe, re-provision, re-seed Demo Bank; needs `AEGIS_ALLOW_TENANT_WIPE=1` and `MIGRATION_DATABASE_URL` in your shell). It issues a new organisation id, so update `AEGIS_ORGANIZATION_ID` on the simulator if you pin it. The simulator's own **Reset** button only clears its local queue, not Aegis data.
 
 Known gap: the approvals screen sends only a reason, so approvals that also need a reason code or `callback_verified` (hard stop release, PAY-03) are completed through the console API by `pnpm demo:runbook-walk` rather than by clicking.
 
@@ -123,8 +124,9 @@ Known gap: the approvals screen sends only a reason, so approvals that also need
 
 ```text
 pnpm demo:up
-pnpm demo:seed-story          # if demo:up was run with --no-story
-pnpm demo:rehearse            # uses demo-bank-rehearsal; does not dirty Demo Bank
+pnpm pilot:seed-history       # only if demo:up was run with --no-story
+pnpm bank-simulator           # second terminal: stories for the pitch (Demo Bank ingest key)
+pnpm demo:rehearse            # headless: drives the bank simulator's stories against Demo Bank
 ```
 
 **Hosted / online testing:** use a dedicated Demo Bank or `smoke-test` organisation — not a customer
@@ -149,4 +151,4 @@ The pack now includes SANC-01 (sanctions / PEP hard stop) and PAY-03 (payment ca
 
 Projector legibility: `bank_demo` sets body text to at least 16px and secondary text to at least 14px with stronger grey contrast.
 
-Screenshots: `pnpm demo:screens` (1920x1080 and a real 125% zoom pass that fails if the two sets are identical). Full walk with all roles: `pnpm demo:runbook-walk` (writes `docs/screens/runbook/`; dirties Demo Bank, so run `pnpm demo:up` or the simulator reset afterwards).
+Screenshots: `pnpm demo:screens` (1920x1080 and a real 125% zoom pass that fails if the two sets are identical). Full walk with all roles: `pnpm demo:runbook-walk` (writes `docs/screens/runbook/`; dirties Demo Bank, so run `pnpm demo:fresh` or `pnpm demo:up` afterwards). The walk drives the standalone bank simulator (`BANK_SIMULATOR_URL`, default `http://127.0.0.1:4000`), so start it first.

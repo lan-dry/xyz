@@ -899,6 +899,108 @@ export async function provisionOrganization(
   };
 }
 
+/**
+ * Idempotent: ensure an email has an active membership (and optionally an account) on an org.
+ * Used by demo/pilot provisioning after a tenant wipe — accounts survive, memberships do not.
+ * Pending invitations for the same email are marked accepted so they do not linger.
+ */
+export async function platformEnsureOrganizationMember(
+  client: pg.Pool | pg.PoolClient,
+  input: {
+    organizationId: string;
+    email: string;
+    role: OrgRole;
+    displayName?: string | null;
+    /** When set and the account is missing, create it. When the account exists, refresh the hash. */
+    passwordHash?: string | null;
+  },
+): Promise<{
+  membership_id: string;
+  account_id: string;
+  action: "created" | "reused" | "account_created";
+}> {
+  const email = input.email.trim().toLowerCase();
+  const role = input.role;
+
+  let action: "created" | "reused" | "account_created" = "reused";
+  let accountId: string;
+  const existingAccount = await client.query<{ account_id: string }>(
+    `SELECT account_id FROM account WHERE lower(email) = $1`,
+    [email],
+  );
+  if (existingAccount.rows[0]) {
+    accountId = existingAccount.rows[0].account_id;
+    if (input.passwordHash) {
+      await client.query(
+        `UPDATE account
+         SET password_hash = $1,
+             display_name = COALESCE($2, display_name),
+             email_verified_at = COALESCE(email_verified_at, now()),
+             active = true,
+             updated_at = now()
+         WHERE account_id = $3`,
+        [input.passwordHash, input.displayName ?? null, accountId],
+      );
+    } else if (input.displayName) {
+      await client.query(
+        `UPDATE account
+         SET display_name = COALESCE($1, display_name), updated_at = now()
+         WHERE account_id = $2`,
+        [input.displayName, accountId],
+      );
+    }
+  } else {
+    if (!input.passwordHash) {
+      throw new InviteError(
+        "account_missing",
+        "No account exists for this email and no password was provided to create one",
+      );
+    }
+    const inserted = await client.query<{ account_id: string }>(
+      `INSERT INTO account (email, display_name, password_hash, email_verified_at, active)
+       VALUES ($1, $2, $3, now(), true)
+       RETURNING account_id`,
+      [email, input.displayName ?? null, input.passwordHash],
+    );
+    accountId = inserted.rows[0]!.account_id;
+    action = "account_created";
+  }
+
+  const existingMembership = await client.query<{ membership_id: string; status: string }>(
+    `SELECT membership_id, status FROM membership
+     WHERE organization_id = $1 AND account_id = $2`,
+    [input.organizationId, accountId],
+  );
+  if (!existingMembership.rows[0]) {
+    await assertCanAddMember(client, input.organizationId);
+  }
+
+  const membership = await client.query<{ membership_id: string }>(
+    `INSERT INTO membership (account_id, organization_id, role, status)
+     VALUES ($1, $2, $3, 'active')
+     ON CONFLICT (organization_id, account_id) DO UPDATE SET
+       role = EXCLUDED.role,
+       status = 'active'
+     RETURNING membership_id`,
+    [accountId, input.organizationId, role],
+  );
+  const membershipId = membership.rows[0]!.membership_id;
+  if (!existingMembership.rows[0] || existingMembership.rows[0].status !== "active") {
+    if (action !== "account_created") action = "created";
+  }
+
+  await client.query(
+    `UPDATE organization_invitation
+     SET status = 'accepted', accepted_at = COALESCE(accepted_at, now())
+     WHERE organization_id = $1
+       AND lower(email) = $2
+       AND status = 'pending'`,
+    [input.organizationId, email],
+  );
+
+  return { membership_id: membershipId, account_id: accountId, action };
+}
+
 export class RegisterError extends Error {
   constructor(
     readonly code: string,

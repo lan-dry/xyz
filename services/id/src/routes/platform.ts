@@ -1,4 +1,4 @@
-import { getCookie, setCookie } from "hono/cookie";
+import { getCookie } from "hono/cookie";
 import { Hono } from "hono";
 import {
   DemoIngestKeyError,
@@ -30,11 +30,15 @@ import {
   writePlatformAuditEvent,
   PlatformRoleError,
   provisionOrganization,
+  platformEnsureOrganizationMember,
+  InviteError,
   resolvePlatformStaffSession,
   SALANOR_SESSION_COOKIE,
   sessionHasPlatformPermission,
   setAccountPlatformRole,
   startImpersonation,
+  PlanLimitError,
+  type OrgRole,
   type PlatformPermission,
   type PlatformStaffSession,
   updatePlanCatalogRow,
@@ -884,6 +888,81 @@ platformRoutes.patch("/memberships/:membershipId", async (c) => {
   const ok = await platformSetMembershipStatus(getPool(), membershipId, body.status);
   if (!ok) return c.json({ error: "Not found" }, 404);
   return c.json({ ok: true });
+});
+
+/**
+ * Idempotent member ensure for demo/pilot provisioning (bootstrap secret / platform:provision).
+ * After a tenant wipe, accounts remain; this re-attaches membership with the requested role.
+ */
+platformRoutes.put("/organizations/:orgId/members", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:provision");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const orgId = c.req.param("orgId");
+  let body: {
+    email?: string;
+    role?: string;
+    display_name?: string;
+    password?: string;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 422);
+  }
+  const email = body.email?.trim();
+  const role = (body.role ?? "approver") as OrgRole;
+  const allowed: OrgRole[] = [
+    "owner",
+    "admin",
+    "approver",
+    "engineer",
+    "developer",
+    "auditor",
+    "viewer",
+  ];
+  if (!email) return c.json({ error: "email required" }, 422);
+  if (!allowed.includes(role)) return c.json({ error: "invalid role" }, 422);
+  if (body.password !== undefined && body.password.length < 10) {
+    return c.json({ error: "password must be at least 10 characters" }, 422);
+  }
+
+  const org = await getPool().query(`SELECT 1 FROM organization WHERE organization_id = $1`, [
+    orgId,
+  ]);
+  if (!org.rows[0]) return c.json({ error: "Organization not found" }, 404);
+
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    const result = await platformEnsureOrganizationMember(client, {
+      organizationId: orgId,
+      email,
+      role,
+      displayName: body.display_name?.trim() || null,
+      passwordHash: body.password ? hashPassword(body.password) : null,
+    });
+    await client.query("COMMIT");
+    return c.json({
+      membership_id: result.membership_id,
+      account_id: result.account_id,
+      action: result.action,
+      email: email.toLowerCase(),
+      role,
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    if (err instanceof InviteError) {
+      const status = err.code === "account_missing" ? 404 : 409;
+      return c.json({ error: err.message, code: err.code }, status);
+    }
+    if (err instanceof PlanLimitError) {
+      return c.json({ error: err.message, code: err.code }, err.httpStatus as 402);
+    }
+    console.error("[id] platform ensure member", err);
+    return c.json({ error: "Failed to ensure membership" }, 500);
+  } finally {
+    client.release();
+  }
 });
 
 platformRoutes.post("/accounts/:accountId/reset-password", async (c) => {

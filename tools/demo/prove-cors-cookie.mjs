@@ -15,6 +15,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolvePersonaPassword } from "./load-tenant.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const envPath = join(root, ".env");
@@ -101,9 +102,12 @@ const idHost = (
   process.env.CORS_ID_HOST ||
   "http://127.0.0.1:8091"
 ).replace(/\/+$/, "");
-const password = process.env.AEGIS_DEMO_APPROVAL_PASSWORD?.trim();
+const resolved = resolvePersonaPassword(root, { preferLocal: true });
+const password = resolved.password;
+const loginEmail =
+  resolved.data?.personas?.admin?.email?.trim() || "admin@demo.test";
 if (!password) {
-  record("login cookie attributes", false, "AEGIS_DEMO_APPROVAL_PASSWORD missing");
+  record("login cookie attributes", false, resolved.error || "tenant persona password missing");
 } else {
   try {
     const res = await fetch(`${idHost}/v1/id/auth/login`, {
@@ -112,7 +116,7 @@ if (!password) {
         "Content-Type": "application/json",
         Origin: allowedOrigin,
       },
-      body: JSON.stringify({ email: "admin@demo.test", password }),
+      body: JSON.stringify({ email: loginEmail, password }),
       redirect: "manual",
     });
     const raw = res.headers.getSetCookie?.() ?? [];

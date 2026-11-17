@@ -10,9 +10,9 @@ import { seedAuthorityFromPack } from "../src/bank/repo.js";
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
 import {
-  demoApprovalPassword,
-  seedDemoApprovalActors,
-} from "../src/demo/seed-approval-actors.js";
+  testApprovalPassword,
+  seedTestApprovalActors,
+} from "./helpers/seed-test-approvers.js";
 import { loadDemoPack, packMatrixRows, packRoles } from "../src/packs/load.js";
 import { createApprovalRequest } from "../src/repo/approvals.js";
 import { consoleRoutes } from "../src/routes/console/index.js";
@@ -58,14 +58,12 @@ async function loginCookie(app: Hono, email: string, password: string) {
 }
 
 describeIfDb("console approval HTTP + bank ladder", () => {
-  const prevDemo = process.env.AEGIS_DEMO_MODE;
   const prevNode = process.env.NODE_ENV;
   const prevAegis = process.env.AEGIS_ENV;
-  const prevPass = process.env.AEGIS_DEMO_APPROVAL_PASSWORD;
+  const prevPass = process.env.AEGIS_TEST_APPROVAL_PASSWORD;
 
   beforeAll(async () => {
-    process.env.AEGIS_DEMO_MODE = "true";
-    process.env.AEGIS_DEMO_APPROVAL_PASSWORD =
+    process.env.AEGIS_TEST_APPROVAL_PASSWORD =
       prevPass && prevPass.length >= 10
         ? prevPass
         : "test-demo-approval-password";
@@ -87,7 +85,7 @@ describeIfDb("console approval HTTP + bank ladder", () => {
         packRoles(pack),
         packMatrixRows(pack),
       );
-      await seedDemoApprovalActors(client, ORG);
+      await seedTestApprovalActors(client, ORG);
       await client.query(
         `UPDATE membership m
          SET last_active_at = now()
@@ -103,14 +101,12 @@ describeIfDb("console approval HTTP + bank ladder", () => {
   });
 
   afterAll(async () => {
-    if (prevDemo === undefined) delete process.env.AEGIS_DEMO_MODE;
-    else process.env.AEGIS_DEMO_MODE = prevDemo;
     if (prevNode === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = prevNode;
     if (prevAegis === undefined) delete process.env.AEGIS_ENV;
     else process.env.AEGIS_ENV = prevAegis;
-    if (prevPass === undefined) delete process.env.AEGIS_DEMO_APPROVAL_PASSWORD;
-    else process.env.AEGIS_DEMO_APPROVAL_PASSWORD = prevPass;
+    if (prevPass === undefined) delete process.env.AEGIS_TEST_APPROVAL_PASSWORD;
+    else process.env.AEGIS_TEST_APPROVAL_PASSWORD = prevPass;
     await closePool();
   });
 
@@ -176,7 +172,7 @@ describeIfDb("console approval HTTP + bank ladder", () => {
     }
 
     const app = appWithConsole();
-    const password = demoApprovalPassword();
+    const password = testApprovalPassword();
     const officerCookie = await loginCookie(app, "officer@demo.test", password);
     const officer = await app.request(
       `/v1/console/approvals/${approvalId}/approve`,

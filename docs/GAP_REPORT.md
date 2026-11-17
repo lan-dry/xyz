@@ -1,10 +1,12 @@
 # Gap report — forensic readiness and bank pilot
 
-**Branch:** `forensic-demo-readiness`  
-**Baseline tag:** `pre-forensic-demo`  
-**Date:** 2026-11-15  
+**Branch:** `remove-demo-mode`  
+**Baseline tag:** `pre-remove-demo-mode`  
+**Date:** 2026-11-17  
 **Authority:** Status here must match `docs/FINAL_REPORT.md`. Mark Present / Done only when implemented and tested.  
-**Deploy:** Nothing from this branch publishes to salanor.com.
+**Deploy:** Nothing from this branch publishes to salanor.com until reviewed.
+
+> **Single path (2026-11-17):** no runtime demo mode. Use `demo:up`, `pilot:provision-demo-tenant`, `pilot:seed-history`, `pilot:wipe-tenant` / `demo:fresh`, and `bank-simulator` against an `is_demo` tenant. See `docs/DEMO.md`.
 
 ---
 
@@ -37,18 +39,19 @@
 | R8 Search / reports | Present | Canned CSV API; real console Reports page with filters (stub label removed) |
 | R9 Admin / security | Partial | Access-log helpers+tests; not every receipt view wired |
 | R10 Integration | Partial | Batch HTTP; bank-core stub; webhook retry incomplete |
-| R11 Demo ops | Present | Demo Bank + bank_demo UI + simulator + seed-story + witness in demo:up |
+| R11 Demo ops | Present | Demo Bank `is_demo` + bank_demo UI + standalone bank-simulator + `pilot:seed-history` + witness in `demo:up` |
 | P1–P12 | Partial | See table below |
 | Website E | Partial | Preview only; await founder |
 
 ---
 
-## What `pnpm scenario:run` vs `scenario:live` hit
+## Demo drivers (post remove-demo-mode)
 
 | Command | Target |
 |---------|--------|
-| `pnpm scenario:run` | **In-process fixtures** — no HTTP, no DB |
-| `pnpm --filter aegis-api scenario:live` | **Live HTTP** `POST /v1/aegis/demo/scenarios/run` (requires `AEGIS_DEMO_MODE=true`); intake 1–3, 8 seal real APS + forensic receipts |
+| `pnpm demo:up` | Local Postgres + normal API + `pilot:provision-demo-tenant` + `pilot:seed-history` |
+| `pnpm bank-simulator` / `pnpm demo:rehearse` | Standalone simulator → governed intake on `is_demo` tenant (real timers) |
+| `pnpm demo:fresh` | wipe → provision → seed (same path as hosted) |
 
 ---
 
@@ -66,8 +69,8 @@
 | R2.5 Simulate | Partial | Exists; bank sample UX incomplete |
 | R2.6 Dual-approver publish | Partial | Table + `dual_publish_required` wire; full UX incomplete |
 | R3.* Authority | Present | Pack seed via `pack:apply` |
-| R4.1–R4.4 Role/SoD/fields | Present (unit + console guards + HTTP) | `scenario:live --approvals=http`; `console-approval-http.integration.test.ts` officer 403 / manager 200 |
-| R4.5 Escalation / clock | Present | Demo clock + `escalate_to_role` console guard and route; scenario 10 PASS |
+| R4.1–R4.4 Role/SoD/fields | Present (unit + console guards + HTTP) | `console-approval-http.integration.test.ts` officer 403 / manager 200; bank-simulator + demo:rehearse |
+| R4.5 Escalation / clock | Present | Real system clock + `escalate_to_role`; `pnpm demo:prove-escalation-2min` |
 | R4.6 Delegation | Present | Time-bound `approval_delegate` (migration 016); outside the window the delegate gets 403 (scenario 10 `delegateAfter=403`) |
 | R5.* Receipts / append-only | Present | Migrations 014/015; issue + seal |
 | R6.* Verifier | Present | `tools/aegis-verify` |
@@ -76,7 +79,7 @@
 | R9.2 Access log | Partial→helpers Done | Tests for log/list; not every view |
 | R10.3 Bank-core stub | Present (labelled stub) | `examples/bank-core-stub` |
 | R10.4 Measured latency | Present | Raw output **only** in FINAL_REPORT § latency |
-| R11.1–R11.4 Demo ops | Present | reset guard, scenario:run + scenario:live, demo clock |
+| R11.1–R11.4 Demo ops | Present | `demo:up` / `pilot:provision-demo-tenant` / `pilot:seed-history` / `bank-simulator` / `demo:fresh` (no demo mode) |
 
 ---
 
@@ -93,7 +96,7 @@
 | Threat model | **Done** | `docs/THREAT_MODEL.md` |
 | Retention / legal hold | **Done** | Phase 6 legal hold purge tests |
 | OIDC role mapping | **Done** | `src/auth/oidc-claim-mapper.ts` + `oidc-claim-mapper.test.ts` |
-| Demo clock on receipts | **Done** | `demo_clock flags` tests |
+| Demo clock on receipts | **Removed** | Demo clock deleted; receipts use system Clock only |
 | Canned reports + CSV | **Done** | API + real Reports page (stub label removed) |
 
 ---
@@ -130,8 +133,8 @@
 
 | Path | Status |
 |------|--------|
-| Unit `scenario:run` | **Present** — 12/12 in-process |
-| Live `scenario:live` | **Present** — 12/12 HTTP; intake 1–3, 8 real APS seal |
+| In-API `scenario:run` / `scenario:live` | **Removed** — use `pnpm bank-simulator` + `pnpm demo:rehearse` against an `is_demo` tenant |
+| Standalone bank simulator | **Present** — `tools/bank-simulator` drives governed intake with real timers |
 
 ---
 
@@ -153,7 +156,7 @@ Corrected after implementation pass (explore inventory of “Missing” for esca
 | Time-bound delegation | **Present** — `approval_delegate` + migration 016 |
 | Hard-stop release HTTP | **Present** — `POST …/approvals/:id/release` |
 | `--approvals=http` 2–7,5,9–12 | **Present** — extended live runners; rehearse via `pnpm demo:rehearse` |
-| `demo:up` / `demo:rehearse` | **Present** — `pnpm demo:up`, `pnpm demo:rehearse`; `AEGIS_DEMO_APPROVAL_PASSWORD` required (no default) |
+| `demo:up` / `demo:rehearse` | **Present** — normal API + `pilot:provision-demo-tenant` / `pilot:seed-history`; rehearse drives `bank-simulator` (no runtime demo mode) |
 | Bundle export + chain-5 + verify/tamper | **Present** — `export:scenario-bundles` (all receipt scenarios + chain-5) |
 | Provisional receipt badge | **Present** — API `flags.provisional` + console sealed/provisional badge |
 | Policy diff endpoint | **Present** — `GET /v1/console/policies/:id/diff?against=` |

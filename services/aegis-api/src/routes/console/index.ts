@@ -30,7 +30,6 @@ import {
   rateLimitResponse,
   readRateLimitEnv,
 } from "@salanor/platform-auth";
-import { isDemoModeAllowed } from "../../bank/demo-clock.js";
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import {
   auditReceiptAccess,
@@ -256,11 +255,7 @@ consoleRoutes.route("/", demoTenantRoutes);
 consoleRoutes.post("/auth/login", async (c) => {
   const ip = getClientIp(c.req.raw.headers);
   const geo = getClientGeoFromHeaders(c.req.raw.headers);
-  // Demo theatre logs in many times per rehearse/live run. .env often has
-  // LOGIN_RATE_LIMIT=20 which would 429 mid-run — ignore that floor in demo.
-  const loginLimit = isDemoModeAllowed()
-    ? Math.max(readRateLimitEnv("LOGIN_RATE_LIMIT", 100_000), 100_000)
-    : readRateLimitEnv("LOGIN_RATE_LIMIT", 20);
+  const loginLimit = readRateLimitEnv("LOGIN_RATE_LIMIT", 20);
   const windowMs = readRateLimitEnv("LOGIN_RATE_WINDOW_MS", 900_000);
   const rl = checkRateLimit(loginRateLimitKey(ip), { limit: loginLimit, windowMs });
   if (!rl.ok) {

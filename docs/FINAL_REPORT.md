@@ -1,17 +1,18 @@
 # Final report — forensic demo readiness
 
-**Branch:** `forensic-demo-readiness`  
-**Baseline tag:** `pre-forensic-demo`  
-**Last verified:** 2026-11-15  
-**Honesty rule:** Status is Present / Done only when implemented and tested. This branch must not deploy to salanor.com.  
+**Branch:** `remove-demo-mode` (supersedes `forensic-demo-readiness` demo-mode path)  
+**Baseline tag:** `pre-remove-demo-mode`  
+**Last verified:** 2026-11-17  
+**Honesty rule:** Status is Present / Done only when implemented and tested. This branch must not deploy to salanor.com until reviewed.  
 **Keep in sync with:** `docs/GAP_REPORT.md`, `docs/DEMO.md`, `docs/WEBSITE_CHANGES.md`.  
-**Commits this finish pass:** `410202f` (T1), `55795c4` (T2–T4 docs/website).
+
+> **2026-11-17 single path:** Runtime demo mode, demo clock, in-API scenarios, `demo:reset`, and the in-console simulator are **removed**. Demos use a normal API + `is_demo` tenant via `pnpm demo:up` → `pilot:provision-demo-tenant` → `pilot:seed-history`, driven by `pnpm bank-simulator` with real timers (escalate windows included). Historical sections below may still name old runners; treat `docs/DEMO.md` as authoritative for commands.
 
 ---
 
 ## Executive summary
 
-Live theatre on clean local Postgres (`127.0.0.1:5435/aegis`): `demo:reset` → `demo:up` → **`demo:rehearse` ×3 `failed=0`** → **`scenario:live -- --approvals=http` 12/12 PASS** with `receipt_kind=sealed` on every scenario (see §2 paste + §9 1.2).  
+Live theatre on clean local Postgres (`127.0.0.1:5435/aegis`): `demo:up` (normal API + `is_demo` Demo Bank via `pilot:provision-demo-tenant` / `pilot:seed-history`) → **`demo:rehearse`** against the standalone bank simulator with real wall-clock escalate.  
 
 **Bank-ready UI pass:** presenting org is **Demo Bank** (`demo-bank`); `AEGIS_UI_PROFILE=bank_demo`; evidence-bundle download (not summary-as-receipt); `describeDecision` / `decision_basis`; simulator; witness worker in `demo:up`; F2 + F13 notes in `docs/BANK_READY_NOTES.md`; click path in `docs/DEMO_RUNBOOK.md`.
 
@@ -19,9 +20,7 @@ Live theatre on clean local Postgres (`127.0.0.1:5435/aegis`): `demo:reset` → 
 
 **Signing:** APS seal uses the resolved org agent `signing_key` (preferred agent, then any signable org key). Forensic receipts are signed by **`AEGIS_RECEIPT_SIGNING_KEY_B64`** under **`AEGIS_RECEIPT_KEY_ID`** (default `receipt_dev`); `aegis-verify` accepts bundles against that published public key (derived and exported in `keys.json`).  
 
-Demo endpoint `POST /v1/aegis/demo/scenarios/run`, `demo:reset`, and `pg_restore --disable-triggers` refuse when `NODE_ENV`/`AEGIS_ENV` is `production` or `AEGIS_DEMO_MODE` is off (`isDemoModeAllowed()`).
-
-`pnpm scenario:run` = **in-process fixtures only** (no HTTP, no DB).
+Removed demo surfaces (`/v1/aegis/demo/scenarios/*`, `/v1/aegis/demo/simulator/*`, `demo:reset`, demo clock) return 404 / do not exist. `pg_restore --disable-triggers` uses `AEGIS_ALLOW_DISABLE_TRIGGERS_RESTORE` only.
 
 ---
 
@@ -329,7 +328,7 @@ Rough edges visible in the captured screens (not status blockers, listed so nobo
 | 3.6 Evidence bundle | Done | `evidence-bundle.test.ts` | `docs/screens/11-evidence.png`, `docs/screens/runbook/18-evidence.png` |
 | 3.7 decision_basis / F2 | Done | `bank-evaluate.test.ts` F2 | `BANK_READY_NOTES.md` |
 | 3.8 Verify UX | Done | bank-ready-pass2 / sample bundles | `docs/screens/06-verify.png`, `docs/screens/runbook/19-verify.png` |
-| 3.9 Simulator | Done | `simulator-stories.test.ts` | `docs/screens/05-simulator.png`, `docs/screens/runbook/03-simulator-standalone.png` |
+| 3.9 Standalone bank simulator | Done | `tools/bank-simulator` + `pnpm bank-simulator` (in-console Simulator removed) | `docs/screens/runbook/03-simulator-standalone.png` |
 | 3.10 Clean seed / rehearsal org | Partial — no screen proves it; rehearse ×3 is in §1.2 but not re-run after the last seed change | seed multi-day; rehearse scratch | rehearse paste after re-up |
 | 3.11 bank_demo profile | Done | CSS data-ui-profile | `docs/screens/01-overview.png`, `docs/screens/01-overview-zoom125.png` |
 | 3.12 Rules matrix / v3–v4 | Done | bank-ready-pass2 Rules APIs | `docs/screens/04-rules.png`, `docs/screens/04-rules-zoom125.png` |
@@ -359,7 +358,7 @@ Honesty: **Done** needs a test (and a screen when the item is UI). Founder crede
 
 ### Needs your credentials / decision
 
-- `AEGIS_DEMO_APPROVAL_PASSWORD` for demo:up (no default)
+- Local persona passwords are generated into `.demo-tenant-local-stack.local.json` by `pnpm demo:up` (gitignored)
 - Resend / Teams for `NOTIFICATIONS_STAGING.md`
 - Real production TSA URL + cert chain
 - AWS KMS credentials for live Sign proof
@@ -380,19 +379,15 @@ Honesty: **Done** needs a test (and a screen when the item is UI). Founder crede
 ## 10. Commands
 
 ```powershell
-$env:AEGIS_DEMO_APPROVAL_PASSWORD="<secret-min-10>"
-$env:AEGIS_DEMO_MODE="true"
+# Normal API + is_demo tenant (no )
 pnpm demo:up
-# demo:up resets receipts — seed before export:
+pnpm bank-simulator
 pnpm demo:rehearse
-# or:
-pnpm --filter aegis-api scenario:live -- --approvals=http
-pnpm --filter aegis-api export:scenario-bundles
-pnpm scenario:run
 pnpm docs:status-agree
 pnpm demo:screens
 pnpm demo:full-menu
 pnpm demo:runbook-walk
+pnpm demo:prove-escalation-2min
 # Hosted stack (after founder vars): pnpm smoke:production
 pnpm --filter aegis-api test
 pnpm --filter aegis-api lint

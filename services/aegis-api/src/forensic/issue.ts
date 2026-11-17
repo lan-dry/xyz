@@ -6,7 +6,7 @@ import {
   type SealedEventRef,
   type SignedForensicReceipt,
 } from "./receipt.js";
-import { isDemoClockActive, nowIso } from "../bank/demo-clock.js";
+import { nowIso } from "../time/clock.js";
 import { resolveReceiptSigning } from "../crypto/receipt-signing.js";
 import { publishReceiptSigningKey } from "../repo/receipt-keys.js";
 import { scheduleReceiptTimestamp } from "./receipt-timestamp.js";
@@ -146,11 +146,10 @@ export async function issueForensicReceipt(
     timeline?: Array<Record<string, unknown>>;
     approvals?: Array<Record<string, unknown>>;
     flags?: {
-      demo_clock?: boolean;
       decided_without_aegis?: boolean;
       provisional?: boolean;
     };
-    /** Test / demo software key override. Refused when AEGIS_ENV=production. */
+    /** Test software key override. Refused when AEGIS_ENV=production. */
     signingKey?: { key_id: string; private_key_b64: string };
   },
 ): Promise<SignedForensicReceipt> {
@@ -176,7 +175,6 @@ export async function issueForensicReceipt(
         e.event_id.startsWith("evt_gov_"),
       );
       const flags = {
-        ...(isDemoClockActive() ? { demo_clock: true as const } : {}),
         // Signed into the body so custody cannot be stripped after the fact.
         ...(signing.custody === "kms" || signing.custody === "software_interim"
           ? { key_custody: signing.custody }

@@ -4,13 +4,15 @@
  * docs/screens/runbook/. Each person gets their own browser context (their own cookies),
  * so admin, officer, manager and head of compliance can all be "signed in" at once.
  *
+ * Normal API path: organization.is_demo Demo Bank (no demo mode, no demo clock,
+ * no in-API scenario runners). Stories go through the standalone bank simulator
+ * (`pnpm bank-simulator`) via /api/story → real governed intake.
+ *
  * Needs: console on :3000 (production-style default UI profile preferred),
- * AEGIS_DEMO_APPROVAL_PASSWORD, Playwright, and the standalone bank simulator:
+ * provisioned personas (default @demo.test emails below when that tenant file was used),
+ * a provisioning tenant file with persona passwords, Playwright, and:
  *   BANK_SIMULATOR_URL (default http://127.0.0.1:4000)
  *   BANK_SIMULATOR_PASS when the simulator has a passphrase set
- *
- * Stories are sent through the simulator's own API (/api/story), not the in-console
- * demo routes (those need AEGIS_DEMO_MODE and are absent from production-style nav).
  *
  * Writes docs/screens/runbook/NN-name.png and prints one PASS/FAIL line per check.
  *
@@ -19,6 +21,7 @@
 import { mkdirSync, readdirSync, unlinkSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolvePersonaPassword } from "./load-tenant.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const outDir = join(root, "docs", "screens", "runbook");
@@ -28,17 +31,22 @@ for (const name of readdirSync(outDir)) {
   if (name.endsWith(".png")) unlinkSync(join(outDir, name));
 }
 
-const password = process.env.AEGIS_DEMO_APPROVAL_PASSWORD?.trim();
-if (!password || password.length < 10) {
-  console.error("Set AEGIS_DEMO_APPROVAL_PASSWORD (min 10 chars).");
+const resolved = resolvePersonaPassword(root, { preferLocal: true });
+if (resolved.error) {
+  console.error(resolved.error);
   process.exit(1);
 }
-const base = process.env.CONSOLE_ORIGIN?.trim() || "http://localhost:3000";
+const password = resolved.password;
+const base =
+  process.env.CONSOLE_ORIGIN?.trim() ||
+  resolved.data?.console_origin?.trim() ||
+  "http://localhost:3000";
 // Console /api/console rewrites can 500 when next.config was built against another
 // AEGIS_API_URL. Mutations go straight to the API; screenshots still use the console UI.
 const apiBase = (
   process.env.AEGIS_API_URL?.trim() ||
   process.env.AEGIS_API_BASE?.trim() ||
+  resolved.data?.api_base?.trim() ||
   "http://127.0.0.1:8088"
 ).replace(/\/+$/, "");
 const simUrl = (process.env.BANK_SIMULATOR_URL?.trim() || "http://127.0.0.1:4000").replace(

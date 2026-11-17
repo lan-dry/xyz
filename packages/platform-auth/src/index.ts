@@ -124,6 +124,7 @@ export {
   MemberRoleError,
   MemberStatusError,
   provisionOrganization,
+  platformEnsureOrganizationMember,
   registerSelfServeOrganization,
   createOrganizationForAccount,
   RegisterError,

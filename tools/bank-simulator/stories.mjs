@@ -1,8 +1,7 @@
 /**
- * Prefilled bank stories. Mirrors the console simulator
- * (services/aegis-api/src/demo/simulator-stories.ts): same ids, titles and synthetic
- * Rwandan-style names, RWF amounts. Every story goes through the real governed intake;
- * nothing here decides an outcome. Outcomes come back from the hosted API.
+ * Prefilled bank stories: stable ids and titles, synthetic Rwandan-style names, RWF amounts.
+ * Every story goes through the real governed intake; nothing here decides an outcome.
+ * Outcomes come back from the API (also used by tools/demo/demo-rehearse.mjs).
  */
 
 export const WITHIN_LIMIT_AMOUNT_RWF = 1_200_000;

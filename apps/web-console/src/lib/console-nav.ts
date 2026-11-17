@@ -7,7 +7,6 @@ import {
   GitBranch,
   KeyRound,
   LayoutDashboard,
-  FlaskConical,
   Plug,
   ScrollText,
   Search,
@@ -31,7 +30,7 @@ export type ConsoleNavItem = {
 
 /**
  * Default (production-style) nav. Includes Rules, Cases (with search), Reports,
- * Access log and Delegations. Simulator is bank_demo-only — never here.
+ * Access log and Delegations. In-console simulator removed — use standalone bank-simulator.
  */
 export const AEGIS_NAV: ConsoleNavItem[] = [
   { href: "/aegis", label: t("nav.overview", "Overview"), icon: LayoutDashboard },
@@ -73,7 +72,6 @@ export const BANK_DEMO_NAV: ConsoleNavItem[] = [
     external: true,
   },
   { href: "/aegis/logs", label: "Access log", icon: ScrollText },
-  { href: "/aegis/demo/simulator", label: "Simulator", icon: FlaskConical },
 ];
 
 export function isNavActive(pathname: string, href: string): boolean {

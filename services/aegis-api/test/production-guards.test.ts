@@ -38,7 +38,7 @@ const codes = (r: { failures: Array<{ code: string }> }) =>
 describe("production guards", () => {
   it("does nothing outside AEGIS_ENV=production", async () => {
     const report = await evaluateProductionGuards(
-      { AEGIS_DEMO_MODE: "true" },
+      {},
       { probeDatabaseRole: safeProbe },
     );
     expect(report.production).toBe(false);
@@ -51,27 +51,6 @@ describe("production guards", () => {
     });
     expect(codes(report)).toEqual([]);
     expect(report.ok).toBe(true);
-  });
-
-  it.each(["true", "on", "1", "yes", "TRUE", " On "])(
-    "refuses AEGIS_DEMO_MODE=%s",
-    async (value) => {
-      const report = await evaluateProductionGuards(
-        goodEnv({ AEGIS_DEMO_MODE: value }),
-        { probeDatabaseRole: safeProbe },
-      );
-      expect(codes(report)).toContain("demo_mode_on");
-    },
-  );
-
-  it("accepts AEGIS_DEMO_MODE=false / unset", async () => {
-    for (const v of ["false", "off", "0", undefined]) {
-      const report = await evaluateProductionGuards(
-        goodEnv({ AEGIS_DEMO_MODE: v }),
-        { probeDatabaseRole: safeProbe },
-      );
-      expect(codes(report)).not.toContain("demo_mode_on");
-    }
   });
 
   it("refuses the receipt_dev key id even with KMS", async () => {
@@ -289,7 +268,6 @@ describe("production guards", () => {
 
   it("assertProductionBoot throws one error listing every problem, with no secret values", async () => {
     const env = goodEnv({
-      AEGIS_DEMO_MODE: "true",
       AEGIS_RECEIPT_KMS_KEY_ID: undefined,
       AEGIS_RECEIPT_SIGNING_KEY_B64: SEED_B64,
       CONSOLE_ORIGIN: undefined,
@@ -301,7 +279,7 @@ describe("production guards", () => {
       await assertProductionBoot(env, { probeDatabaseRole: safeProbe });
     } catch (err) {
       const text = (err as Error).message;
-      expect(text).toMatch(/demo_mode_on/);
+      expect(text).toMatch(/CONSOLE_ORIGIN|software_key|receipt/);
       expect(text).toMatch(/kms_not_configured/);
       expect(text).toMatch(/console_origin_missing/);
       expect(text).not.toContain(SEED_B64);

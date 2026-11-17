@@ -46,22 +46,19 @@ const publishOk =
 if (!publishOk) fail("Website live publish honesty marker missing");
 else ok("website live publish = not done / preview only");
 
+// Required shared vocabulary after demo-mode removal (normal API + is_demo tenant).
 const requiredMentions = [
-  "approvals=http",
   "demo:up",
   "escalate",
-  "export:scenario-bundles",
-  "AEGIS_DEMO_APPROVAL_PASSWORD",
+  "pilot:provision-demo-tenant",
+  "pilot:seed-history",
+  "is_demo",
 ];
 for (const phrase of requiredMentions) {
   const missing = ["FINAL", "GAP", "DEMO"].filter(
     (d) => texts[d] && !texts[d].toLowerCase().includes(phrase.toLowerCase()),
   );
-  const soft =
-    phrase === "AEGIS_DEMO_APPROVAL_PASSWORD"
-      ? missing.filter((d) => d !== "GAP")
-      : missing;
-  if (soft.length) fail(`missing "${phrase}" in: ${soft.join(",")}`);
+  if (missing.length) fail(`missing "${phrase}" in: ${missing.join(",")}`);
   else ok(`mention: ${phrase}`);
 }
 

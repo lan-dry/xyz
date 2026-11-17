@@ -6,7 +6,6 @@
  * never a secret value. A failed guard means the process exits non-zero.
  *
  * Refuses to boot when:
- *  - AEGIS_DEMO_MODE is on (true / on / 1 / yes)
  *  - the receipt key id is `receipt_dev`
  *  - receipts would be signed by a software key without
  *    AEGIS_ALLOW_SOFTWARE_KEY_IN_PRODUCTION=interim
@@ -27,7 +26,6 @@ import {
   INTERIM_SOFTWARE_KEY_VALUE,
   isInterimSoftwareKeyAllowed,
   isProductionEnv,
-  isTruthyFlag,
 } from "./production-env.js";
 
 type Env = Record<string, string | undefined>;
@@ -167,14 +165,6 @@ export async function evaluateProductionGuards(
   if (!production) return { production, ok: true, failures, warnings };
 
   const fail = (code: string, message: string) => failures.push({ code, message });
-
-  // Demo mode
-  if (isTruthyFlag(env.AEGIS_DEMO_MODE)) {
-    fail(
-      "demo_mode_on",
-      "AEGIS_DEMO_MODE must not be on in production (demo routes, demo clock and seeded accounts are demo-only)",
-    );
-  }
 
   // Receipt signing key
   const kmsKeyId = env.AEGIS_RECEIPT_KMS_KEY_ID?.trim() ?? "";
