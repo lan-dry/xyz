@@ -27,6 +27,8 @@ const privateKeyB64 =
 
 describeIfDb("seal signing key lookup fallback", () => {
   beforeAll(async () => {
+    // Provider=dev resolves material from env (not the DB public key alone).
+    process.env.DEV_SIGNING_PRIVATE_KEY_B64 = privateKeyB64;
     await migrateUp();
     const pool = getPool();
     await applyIntegrationFixture(pool);
