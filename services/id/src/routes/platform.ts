@@ -1,4 +1,4 @@
-import { getCookie, setCookie } from "hono/cookie";
+import { getCookie } from "hono/cookie";
 import { Hono } from "hono";
 import {
   DemoIngestKeyError,

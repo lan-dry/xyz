@@ -1,4 +1,3 @@
-import { canonicalize, sha256Hex } from "./canonical.js";
 import type { ApsEvent, ReplayResult } from "./types.js";
 import { replay } from "./replay.js";
 import { writeEvents } from "./store.js";

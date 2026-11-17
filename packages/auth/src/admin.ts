@@ -1,4 +1,4 @@
-import type { SalInternalUserIdRow, SalanorAuthPrisma } from "./prisma-types";
+import type { SalanorAuthPrisma } from "./prisma-types";
 import { type InternalRole, isInternalRole } from "./internal-roles";
 
 /** Shown on sign-in when the account is not allowed (internal admin, console org, or invite). */
