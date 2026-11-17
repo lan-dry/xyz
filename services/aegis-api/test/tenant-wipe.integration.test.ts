@@ -473,7 +473,13 @@ describeIfDb("tenant wipe (migration 020)", () => {
     await expect(as(`DELETE FROM forensic_receipt WHERE organization_id = $1`, [a.orgId])).rejects.toThrow(/append_only: forensic receipts cannot be deleted/);
     await expect(as(`SET LOCAL session_replication_role = replica`)).rejects.toThrow(/permission denied/);
     await expect(as(`ALTER TABLE event DISABLE TRIGGER trg_event_append_only`)).rejects.toThrow(/must be owner/);
-    // Neither is the audit table forgeable-then-erasable: even a granted role cannot delete rows.
+    // Seed an audit row — DELETE of zero rows would not fire the append-only trigger.
+    await q(
+      `INSERT INTO platform_tenant_wipe_audit
+        (tenant_slug, tenant_name, tenant_organization_id, tenant_flags, actor, row_counts, accounts_deleted)
+       VALUES ('wipe-priv-probe', 'probe', $1, '{}'::jsonb, $2, '{}'::jsonb, 0)`,
+      [a.orgId, TEST_ACTOR],
+    );
     await expect(as(`DELETE FROM platform_tenant_wipe_audit`)).rejects.toThrow(/append_only: platform_tenant_wipe_audit/);
 
     // The function is not executable by PUBLIC / app role.
