@@ -156,7 +156,7 @@ Corrected after implementation pass (explore inventory of “Missing” for esca
 | Time-bound delegation | **Present** — `approval_delegate` + migration 016 |
 | Hard-stop release HTTP | **Present** — `POST …/approvals/:id/release` |
 | `--approvals=http` 2–7,5,9–12 | **Present** — extended live runners; rehearse via `pnpm demo:rehearse` |
-| `demo:up` / `demo:rehearse` | **Present** — normal API + `pilot:provision-demo-tenant` / `pilot:seed-history`; rehearse drives `bank-simulator` (no ) |
+| `demo:up` / `demo:rehearse` | **Present** — normal API + `pilot:provision-demo-tenant` / `pilot:seed-history`; rehearse drives `bank-simulator` (no runtime demo mode) |
 | Bundle export + chain-5 + verify/tamper | **Present** — `export:scenario-bundles` (all receipt scenarios + chain-5) |
 | Provisional receipt badge | **Present** — API `flags.provisional` + console sealed/provisional badge |
 | Policy diff endpoint | **Present** — `GET /v1/console/policies/:id/diff?against=` |

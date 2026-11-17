@@ -6,7 +6,7 @@
 **Honesty rule:** Status is Present / Done only when implemented and tested. This branch must not deploy to salanor.com until reviewed.  
 **Keep in sync with:** `docs/GAP_REPORT.md`, `docs/DEMO.md`, `docs/WEBSITE_CHANGES.md`.  
 
-> **2026-11-17 single path:** Runtime , demo clock, in-API scenarios, `demo:reset`, and the in-console simulator are **removed**. Demos use a normal API + `is_demo` tenant via `pnpm demo:up` → `pilot:provision-demo-tenant` → `pilot:seed-history`, driven by `pnpm bank-simulator` with real timers (escalate windows included). Historical sections below may still name old runners; treat `docs/DEMO.md` as authoritative for commands.
+> **2026-11-17 single path:** Runtime demo mode, demo clock, in-API scenarios, `demo:reset`, and the in-console simulator are **removed**. Demos use a normal API + `is_demo` tenant via `pnpm demo:up` → `pilot:provision-demo-tenant` → `pilot:seed-history`, driven by `pnpm bank-simulator` with real timers (escalate windows included). Historical sections below may still name old runners; treat `docs/DEMO.md` as authoritative for commands.
 
 ---
 
