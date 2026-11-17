@@ -1,0 +1,41 @@
+# Gitleaks config for Salanor.
+# Allowlist covers false positives and test fixtures only.
+# Historical .env_deploy secrets are NOT allowlisted — rotate them (see
+# .cursor-test-compare/remove-demo-mode/gitleaks-classification.txt). CI scans the
+# current tree (--no-git) so deleted/gitignored history does not fail the gate.
+
+title = "salanor"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Build artifacts and dependency trees (not scanned)"
+paths = [
+  '''(?i)node_modules''',
+  '''(?i)\.next''',
+  '''(?i)\.nx''',
+  '''(?i)/dist/''',
+  '''(?i)\.cursor-test-compare''',
+  '''(?i)\.bank-simulator''',
+  '''(?i)/coverage/''',
+]
+
+[[allowlists]]
+description = "False positives: example env/templates, docs samples, AWS KMS string constants / constructor fields"
+paths = [
+  '''(?i)\.env\.example$''',
+  '''(?i)\.example\.json$''',
+  '''docs/AEGIS_GOVERNANCE_BRIDGE_MVP\.md$''',
+  '''services/aegis-api/src/crypto/kms-ed25519\.ts$''',
+  '''services/aegis-api/src/crypto/key-provider\.ts$''',
+]
+
+[[allowlists]]
+description = "Test fixtures and local upgrade/migration harnesses"
+paths = [
+  '''/test/''',
+  '''(?i)\.test\.ts$''',
+  '''tools/scripts/upgrade-migrate-check\.mts$''',
+  '''services/aegis-api/src/demo/live-scenarios-extended\.ts$''',
+]

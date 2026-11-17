@@ -39,6 +39,10 @@ coverage/
 # local compliance export artifacts
 .data/
 
+# local scratch scripts / evidence dumps (never commit)
+tmp/
+services/*/tmp/
+
 # go (future services)
 bin/
 .neon

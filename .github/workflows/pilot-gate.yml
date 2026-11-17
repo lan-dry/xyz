@@ -9,6 +9,8 @@ on:
       - "sdks/typescript/**"
       - "services/aegis-api/**"
       - "tools/demo/**"
+      - "tools/scripts/**"
+      - "tools/bank-simulator/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/pilot-gate.yml"
@@ -21,6 +23,8 @@ on:
       - "sdks/typescript/**"
       - "services/aegis-api/**"
       - "tools/demo/**"
+      - "tools/scripts/**"
+      - "tools/bank-simulator/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - ".github/workflows/pilot-gate.yml"
@@ -59,6 +63,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+
+      # Cheap and dependency-free: fail fast before installing anything.
+      - name: Demo mode must not come back (AEGIS_DEMO_MODE, demo clock, in-API demo routes, demo:reset)
+        run: node tools/scripts/no-demo-mode-reintro.mjs
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

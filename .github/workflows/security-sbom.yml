@@ -19,10 +19,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Gitleaks
+      - name: Gitleaks (current tree)
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --no-git --config=.gitleaks.toml
 
   sbom:
     runs-on: ubuntu-latest

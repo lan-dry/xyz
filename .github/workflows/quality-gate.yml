@@ -1,0 +1,111 @@
+name: Quality gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: salanor_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d salanor_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/salanor_test
+      AEGIS_BRIDGE_MASTER_KEY: quality-gate-encryption-key
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: No demo-mode reintroduction
+        run: pnpm check:no-demo-mode
+
+      # Typecheck and the console build resolve workspace packages through their built output.
+      - name: Build workspace dependencies
+        run: >-
+          pnpm
+          --filter "aegis-api^..."
+          --filter "id^..."
+          --filter "@salanor/web-console^..."
+          build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck (API + console + id + platform-auth)
+        run: |
+          pnpm --filter aegis-api typecheck
+          pnpm --filter @salanor/web-console typecheck
+          pnpm --filter id typecheck
+          pnpm --filter @salanor/platform-auth typecheck
+
+      - name: Apply database migrations
+        run: pnpm db:migrate
+
+      - name: aegis-api full test suite
+        run: pnpm --filter aegis-api test
+
+      # Empty DB -> baseline schema (through 013) -> seeded receipts -> tip -> aegis-verify.
+      # Uses its own scratch database (name contains "upgrade", dropped and recreated by the script).
+      - name: Upgrade-from-baseline migration check
+        env:
+          AEGIS_UPGRADE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/aegis_upgrade
+        run: pnpm exec tsx tools/scripts/upgrade-migrate-check.mts
+
+      - name: Production build (API + console)
+        env:
+          NODE_ENV: production
+          # Public origins only; nothing here is a secret.
+          AEGIS_API_URL: https://api.example.com
+          NEXT_PUBLIC_AEGIS_API_URL: https://api.example.com
+          SALANOR_ID_URL: https://id.example.com
+          NEXT_PUBLIC_CONSOLE_URL: https://app.example.com
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: |
+          pnpm --filter aegis-api build
+          pnpm --filter @salanor/web-console build
+          # Fail if removed demo surfaces compiled into API dist
+          if rg -n "isDemoModeAllowed|setDemoClock|/v1/aegis/demo/scenarios|/v1/aegis/demo/simulator" services/aegis-api/dist; then
+            echo "demo-mode symbols found in production dist" >&2
+            exit 1
+          fi
+
+      - name: Docs status agree
+        run: pnpm docs:status-agree
+
+      # Current tree only (with .gitleaks.toml allowlists for fixtures/false positives).
+      # Historical .env_deploy leaks are listed for rotation; they are not allowlisted.
+      - name: Gitleaks (current tree)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --no-git --config=.gitleaks.toml
