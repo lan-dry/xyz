@@ -810,9 +810,9 @@ export async function provisionOrganization(
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      if (/is_demo/i.test(message)) {
+      if (/is_demo/i.test(message) && /does not exist/i.test(message)) {
         throw new Error(
-          "organization.is_demo is missing — deploy aegis-api so migration 002_ensure_organization_demo_flags runs",
+          "organization.is_demo is missing — on aegis-api run: node dist/db/migrate-cli.js (needs MIGRATION_DATABASE_URL = same Postgres as salanor-id)",
         );
       }
       throw err;
@@ -826,9 +826,9 @@ export async function provisionOrganization(
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      if (/is_test/i.test(message)) {
+      if (/is_test/i.test(message) && /does not exist/i.test(message)) {
         throw new Error(
-          "organization.is_test is missing — deploy aegis-api so migration 002_ensure_organization_demo_flags runs",
+          "organization.is_test is missing — on aegis-api run: node dist/db/migrate-cli.js (needs MIGRATION_DATABASE_URL = same Postgres as salanor-id)",
         );
       }
       throw err;

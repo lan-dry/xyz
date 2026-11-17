@@ -7,10 +7,16 @@ import { migrateUp } from "./migrate.js";
 const migrationUrl = process.env.MIGRATION_DATABASE_URL?.trim();
 if (migrationUrl) {
   process.env.DATABASE_URL = migrationUrl;
+  console.log("migrate: using MIGRATION_DATABASE_URL (schema owner)");
+} else {
+  console.log(
+    "migrate: MIGRATION_DATABASE_URL unset — using DATABASE_URL (must be allowed to ALTER TABLE)",
+  );
 }
 
 try {
   await migrateUp();
+  console.log("migrate: done");
 } catch (error) {
   console.error(error);
   process.exit(1);
