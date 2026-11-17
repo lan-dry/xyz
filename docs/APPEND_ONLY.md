@@ -47,4 +47,4 @@ Ops: provision the app role without bypass privileges; keep migrations/superuser
 
 ## Backup restore with `--disable-triggers`
 
-`pg_restore --disable-triggers` bypasses append-only triggers and is **demo-only**. The backup-restore drill refuses when `NODE_ENV`/`AEGIS_ENV` is `production` or `AEGIS_DEMO_MODE` is not `true` (same guard as `demo:reset`).
+`pg_restore --disable-triggers` bypasses append-only triggers and is **demo-only**. The backup-restore drill refuses when `NODE_ENV`/`AEGIS_ENV` is `production`, and otherwise only runs when `AEGIS_ALLOW_DISABLE_TRIGGERS_RESTORE=true` is set in the shell (`tools/backup-restore-drill/disable-triggers-guard.ts`). `AEGIS_DEMO_MODE` no longer has any effect here or anywhere else.

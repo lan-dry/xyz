@@ -25,7 +25,7 @@ Status: living document. Lists what is and is not covered today.
 | Swap/remove receipt | Tenant seq + prev_hash checks | Append-only on receipt table (migration 015) |
 | Self-approval | SoD guard | Must be wired on all approval HTTP paths |
 | Clear national ID in logs | Field policy mask/hash/evaluate_only | End-to-end log scrub not proven for all writers |
-| Demo clock abuse in prod | `AEGIS_DEMO_MODE` + DB URL guard | Operators must not set allow flags in prod |
+| Demo clock abuse in prod | **Removed.** There is no demo clock or time travel: the API uses the wall clock only. `AEGIS_DEMO_MODE` enables nothing, is ignored outside production and makes a production boot refuse (`production-guards.ts`); CI (`check:no-demo-mode`) fails if the clock, the variable as a feature, in-API demo routes or `demo:reset` come back | Old receipts may still carry `flags.demo_clock`; they verify and show a plain note |
 | Stolen local signing key | KeyProvider; local file refused in prod | AWS KMS Sign path incomplete |
 | Cross-tenant read | Org scoping on queries | Continuous review of new endpoints |
 

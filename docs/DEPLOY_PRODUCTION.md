@@ -107,14 +107,15 @@ variable store; treat Railway "sealed"/Vercel "sensitive" options as preferable 
 | `NEXT_PUBLIC_MARKETING_URL` | `https://www.salanor.com` (links only; the site is not published by this release) | Vercel | N |
 | `NEXT_PUBLIC_DOCS_BASE_URL` | `https://docs.salanor.com` or leave unset if docs are not live | Vercel | N |
 | `AEGIS_UI_PROFILE` / `NEXT_PUBLIC_AEGIS_UI_PROFILE` | `bank_demo` for the bank pilot look (build-time, whole console) | Vercel | N |
-| `AEGIS_INGEST_KEY`, `AEGIS_DEMO_INGEST_KEY`, `AEGIS_INGEST_DEV_KEY` | **Do not set on Vercel.** They feed the in-console simulator, which needs `AEGIS_DEMO_MODE` (refused in production). Use the bank simulator service instead | n/a | Y if ever set |
+| `AEGIS_DEMO_MODE` | **Delete from Vercel if present.** It no longer exists as a feature (the console never reads it) | n/a | N |
+| `AEGIS_INGEST_KEY`, `AEGIS_DEMO_INGEST_KEY`, `AEGIS_INGEST_DEV_KEY` | **Do not set on Vercel.** The in-console simulator that used them was removed and the console must never hold an ingest key. Run the standalone `bank-simulator` service (section 9), which keeps its ingest key server-side | n/a | Y if ever set |
 | `DATABASE_URL` | **Do not set on Vercel.** The console holds no database access | n/a | Y |
 
 ### 3.2 Railway: service `aegis-api` (config `services/aegis-api/railway.toml`)
 
 | Name | Purpose | Where | Secret |
 |------|---------|-------|--------|
-| `AEGIS_ENV` | `production`. Turns on boot guards: the API refuses to start with demo mode on, a dev/software key without the interim flag, a superuser DB role, or missing `DATABASE_URL` / `CONSOLE_ORIGIN` / email provider | Railway | N |
+| `AEGIS_ENV` | `production`. Turns on boot guards: the API refuses to start with `AEGIS_DEMO_MODE` set (legacy variable), a dev/software key without the interim flag, a superuser DB role, or missing `DATABASE_URL` / `CONSOLE_ORIGIN` / email provider | Railway | N |
 | `NODE_ENV` | `production` (the Dockerfile sets it) | image | N |
 | `PORT` | Injected by Railway; do not set | Railway | N |
 | `DATABASE_URL` | Runtime connection as the **app role** (not superuser, see section 7) | Railway | **Y** |
@@ -140,7 +141,7 @@ variable store; treat Railway "sealed"/Vercel "sensitive" options as preferable 
 | `AEGIS_EMAIL_REQUIRED` | Leave unset (true). `false` only if email is intentionally off | Railway | N |
 | `AEGIS_REQUIRED_WORKERS` | `witness` while only the witness worker runs. The default is `witness,housekeeping,compliance`, and `/ready` returns 503 when a required worker never reports | Railway | N |
 | `AEGIS_WITNESS_MAX_AGE_MINUTES` | Staleness limit for `/ready`, default 10 | Railway | N |
-| `AEGIS_DEMO_MODE` | **Must be unset or false.** The API refuses to boot with it on | Railway | N |
+| `AEGIS_DEMO_MODE` | **DELETE this variable from Railway.** Demo mode no longer exists; the variable enables nothing. In a non-production API it is ignored and logged once as a warning; with `AEGIS_ENV=production` (or `NODE_ENV=production`) set to a truthy value, the API **refuses to boot**. Hosted demos use an `is_demo` tenant (section 10), not an environment mode | Railway | N |
 | `DEV_SIGNING_PRIVATE_KEY_B64` | **Do not set.** Development fallback; the guard warns if present | Railway | Y |
 | `SENTRY_DSN` | Optional error reporting | Railway | **Y** |
 | `COMPLIANCE_EXPORT_DIR` | Only if compliance exports are used; needs a volume | Railway | N |
@@ -452,9 +453,11 @@ How it behaves:
 - It targets exactly one tenant (the one its ingest key belongs to). Point the **Demo Bank** simulator at
   Demo Bank and use a separate local or deployed instance for the smoke-test tenant. `pnpm smoke:production`
   refuses a simulator that reports a different organisation.
-- The in-console simulator (`/aegis/demo/simulator`) calls the API's demo endpoints, which need
-  `AEGIS_DEMO_MODE`; a production API will not run with that on. On the hosted stack this service **is**
-  the simulator.
+- There is **no** in-console simulator and no API demo endpoint any more (`/aegis/demo/simulator` and
+  `/v1/aegis/demo/*` are gone and return 404). On the hosted stack this service **is** the simulator. It
+  uses the same public intake and approvals endpoints, with the tenant's real ingest key, as any bank
+  system would, so there is no special API mode to switch on. Time is the real wall clock: the
+  escalation story waits the real 2-minute window on an `is_demo` tenant.
 
 ### Founder steps: simulator only (do these after section 4 step 10)
 
@@ -496,8 +499,12 @@ pnpm pilot:provision-demo-tenant                 # smoke-test tenant (never seed
 ```
 
 Re-run after invitees accept, so bank roles are assigned. The provisioning flags the organisation `is_demo`
-(quiet "Demo organisation" tag and a 2-minute escalation window on held loan rules). That flag does **not**
-enable the demo clock, reset or any `AEGIS_DEMO_MODE` behaviour; those stay env-gated and off in production.
+(quiet "Demo organisation" tag and a 2-minute escalation window on held loan rules). That flag is the
+**only** thing that makes a tenant a demo, and it is the supported path for hosted demos. It changes no
+security behaviour and does not add a clock, reset or scenario endpoint; none of those exist (the demo
+clock, `demo:reset`, in-API scenario endpoints and `AEGIS_DEMO_MODE` were removed). Clean-up is the
+owner-only `pilot:wipe-tenant` / `demo:fresh` (section 10.1), which only ever touches `is_demo` / `is_test`
+organisations.
 
 The smoke-test tenant needs these personas: an officer (`credit_officer`), a manager (`credit_manager`),
 the org admin; add a delegate (a plain member with no bank role) and a head (`head_of_compliance`) for the
@@ -514,7 +521,7 @@ simulator or smoke traffic into a customer org (or Northwind) if you need a clea
 | 2. Provision | `pnpm pilot:provision-demo-tenant` for **Demo Bank** (demos) and/or a **`smoke-test`** org (soak) | Second tenant: set `DEMO_TENANT_FILE` to a smoke JSON (slug contains `smoke`) |
 | 3. Wire simulator | `AEGIS_INGEST_KEY`, `AEGIS_ORGANIZATION_ID`, `AEGIS_API_BASE` on the simulator host | Secrets stay server-side — same as production agents |
 | 4. Test | Console + `http://…:4000` stories, or `pnpm smoke:production` | Aim smoke **only** at the smoke tenant |
-| 5. Remove / reset | `pnpm pilot:wipe-tenant` for the smoke/demo org, or `pnpm demo:fresh` for Demo Bank (section 10.1). Local only: `node tools/scripts/dev-delete-accounts.mjs --purge-orgs <admin@email>` | Hosted: only through the owner-only wipe function; never `demo:reset` / `AEGIS_DEMO_MODE` against production, never hand-written `DELETE`s |
+| 5. Remove / reset | `pnpm pilot:wipe-tenant` for the smoke/demo org, or `pnpm demo:fresh` for Demo Bank (section 10.1). Local only: `node tools/scripts/dev-delete-accounts.mjs --purge-orgs <admin@email>` | Hosted: only through the owner-only wipe function; there is no `demo:reset` or `AEGIS_DEMO_MODE` any more; never hand-written `DELETE`s |
 
 **Demo Bank** (`is_demo`) is for presentations; keep it if you still need the room demo. **smoke-test** is
 the disposable soak org — create it for a test window, purge it when finished. Production/Sandbox in the
@@ -721,7 +728,7 @@ interleaving on the same chain can cause a false "missing sequence".
 
 ## 12. Go-live check
 
-- [ ] `AEGIS_ENV=production`, `AEGIS_DEMO_MODE` unset, boot log shows no guard failures
+- [ ] `AEGIS_ENV=production`, `AEGIS_DEMO_MODE` deleted from every service (Railway and Vercel), boot log shows no guard failures
 - [ ] `DATABASE_URL` is the app role; `tools/check-append-only-grants.sql` clean
 - [ ] `/ready` 200; witness ok; TSA configured (or knowingly not)
 - [ ] `/v1/public/keys` shows the intended custody (Plan A `kms`, or Plan B `software_interim` and you have said so)

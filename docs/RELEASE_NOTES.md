@@ -64,8 +64,8 @@ bundle (`docs/MIGRATION_ROLLBACK.md`).
 | Flag / env | Default | Notes |
 |------------|---------|-------|
 | `AEGIS_ENV` | unset | `production` enables the boot guards above |
-| `AEGIS_DEMO_MODE` | unset / false | Required for demo clock, `demo:reset`, scenario HTTP. **Refused** when `AEGIS_ENV=production` |
-| `AEGIS_DEMO_APPROVAL_PASSWORD` | **none** | Required to seed demo approvers (min 10 chars). Local demo only |
+| `AEGIS_DEMO_MODE` | **removed** (delete it) | No longer enables anything: demo clock, `demo:reset` and scenario HTTP were removed. Ignored with a warning outside production; **refused at boot** when `AEGIS_ENV=production`. Demos use an `is_demo` tenant (`docs/DEMO.md`) |
+| Demo persona passwords | tenant file | Written by `pnpm demo:up` into `.demo-tenant-local-stack.local.json` (gitignored). Hosted demos use `.demo-tenant-emails.local.json`. `AEGIS_DEMO_APPROVAL_PASSWORD` is removed. |
 | `AEGIS_RECEIPT_KMS_KEY_ID` | unset | Plan A: AWS KMS key. When set, the software seed is ignored |
 | `AEGIS_RECEIPT_KEY_ID` | `receipt_dev` (dev) | Must be a production id in production; one public key per id forever |
 | `AEGIS_ALLOW_SOFTWARE_KEY_IN_PRODUCTION` | unset | Only the value `interim`; receipts then say "software key (interim)" |

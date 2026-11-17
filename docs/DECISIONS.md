@@ -43,7 +43,9 @@ Other obligation kinds must not become `hold`.
 
 ## D5 — Demo clock and reset production guard
 
-**Decision:** `reset`, demo clock, and `pg_restore --disable-triggers` refuse to run unless `AEGIS_DEMO_MODE=true` (or equivalent) and the process is not production (`NODE_ENV` / `AEGIS_ENV`). The database must not be a production target. Receipts created under demo clock include `flags.demo_clock = true`.
+**Status: SUPERSEDED (branch `remove-demo-mode`).** Demo mode was removed. There is no `AEGIS_DEMO_MODE` feature, demo clock, `demo:reset` or in-API scenario / simulator endpoint. The variable is ignored (with a boot warning) outside production and a production boot refuses it. Demos use a normal API plus an `organization.is_demo` tenant (`pilot:provision-demo-tenant`, `pilot:seed-history`, owner-only `pilot:wipe-tenant` / `demo:fresh`) driven by the standalone bank simulator. `pg_restore --disable-triggers` is now guarded by `AEGIS_ALLOW_DISABLE_TRIGGERS_RESTORE=true` on a non-production process only. CI enforces this with `pnpm check:no-demo-mode`. Receipts issued earlier under the demo clock keep `flags.demo_clock = true` and still verify.
+
+*Original decision (historical):* `reset`, demo clock, and `pg_restore --disable-triggers` refused to run unless `AEGIS_DEMO_MODE=true` and the process was not production.
 
 ## D5b — Requester identity for SoD (production)
 
