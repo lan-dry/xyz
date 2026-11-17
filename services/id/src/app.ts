@@ -24,7 +24,6 @@ import {
   verifyAccountBootstrapToken,
   verifyAccountPassword,
   cleanupAbandonedPendingOrganizations,
-  type ConsoleSession,
 } from "@salanor/platform-auth";
 import { pingDatabase, getPool } from "./db/pool.js";
 import { buildAccountBootstrapPayload, buildMePayload, identityRoutes } from "./routes/identity.js";
@@ -35,7 +34,6 @@ import {
   publicContactRoutes,
 } from "./routes/public-contact.js";
 import { handlePublicPlans } from "./routes/public-plans.js";
-import { sendEmailVerificationEmail } from "./email/send-email-verification.js";
 import { registerOAuthRoutes } from "./auth/oauth-handlers.js";
 import { registerSsoRoutes } from "./auth/sso-workos.js";
 import { scimRoutes } from "./routes/scim.js";
@@ -63,16 +61,6 @@ app.use(
     allowHeaders: ["Content-Type", "X-Platform-Secret", "Authorization"],
   }),
 );
-
-function serializeUser(session: ConsoleSession) {
-  return {
-    user_id: session.userId,
-    organization_id: session.organizationId,
-    email: session.email,
-    display_name: session.displayName,
-    role: session.role,
-  };
-}
 
 app.get("/health", async (c) => {
   if (!process.env.DATABASE_URL) {

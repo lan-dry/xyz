@@ -165,7 +165,7 @@ export function isConsolePublicHost(hostHeader: string | null | undefined): bool
 }
 
 /** @deprecated Aegis marketing is path-based on the marketing host in Pattern C. */
-export function isAegisPublicHost(hostHeader: string | null | undefined): boolean {
+export function isAegisPublicHost(_hostHeader: string | null | undefined): boolean {
   return false;
 }
 

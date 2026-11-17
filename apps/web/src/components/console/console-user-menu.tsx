@@ -25,7 +25,7 @@ export function ConsoleUserMenu({
   signOutControl: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState<ConsoleTheme>("light");
+  const [, setTheme] = useState<ConsoleTheme>("light");
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

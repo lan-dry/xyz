@@ -1,6 +1,5 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
 import { salanorAuthConfig } from "@salanor/auth/auth-config";
 import { TOTP_CHALLENGE_COOKIE_NAME, validateTotpChallengeCookie } from "@/lib/totp/challenge-cookie";
