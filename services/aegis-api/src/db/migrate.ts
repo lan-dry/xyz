@@ -8,9 +8,13 @@ const MIGRATIONS_DIR = join(
   "../../migrations",
 );
 
-/** Forward-only SQL migrations. Greenfield: single `001_baseline` only. */
+/** Forward-only SQL migrations. Greenfield starts at `001_baseline`. */
 const MIGRATIONS = [
   { version: "001_baseline", file: "001_baseline.sql" },
+  {
+    version: "002_ensure_organization_demo_flags",
+    file: "002_ensure_organization_demo_flags.sql",
+  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {

@@ -55,6 +55,7 @@ baseline@013 to tip).
 | Version | Purpose | Rollback note |
 |---------|---------|---------------|
 | `001_baseline` | Single greenfield schema (Aegis + platform + CMS + forensic bank/receipts + tenant wipe + platform email settings). Seeds `plan_catalog` + `salanor-platform` only. | **No in-place downgrade.** Restore from backup, or `DROP SCHEMA public CASCADE` + re-migrate on empty environments. |
+| `002_ensure_organization_demo_flags` | Idempotent `is_demo` / `is_test` on `organization`, plus `organization_usage_monthly` if missing (unblocks platform org list / demo provision on drifted hosted DBs). | Safe to leave; columns are required by platform list and wipe. |
 
 Pre-flight for every environment: a backup, then migrate on a copy, then `pnpm aegis-verify` on an exported
 bundle (`docs/MIGRATION_ROLLBACK.md`).

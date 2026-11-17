@@ -582,53 +582,101 @@ export async function platformListOrganizations(
 > {
   const period = monthStart();
   const q = query?.trim().toLowerCase();
-  const result = await client.query<{
-    organization_id: string;
-    name: string;
-    slug: string;
-    plan: string;
-    active: boolean;
-    created_at: Date;
-    member_count: string;
-    events_this_month: string;
-    billing_source: BillingSource;
-    billing_status: BillingStatus;
-    current_period_start: Date | null;
-    current_period_end: Date | null;
-    is_demo: boolean;
-    is_test: boolean;
-  }>(
-    `SELECT o.organization_id, o.name, o.slug, o.plan, o.active, o.created_at,
-            o.billing_source, o.billing_status, o.current_period_start, o.current_period_end,
-            o.is_demo, o.is_test,
-            (SELECT COUNT(*)::text FROM membership m
-             WHERE m.organization_id = o.organization_id AND m.status = 'active') AS member_count,
-            COALESCE(u.event_count::text, '0') AS events_this_month
-     FROM organization o
-     LEFT JOIN organization_usage_monthly u
-       ON u.organization_id = o.organization_id AND u.period_month = $1::date
-     WHERE ($2::text IS NULL OR lower(o.name) LIKE '%' || $2 || '%'
-            OR lower(o.slug) LIKE '%' || $2 || '%')
-     ORDER BY o.created_at DESC
-     LIMIT 200`,
-    [period, q || null],
-  );
-  return result.rows.map((r) => ({
-    organization_id: r.organization_id,
-    name: r.name,
-    slug: r.slug,
-    plan: r.plan,
-    active: r.active,
-    created_at: r.created_at,
-    member_count: Number(r.member_count),
-    events_this_month: Number(r.events_this_month),
-    billing_source: r.billing_source ?? "none",
-    billing_status: r.billing_status ?? "none",
-    current_period_start: r.current_period_start,
-    current_period_end: r.current_period_end,
-    is_demo: r.is_demo === true,
-    is_test: r.is_test === true,
-  }));
+  // Prefer the full list (demo flags + usage). If production schema/grants are behind
+  // (missing is_demo / organization_usage_monthly), fall back so provision can still run.
+  try {
+    const result = await client.query<{
+      organization_id: string;
+      name: string;
+      slug: string;
+      plan: string;
+      active: boolean;
+      created_at: Date;
+      member_count: string;
+      events_this_month: string;
+      billing_source: BillingSource;
+      billing_status: BillingStatus;
+      current_period_start: Date | null;
+      current_period_end: Date | null;
+      is_demo: boolean;
+      is_test: boolean;
+    }>(
+      `SELECT o.organization_id, o.name, o.slug, o.plan, o.active, o.created_at,
+              o.billing_source, o.billing_status, o.current_period_start, o.current_period_end,
+              o.is_demo, o.is_test,
+              (SELECT COUNT(*)::text FROM membership m
+               WHERE m.organization_id = o.organization_id AND m.status = 'active') AS member_count,
+              COALESCE(u.event_count::text, '0') AS events_this_month
+       FROM organization o
+       LEFT JOIN organization_usage_monthly u
+         ON u.organization_id = o.organization_id AND u.period_month = $1::date
+       WHERE ($2::text IS NULL OR lower(o.name) LIKE '%' || $2 || '%'
+              OR lower(o.slug) LIKE '%' || $2 || '%')
+       ORDER BY o.created_at DESC
+       LIMIT 200`,
+      [period, q || null],
+    );
+    return result.rows.map((r) => ({
+      organization_id: r.organization_id,
+      name: r.name,
+      slug: r.slug,
+      plan: r.plan,
+      active: r.active,
+      created_at: r.created_at,
+      member_count: Number(r.member_count),
+      events_this_month: Number(r.events_this_month),
+      billing_source: r.billing_source ?? "none",
+      billing_status: r.billing_status ?? "none",
+      current_period_start: r.current_period_start,
+      current_period_end: r.current_period_end,
+      is_demo: r.is_demo === true,
+      is_test: r.is_test === true,
+    }));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (
+      !/is_demo|is_test|organization_usage_monthly|billing_source|billing_status|current_period_/i.test(
+        message,
+      )
+    ) {
+      throw err;
+    }
+    const result = await client.query<{
+      organization_id: string;
+      name: string;
+      slug: string;
+      plan: string;
+      active: boolean;
+      created_at: Date;
+      member_count: string;
+    }>(
+      `SELECT o.organization_id, o.name, o.slug, o.plan, o.active, o.created_at,
+              (SELECT COUNT(*)::text FROM membership m
+               WHERE m.organization_id = o.organization_id AND m.status = 'active') AS member_count
+       FROM organization o
+       WHERE ($1::text IS NULL OR lower(o.name) LIKE '%' || $1 || '%'
+              OR lower(o.slug) LIKE '%' || $1 || '%')
+       ORDER BY o.created_at DESC
+       LIMIT 200`,
+      [q || null],
+    );
+    return result.rows.map((r) => ({
+      organization_id: r.organization_id,
+      name: r.name,
+      slug: r.slug,
+      plan: r.plan,
+      active: r.active,
+      created_at: r.created_at,
+      member_count: Number(r.member_count),
+      events_this_month: 0,
+      billing_source: "none" as BillingSource,
+      billing_status: "none" as BillingStatus,
+      current_period_start: null,
+      current_period_end: null,
+      is_demo: false,
+      is_test: false,
+    }));
+  }
 }
 
 export type PlatformOrganizationDetail = {

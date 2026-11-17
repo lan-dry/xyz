@@ -60,7 +60,7 @@ app.use(
     origin: [consoleOrigin, platformOrigin, marketingOrigin, stoaOrigin],
     credentials: true,
     allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type"],
+    allowHeaders: ["Content-Type", "X-Platform-Secret", "Authorization"],
   }),
 );
 

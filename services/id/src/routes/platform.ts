@@ -185,15 +185,27 @@ platformRoutes.get("/organizations", async (c) => {
   const access = await requirePlatformPermission(c, "platform:read");
   if (!access.ok) return c.json({ error: access.error }, 403);
   const q = c.req.query("q");
-  const orgs = await platformListOrganizations(getPool(), q);
-  return c.json({
-    organizations: orgs.map((o) => ({
-      ...o,
-      created_at: o.created_at.toISOString(),
-      current_period_start: o.current_period_start?.toISOString() ?? null,
-      current_period_end: o.current_period_end?.toISOString() ?? null,
-    })),
-  });
+  try {
+    const orgs = await platformListOrganizations(getPool(), q);
+    return c.json({
+      organizations: orgs.map((o) => ({
+        ...o,
+        created_at: new Date(o.created_at).toISOString(),
+        current_period_start: o.current_period_start
+          ? new Date(o.current_period_start).toISOString()
+          : null,
+        current_period_end: o.current_period_end
+          ? new Date(o.current_period_end).toISOString()
+          : null,
+      })),
+    });
+  } catch (err) {
+    console.error("[id] platform list organizations", err);
+    const message = err instanceof Error ? err.message : "Failed to list organizations";
+    // Surface the DB/driver message so laptop provision can show the real cause
+    // (e.g. missing is_demo) instead of a blank Internal Server Error.
+    return c.json({ error: message }, 500);
+  }
 });
 
 platformRoutes.get("/organizations/:organizationId", async (c) => {

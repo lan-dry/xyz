@@ -803,16 +803,36 @@ export async function provisionOrganization(
     throw new Error("Failed to create organization");
   }
   if (input.isDemo) {
-    await client.query(
-      `UPDATE organization SET is_demo = true WHERE organization_id = $1`,
-      [organizationId],
-    );
+    try {
+      await client.query(
+        `UPDATE organization SET is_demo = true WHERE organization_id = $1`,
+        [organizationId],
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (/is_demo/i.test(message)) {
+        throw new Error(
+          "organization.is_demo is missing — deploy aegis-api so migration 002_ensure_organization_demo_flags runs",
+        );
+      }
+      throw err;
+    }
   }
   if (input.isTest) {
-    await client.query(
-      `UPDATE organization SET is_test = true WHERE organization_id = $1`,
-      [organizationId],
-    );
+    try {
+      await client.query(
+        `UPDATE organization SET is_test = true WHERE organization_id = $1`,
+        [organizationId],
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (/is_test/i.test(message)) {
+        throw new Error(
+          "organization.is_test is missing — deploy aegis-api so migration 002_ensure_organization_demo_flags runs",
+        );
+      }
+      throw err;
+    }
   }
 
   let accountId: string;
