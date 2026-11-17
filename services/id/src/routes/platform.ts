@@ -175,7 +175,8 @@ platformRoutes.post("/organizations", async (c) => {
       return c.json({ error: message }, 422);
     }
     console.error("[id] provision org", err);
-    return c.json({ error: "Failed to provision organization" }, 500);
+    // Return the real cause (missing column, FK, etc.) so laptop provision is actionable.
+    return c.json({ error: message }, 500);
   } finally {
     client.release();
   }
