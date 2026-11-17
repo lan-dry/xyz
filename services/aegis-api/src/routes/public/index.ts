@@ -91,7 +91,7 @@ publicRoutes.get("/keys.json", async (c) => {
 
 /**
  * Demo Bank only: latest real evidence bundle + a tampered copy for Verify.
- * Requires organization.is_demo (not AEGIS_DEMO_MODE).
+ * Requires organization.is_demo.
  */
 publicRoutes.get("/demo/sample-bundles", async (c) => {
   const slug = c.req.query("org")?.trim() || DEMO_BANK_SLUG;

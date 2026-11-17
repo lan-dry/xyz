@@ -15,7 +15,7 @@ $env:AEGIS_SLACK_WEBHOOK_URL="<incoming webhook>"
 ## Proof steps
 
 1. Start API with the env above.
-2. Provision the approvers on an `is_demo` tenant: `pnpm pilot:provision-demo-tenant` (no demo mode is needed; `AEGIS_DEMO_MODE` and `pack:apply --seed-approvers` no longer exist).
+2. Provision the approvers on an `is_demo` tenant: `pnpm pilot:provision-demo-tenant` (no demo mode is needed;  and `pack:apply --seed-approvers` no longer exist).
 3. Trigger a held case from the standalone simulator (`pnpm bank-simulator`, story "Loan RWF 18,000,000") so a real approval request is raised.
 4. Confirm email/Teams: no sensitive fields; link opens login only; does not auto-approve.
 5. Unit mocks: `pnpm --filter aegis-api exec vitest run test/notify-delivery.test.ts test/notify-approvers.test.ts`

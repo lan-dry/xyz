@@ -3,10 +3,7 @@
  * CI guard: fail if runtime demo-mode machinery is reintroduced.
  *
  * Allowed:
- *   - production-guards.ts (refuse in production)
- *   - aegis-api src/index.ts (ignore-and-warn once)
- *   - time/clock.ts (isLegacyDemoModeEnvSet)
- *   - tests that assert boot refuse / 404 / env cleanup
+ *   - tests that assert removed endpoints / clock behaviour
  *   - this file
  *   - docs/ stating removal
  *   - comment-only / string-only mentions that do not call removed APIs
@@ -61,11 +58,8 @@ function isIgnoredPath(rel) {
   if (n.includes(".cursor-test-compare/")) return true;
   if (n.startsWith("docs/")) return true;
   if (n.startsWith("tmp/")) return true; // local scratch; not shipped
-  if (n.endsWith("production-guards.ts")) return true;
-  if (n.endsWith("services/aegis-api/src/index.ts")) return true;
-  if (n.endsWith("services/aegis-api/src/time/clock.ts")) return true;
   if (
-    /services\/aegis-api\/test\/(production-guards|production-demo-routes|removed-demo-endpoints|clock)\.test\.ts$/.test(
+    /services\/aegis-api\/test\/(production-guards|removed-demo-endpoints|clock)\.test\.ts$/.test(
       n,
     )
   ) {
@@ -148,19 +142,6 @@ for (const { re, why } of FORBIDDEN_CALLS) {
     const rel = file.replace(/^\.[\\/]/, "").replace(/\\/g, "/");
     if (isIgnoredPath(rel)) continue;
     failures.push(`${why}: ${line}`);
-  }
-}
-
-// Enabling assignment of AEGIS_DEMO_MODE to a truthy value (not comments, not "false").
-{
-  const lines = ripgrep(String.raw`AEGIS_DEMO_MODE\s*[=:]\s*["']?(true|1|yes|on)["']?`);
-  for (const line of lines) {
-    const file = line.split(":")[0] ?? "";
-    const rel = file.replace(/^\.[\\/]/, "").replace(/\\/g, "/");
-    if (isIgnoredPath(rel)) continue;
-    // Tests that assert production refuse may set true inside a goodEnv() call — allow test/
-    if (rel.includes("/test/") || rel.includes("\\test\\")) continue;
-    failures.push(`enabling AEGIS_DEMO_MODE assignment: ${line}`);
   }
 }
 

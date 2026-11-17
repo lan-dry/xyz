@@ -253,7 +253,7 @@ describe("demo sample bundles + verify checklist", () => {
 });
 
 describe("demo sample bundles route is is_demo-tenant only", () => {
-  // Reason: AEGIS_DEMO_MODE gate removed; route keys off organization.is_demo + slug allow-list.
+  // Route keys off organization.is_demo + slug allow-list.
   it("404 for an org slug that is not Demo Bank (no database required)", async () => {
     const res = await createApp().request("/v1/public/demo/sample-bundles?org=northwind");
     expect(res.status).toBe(404);

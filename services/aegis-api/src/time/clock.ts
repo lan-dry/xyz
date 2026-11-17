@@ -51,9 +51,3 @@ export function setClockForTests(clock: Clock | null): void {
   }
   active = clock ?? systemClock;
 }
-
-/** True when AEGIS_DEMO_MODE is set (ignored at runtime; logged once at boot). */
-export function isLegacyDemoModeEnvSet(env: NodeJS.ProcessEnv = process.env): boolean {
-  const v = (env.AEGIS_DEMO_MODE ?? "").trim().toLowerCase();
-  return v === "true" || v === "1" || v === "yes" || v === "on";
-}

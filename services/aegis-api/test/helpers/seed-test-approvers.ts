@@ -1,5 +1,5 @@
 /**
- * Test-only approver seed (replaces removed seedDemoApprovalActors / AEGIS_DEMO_MODE path).
+ * Test-only approver seed.
  * Reason: integration tests need bank-role memberships without runtime demo mode.
  */
 import { hashPassword } from "@salanor/platform-auth";

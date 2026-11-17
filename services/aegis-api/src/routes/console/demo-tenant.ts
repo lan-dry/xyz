@@ -8,7 +8,7 @@
  *   POST /v1/console/demo-tenant/prepare-v4-dual-publish
  *        admin + is_demo: live draft of active pack with dual_publish_required (runbook §4)
  *
- * None of this enables AEGIS_DEMO_MODE behaviour (demo clock, reset, scenario runner).
+ * Demo-tenant helpers for organization.is_demo only.
  */
 import { randomBytes } from "node:crypto";
 import { Hono } from "hono";

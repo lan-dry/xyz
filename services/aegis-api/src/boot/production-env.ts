@@ -1,5 +1,5 @@
 /**
- * Tiny env predicates shared by boot guards, receipt signing and the demo guards.
+ * Tiny env predicates shared by boot guards and receipt signing.
  * No imports from the rest of the service so there are no cycles.
  */
 
@@ -10,7 +10,7 @@ export function isProductionEnv(env: Env = process.env): boolean {
   return (env.AEGIS_ENV ?? "").trim().toLowerCase() === "production";
 }
 
-/** True for true / on / 1 / yes (any case). Used to refuse demo mode in production. */
+/** True for true / on / 1 / yes (any case). */
 export function isTruthyFlag(value: string | undefined): boolean {
   return /^(true|on|1|yes)$/i.test((value ?? "").trim());
 }

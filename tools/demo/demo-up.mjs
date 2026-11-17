@@ -473,7 +473,7 @@ async function main() {
   // the local stack (that variable usually names the hosted tenant's key).
   if (shellAllowWipe === undefined) delete process.env[ALLOW_WIPE_ENV];
   // demo:up starts a normal API. Drop a stale flag from older shells so children never see it.
-  const legacyFlag = "AEGIS_DEMO_MODE"; // removed: ignored if still set in an old shell
+  const legacyFlag = ""; // removed: ignored if still set in an old shell
   if (process.env[legacyFlag] !== undefined) {
     console.warn(`${legacyFlag} is no longer used; ignoring it for this run.`);
     delete process.env[legacyFlag];

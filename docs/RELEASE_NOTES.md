@@ -35,11 +35,11 @@ Status words in this file follow `docs/FINAL_REPORT.md` and `docs/GAP_REPORT.md`
 - **Dual publish:** opt-in per policy (`dual_publish_required`); off by default.
 - **Record-only:** off by default per workflow.
 - **Boot guards apply only when `AEGIS_ENV=production`.** Existing deployments that do not set it start as
-  before. When you set it, the API **refuses to start** unless: demo mode is off, the receipt key id is not
+  before. When you set it, the API **refuses to start** unless: the receipt key id is not
   `receipt_dev`, KMS is configured **or** the interim flag and seed are set, `DATABASE_URL` is a
   non-superuser role that cannot `SET session_replication_role`, `CONSOLE_ORIGIN` is set, and an email
   provider is configured. Read `docs/DEPLOY_PRODUCTION.md` before turning it on.
-- **Demo endpoints / clock / seed actors:** unavailable when `NODE_ENV` or `AEGIS_ENV` is production.
+- **Demo endpoints / clock / seed actors:** removed; demos use a normal API and an `is_demo` tenant.
 - **Append-only:** sealed `event` rows reject UPDATE/DELETE of seal columns for the application role
   (migration 015). The app role must not be a superuser (`docs/APPEND_ONLY.md`).
 - **`/ready`** is additive: existing fields remain; it adds `checks.witness`, `checks.tsa`, `checks.signing_key`.
@@ -64,7 +64,6 @@ bundle (`docs/MIGRATION_ROLLBACK.md`).
 | Flag / env | Default | Notes |
 |------------|---------|-------|
 | `AEGIS_ENV` | unset | `production` enables the boot guards above |
-| `AEGIS_DEMO_MODE` | **removed** (delete it) | No longer enables anything: demo clock, `demo:reset` and scenario HTTP were removed. Ignored with a warning outside production; **refused at boot** when `AEGIS_ENV=production`. Demos use an `is_demo` tenant (`docs/DEMO.md`) |
 | Demo persona passwords | tenant file | Written by `pnpm demo:up` into `.demo-tenant-local-stack.local.json` (gitignored). Hosted demos use `.demo-tenant-emails.local.json`. `AEGIS_DEMO_APPROVAL_PASSWORD` is removed. |
 | `AEGIS_RECEIPT_KMS_KEY_ID` | unset | Plan A: AWS KMS key. When set, the software seed is ignored |
 | `AEGIS_RECEIPT_KEY_ID` | `receipt_dev` (dev) | Must be a production id in production; one public key per id forever |

@@ -6,7 +6,7 @@
 **Honesty rule:** Status is Present / Done only when implemented and tested. This branch must not deploy to salanor.com until reviewed.  
 **Keep in sync with:** `docs/GAP_REPORT.md`, `docs/DEMO.md`, `docs/WEBSITE_CHANGES.md`.  
 
-> **2026-11-17 single path:** Runtime `AEGIS_DEMO_MODE`, demo clock, in-API scenarios, `demo:reset`, and the in-console simulator are **removed**. Demos use a normal API + `is_demo` tenant via `pnpm demo:up` → `pilot:provision-demo-tenant` → `pilot:seed-history`, driven by `pnpm bank-simulator` with real timers (escalate windows included). Historical sections below may still name old runners; treat `docs/DEMO.md` as authoritative for commands.
+> **2026-11-17 single path:** Runtime , demo clock, in-API scenarios, `demo:reset`, and the in-console simulator are **removed**. Demos use a normal API + `is_demo` tenant via `pnpm demo:up` → `pilot:provision-demo-tenant` → `pilot:seed-history`, driven by `pnpm bank-simulator` with real timers (escalate windows included). Historical sections below may still name old runners; treat `docs/DEMO.md` as authoritative for commands.
 
 ---
 
@@ -20,7 +20,7 @@ Live theatre on clean local Postgres (`127.0.0.1:5435/aegis`): `demo:up` (normal
 
 **Signing:** APS seal uses the resolved org agent `signing_key` (preferred agent, then any signable org key). Forensic receipts are signed by **`AEGIS_RECEIPT_SIGNING_KEY_B64`** under **`AEGIS_RECEIPT_KEY_ID`** (default `receipt_dev`); `aegis-verify` accepts bundles against that published public key (derived and exported in `keys.json`).  
 
-Removed demo surfaces (`/v1/aegis/demo/scenarios/*`, `/v1/aegis/demo/simulator/*`, `demo:reset`, demo clock) return 404 / do not exist. `AEGIS_DEMO_MODE` is ignored outside production and refused at boot when `AEGIS_ENV=production`. `pg_restore --disable-triggers` uses `AEGIS_ALLOW_DISABLE_TRIGGERS_RESTORE` only.
+Removed demo surfaces (`/v1/aegis/demo/scenarios/*`, `/v1/aegis/demo/simulator/*`, `demo:reset`, demo clock) return 404 / do not exist. `pg_restore --disable-triggers` uses `AEGIS_ALLOW_DISABLE_TRIGGERS_RESTORE` only.
 
 ---
 
@@ -379,7 +379,7 @@ Honesty: **Done** needs a test (and a screen when the item is UI). Founder crede
 ## 10. Commands
 
 ```powershell
-# Normal API + is_demo tenant (no AEGIS_DEMO_MODE)
+# Normal API + is_demo tenant (no )
 pnpm demo:up
 pnpm bank-simulator
 pnpm demo:rehearse

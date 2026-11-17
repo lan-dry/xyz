@@ -256,9 +256,9 @@ function downloadJson(name: string, data: object) {
 }
 
 /**
- * Demo-only: fetch two real Demo Bank bundles (one valid, one with an amount digit
- * changed after signing) and check both. The API refuses outside demo mode; we show
- * that as a plain note instead of an error.
+ * Demo Bank sample: fetch two real bundles (one valid, one with an amount digit
+ * changed after signing) and check both. Outside an `is_demo` tenant the API
+ * withholds samples; we show that as a plain note instead of an error.
  */
 export function DemoBundleTry() {
   const [samples, setSamples] = useState<SampleBundles | null>(null);

@@ -1,6 +1,6 @@
 /**
  * Hosted demo tenant (organization.is_demo). Quiet tag + escalation config only.
- * Not AEGIS_DEMO_MODE — sales demos use a normal API and is_demo tenants.
+ * sales demos use a normal API and is_demo tenants.
  */
 import type pg from "pg";
 
@@ -9,7 +9,7 @@ export const DEMO_BANK_REHEARSAL_SLUG = "demo-bank-rehearsal";
 
 /**
  * Gate for public Demo Bank sample bundles.
- * Slug allow-list first, then organization.is_demo (never AEGIS_DEMO_MODE).
+ * Slug allow-list first, then organization.is_demo.
  */
 export function sampleBundlesAccess(
   slug: string,

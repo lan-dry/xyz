@@ -6,7 +6,7 @@
 **Authority:** Status here must match `docs/FINAL_REPORT.md`. Mark Present / Done only when implemented and tested.  
 **Deploy:** Nothing from this branch publishes to salanor.com until reviewed.
 
-> **Single path (2026-11-17):** no `AEGIS_DEMO_MODE`. Use `demo:up`, `pilot:provision-demo-tenant`, `pilot:seed-history`, `pilot:wipe-tenant` / `demo:fresh`, and `bank-simulator` against an `is_demo` tenant. See `docs/DEMO.md`.
+> **Single path (2026-11-17):** no runtime demo mode. Use `demo:up`, `pilot:provision-demo-tenant`, `pilot:seed-history`, `pilot:wipe-tenant` / `demo:fresh`, and `bank-simulator` against an `is_demo` tenant. See `docs/DEMO.md`.
 
 ---
 
@@ -156,7 +156,7 @@ Corrected after implementation pass (explore inventory of “Missing” for esca
 | Time-bound delegation | **Present** — `approval_delegate` + migration 016 |
 | Hard-stop release HTTP | **Present** — `POST …/approvals/:id/release` |
 | `--approvals=http` 2–7,5,9–12 | **Present** — extended live runners; rehearse via `pnpm demo:rehearse` |
-| `demo:up` / `demo:rehearse` | **Present** — normal API + `pilot:provision-demo-tenant` / `pilot:seed-history`; rehearse drives `bank-simulator` (no `AEGIS_DEMO_MODE`) |
+| `demo:up` / `demo:rehearse` | **Present** — normal API + `pilot:provision-demo-tenant` / `pilot:seed-history`; rehearse drives `bank-simulator` (no ) |
 | Bundle export + chain-5 + verify/tamper | **Present** — `export:scenario-bundles` (all receipt scenarios + chain-5) |
 | Provisional receipt badge | **Present** — API `flags.provisional` + console sealed/provisional badge |
 | Policy diff endpoint | **Present** — `GET /v1/console/policies/:id/diff?against=` |

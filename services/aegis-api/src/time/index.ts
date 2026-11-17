@@ -6,5 +6,4 @@ export {
   nowIso,
   nowDate,
   setClockForTests,
-  isLegacyDemoModeEnvSet,
 } from "./clock.js";

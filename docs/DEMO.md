@@ -10,12 +10,11 @@ There is **no** runtime demo mode and **no** time travel.
 
 | Former surface | Status |
 |----------------|--------|
-| `AEGIS_DEMO_MODE` | **No longer exists as a feature.** If set outside production, the API **ignores** it and logs one warning. In `AEGIS_ENV=production` the API **refuses to boot** (guard kept). **Delete** this variable from Railway / Vercel. |
 | Demo clock / time travel (`setDemoClock`, etc.) | **Removed.** Approvals, escalation, delegation and receipts use a single `Clock`; production always uses system time. Tests may inject a fake clock in test code only. |
 | `POST /v1/aegis/demo/scenarios/*`, `/v1/aegis/demo/simulator/*` | **Removed** (return 404). |
 | `demo:reset`, `demo:seed-story`, `scenario:run` / `scenario:live`, in-API scenario runners | **Removed.** |
 | In-console Simulator (`/aegis/demo/simulator`) | **Removed.** Use `pnpm bank-simulator`. |
-| `seedDemoApprovalActors` / `@demo.test` password path gated on demo mode | **Removed.** Personas come from `pilot:provision-demo-tenant` + `.demo-tenant-emails.local.json`. |
+| `seedDemoApprovalActors` / `@demo.test` password path | **Removed.** Personas come from `pilot:provision-demo-tenant` + `.demo-tenant-emails.local.json`. |
 
 ## Kept
 
@@ -23,7 +22,7 @@ There is **no** runtime demo mode and **no** time travel.
 - `pnpm pilot:provision-demo-tenant`, `pilot:seed-history`, `pilot:wipe-tenant`, `demo:fresh`, `pack:apply`
 - Standalone `pnpm bank-simulator`
 - Packs, platform wipe + audit table
-- Boot guards when `AEGIS_ENV=production` (including refuse `AEGIS_DEMO_MODE`)
+- Boot guards when `AEGIS_ENV=production` (for production deployments)
 
 ## One-command local demo
 
@@ -67,7 +66,7 @@ Prove with `pnpm demo:prove-escalation-2min` against a running normal API (no ti
 ## Append-only
 
 See `docs/APPEND_ONLY.md`. `pg_restore --disable-triggers` is gated by
-`AEGIS_ALLOW_DISABLE_TRIGGERS_RESTORE` on a non-production process — **not** by `AEGIS_DEMO_MODE`.
+`AEGIS_ALLOW_DISABLE_TRIGGERS_RESTORE` on a non-production process — **not** by .
 
 ## P10 truth statements (say these, and only these, about the hosted product)
 

@@ -65,7 +65,7 @@ jobs:
           cache: pnpm
 
       # Cheap and dependency-free: fail fast before installing anything.
-      - name: Demo mode must not come back (AEGIS_DEMO_MODE, demo clock, in-API demo routes, demo:reset)
+      - name: Demo surfaces must not come back (demo clock, in-API demo routes, demo:reset)
         run: node tools/scripts/no-demo-mode-reintro.mjs
 
       - name: Install dependencies

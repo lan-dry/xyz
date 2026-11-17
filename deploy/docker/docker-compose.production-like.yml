@@ -16,7 +16,6 @@ services:
       NODE_ENV: production
       AEGIS_ENV: production
       PORT: "8080"
-      # Do not set AEGIS_DEMO_MODE — the variable is retired (production refuses a truthy value).
       AEGIS_EMAIL_REQUIRED: "false"
       CONSOLE_ORIGIN: "http://console.local.test:3000"
       MARKETING_ORIGIN: "http://marketing.local.test:3001"

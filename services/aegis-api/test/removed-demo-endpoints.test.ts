@@ -1,5 +1,5 @@
 /**
- * Removed AEGIS_DEMO_MODE HTTP surfaces must 404 in every environment.
+ * Removed in-API demo HTTP surfaces must 404.
  */
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";

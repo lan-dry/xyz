@@ -9,7 +9,6 @@ import { assertProductionBoot, ProductionGuardError } from "./boot/production-gu
 import { isProductionEnv } from "./boot/production-env.js";
 import { getPool } from "./db/pool.js";
 import { startTimestampLoop } from "./forensic/receipt-timestamp.js";
-import { isLegacyDemoModeEnvSet } from "./time/clock.js";
 
 initObservability("aegis-api");
 
@@ -39,12 +38,6 @@ if (
 ) {
   console.warn(
     "[aegis-api] NODE_ENV=production but AEGIS_ENV is not production: production boot guards are OFF. Set AEGIS_ENV=production on real deployments.",
-  );
-}
-// AEGIS_DEMO_MODE is retired: ignore if set outside production (production boot already refuses it).
-if (!isProductionEnv() && isLegacyDemoModeEnvSet()) {
-  console.warn(
-    "[aegis-api] AEGIS_DEMO_MODE is set but ignored — demo mode was removed; use is_demo tenants + provision/seed/wipe.",
   );
 }
 

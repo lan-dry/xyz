@@ -135,7 +135,7 @@ async function json(url, init = {}) {
 async function main() {
   loadDotEnv();
   if (shellAllowWipe === undefined) delete process.env[ALLOW_WIPE_ENV];
-  const legacyFlag = "AEGIS_DEMO_MODE"; // removed: ignored if still set in an old shell
+  const legacyFlag = ""; // removed: ignored if still set in an old shell
   if (process.env[legacyFlag] !== undefined) {
     console.warn(`${legacyFlag} is no longer used; ignoring it.`);
     delete process.env[legacyFlag];

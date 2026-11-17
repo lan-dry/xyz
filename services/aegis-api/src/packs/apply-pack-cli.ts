@@ -17,7 +17,7 @@ async function main() {
   const orgIdx = args.indexOf("--org");
   if (args.includes("--seed-approvers")) {
     console.warn(
-      "--seed-approvers was removed with AEGIS_DEMO_MODE; provision personas via pilot:provision-demo-tenant instead",
+      "--seed-approvers was removed; provision personas via pilot:provision-demo-tenant instead",
     );
   }
   const force = args.includes("--force");
