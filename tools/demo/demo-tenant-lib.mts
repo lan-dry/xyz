@@ -47,7 +47,15 @@ export type TenantFile = {
 
 export const TENANT_FILE_NAME = ".demo-tenant-emails.local.json";
 
+/** Walk up from this file (source or dist/) to the monorepo root. */
 export function repoRoot(): string {
+  let dir = resolve(import.meta.dirname);
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(resolve(dir, "pnpm-workspace.yaml"))) return dir;
+    const parent = resolve(dir, "..");
+    if (parent === dir) break;
+    dir = parent;
+  }
   return resolve(import.meta.dirname, "../..");
 }
 

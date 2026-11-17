@@ -3,33 +3,51 @@
 /**
  * pnpm demo:fresh
  *
- * Gives Demo Bank (slug demo-bank) a clean slate, with the SAME ingest key as before:
+ * Gives Demo Bank (slug demo-bank) a clean slate:
  *   1. wipe        pilot:wipe-tenant --slug demo-bank --confirm demo-bank --allow-missing
- *   2. re-provision pilot:provision-demo-tenant   (stores DEMO_BANK_INGEST_KEY, hashed)
- *   3. re-seed     pilot:seed-history             (tools/demo/demo-bank-history.example.json)
+ *   2. re-provision pilot:provision-demo-tenant
+ *   3. re-seed     pilot:seed-history
  *
- * Idempotent: a missing tenant is simply created; re-running just resets again. The key never
- * changes because the secret comes from DEMO_BANK_INGEST_KEY, not from a random mint.
+ * DEMO_BANK_INGEST_KEY is optional. When set, that exact secret is re-stored (same key across
+ * refreshes). When unset, a new key is generated once for this run, printed at the end, and used
+ * for provision + seed.
  *
- * Needs, in your shell (never in the repo, never printed):
+ * Needs, in your shell (never in the repo, never printed except the one-time generated key):
  *   AEGIS_ALLOW_TENANT_WIPE=1     explicit operator opt-in for this run (an .env file cannot supply it)
  *   MIGRATION_DATABASE_URL        schema OWNER connection (the wipe function is owner-only)
  *   PLATFORM_BOOTSTRAP_SECRET     authorises tenant provisioning on the ID service
- *   DEMO_BANK_INGEST_KEY          the stable Demo Bank ingest key (>= 32 chars)
  * and the uncommitted .demo-tenant-emails.local.json (organization.slug must be demo-bank).
  *
  * Flags:
  *   --dry-run   only print what a wipe would remove (row counts); change nothing
  *
- * Every precondition is checked BEFORE anything is deleted, so a missing secret can never leave
- * Demo Bank wiped but un-reprovisionable.
+ * Production image (Railway): node /app/tools/demo/dist/demo-fresh.mjs
+ * Local: pnpm demo:fresh   or   node tools/demo/demo-fresh.mjs
  */
+import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const here = dirname(fileURLToPath(import.meta.url));
+// Compiled wipe CLI is wipe-tenant.mjs in dist/ (tsc emits .mjs from .mts).
+const runningFromDist = existsSync(join(here, "wipe-tenant.mjs"));
+const toolDir = runningFromDist ? here : join(here, "dist");
+const sourceDir = runningFromDist ? resolve(here, "..") : here;
+
+function findRepoRoot() {
+  let dir = here;
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(join(dir, "pnpm-workspace.yaml"))) return dir;
+    const parent = resolve(dir, "..");
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return resolve(here, runningFromDist ? "../.." : "../..");
+}
+
+const root = findRepoRoot();
 const SLUG = "demo-bank";
 const ALLOW_ENV = "AEGIS_ALLOW_TENANT_WIPE";
 const argv = new Set(process.argv.slice(2));
@@ -38,6 +56,10 @@ const dryRun = argv.has("--dry-run");
 function die(message) {
   console.error(`\n  demo:fresh: ${message}\n`);
   process.exit(1);
+}
+
+function generateIngestKey() {
+  return `aegis_${randomBytes(24).toString("hex")}`;
 }
 
 // Fill unset variables from .env, but an .env file can never authorise a wipe.
@@ -64,13 +86,21 @@ if (!dryRun && process.env[ALLOW_ENV]?.trim() !== "1") missing.push(`${ALLOW_ENV
 if (!process.env.MIGRATION_DATABASE_URL?.trim()) missing.push("MIGRATION_DATABASE_URL (owner role)");
 if (!dryRun) {
   if (!process.env.PLATFORM_BOOTSTRAP_SECRET?.trim()) missing.push("PLATFORM_BOOTSTRAP_SECRET");
-  const key = process.env.DEMO_BANK_INGEST_KEY?.trim();
-  if (!key) missing.push("DEMO_BANK_INGEST_KEY (stable ingest key)");
-  else if (key.length < 32 || /\s/.test(key)) {
-    die("DEMO_BANK_INGEST_KEY must be at least 32 characters with no whitespace.");
-  }
 }
 if (missing.length) die(`missing in your environment: ${missing.join(", ")}. Nothing was changed.`);
+
+let generatedKey = false;
+let stableKey = process.env.DEMO_BANK_INGEST_KEY?.trim() || "";
+if (!dryRun) {
+  if (stableKey && (stableKey.length < 32 || /\s/.test(stableKey))) {
+    die("DEMO_BANK_INGEST_KEY must be at least 32 characters with no whitespace.");
+  }
+  if (!stableKey) {
+    stableKey = generateIngestKey();
+    process.env.DEMO_BANK_INGEST_KEY = stableKey;
+    generatedKey = true;
+  }
+}
 
 if (!dryRun) {
   const tenantPath = resolve(
@@ -92,30 +122,58 @@ if (!dryRun) {
   }
 }
 
-function runTool(label, file, args = [], env = {}) {
+function runTool(label, baseName, args = [], env = {}) {
   console.log(`\n=== ${label} ===`);
-  const res = spawnSync(
-    "pnpm",
-    ["--filter", "@salanor/demo-tools", "exec", "tsx", file, ...args],
-    { cwd: root, stdio: "inherit", shell: true, env: { ...process.env, ...env } },
-  );
+  const compiled = join(toolDir, `${baseName}.mjs`);
+  const source = join(sourceDir, `${baseName}.mts`);
+  /** @type {string[]} */
+  let cmd;
+  if (existsSync(compiled)) {
+    cmd = ["node", compiled, ...args];
+  } else if (existsSync(source)) {
+    cmd = ["pnpm", "--filter", "@salanor/demo-tools", "exec", "tsx", `${baseName}.mts`, ...args];
+  } else {
+    die(`Neither ${compiled} nor ${source} found. Run: pnpm --filter @salanor/demo-tools build`);
+  }
+  const res = spawnSync(cmd[0], cmd.slice(1), {
+    cwd: root,
+    stdio: "inherit",
+    shell: true,
+    env: { ...process.env, ...env },
+  });
   if (res.status !== 0) die(`${label} failed (exit ${res.status}). Stopped; later steps were not run.`);
 }
 
 console.log(`demo:fresh for "${SLUG}"${dryRun ? " (DRY RUN)" : ""}`);
 
 if (dryRun) {
-  runTool("1/1 dry run: what a wipe would remove", "wipe-tenant.mts", ["--slug", SLUG, "--allow-missing"]);
+  runTool("1/1 dry run: what a wipe would remove", "wipe-tenant", ["--slug", SLUG, "--allow-missing"]);
   console.log("\nDry run only. Nothing was changed.\n");
   process.exit(0);
 }
 
-runTool("1/3 wipe Demo Bank", "wipe-tenant.mts", ["--slug", SLUG, "--confirm", SLUG, "--allow-missing"]);
-runTool("2/3 re-provision Demo Bank (stable ingest key)", "provision-demo-tenant.mts");
-runTool("3/3 re-seed history", "seed-history.mts", [], {
+runTool("1/3 wipe Demo Bank", "wipe-tenant", ["--slug", SLUG, "--confirm", SLUG, "--allow-missing"]);
+runTool("2/3 re-provision Demo Bank", "provision-demo-tenant");
+runTool("3/3 re-seed history", "seed-history", [], {
   AEGIS_INGEST_KEY: process.env.DEMO_BANK_INGEST_KEY,
 });
 
+if (generatedKey) {
+  console.log(
+    [
+      "",
+      "  ============================================================",
+      "  INGEST KEY (generated for this fresh run; shown once).",
+      "  Save it as DEMO_BANK_INGEST_KEY if you want the same key next time:",
+      "",
+      `    DEMO_BANK_INGEST_KEY=${stableKey}`,
+      "  ============================================================",
+    ].join("\n"),
+  );
+}
+
 console.log(
-  `\ndemo:fresh complete. Demo Bank has a new organisation id (see step 2 output); the ingest key is unchanged.\nIf the bank simulator pins AEGIS_ORGANIZATION_ID, update it to the new id.\n`,
+  `\ndemo:fresh complete. Demo Bank has a new organisation id (see step 2 output); ${
+    generatedKey ? "a new ingest key was printed above." : "the ingest key is unchanged."
+  }\nIf the bank simulator pins AEGIS_ORGANIZATION_ID, update it to the new id.\n`,
 );

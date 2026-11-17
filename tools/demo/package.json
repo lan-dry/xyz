@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "tsc -p tsconfig.build.json && node ./copy-admin-assets.mjs",
     "ingest-one-event": "tsx ingest-one-event.mts",
     "ingest-review-normal": "tsx ingest-review-cases.mts normal",
     "ingest-review-injected": "tsx ingest-review-cases.mts injected",
@@ -33,6 +34,8 @@
     "pg": "^8.16.0"
   },
   "devDependencies": {
+    "@types/node": "^22.19.19",
+    "@types/pg": "^8.20.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   }

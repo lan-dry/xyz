@@ -196,7 +196,7 @@ Set `NODE_ENV=production` (the image does).
 |------|---------|--------|
 | `PLATFORM_BOOTSTRAP_SECRET` | `pnpm pilot:provision-demo-tenant` | **Y** |
 | `AEGIS_INGEST_KEY` | `pnpm pilot:seed-history` | **Y** |
-| `DEMO_BANK_INGEST_KEY` | The **stable** Demo Bank ingest key (>= 32 chars, e.g. `aegis_` + 48 hex). `pnpm pilot:provision-demo-tenant` stores its hash instead of minting a random key; `pnpm demo:fresh` requires it (section 10.1) | **Y** |
+| `DEMO_BANK_INGEST_KEY` | Optional stable Demo Bank ingest key (>= 32 chars). When set, provision/`demo:fresh` store that exact secret (same key across refreshes). When unset, a key is generated and printed **once** | **Y** when set |
 | `MIGRATION_DATABASE_URL` | Owner connection, **reachable from your machine** (Railway TCP proxy / public URL, not `*.railway.internal`). Only `pnpm pilot:wipe-tenant` / `pnpm demo:fresh` use it from here | **Y** |
 | `AEGIS_ALLOW_TENANT_WIPE` | Set to `1` **in the shell, per command**, to allow a real wipe. Never store it in `.env` or on a host (an `.env` file is ignored for it) | N |
 | `SMOKE_*`, `BANK_SIMULATOR_URL`, `BANK_SIMULATOR_PASS` | `pnpm smoke:production` (section 11) | **Y** (keys and passwords) |
@@ -571,25 +571,110 @@ $env:AEGIS_ALLOW_TENANT_WIPE = "1"
 railway run pnpm pilot:wipe-tenant --slug smoke-test --confirm smoke-test
 Remove-Item Env:AEGIS_ALLOW_TENANT_WIPE
 
-# Demo Bank: wipe -> re-provision -> re-seed, same ingest key
-$env:DEMO_BANK_INGEST_KEY = "<the stable key, from your password manager>"
+# Demo Bank: wipe -> re-provision -> re-seed
+# Optional: $env:DEMO_BANK_INGEST_KEY = "<stable key>"  (else a new key is printed once)
 $env:AEGIS_ALLOW_TENANT_WIPE = "1"
 railway run pnpm demo:fresh                     # or: railway run pnpm demo:fresh --dry-run (counts only)
 Remove-Item Env:AEGIS_ALLOW_TENANT_WIPE
 ```
 
 `demo:fresh` checks every precondition before it deletes anything, wipes `demo-bank` (nothing to do if it does
-not exist), runs `pilot:provision-demo-tenant` (stores `DEMO_BANK_INGEST_KEY` hashed; the same secret again is a
-no-op, so the key never changes) and `pilot:seed-history` (synthetic stories from
+not exist), runs `pilot:provision-demo-tenant` and `pilot:seed-history` (synthetic stories from
 `tools/demo/demo-bank-history.example.json`, or `DEMO_HISTORY_FILE`; real emails stay in the uncommitted
-`.demo-tenant-emails.local.json`). It is idempotent. The tenant gets a **new organisation id** each time
-(a fresh chain; ids are not reused), so update `AEGIS_ORGANIZATION_ID` on the bank-simulator service if you pin
-it. Exit code 2 from the wipe means refused (nothing deleted). Check the trail with
-`SELECT * FROM platform_tenant_wipe_audit ORDER BY wiped_at DESC;` as the owner.
+`.demo-tenant-emails.local.json`). If `DEMO_BANK_INGEST_KEY` is set, that secret is re-stored (same key). If it
+is unset, a new key is generated for the run and printed once at the end. It is idempotent. The tenant gets a
+**new organisation id** each time (a fresh chain; ids are not reused), so update `AEGIS_ORGANIZATION_ID` on the
+bank-simulator service if you pin it. Exit code 2 from the wipe means refused (nothing deleted). Check the trail
+with `SELECT * FROM platform_tenant_wipe_audit ORDER BY wiped_at DESC;` as the owner.
 
 After any bulk `GRANT ... ON ALL TABLES` to `aegis_app`, re-run
 `REVOKE ALL ON FUNCTION platform_wipe_tenant(text, boolean, text) FROM aegis_app; REVOKE ALL ON platform_tenant_wipe_audit FROM aegis_app;`
 (migration 020 does this once) and confirm with `tools/check-append-only-grants.sql`.
+
+### 10.2 Running admin commands in production
+
+Two ways. Prefer **A** for create / seed. Use **B** when you are already in the Railway console (especially wipe).
+
+#### A. From your laptop (HTTP only for provision + seed)
+
+You need the git repo on your computer. These two commands talk to the live API over HTTPS like a normal
+client. They do **not** need Docker.
+
+1. Copy `.demo-tenant-emails.local.example.json` to **`.demo-tenant-emails.local.json`** in the repo root
+   (gitignored). Set `api_base` to `https://api.salanor.com`, `id_base` to `https://id.salanor.com`,
+   `console_origin` to `https://app.salanor.com`, and fill in real emails/passwords.
+2. In PowerShell, set secrets from your password manager (names only below; never commit them):
+
+```powershell
+cd D:\PROJECTS\salanor
+$env:PLATFORM_BOOTSTRAP_SECRET = "<from password manager>"
+# Optional: keep the same ingest key across refreshes
+# $env:DEMO_BANK_INGEST_KEY = "<stable key >= 32 chars>"
+# Or after a one-time print: $env:AEGIS_INGEST_KEY = "<printed key>"
+
+pnpm pilot:provision-demo-tenant
+pnpm pilot:seed-history
+```
+
+**What success looks like:** provision prints `Done. Organisation id: …` and (if no key existed) a boxed
+`INGEST KEY (shown once, …)`. Seed prints eleven `DB-HIST-…` lines and `Done: 11 cases.`
+
+**Variables (names only)** for this laptop path:
+
+| Name | Where |
+|------|--------|
+| `PLATFORM_BOOTSTRAP_SECRET` | Shell env (required for provision) |
+| `DEMO_BANK_INGEST_KEY` or `AEGIS_INGEST_KEY` | Shell env (optional for provision; required for seed unless just printed) |
+| `.demo-tenant-emails.local.json` | Uncommitted file in the repo root |
+
+Wipe / `demo:fresh` from the laptop also need `MIGRATION_DATABASE_URL` = the Postgres **owner** URL with a
+**public** host (Railway TCP proxy), plus `AEGIS_ALLOW_TENANT_WIPE=1` for a real wipe (section 10.1).
+
+#### B. Inside the Railway `aegis-api` service (compiled `node` lines)
+
+The production API image includes the admin CLIs as plain JavaScript. After a deploy of this Dockerfile:
+
+1. Open **Railway** → project → **`aegis-api`** service → **Shell** (or “One-off command” / console).
+2. The service already has `DATABASE_URL`. For wipe / `demo:fresh`, the service must also have
+   **`MIGRATION_DATABASE_URL`** set in Railway **Variables** to the **owner** role connection string
+   (same value the release migrate step uses). You do not paste it into the shell if it is already a
+   service variable.
+3. For provision / seed / fresh, create the tenant file in the shell once (paste your real emails), then:
+
+```bash
+# Tenant file (Railway disk is ephemeral; recreate after each new shell if needed)
+cat > /tmp/demo-tenant.json <<'EOF'
+{ ...same shape as .demo-tenant-emails.local.example.json, api_base/id_base pointing at production... }
+EOF
+export DEMO_TENANT_FILE=/tmp/demo-tenant.json
+export PLATFORM_BOOTSTRAP_SECRET="<from password manager>"
+
+node /app/tools/demo/dist/provision-demo-tenant.mjs
+node /app/tools/demo/dist/seed-history.mjs
+
+# Wipe dry run (nothing deleted)
+node /app/tools/demo/dist/wipe-tenant.mjs --slug demo-bank
+
+# Real wipe (demo/test orgs only)
+AEGIS_ALLOW_TENANT_WIPE=1 node /app/tools/demo/dist/wipe-tenant.mjs --slug demo-bank --confirm demo-bank
+
+# Full Demo Bank refresh (optional DEMO_BANK_INGEST_KEY; generates and prints a key if unset)
+AEGIS_ALLOW_TENANT_WIPE=1 node /app/tools/demo/dist/demo-fresh.mjs
+
+# Re-apply banking pack (needs organisation uuid from provision output)
+node /app/services/aegis-api/dist/packs/apply-pack-cli.js --pack banking --org <organization-uuid>
+```
+
+**What success looks like:** same text as on your laptop (`Done. Organisation id`, `Done: 11 cases.`, wipe
+table of row counts, or `demo:fresh complete`).
+
+| Command | Prefer | Exact line |
+|---------|--------|------------|
+| Provision Demo Bank | Laptop | `pnpm pilot:provision-demo-tenant` |
+| Seed history | Laptop | `pnpm pilot:seed-history` |
+| Wipe (dry / real) | Railway or laptop | `node /app/tools/demo/dist/wipe-tenant.mjs --slug <slug>` |
+| `demo:fresh` | Railway or laptop | `node /app/tools/demo/dist/demo-fresh.mjs` |
+| `pack:apply` | Railway | `node /app/services/aegis-api/dist/packs/apply-pack-cli.js --pack banking --org <uuid>` |
 
 ---
 

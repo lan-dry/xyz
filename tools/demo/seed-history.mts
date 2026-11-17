@@ -41,11 +41,15 @@ type Story = {
 };
 
 /** Resolved at run time, after .env has been loaded (DEMO_HISTORY_FILE may live there). */
-const historyFile = (): string =>
-  resolve(
-    process.env.DEMO_HISTORY_FILE?.trim() ||
-      resolve(import.meta.dirname, "demo-bank-history.example.json"),
-  );
+const historyFile = (): string => {
+  if (process.env.DEMO_HISTORY_FILE?.trim()) {
+    return resolve(process.env.DEMO_HISTORY_FILE.trim());
+  }
+  // Source tree: tools/demo/*.mts; compiled: tools/demo/dist/*.js
+  const beside = resolve(import.meta.dirname, "demo-bank-history.example.json");
+  if (existsSync(beside)) return beside;
+  return resolve(import.meta.dirname, "../demo-bank-history.example.json");
+};
 
 /** Synthetic story data comes from JSON (committed example): never from code, never real emails. */
 function loadStories(): Story[] {
@@ -207,10 +211,11 @@ async function main(): Promise<void> {
         result = "held, NOT sealed (signing bridge missing: set AEGIS_BRIDGE_MASTER_KEY and re-run)";
       } else {
         let found = await findApproval(admin, traceId, eventId);
-        if (!found && typeof (decision as { approval_id?: string }).approval_id === "string") {
+        const decisionApprovalId = (decision as unknown as { approval_id?: string }).approval_id;
+        if (!found && typeof decisionApprovalId === "string") {
           found = {
             row: {
-              approval_id: (decision as { approval_id: string }).approval_id,
+              approval_id: decisionApprovalId,
               trace_id: traceId,
             },
             pending: true,

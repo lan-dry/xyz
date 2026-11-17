@@ -10,10 +10,22 @@
  * It does not set session_replication_role and never touches append-only triggers itself.
  */
 import { hostname, userInfo } from "node:os";
-import { normalizePostgresDatabaseUrl } from "@salanor/db-url";
 import pg from "pg";
 
 export const ALLOW_ENV = "AEGIS_ALLOW_TENANT_WIPE";
+
+/** Same rules as @salanor/db-url (inlined so compiled Railway CLIs need no TS package resolve). */
+function normalizePostgresDatabaseUrl(raw: string): string {
+  let url = raw.trim();
+  url = url.replace(/@localhost([:/])/gi, "@127.0.0.1$1");
+  if (/([?&])sslmode=(require|prefer|verify-ca)(&|$)/i.test(url)) {
+    url = url.replace(
+      /([?&])sslmode=(require|prefer|verify-ca)/gi,
+      "$1sslmode=verify-full",
+    );
+  }
+  return url;
+}
 
 export class WipeRefusal extends Error {
   constructor(

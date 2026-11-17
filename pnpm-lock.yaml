@@ -1016,6 +1016,12 @@ importers:
         specifier: ^8.16.0
         version: 8.21.0
     devDependencies:
+      '@types/node':
+        specifier: ^22.19.19
+        version: 22.19.19
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
       tsx:
         specifier: ^4.19.4
         version: 4.22.3

@@ -1,9 +1,21 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+/** Walk up to the monorepo root (works from source or dist/). */
+function findRepoRoot(): string {
+  let dir = resolve(import.meta.dirname);
+  for (let i = 0; i < 8; i++) {
+    if (existsSync(resolve(dir, "pnpm-workspace.yaml"))) return dir;
+    const parent = resolve(dir, "..");
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return resolve(import.meta.dirname, "../..");
+}
+
 /** Load repo root .env.local then .env (BOM-safe, CRLF-safe). */
 export function loadEnvFile(): void {
-  const root = resolve(import.meta.dirname, "../..");
+  const root = findRepoRoot();
   for (const name of [".env.local", ".env"]) {
     const path = resolve(root, name);
     if (!existsSync(path)) continue;
