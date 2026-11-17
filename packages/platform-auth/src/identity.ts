@@ -812,7 +812,7 @@ export async function provisionOrganization(
       const message = err instanceof Error ? err.message : String(err);
       if (/is_demo/i.test(message) && /does not exist/i.test(message)) {
         throw new Error(
-          "organization.is_demo is missing — on aegis-api run: node dist/db/migrate-cli.js (needs MIGRATION_DATABASE_URL = same Postgres as salanor-id)",
+          "organization.is_demo is missing — greenfield reset required (DROP SCHEMA public CASCADE, then migrate 001_baseline)",
         );
       }
       throw err;
@@ -828,7 +828,7 @@ export async function provisionOrganization(
       const message = err instanceof Error ? err.message : String(err);
       if (/is_test/i.test(message) && /does not exist/i.test(message)) {
         throw new Error(
-          "organization.is_test is missing — on aegis-api run: node dist/db/migrate-cli.js (needs MIGRATION_DATABASE_URL = same Postgres as salanor-id)",
+          "organization.is_test is missing — greenfield reset required (DROP SCHEMA public CASCADE, then migrate 001_baseline)",
         );
       }
       throw err;

@@ -10,7 +10,7 @@ if (migrationUrl) {
   console.log("migrate: using MIGRATION_DATABASE_URL (schema owner)");
 } else {
   console.log(
-    "migrate: MIGRATION_DATABASE_URL unset — using DATABASE_URL (must be allowed to ALTER TABLE)",
+    "migrate: MIGRATION_DATABASE_URL unset — using DATABASE_URL (must be schema owner on greenfield)",
   );
 }
 

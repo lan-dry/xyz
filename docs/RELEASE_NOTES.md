@@ -48,14 +48,13 @@ Status words in this file follow `docs/FINAL_REPORT.md` and `docs/GAP_REPORT.md`
 ## Migrations
 
 Forward only: `pnpm --filter aegis-api db:migrate` (production runs it as the Railway release step with
-`MIGRATION_DATABASE_URL`, the schema owner). A fresh database runs `001` through `019` in order. An upgraded
-database from `pre-forensic-demo` runs `014` to `019` (`tools/scripts/upgrade-migrate-check.mts` exercises
-baseline@013 to tip).
+`MIGRATION_DATABASE_URL`, the schema owner). Greenfield is a single file: `001_baseline`. When the baseline
+gains columns on an environment you can wipe, reset with `DROP SCHEMA public CASCADE` then re-migrate
+(see `services/aegis-api/migrations/README.md`).
 
 | Version | Purpose | Rollback note |
 |---------|---------|---------------|
 | `001_baseline` | Single greenfield schema (Aegis + platform + CMS + forensic bank/receipts + tenant wipe + platform email settings). Seeds `plan_catalog` + `salanor-platform` only. | **No in-place downgrade.** Restore from backup, or `DROP SCHEMA public CASCADE` + re-migrate on empty environments. |
-| `002_ensure_organization_demo_flags` | Idempotent `is_demo` / `is_test` on `organization`, plus `organization_usage_monthly` if missing (unblocks platform org list / demo provision on drifted hosted DBs). | Safe to leave; columns are required by platform list and wipe. |
 
 Pre-flight for every environment: a backup, then migrate on a copy, then `pnpm aegis-verify` on an exported
 bundle (`docs/MIGRATION_ROLLBACK.md`).
