@@ -121,8 +121,9 @@ demoTenantRoutes.post("/demo-tenant/setup", requireConsoleSession, async (c) => 
     );
   } catch (err) {
     await client.query("ROLLBACK").catch(() => undefined);
-    console.error("[console] demo-tenant setup", err instanceof Error ? err.message : err);
-    return c.json({ error: "Failed to apply demo pack" }, 500);
+    const message = err instanceof Error ? err.message : "Failed to apply demo pack";
+    console.error("[console] demo-tenant setup", err);
+    return c.json({ error: message }, 500);
   } finally {
     client.release();
   }
