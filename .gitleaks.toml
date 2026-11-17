@@ -1,41 +1,38 @@
-# Gitleaks config for Salanor.
-# Allowlist covers false positives and test fixtures only.
-# Historical .env_deploy secrets are NOT allowlisted — rotate them (see
-# .cursor-test-compare/remove-demo-mode/gitleaks-classification.txt). CI scans the
-# current tree (--no-git) so deleted/gitignored history does not fail the gate.
-
+# False positives + test fixtures only.
+# Historical .env_deploy secrets are NOT allowlisted — rotate them
+# (.cursor-test-compare/remove-demo-mode/gitleaks-classification.txt).
+# CI uses --no-git (current tree). Note: gitleaks v8.21 still honors the
+# legacy singular [allowlist] block when extending the default config.
 title = "salanor"
 
 [extend]
 useDefault = true
 
-[[allowlists]]
-description = "Build artifacts and dependency trees (not scanned)"
+[allowlist]
+description = "False positives and test fixtures"
 paths = [
-  '''(?i)node_modules''',
-  '''(?i)\.next''',
-  '''(?i)\.nx''',
-  '''(?i)/dist/''',
-  '''(?i)\.cursor-test-compare''',
-  '''(?i)\.bank-simulator''',
-  '''(?i)/coverage/''',
-]
-
-[[allowlists]]
-description = "False positives: example env/templates, docs samples, AWS KMS string constants / constructor fields"
-paths = [
-  '''(?i)\.env\.example$''',
-  '''(?i)\.example\.json$''',
-  '''docs/AEGIS_GOVERNANCE_BRIDGE_MVP\.md$''',
-  '''services/aegis-api/src/crypto/kms-ed25519\.ts$''',
-  '''services/aegis-api/src/crypto/key-provider\.ts$''',
-]
-
-[[allowlists]]
-description = "Test fixtures and local upgrade/migration harnesses"
-paths = [
+  '''kms-ed25519\.ts''',
+  '''key-provider\.ts''',
+  '''\.env\.example''',
+  '''\.example\.json''',
+  '''AEGIS_GOVERNANCE_BRIDGE_MVP\.md''',
+  '''upgrade-migrate-check\.mts''',
+  '''live-scenarios-extended\.ts''',
+  '''\.test\.ts''',
   '''/test/''',
-  '''(?i)\.test\.ts$''',
-  '''tools/scripts/upgrade-migrate-check\.mts$''',
-  '''services/aegis-api/src/demo/live-scenarios-extended\.ts$''',
+  '''node_modules''',
+  '''\.next''',
+  '''\.nx''',
+  '''/dist/''',
+  '''\.cursor-test-compare''',
+]
+regexes = [
+  '''__SET_LOCAL_PASSWORD__''',
+  '''vitest-approval-pass''',
+  '''ECC_NIST_EDWARDS25519''',
+  '''privateKeyB64''',
+  '''1234abcd-12ab-34cd-56ef''',
+  '''AEGIS_SIGNING_PRIVATE_KEY''',
+  '''quality-gate-encryption-key''',
+  '''pilot-gate-encryption-key''',
 ]

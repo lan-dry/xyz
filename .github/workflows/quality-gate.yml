@@ -42,6 +42,14 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # Scan before install so node_modules/.next are absent (allowlists still cover them).
+      - name: Gitleaks (current tree)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --no-git --config=.gitleaks.toml
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -100,12 +108,3 @@ jobs:
 
       - name: Docs status agree
         run: pnpm docs:status-agree
-
-      # Current tree only (with .gitleaks.toml allowlists for fixtures/false positives).
-      # Historical .env_deploy leaks are listed for rotation; they are not allowlisted.
-      - name: Gitleaks (current tree)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: --no-git --config=.gitleaks.toml

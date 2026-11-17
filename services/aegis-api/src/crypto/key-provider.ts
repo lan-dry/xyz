@@ -43,7 +43,7 @@ export class LocalFileKeyProvider implements KeyProvider {
     publicKeyB64: string,
   ) {
     this.keyId = keyId;
-    this.privateKeyB64 = privateKeyB64;
+    this.privateKeyB64 = privateKeyB64; // gitleaks:allow
     this.publicKeyB64 = publicKeyB64;
   }
 

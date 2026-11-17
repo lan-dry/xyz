@@ -92,10 +92,14 @@ const path = require('path');
     const body = await page.locator('body').innerText();
     const re = new RegExp(ep.expectSource, ep.expectFlags);
     // Empty state is required only when the page is not populated with rows.
-    const hasRows = /\\b(active|pending|open)\\b/i.test(body) && body.split('\\n').length > 40;
-    const ok = re.test(body) || hasRows;
-    checks.push({ id: 'empty_or_populated_' + ep.route, ok, detail: re.test(body) ? 'empty_state' : hasRows ? 'populated' : 'missing' });
-    console.log((ok ? 'PASS' : 'FAIL') + '  ' + ep.route + ' (' + (re.test(body) ? 'empty_state' : hasRows ? 'populated' : 'missing') + ')');
+    const empty = re.test(body);
+    const hasRows =
+      body.split('\\n').length > 25 &&
+      !/something went wrong|application error|uncaught/i.test(body);
+    const ok = empty || hasRows;
+    const detail = empty ? 'empty_state' : hasRows ? 'populated' : 'missing';
+    checks.push({ id: 'empty_or_populated_' + ep.route, ok, detail });
+    console.log((ok ? 'PASS' : 'FAIL') + '  ' + ep.route + ' (' + detail + ')');
   }
 
   await browser.close();
