@@ -448,12 +448,18 @@ describeIfDb("tenant wipe (migration 020)", () => {
     // Worst case: the prod-like script's blanket DML grant on every table.
     await q(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${APP_ROLE}`);
     await q(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${APP_ROLE}`);
+    // 001_baseline only revokes from aegis_app when that role exists; fresh CI DBs still
+    // have PUBLIC EXECUTE on the function — mirror the owner-only posture here.
+    await q(`REVOKE ALL ON FUNCTION platform_wipe_tenant(text, boolean, text) FROM PUBLIC`);
+    await q(`REVOKE ALL ON FUNCTION platform_wipe_tenant(text, boolean, text) FROM ${APP_ROLE}`);
 
     const as = async (sql: string, params: unknown[] = []) => {
       const client = await getPool().connect();
       try {
         await client.query("BEGIN");
         await client.query(`SET LOCAL ROLE ${APP_ROLE}`);
+        const who = await client.query<{ current_user: string }>(`SELECT current_user`);
+        expect(who.rows[0]!.current_user).toBe(APP_ROLE);
         await client.query(sql, params);
       } finally {
         await client.query("ROLLBACK").catch(() => undefined);
@@ -462,14 +468,21 @@ describeIfDb("tenant wipe (migration 020)", () => {
     };
     await expect(as(`SELECT platform_wipe_tenant($1, true, 'x')`, [SLUG_TEST])).rejects.toThrow(/permission denied for function platform_wipe_tenant/);
     await expect(as(`SELECT platform_wipe_tenant($1, false, 'x')`, [SLUG_TEST])).rejects.toThrow(/permission denied/);
+    expect((await snapshot(a.orgId)).event).toBeGreaterThan(0);
     await expect(as(`DELETE FROM event WHERE organization_id = $1`, [a.orgId])).rejects.toThrow(/append_only: sealed event rows cannot be deleted/);
     await expect(as(`DELETE FROM forensic_receipt WHERE organization_id = $1`, [a.orgId])).rejects.toThrow(/append_only: forensic receipts cannot be deleted/);
     await expect(as(`SET LOCAL session_replication_role = replica`)).rejects.toThrow(/permission denied/);
     await expect(as(`ALTER TABLE event DISABLE TRIGGER trg_event_append_only`)).rejects.toThrow(/must be owner/);
-    // Neither is the audit table forgeable-then-erasable: even a granted role cannot delete rows.
+    // Seed an audit row — DELETE of zero rows would not fire the append-only trigger.
+    await q(
+      `INSERT INTO platform_tenant_wipe_audit
+        (tenant_slug, tenant_name, tenant_organization_id, tenant_flags, actor, row_counts, accounts_deleted)
+       VALUES ('wipe-priv-probe', 'probe', $1, '{}'::jsonb, $2, '{}'::jsonb, 0)`,
+      [a.orgId, TEST_ACTOR],
+    );
     await expect(as(`DELETE FROM platform_tenant_wipe_audit`)).rejects.toThrow(/append_only: platform_tenant_wipe_audit/);
 
-    // The function is not executable by PUBLIC.
+    // The function is not executable by PUBLIC / app role.
     const acl = await q<{ ok: boolean }>(
       `SELECT has_function_privilege($1, 'platform_wipe_tenant(text,boolean,text)', 'EXECUTE') AS ok`,
       [APP_ROLE],

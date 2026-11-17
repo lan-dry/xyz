@@ -57,14 +57,18 @@ async function ensureTestDatabase(url: string): Promise<void> {
 }
 
 const current = process.env.DATABASE_URL?.trim() ?? "";
+const isCi = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+// Local vitest prefers :5435 aegis_test. In CI the workflow Postgres on :5432 is authoritative —
+// do not rewrite DATABASE_URL away from the service container.
 const needsLocalTestDb =
+  !isCi &&
   !process.env.AEGIS_TEST_DATABASE_URL &&
   (!current ||
     /:5432(?:\/|$)/.test(current) ||
     /\/aegis(?:\?|$)/.test(current) ||
     /neon\.tech|amazonaws\.com|supabase\.co/i.test(current));
 
-if (needsLocalTestDb || process.env.AEGIS_TEST_DATABASE_URL) {
+if (!isCi && (needsLocalTestDb || process.env.AEGIS_TEST_DATABASE_URL)) {
   await ensureTestDatabase(TEST_DB);
   process.env.DATABASE_URL = TEST_DB;
   process.env.DATABASE_URL_UNPOOLED = TEST_DB;
