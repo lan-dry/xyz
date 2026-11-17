@@ -26,7 +26,6 @@ import {
   INTERIM_SOFTWARE_KEY_VALUE,
   isInterimSoftwareKeyAllowed,
   isProductionEnv,
-  isTruthyFlag,
 } from "./production-env.js";
 
 type Env = Record<string, string | undefined>;

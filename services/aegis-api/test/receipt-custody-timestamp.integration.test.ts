@@ -137,7 +137,6 @@ describeIfDb("receipt key custody and trusted time (integration)", () => {
   it("KMS: production receipts are KMS-signed, custody is signed in, key is published", async () => {
     const kms = kmsMock();
     process.env.AEGIS_ENV = "production";
-    delete process.env.;
     process.env.AEGIS_RECEIPT_KMS_KEY_ID = ARN;
     process.env.AEGIS_RECEIPT_KEY_ID = "cust_test_kms_1";
     delete process.env.AEGIS_RECEIPT_SIGNING_KEY_B64;

@@ -11,7 +11,7 @@ export type ExtractOutcome =
 const MAX_EXTRACT_CHARS = 200_000;
 
 function truncate(text: string): string {
-  const cleaned = text.replace(/\u0000/g, "").trim();
+  const cleaned = text.split("\u0000").join("").trim();
   if (cleaned.length <= MAX_EXTRACT_CHARS) return cleaned;
   return cleaned.slice(0, MAX_EXTRACT_CHARS);
 }
