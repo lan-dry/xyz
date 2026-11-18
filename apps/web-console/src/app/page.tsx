@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { idApi } from "@/lib/id-api";
-import { PLATFORM_PRODUCTS } from "@/lib/products";
+import { VISIBLE_PLATFORM_PRODUCTS } from "@/lib/products";
 import type { MeResponse } from "@/lib/types";
 
 export default function HomePage() {
@@ -71,7 +71,7 @@ export default function HomePage() {
           Sign in
         </Link>
         <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-          {PLATFORM_PRODUCTS.map((product) => (
+          {VISIBLE_PLATFORM_PRODUCTS.map((product) => (
             <li
               key={product.slug}
               style={{
@@ -82,7 +82,7 @@ export default function HomePage() {
               }}
             >
               <strong>{product.name}</strong>
-              {product.status === "preview" ? (
+              {product.status !== "active" && product.status !== "hidden" ? (
                 <span style={{ marginLeft: "0.5rem", fontSize: "0.75rem", color: "#7a8c88" }}>
                   preview
                 </span>

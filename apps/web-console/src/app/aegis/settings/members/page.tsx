@@ -1,5 +1,7 @@
-import { redirect } from "next/navigation";
+"use client";
 
-export default function SettingsMembersRedirect() {
-  redirect("/aegis/members");
+import { MembersView } from "@/components/console/members-view";
+
+export default function SettingsMembersPage() {
+  return <MembersView />;
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PLATFORM_PRODUCTS } from "../lib/products";
+import { VISIBLE_PLATFORM_PRODUCTS } from "../lib/products";
 
 export function PlatformShell({
   productName,
@@ -32,7 +32,7 @@ export function PlatformShell({
             Salanor
           </Link>
           <nav style={{ display: "flex", gap: "0.5rem" }}>
-            {PLATFORM_PRODUCTS.map((product) => {
+            {VISIBLE_PLATFORM_PRODUCTS.map((product) => {
               const active =
                 !product.external &&
                 (pathname === product.href ||
@@ -48,7 +48,9 @@ export function PlatformShell({
               const label = (
                 <>
                   {product.name}
-                  {product.status === "preview" ? " (preview)" : ""}
+                  {product.status !== "active" && product.status !== "hidden"
+                    ? " (preview)"
+                    : ""}
                 </>
               );
               if (product.external) {
