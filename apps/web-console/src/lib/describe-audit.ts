@@ -42,6 +42,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   "receipt.viewed": "Receipt opened",
   "receipt.verified": "Receipt verified",
   "evidence.downloaded": "Evidence downloaded",
+  "field.revealed": "Masked field revealed",
   "receipt.share_created": "Share link created",
   "receipt.share_opened": "Share link opened",
   "receipt.share_revoked": "Share link revoked",

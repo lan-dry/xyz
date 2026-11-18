@@ -258,11 +258,7 @@ export default function AuditLogsPage() {
                     return (
                       <tr key={row.audit_id}>
                         <td className="mono" style={{ whiteSpace: "nowrap" }}>
-                          {bank ? (
-                            <ConsoleTime iso={row.created_at} seconds />
-                          ) : (
-                            new Date(row.created_at).toLocaleString()
-                          )}
+                          <ConsoleTime iso={row.created_at} seconds />
                         </td>
                         <td>{bank ? describeAuditEntry(row) : row.action}</td>
                         <td>

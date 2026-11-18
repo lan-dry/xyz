@@ -45,7 +45,7 @@
       "risk_tier": null,
       "required_role": null,
       "outcome": "allow",
-      "rule_code": "AUTH-RL",
+      "rule_code": "AUTH-RL-1",
       "active": true
     },
     {
@@ -57,7 +57,7 @@
       "risk_tier": null,
       "required_role": "credit_manager",
       "outcome": "hold",
-      "rule_code": "AUTH-RL",
+      "rule_code": "AUTH-RL-2",
       "active": true
     },
     {
@@ -78,11 +78,16 @@
       "field_path": "national_id",
       "mode": "mask",
       "mask_keep_last": 4
+    },
+    {
+      "field_path": "applicant_name",
+      "mode": "mask",
+      "mask_keep_last": 0
     }
   ],
   "rules": [
     {
-      "rule_id": "AUTH-RL",
+      "rule_id": "AUTH-RL-1",
       "tool_pattern": "governed.action",
       "decision": "allow",
       "priority": 10
@@ -166,7 +171,8 @@
   ],
   "labels": {
     "rule_titles": {
-      "AUTH-RL": "Within officer limit",
+      "AUTH-RL-1": "Within officer limit",
+      "AUTH-RL-2": "Above officer limit",
       "AUTH-RL-HIGH": "Above manager band",
       "LN-07": "High model score requires Credit Manager",
       "PAY-03": "Payment callback verification",

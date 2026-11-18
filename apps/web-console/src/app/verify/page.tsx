@@ -1,11 +1,17 @@
 "use client";
 
+import { Moon, Sun } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { useQuery } from "@tanstack/react-query";
 
 import { idApi } from "@/lib/id-api";
+import {
+  resolveConsoleTheme,
+  toggleConsoleTheme,
+  type ConsoleTheme,
+} from "@/lib/console-theme";
 import type { MeResponse } from "@/lib/types";
 
 import { BundleVerifier, DemoBundleTry } from "./bundle-verifier";
@@ -44,7 +50,12 @@ function VerifyForm() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VerifyResponse | null>(null);
   const [httpError, setHttpError] = useState<string | null>(null);
+  const [theme, setTheme] = useState<ConsoleTheme>("light");
   const orgTouched = useRef(Boolean(searchParams.get("org")));
+
+  useEffect(() => {
+    setTheme(resolveConsoleTheme());
+  }, []);
 
   // Default the organization to the signed-in one. Anonymous visitors just see an empty box.
   const me = useQuery({
@@ -107,6 +118,17 @@ function VerifyForm() {
 
   return (
     <div className={styles.page}>
+      <div className={styles.themeBar}>
+        <button
+          type="button"
+          className={styles.themeToggle}
+          aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          onClick={() => setTheme(toggleConsoleTheme())}
+        >
+          {theme === "dark" ? <Sun size={14} aria-hidden /> : <Moon size={14} aria-hidden />}
+          {theme === "dark" ? "Light" : "Dark"}
+        </button>
+      </div>
       <header className={styles.header}>
         <p className={styles.eyebrow}>Salanor Aegis</p>
         <h1>Verify a record</h1>
@@ -177,7 +199,7 @@ function VerifyForm() {
             </div>
           </dl>
           <ul className={styles.checks}>
-            <CheckRow label="Recorded by the outside witness" ok={verification.witness_ok} />
+            <CheckRow label="Salanor witness checkpoint (signed)" ok={verification.witness_ok} />
             <CheckRow
               label="Recorded in the public log"
               ok={verification.transparency_ok}

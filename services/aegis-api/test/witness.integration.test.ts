@@ -6,7 +6,7 @@ import "../src/db/load-env.js";
 import { closePool, getPool } from "../src/db/pool.js";
 import { migrateUp } from "../src/db/migrate.js";
 import { applyIntegrationFixture } from "./integration-fixture.js";
-import { runWitnessBatchForOrg } from "../../aegis-signer/src/batch-lib.js";
+import { runWitnessBatchForOrg } from "../src/witness/batch.js";
 import { verifyEventFull, type EventRowForVerify } from "../src/witness/verify-event.js";
 import { persistSignedEvent } from "../src/ingest/persist.js";
 

@@ -9,32 +9,28 @@
 
 import type { RuleCombineMode } from "../policy/evaluate-rules.js";
 import type { AuthorityMatrixRow, BankRole } from "./authority-matrix.js";
-import { formatRuleLabel, productDisplayLabel } from "./describe-decision.js";
+import {
+  formatRuleLabel,
+  productDisplayLabel,
+  ruleIdCode,
+} from "./describe-decision.js";
 import { evaluateBankEvent, type BankEvalInput } from "./evaluate.js";
 import type { BankOutcome } from "./outcome.js";
 
 /** `pol_pack_demo_banking_3b9f_LN-07` -> `LN-07`; plain codes pass through. */
 export function ruleCode(ruleId: string | null | undefined): string | null {
-  if (!ruleId) return null;
-  const tail = ruleId.split("_").pop() ?? ruleId;
-  if (/^[A-Z]{1,6}(-[A-Z0-9]+)+$/.test(tail)) return tail;
-  return ruleId;
+  return ruleIdCode(ruleId) ?? (ruleId ? ruleId : null);
 }
 
 /**
- * `AUTH-RL · Within officer limit` (never a raw policy id). When AUTH-RL holds or
- * stops a case it is above the officer limit, so the title says that instead.
+ * `AUTH-RL-2 · Above officer limit` (never a raw policy id). Titles resolve by
+ * rule id only — authority bands each have their own id.
  */
 export function ruleDisplayLabel(
   ruleId: string | null | undefined,
   effect?: string | null,
 ): string | null {
-  const code = ruleCode(ruleId);
-  if (!code) return null;
-  if (code === "AUTH-RL" && (effect === "hold" || effect === "stop")) {
-    return `${code} · Above officer limit`;
-  }
-  return formatRuleLabel(code) ?? code;
+  return formatRuleLabel(ruleId, effect);
 }
 
 export function roleDisplayName(

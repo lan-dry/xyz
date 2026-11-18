@@ -241,7 +241,13 @@ pnpm dev
 pnpm compliance:worker   # process pending jobs
 ```
 
-Bundle contents: `events.ndjson`, `manifest.json`, plus templates `soc2-evidence.json` and/or `eu-ai-act-art12.json`. `integrity_hash` is SHA-256 of the ZIP file.
+Bundle contents: `events.ndjson`, `manifest.json`, plus templates `soc2-evidence.json` and/or `eu-ai-act-art12.json`. The ZIP's SHA-256 (`integrity_hash`) is stored on the export row / Evidence page — it is **not** written inside the ZIP (a ZIP cannot contain its own hash).
+
+### Witness Merkle hashing rule
+
+- Leaf = event hash (`event.event_hash`) verbatim.
+- Internal node = `SHA-256(UTF-8 of left_hex + right_hex)`.
+- Checkpoints are labelled **Salanor witness checkpoint (signed)** unless externally anchored; each root carries an Ed25519 signature and an RFC 3161 timestamp token.
 
 Exit test: `compliance-export.integration.test.ts` — `status=ready`, downloadable ZIP, hash verifies.
 

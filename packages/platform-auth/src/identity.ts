@@ -805,7 +805,7 @@ export async function provisionOrganization(
   if (input.isDemo) {
     try {
       await client.query(
-        `UPDATE organization SET is_demo = true WHERE organization_id = $1`,
+        `UPDATE organization SET is_demo = true, region = 'eu-west' WHERE organization_id = $1`,
         [organizationId],
       );
     } catch (err) {
@@ -931,6 +931,7 @@ export async function platformEnsureOrganizationMember(
   if (existingAccount.rows[0]) {
     accountId = existingAccount.rows[0].account_id;
     if (input.passwordHash) {
+      // Provisioning always refreshes display_name when provided (demo personas).
       await client.query(
         `UPDATE account
          SET password_hash = $1,
@@ -939,14 +940,14 @@ export async function platformEnsureOrganizationMember(
              active = true,
              updated_at = now()
          WHERE account_id = $3`,
-        [input.passwordHash, input.displayName ?? null, accountId],
+        [input.passwordHash, input.displayName?.trim() || null, accountId],
       );
-    } else if (input.displayName) {
+    } else if (input.displayName?.trim()) {
       await client.query(
         `UPDATE account
-         SET display_name = COALESCE($1, display_name), updated_at = now()
+         SET display_name = $1, updated_at = now()
          WHERE account_id = $2`,
-        [input.displayName, accountId],
+        [input.displayName.trim(), accountId],
       );
     }
   } else {

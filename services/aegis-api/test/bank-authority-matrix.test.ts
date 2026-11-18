@@ -23,7 +23,7 @@ describe("authority matrix (from demo.banking pack)", () => {
       ladder,
     );
     expect(m?.outcome).toBe("allow");
-    expect(m?.row.rule_code).toBe("AUTH-RL");
+    expect(m?.row.rule_code).toBe("AUTH-RL-1");
     expect(m?.required_role).toBeNull();
   });
 

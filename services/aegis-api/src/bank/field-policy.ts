@@ -68,8 +68,11 @@ function deepClone<T>(value: T): T {
 
 export function maskValue(value: unknown, keepLast = 4): string {
   const s = value == null ? "" : String(value);
-  if (s.length <= keepLast) return "*".repeat(s.length);
-  return `${"*".repeat(Math.max(0, s.length - keepLast))}${s.slice(-keepLast)}`;
+  const keep = Math.max(0, keepLast);
+  // keep=0 must fully mask; String.prototype.slice(-0) returns the whole string.
+  if (keep === 0) return "*".repeat(s.length);
+  if (s.length <= keep) return "*".repeat(s.length);
+  return `${"*".repeat(s.length - keep)}${s.slice(-keep)}`;
 }
 
 export function hashValue(value: unknown): string {

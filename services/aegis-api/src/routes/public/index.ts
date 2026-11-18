@@ -5,6 +5,12 @@ import {
   DEMO_BANK_SLUG,
   sampleBundlesAccess,
 } from "../../bank/demo-tenant.js";
+import {
+  describeDecision,
+  formatApprover,
+  formatRuleLabel,
+  OUTCOME_LABELS,
+} from "../../bank/describe-decision.js";
 import { loadDemoSampleBundles } from "../../demo/sample-bundles.js";
 import {
   auditReceiptAccess,
@@ -191,7 +197,126 @@ type TraceStep = {
   policy_decision: string;
   tool_name: string | null;
   payload: unknown;
+  emitted_at?: string | Date | null;
 };
+
+function isBankPayload(p: Record<string, unknown>): boolean {
+  return (
+    typeof p.outcome === "string" &&
+    Array.isArray(p.matched_rules) &&
+    Boolean(p.attributes) &&
+    typeof p.attributes === "object"
+  );
+}
+
+function numOf(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * Same decision sentence as the case page (amount, rule, approver, reason).
+ * Built from the sealed bank payload + human_approval sibling when present.
+ */
+function decisionTextFromSteps(steps: TraceStep[]): string | null {
+  let bank: Record<string, unknown> | null = null;
+  let approval: Record<string, unknown> | null = null;
+  let approvalAt: string | null = null;
+  let approvalDecision: string | null = null;
+
+  for (const step of steps) {
+    const payload =
+      step.payload && typeof step.payload === "object"
+        ? (step.payload as Record<string, unknown>)
+        : null;
+    if (!payload) continue;
+    if (step.action_kind === "policy_decision" && isBankPayload(payload)) {
+      bank = payload;
+    }
+    if (step.action_kind === "human_approval") {
+      approval = payload;
+      approvalDecision =
+        textOf(payload, "decision") ?? step.policy_decision ?? approvalDecision;
+      const at = step.emitted_at;
+      approvalAt =
+        typeof at === "string"
+          ? at
+          : at instanceof Date
+            ? at.toISOString()
+            : approvalAt;
+    }
+  }
+  if (!bank) return null;
+
+  const attrs = bank.attributes as Record<string, unknown>;
+  const rules = (bank.matched_rules as Array<{ rule_id?: string; decision?: string }>)
+    .map((r) => (typeof r.rule_id === "string" ? r.rule_id : null))
+    .filter((x): x is string => Boolean(x));
+  const bankOutcome = textOf(bank, "outcome") ?? "allow";
+  const approved =
+    approvalDecision === "approved" || approvalDecision === "released";
+  const declined =
+    approvalDecision === "rejected" ||
+    approvalDecision === "denied" ||
+    approvalDecision === "declined";
+  const decided =
+    textOf(bank, "decided_by_rule_id") ??
+    (bank.decision_basis &&
+    typeof bank.decision_basis === "object" &&
+    typeof (bank.decision_basis as { decided_by_rule_id?: unknown })
+      .decided_by_rule_id === "string"
+      ? String(
+          (bank.decision_basis as { decided_by_rule_id: string })
+            .decided_by_rule_id,
+        )
+      : null) ??
+    (bankOutcome === "hold" || bankOutcome === "stop"
+      ? rules.find((r) => !/(^|_)AUTH-RL(-1)?$/.test(r))
+      : null) ??
+    rules[0] ??
+    null;
+  const approverName = approval
+    ? textOf(approval, "approver_display_name") ??
+      (approved || declined ? textOf(approval, "approver_email") : null)
+    : null;
+  const approverRole = approval ? textOf(approval, "approver_role") : null;
+  const approvalReason = approval ? textOf(approval, "reason") : null;
+
+  return describeDecision({
+    outcome:
+      bankOutcome === "hold" && declined
+        ? "declined"
+        : bankOutcome === "hold" && approved
+          ? "released"
+          : bankOutcome,
+    product: textOf(bank, "product"),
+    event_type: textOf(bank, "event_type"),
+    amount: numOf(attrs.amount ?? attrs.amount_rwf ?? attrs.loan_amount),
+    currency: textOf(attrs, "currency"),
+    policy_version:
+      typeof bank.policy_version === "number" || typeof bank.policy_version === "string"
+        ? bank.policy_version
+        : null,
+    matched_rules: rules.map((rule_id) => ({ rule_id })),
+    decided_by_rule_id: decided,
+    decision_basis:
+      bank.decision_basis && typeof bank.decision_basis === "object"
+        ? (bank.decision_basis as Parameters<typeof describeDecision>[0]["decision_basis"])
+        : null,
+    required_role: textOf(bank, "required_role"),
+    required_role_label: textOf(bank, "required_role_label"),
+    approver_name: approved || declined ? approverName : null,
+    approver_role: approved || declined ? approverRole : null,
+    approved_at: approved || declined ? approvalAt : null,
+    approval_reason: approved || declined ? approvalReason : null,
+    mode: textOf(bank, "mode"),
+    would_have: textOf(bank, "would_have"),
+  });
+}
 
 function storyFromTrace(steps: TraceStep[]): {
   what_happened: string;
@@ -202,6 +327,8 @@ function storyFromTrace(steps: TraceStep[]): {
   policy_reason: string | null;
   anomaly: string | null;
   status: string;
+  approver: string | null;
+  rule_label: string | null;
 } {
   const fields: string[] = [];
   let anomalyType: string | null = null;
@@ -216,6 +343,10 @@ function storyFromTrace(steps: TraceStep[]): {
   let emailCase = false;
   let denied = false;
   let needsPerson = false;
+  let bankOutcome: string | null = null;
+  let approver: string | null = null;
+  let ruleLabel: string | null = null;
+  let humanDecided = false;
 
   for (const step of steps) {
     const payload =
@@ -231,7 +362,16 @@ function storyFromTrace(steps: TraceStep[]): {
     }
     if (isEmailSourced(payload)) emailCase = true;
     task = task ?? textOf(payload, "task");
-    description = description ?? textOf(payload, "summary");
+    // Prefer sealed summary only when it is not engine jargon.
+    const summary = textOf(payload, "summary");
+    if (
+      summary &&
+      !/^governed decision\b/i.test(summary) &&
+      !summary.includes("governed.action") &&
+      !summary.includes("policy_decision")
+    ) {
+      description = description ?? summary;
+    }
     genericSubject =
       genericSubject ??
       textOf(payload, "subject") ??
@@ -243,17 +383,57 @@ function storyFromTrace(steps: TraceStep[]): {
       anomalyType = textOf(payload, "type") ?? anomalyType;
       anomalyReason = textOf(payload, "reason") ?? anomalyReason;
     }
-    if (step.action_kind === "policy_decision" || step.policy_decision) {
-      if (step.action_kind === "policy_decision") {
-        policyDecision = step.policy_decision || policyDecision;
+    if (step.action_kind === "policy_decision") {
+      policyDecision = step.policy_decision || policyDecision;
+      if (isBankPayload(payload)) {
+        bankOutcome = textOf(payload, "outcome") ?? bankOutcome;
+        const decided =
+          textOf(payload, "decided_by_rule_id") ??
+          (payload.decision_basis &&
+          typeof payload.decision_basis === "object" &&
+          typeof (payload.decision_basis as { decided_by_rule_id?: unknown })
+            .decided_by_rule_id === "string"
+            ? String(
+                (payload.decision_basis as { decided_by_rule_id: string })
+                  .decided_by_rule_id,
+              )
+            : null);
+        ruleLabel = formatRuleLabel(decided, bankOutcome) ?? ruleLabel;
+        // Never use investor_summary ("Governed decision …") as the reason.
+        policyReason = textOf(payload, "reason") ?? policyReason;
+      } else {
+        const inv = textOf(payload, "investor_summary");
         policyReason =
           textOf(payload, "reason") ??
-          textOf(payload, "investor_summary") ??
+          (inv && !/^governed decision\b/i.test(inv) ? inv : null) ??
           policyReason;
       }
     }
-    if (step.policy_decision === "deny") denied = true;
-    if (step.policy_decision === "allow_with_obligation") needsPerson = true;
+    if (step.action_kind === "human_approval") {
+      humanDecided = true;
+      const name =
+        textOf(payload, "approver_display_name") ??
+        textOf(payload, "approver_email");
+      const role = textOf(payload, "approver_role");
+      approver = formatApprover(name, role) ?? name ?? approver;
+      needsPerson = false;
+      const decision = textOf(payload, "decision");
+      if (decision === "rejected" || decision === "declined" || decision === "denied") {
+        denied = true;
+      }
+    }
+    if (step.policy_decision === "deny" && step.action_kind !== "human_approval") {
+      denied = true;
+    }
+    if (step.policy_decision === "allow_with_obligation" && !humanDecided) {
+      needsPerson = true;
+    }
+  }
+
+  const decisionText = decisionTextFromSteps(steps);
+  if (decisionText) {
+    description = decisionText;
+    policyReason = decisionText;
   }
 
   const anomaly = anomalyFlagged
@@ -265,30 +445,40 @@ function storyFromTrace(steps: TraceStep[]): {
   else if (needsPerson) status = "Needs approval";
   else if (anomaly) status = "Needs attention";
 
+  const outcomeKey = bankOutcome ?? policyDecision;
   const policyLabel =
-    policyDecision === "deny"
+    denied || outcomeKey === "deny" || outcomeKey === "stop" || outcomeKey === "declined"
       ? "Stopped"
-      : policyDecision === "allow_with_obligation"
+      : needsPerson || outcomeKey === "hold" || outcomeKey === "allow_with_obligation"
         ? "Needs approval"
-        : "Allowed";
+        : humanDecided
+          ? OUTCOME_LABELS.released ?? "Approved"
+          : outcomeKey === "allow"
+            ? "Allowed"
+            : OUTCOME_LABELS[outcomeKey] ?? "Allowed";
 
   const labels = [...new Set(fields.map(humanField).filter(Boolean))];
   const subject =
     task ??
     genericSubject ??
     (emailCase ? emailSubject : null);
+  // Never fall back to engine tool/action ids in the title.
   const what =
-    subject ?? (anomaly ? "This case was flagged." : "This case was recorded.");
+    decisionText ??
+    subject ??
+    (anomaly ? "This case was flagged." : "This case was recorded.");
 
   return {
     what_happened: what,
-    description,
+    description: description ?? decisionText,
     data_seen: dataSeen,
     fields: labels,
     policy_decision: policyLabel,
-    policy_reason: policyReason,
+    policy_reason: policyReason ?? decisionText,
     anomaly,
     status,
+    approver,
+    rule_label: ruleLabel,
   };
 }
 
@@ -581,7 +771,7 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
       null;
 
     const siblings = await client.query<TraceStep>(
-      `SELECT action_kind, policy_decision, tool_name, payload
+      `SELECT action_kind, policy_decision, tool_name, payload, emitted_at
        FROM event
        WHERE organization_id = $1 AND trace_id = $2
        ORDER BY sequence_num ASC`,
@@ -656,19 +846,21 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
         event_id: ev.event_id,
         trace_id: ev.trace_id,
         agent_id: ev.agent_id,
+        // Keep engine fields for verify tooling; share UI must not render them raw.
         action_kind: ev.action_kind,
         policy_decision: ev.policy_decision,
-        tool_name: ev.tool_name,
+        tool_name:
+          ev.tool_name === "governed.action" || ev.tool_name === "policy_decision"
+            ? null
+            : ev.tool_name,
         event_hash: ev.event_hash,
         prev_event_hash: ev.prev_event_hash,
         chain_valid: ev.chain_valid,
         emitted_at: ev.emitted_at.toISOString(),
         amount_usd: Number.isFinite(amountUsd) ? amountUsd : null,
-        reason,
-        approver,
-        decision:
-          (typeof payload.decision === "string" && payload.decision) ||
-          ev.policy_decision,
+        reason: story.policy_reason ?? reason,
+        approver: story.approver ?? approver,
+        decision: story.policy_decision,
         agent_name: agent.rows[0]?.name ?? ev.agent_id,
       },
       story,

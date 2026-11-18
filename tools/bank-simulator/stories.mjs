@@ -6,18 +6,37 @@
 
 export const WITHIN_LIMIT_AMOUNT_RWF = 1_200_000;
 
+/** Default requester: Credit Officer (screens show name · role; email stays technical). */
+const OFFICER_REQUESTER = {
+  requester_email: "officer@demo.test",
+  requester_name: "Patience Ingabire",
+  requester_role: "credit_officer",
+  officer_id: "OFF-1042",
+  system_account: "core-banking",
+};
+
+/** Model override: manager requested the override → SoD blocks self-approve. */
+const MANAGER_REQUESTER = {
+  requester_email: "manager@demo.test",
+  requester_name: "Jean Mutabazi",
+  requester_role: "credit_manager",
+  officer_id: "MGR-2201",
+  system_account: "core-banking",
+};
+
 export const STORIES = [
   {
     id: "loan_within_limit",
     title: `Loan RWF ${WITHIN_LIMIT_AMOUNT_RWF.toLocaleString("en-US")} within officer limit`,
     expect: "allow",
-    expect_detail: "Allowed automatically by rule AUTH-RL. No human approval needed.",
+    expect_detail: "Allowed automatically by rule AUTH-RL-1. No human approval needed.",
     blurb:
       "RWF 1,200,000 school-fees loan. Within the credit officer's limit, so it is allowed automatically.",
     event_type: "loan_decision",
     product: "retail_loan",
     agent_slug: "credit-decision",
     attributes: {
+      ...OFFICER_REQUESTER,
       amount: WITHIN_LIMIT_AMOUNT_RWF,
       currency: "RWF",
       applicant_name: "Uwase Aline",
@@ -36,6 +55,7 @@ export const STORIES = [
     product: "retail_loan",
     agent_slug: "credit-decision",
     attributes: {
+      ...OFFICER_REQUESTER,
       amount: 18_000_000,
       currency: "RWF",
       applicant_name: "Mukamana Divine",
@@ -56,6 +76,7 @@ export const STORIES = [
     product: "retail_loan",
     agent_slug: "credit-decision",
     attributes: {
+      ...MANAGER_REQUESTER,
       amount: 12_000_000,
       currency: "RWF",
       applicant_name: "Niyonsenga Eric",
@@ -75,6 +96,7 @@ export const STORIES = [
     product: "customer_data",
     agent_slug: "customer-data",
     attributes: {
+      ...OFFICER_REQUESTER,
       amount: 1_000_000,
       currency: "RWF",
       national_id: "1199880045123456",
@@ -93,6 +115,7 @@ export const STORIES = [
     product: "retail_loan",
     agent_slug: "credit-decision",
     attributes: {
+      ...OFFICER_REQUESTER,
       amount: 28_000_000,
       currency: "RWF",
       applicant_name: "Kamanzi Emmanuel",
@@ -113,6 +136,7 @@ export const STORIES = [
     product: "retail_loan",
     agent_slug: "credit-decision",
     attributes: {
+      ...OFFICER_REQUESTER,
       amount: 2_500_000,
       currency: "RWF",
       applicant_name: "Test Subject (screening hit)",
@@ -134,6 +158,7 @@ export const STORIES = [
     product: "retail_loan",
     agent_slug: "payments-gateway",
     attributes: {
+      ...OFFICER_REQUESTER,
       amount: 4_800_000,
       currency: "RWF",
       applicant_name: "Nsengiyumva Patrick",
@@ -155,6 +180,7 @@ export const STORIES = [
     product: "retail_loan",
     agent_slug: "credit-decision",
     attributes: {
+      ...OFFICER_REQUESTER,
       amount: 18_000_000,
       currency: "RWF",
       applicant_name: "Mutesi Chantal",
@@ -175,6 +201,7 @@ export const STORIES = [
     product: "retail_loan",
     agent_slug: "credit-decision",
     attributes: {
+      ...OFFICER_REQUESTER,
       amount: 18_000_000,
       currency: "RWF",
       applicant_name: "Uwimana Claudine",
@@ -196,6 +223,7 @@ export const STORIES = [
     product: "retail_loan",
     agent_slug: "credit-decision",
     attributes: {
+      ...OFFICER_REQUESTER,
       amount: 18_000_000,
       currency: "RWF",
       applicant_name: "Bizimana Theoneste",
@@ -217,6 +245,7 @@ export const STORIES = [
     product: "retail_loan",
     agent_slug: "core-banking",
     attributes: {
+      ...OFFICER_REQUESTER,
       amount: WITHIN_LIMIT_AMOUNT_RWF,
       currency: "RWF",
       applicant_name: "Ingabire Solange",
@@ -237,6 +266,7 @@ export const STORIES = [
     product: "retail_loan",
     agent_slug: "credit-decision",
     attributes: {
+      ...OFFICER_REQUESTER,
       amount: WITHIN_LIMIT_AMOUNT_RWF,
       currency: "RWF",
       applicant_name: "Test Subject (bad credential)",

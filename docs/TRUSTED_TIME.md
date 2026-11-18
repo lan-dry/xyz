@@ -78,3 +78,22 @@ as a known gap until in-process CMS verification is added.
 - `/ready` reports `checks.tsa` (configured, authority, reachable, `pending_timestamps`). An unreachable TSA is a **warning** (`tsa_unreachable`), not a failure, because receipts still issue.
 - A growing `pending_timestamps` for more than a few hours means the TSA is down or blocked by egress rules. Check outbound access to the TSA host on port 80.
 - Rate: one request per receipt. If volume ever exceeds a public TSA's courtesy limits, batch by stamping the witness checkpoint instead, or move to a paid TSA.
+
+## Witness roots (A5)
+
+Every Merkle witness root is also timestamped with the same TSA (`AEGIS_TSA_URL`),
+reusing `requestReceiptStamp` / `createCheckpointTimestamp`. The token is stored on
+`merkle_root` (`tsa_token_b64`, authority, genTime). When no TSA is configured, a
+local-test token is stored so evidence bundles remain offline-complete in
+dev/tests.
+
+Product wording: **Salanor witness checkpoint (signed)** unless
+`anchoring_type` is external (bitcoin / ethereum).
+
+### Merkle hashing rule
+
+- **Leaf:** the event hash (`event.event_hash`) used verbatim.
+- **Internal node:** SHA-256 of the left hex string followed by the right hex string
+  (UTF-8 concatenation): `SHA-256(left + right)`.
+- Inclusion proofs, root signatures, and the timestamp token ship in every evidence
+  bundle; `aegis-verify` checks inclusion offline.

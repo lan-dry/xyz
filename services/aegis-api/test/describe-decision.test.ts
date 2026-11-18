@@ -27,11 +27,11 @@ describe("describeDecision", () => {
       amount: 1_200_000,
       currency: "RWF",
       policy_version: 3,
-      decided_by_rule_id: "AUTH-RL",
-      matched_rules: [{ rule_id: "AUTH-RL", decision: "allow" }],
+      decided_by_rule_id: "AUTH-RL-1",
+      matched_rules: [{ rule_id: "AUTH-RL-1", decision: "allow" }],
     });
     expect(text).toMatch(/Loan disbursement of RWF 1,200,000/);
-    expect(text).toMatch(/AUTH-RL/);
+    expect(text).toMatch(/AUTH-RL-1 · Within officer limit/);
     expect(text).toMatch(/No human approval was needed/);
     expect(text).toMatch(/Policy v3/);
     expect(text).not.toMatch(/governed\.action/);
@@ -72,6 +72,25 @@ describe("describeDecision", () => {
     expect(text).toMatch(/Jean Mutabazi/);
     expect(text).toMatch(/15 Nov 2026 at 18:21 UTC/);
     expect(text).toMatch(/Within manager band/);
+  });
+
+  it("never says allowed automatically when a human approver is present (A4)", () => {
+    const text = describeDecision({
+      outcome: "allow",
+      product: "retail_loan",
+      amount: 18_000_000,
+      currency: "RWF",
+      decided_by_rule_id: "LN-07",
+      required_role_label: "Credit Manager",
+      approver_name: "Jean Mutabazi",
+      approver_role: "credit_manager",
+      approved_at: "2026-11-15T18:21:00.000Z",
+      approval_reason: "Within manager band",
+    });
+    expect(text).not.toMatch(/allowed automatically/i);
+    expect(text).toMatch(/Approved by Jean Mutabazi/);
+    expect(text).not.toMatch(/governed\.action/);
+    expect(text).not.toMatch(/policy_decision/);
   });
 });
 
@@ -115,21 +134,27 @@ describe("rule labels", () => {
 
   it("extracts the code from stored pack rule ids", () => {
     expect(formatRuleLabel("pol_pack_demo_banking_3b9f7043_LN-07")).toMatch(/^LN-07 · /);
-    expect(formatRuleLabel("pol_pack_demo_banking_3b9f7043_AUTH-RL", "allow")).toBe(
-      "AUTH-RL · Within officer limit",
+    expect(formatRuleLabel("pol_pack_demo_banking_3b9f7043_AUTH-RL-1")).toBe(
+      "AUTH-RL-1 · Within officer limit",
+    );
+    expect(formatRuleLabel("pol_pack_demo_banking_3b9f7043_AUTH-RL-2")).toBe(
+      "AUTH-RL-2 · Above officer limit",
     );
   });
 
-  it("calls AUTH-RL on a hold 'Above officer limit', never 'Within'", () => {
-    expect(formatRuleLabel("AUTH-RL", "allow")).toBe("AUTH-RL · Within officer limit");
-    expect(formatRuleLabel("AUTH-RL", "hold")).toBe("AUTH-RL · Above officer limit");
-    expect(formatRuleLabel("AUTH-RL", "stop")).toBe("AUTH-RL · Above officer limit");
+  it("resolves titles by rule id, never by effect", () => {
+    expect(formatRuleLabel("AUTH-RL-1", "hold")).toBe("AUTH-RL-1 · Within officer limit");
+    expect(formatRuleLabel("AUTH-RL-2", "allow")).toBe("AUTH-RL-2 · Above officer limit");
+    expect(formatRuleLabel("AUTH-RL-2", "hold")).toBe("AUTH-RL-2 · Above officer limit");
   });
 
-  it("dedupes AUTH-RL, AUTH-RL", () => {
+  it("dedupes AUTH-RL-1 variants", () => {
     expect(
-      dedupeRuleLabels(["AUTH-RL", "pol_pack_demo_banking_3b9f7043_AUTH-RL"], "allow"),
-    ).toEqual(["AUTH-RL · Within officer limit"]);
+      dedupeRuleLabels(
+        ["AUTH-RL-1", "pol_pack_demo_banking_3b9f7043_AUTH-RL-1"],
+        "allow",
+      ),
+    ).toEqual(["AUTH-RL-1 · Within officer limit"]);
   });
 });
 
@@ -141,14 +166,14 @@ describe("held because the hold rule, not the allow rule", () => {
       amount: 2_000_000,
       currency: "RWF",
       matched_rules: [
-        { rule_id: "AUTH-RL", decision: "allow" },
+        { rule_id: "AUTH-RL-1", decision: "allow" },
         { rule_id: "LN-07", decision: "allow_with_obligation" },
       ],
       decision_basis: { decided_by_rule_id: "LN-07" } as never,
       required_role_label: "Credit Manager",
     });
     expect(text).toMatch(/because rule LN-07/);
-    expect(text).not.toMatch(/because rule AUTH-RL · Within/);
+    expect(text).not.toMatch(/because rule AUTH-RL-1 · Within/);
   });
 });
 
@@ -159,7 +184,7 @@ describe("declined and approver wording", () => {
       product: "retail_loan",
       amount: 25_000_000,
       currency: "RWF",
-      decided_by_rule_id: "AUTH-RL",
+      decided_by_rule_id: "AUTH-RL-2",
       required_role_label: "Credit Manager",
       approver_name: "Jean Mutabazi",
       approver_role: "credit_manager",
@@ -169,7 +194,24 @@ describe("declined and approver wording", () => {
     expect(text).toMatch(
       /declined by Jean Mutabazi · Credit Manager on 15 Nov 2026 at 10:05 UTC, reason: Collateral not verified/,
     );
-    expect(text).toMatch(/held because rule AUTH-RL · Above officer limit requires a Credit Manager/);
+    expect(text).toMatch(/held because rule AUTH-RL-2 · Above officer limit requires a Credit Manager/);
+  });
+
+  it("does not double the full stop when the reason already ends with one", () => {
+    const text = describeDecision({
+      outcome: "released",
+      product: "retail_loan",
+      amount: 15_000_000,
+      currency: "RWF",
+      decided_by_rule_id: "AUTH-RL-2",
+      required_role_label: "Credit Manager",
+      approver_name: "Jean Mutabazi",
+      approver_role: "credit_manager",
+      approved_at: "2026-11-17T21:01:00.000Z",
+      approval_reason: "Cash-flow forecast reviewed.",
+    });
+    expect(text).toMatch(/with the reason: Cash-flow forecast reviewed\.$/);
+    expect(text).not.toMatch(/reviewed\.\./);
   });
 
   it("formats approvers as 'Name · Role' and never leaks an email", () => {

@@ -9,6 +9,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { EmptyStatePanel } from "@/components/console/empty-state-panel";
 import { Modal } from "@/components/console/modal";
 import { CopyButton } from "@/components/console/copy-button";
+import { ConsoleTime } from "@/components/console/console-time";
 import {
   ConsolePagination,
   ErrorAlert,
@@ -329,7 +330,7 @@ export function MembersView() {
                       <StatusBadge status={m.status} />
                     </td>
                     <td className={ui.muted}>
-                      {new Date(m.joined_at).toLocaleDateString()}
+                      <ConsoleTime iso={m.joined_at} />
                     </td>
                     <td style={{ textAlign: "right" }}>
                       {isSelf ? null : isActive ? (
@@ -428,7 +429,7 @@ export function MembersView() {
                       <StatusBadge status={inv.role} />
                     </td>
                     <td className={ui.muted}>
-                      {new Date(inv.expires_at).toLocaleString()}
+                      <ConsoleTime iso={inv.expires_at} />
                     </td>
                     <td style={{ textAlign: "right" }}>
                       <div

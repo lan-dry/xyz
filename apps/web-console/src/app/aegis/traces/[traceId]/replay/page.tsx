@@ -6,6 +6,7 @@ import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
+import { ConsoleTime } from "@/components/console/console-time";
 import {
   BackLink,
   ConsolePage,
@@ -223,7 +224,7 @@ export default function TraceReplayPage() {
               </p>
               {step.emitted_at ? (
                 <p style={{ fontSize: "0.8125rem", color: "var(--console-fg-muted)" }}>
-                  {new Date(step.emitted_at).toLocaleString()}
+                  <ConsoleTime iso={step.emitted_at} />
                 </p>
               ) : null}
               {step.summary ? (

@@ -7,6 +7,7 @@ import { ErrorAlert, ui } from "@/components/console/console-ui";
 import { consoleApi } from "@/lib/api";
 
 import settings from "../settings.module.css";
+import { ConsoleTime } from "@/components/console/console-time";
 
 type Invite = {
   invite_id: string;
@@ -99,7 +100,7 @@ export default function AuditorsSettingsPage() {
             {(listQuery.data?.invites ?? []).map((inv) => (
               <tr key={inv.invite_id}>
                 <td>{inv.email}</td>
-                <td>{new Date(inv.expires_at).toLocaleString()}</td>
+                <td><ConsoleTime iso={inv.expires_at} /></td>
                 <td>{inv.active ? "Active" : "Inactive"}</td>
               </tr>
             ))}

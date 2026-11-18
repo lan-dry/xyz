@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { ui } from "@/components/console/console-ui";
 import { consoleApi } from "@/lib/api";
+import { ConsoleTime } from "@/components/console/console-time";
 import {
   buildPublicVerifyCliCommand,
   buildPublicVerifyUrl,
@@ -154,7 +155,7 @@ export function PublicVerifyShare({
             }}
           >
             Expiring share link · valid until{" "}
-            {new Date(created.expires_at).toLocaleString()}
+            <ConsoleTime iso={created.expires_at} />
           </p>
           <p
             className="mono"

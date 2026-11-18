@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
+import { ConsoleTime } from "@/components/console/console-time";
 import {
   ConsolePage,
   ErrorAlert,
@@ -77,8 +78,8 @@ export default function AuditorPortalPage() {
       {portal ? (
         <>
           <p className={ui.cardHint}>
-            Period {new Date(portal.period_start).toLocaleDateString()} to{" "}
-            {new Date(portal.period_end).toLocaleDateString()}. Access is logged.
+            Period <ConsoleTime iso={portal.period_start} /> to{" "}
+            <ConsoleTime iso={portal.period_end} />. Access is logged.
           </p>
           <div className={ui.tableWrap}>
             <table className={ui.table}>
@@ -94,7 +95,7 @@ export default function AuditorPortalPage() {
               <tbody>
                 {traces.map((t) => (
                   <tr key={t.trace_id}>
-                    <td>{new Date(t.started_at).toLocaleString()}</td>
+                    <td><ConsoleTime iso={t.started_at} /></td>
                     <td className="mono" style={{ fontSize: "0.75rem" }}>
                       {t.trace_id}
                     </td>

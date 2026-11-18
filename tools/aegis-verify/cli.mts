@@ -2,11 +2,19 @@
 /**
  * Offline aegis-verify — verifies forensic receipt bundles and underlying sealed event refs.
  * Usage: aegis-verify <bundle.json> [--keys keys.json]
+ *
+ * A5: when witness[] includes merkle_path + root, verifies inclusion offline
+ * (leaf = event hash; node = SHA-256 of left hex + right hex).
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import * as ed from "@noble/ed25519";
+import {
+  checkpointSigningMessage,
+  verifyMerkleProof,
+  type MerklePathStep,
+} from "./merkle.ts";
 
 type SignedReceipt = {
   receipt_id: string;
@@ -25,6 +33,22 @@ type SignedReceipt = {
   [key: string]: unknown;
 };
 
+type WitnessEntry = {
+  event_id: string;
+  status?: string;
+  root_hash?: string;
+  merkle_path?: MerklePathStep[];
+  root_sig_value_b64?: string | null;
+  root_sig_key_id?: string | null;
+  timestamp?: {
+    status?: string;
+    authority?: string | null;
+    message_hash?: string;
+    token_b64?: string | null;
+    gen_time_utc?: string | null;
+  } | null;
+};
+
 type Bundle = {
   receipts: SignedReceipt[];
   sealed_events?: Array<{
@@ -34,6 +58,7 @@ type Bundle = {
   }>;
   checkpoint?: { seq: number; head_hash: string; key_id: string } | null;
   keys?: Record<string, string>;
+  witness?: WitnessEntry[] | null;
 };
 
 const SIG_FIELDS = new Set(["sig_alg", "sig_value_b64", "receipt_hash"]);
@@ -178,9 +203,169 @@ async function main() {
     }
   }
 
+  // A1: unsigned approvals / evidence must match signed outcome receipts.
+  const softApprovals = Array.isArray((bundle as { approvals?: unknown }).approvals)
+    ? ((bundle as { approvals: Array<Record<string, unknown>> }).approvals)
+    : [];
+  const evidence = Array.isArray((bundle as { evidence?: unknown }).evidence)
+    ? ((bundle as { evidence: Array<Record<string, unknown>> }).evidence)
+    : [];
+  for (const prior of receipts) {
+    if (prior.outcome !== "hold" && prior.outcome !== "stop") continue;
+    const followOns = receipts.filter((r) => {
+      const attrs = r.attributes as Record<string, unknown> | undefined;
+      const sealed = Array.isArray(r.approvals) ? r.approvals[0] : null;
+      const followHash =
+        (typeof attrs?.follows_receipt_hash === "string"
+          ? attrs.follows_receipt_hash
+          : null) ??
+        (sealed &&
+        typeof (sealed as Record<string, unknown>).follows_receipt_hash === "string"
+          ? String((sealed as Record<string, unknown>).follows_receipt_hash)
+          : null);
+      return (
+        (r.outcome === "approved" ||
+          r.outcome === "declined" ||
+          r.outcome === "released") &&
+        followHash === prior.receipt_hash
+      );
+    });
+    const decided = softApprovals.filter(
+      (a) => a.status === "approved" || a.status === "rejected",
+    );
+    if (decided.length > 0 && followOns.length === 0) {
+      findings.push({
+        code: "approval_binding_mismatch",
+        message:
+          "Human decision listed without a signed outcome receipt following the hold",
+        record: prior.receipt_id,
+      });
+    }
+    for (const outcome of followOns) {
+      const sealed = Array.isArray(outcome.approvals) ? outcome.approvals[0] : null;
+      if (!sealed || typeof sealed !== "object") continue;
+      const s = sealed as Record<string, unknown>;
+      for (const soft of softApprovals) {
+        if (soft.approval_id !== s.approval_id) continue;
+        const votes = Array.isArray(soft.votes) ? soft.votes : [];
+        const vote = votes[0] as Record<string, unknown> | undefined;
+        if (
+          typeof vote?.voter_email === "string" &&
+          typeof s.approver_email === "string" &&
+          vote.voter_email !== s.approver_email
+        ) {
+          findings.push({
+            code: "approval_binding_mismatch",
+            message: "Approver does not match signed outcome receipt",
+            record: String(outcome.receipt_id),
+          });
+        }
+        if (
+          typeof vote?.reason === "string" &&
+          typeof s.reason === "string" &&
+          vote.reason !== s.reason
+        ) {
+          findings.push({
+            code: "approval_binding_mismatch",
+            message: "Reason does not match signed outcome receipt",
+            record: String(outcome.receipt_id),
+          });
+        }
+      }
+    }
+  }
+  for (const ev of evidence) {
+    const r = receipts.find((x) => x.receipt_id === ev.receipt_id);
+    if (!r) continue;
+    if (
+      typeof ev.plain_summary === "string" &&
+      typeof r.plain_summary === "string" &&
+      ev.plain_summary !== r.plain_summary &&
+      (r.outcome === "approved" ||
+        r.outcome === "declined" ||
+        r.outcome === "released")
+    ) {
+      findings.push({
+        code: "approval_binding_mismatch",
+        message: "Plain summary does not match signed outcome receipt",
+        record: String(r.receipt_id),
+      });
+    }
+  }
+
+  // A5: offline Merkle inclusion when the bundle carries a complete witness proof.
+  // Pre-A5 bundles without merkle_path still verify (no hard failure).
+  const witness = Array.isArray(bundle.witness) ? bundle.witness : [];
+  let inclusionChecked = 0;
+  for (const w of witness) {
+    if (!w || w.status !== "included") continue;
+    if (!Array.isArray(w.merkle_path) || typeof w.root_hash !== "string") continue;
+    const sealed =
+      bundle.sealed_events?.find((e) => e.event_id === w.event_id) ??
+      receipts
+        .flatMap((r) => r.sealed_events ?? [])
+        .find((e) => e.event_id === w.event_id);
+    if (!sealed?.event_hash) continue;
+    inclusionChecked += 1;
+    if (!verifyMerkleProof(sealed.event_hash, w.root_hash, w.merkle_path)) {
+      findings.push({
+        code: "witness_inclusion_invalid",
+        message: "Merkle inclusion proof does not match root",
+        record: w.event_id,
+      });
+    }
+    if (
+      typeof w.root_sig_value_b64 === "string" &&
+      w.root_sig_value_b64 &&
+      typeof w.root_sig_key_id === "string"
+    ) {
+      const pub = keys[w.root_sig_key_id];
+      if (pub) {
+        const sigOk = await ed.verifyAsync(
+          Buffer.from(w.root_sig_value_b64, "base64"),
+          checkpointSigningMessage(w.root_hash),
+          Buffer.from(pub, "base64"),
+        );
+        if (!sigOk) {
+          findings.push({
+            code: "witness_root_sig_invalid",
+            message: "Witness root signature invalid",
+            record: w.event_id,
+          });
+        }
+      }
+    }
+    const ts = w.timestamp;
+    if (
+      ts?.status === "stamped" &&
+      typeof ts.token_b64 === "string" &&
+      ts.token_b64 &&
+      ts.authority === "local-test-tsa" &&
+      typeof ts.message_hash === "string" &&
+      typeof ts.gen_time_utc === "string"
+    ) {
+      const expected = `sha256:${w.root_hash.replace(/^sha256:/i, "").toLowerCase()}`;
+      const material = `${ts.message_hash}|${ts.gen_time_utc}`;
+      const mac = createHmac("sha256", "aegis-local-test-tsa")
+        .update(material, "utf8")
+        .digest("base64");
+      if (mac !== ts.token_b64 || ts.message_hash !== expected) {
+        findings.push({
+          code: "witness_timestamp_invalid",
+          message: "Witness root timestamp token invalid",
+          record: w.event_id,
+        });
+      }
+    }
+  }
+
   const hard = findings.filter((f) => f.code !== "demo_clock");
   if (hard.length === 0) {
-    console.log(`OK ${receipts.length} receipt(s) verified`);
+    const extra =
+      inclusionChecked > 0
+        ? ` · ${inclusionChecked} witness inclusion(s) verified offline`
+        : "";
+    console.log(`OK ${receipts.length} receipt(s) verified${extra}`);
     process.exit(0);
   }
   console.error("FAIL");

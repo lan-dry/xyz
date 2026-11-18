@@ -1048,7 +1048,16 @@ CREATE TABLE public.merkle_root (
     external_tx_id text,
     published boolean DEFAULT false NOT NULL,
     published_at timestamp with time zone,
-    CONSTRAINT merkle_root_anchoring_type_check CHECK ((anchoring_type = ANY (ARRAY['internal'::text, 'bitcoin'::text, 'ethereum'::text])))
+    tsa_status text,
+    tsa_authority text,
+    tsa_url text,
+    tsa_gen_time timestamp with time zone,
+    tsa_token_b64 text,
+    tsa_message_hash text,
+    tsa_last_error text,
+    tsa_next_attempt_at timestamp with time zone,
+    CONSTRAINT merkle_root_anchoring_type_check CHECK ((anchoring_type = ANY (ARRAY['internal'::text, 'bitcoin'::text, 'ethereum'::text]))),
+    CONSTRAINT merkle_root_tsa_status_check CHECK ((tsa_status IS NULL OR (tsa_status = ANY (ARRAY['pending'::text, 'stamped'::text]))))
 );
 
 --

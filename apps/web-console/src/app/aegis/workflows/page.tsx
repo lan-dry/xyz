@@ -116,7 +116,7 @@ export default function WorkflowsPage() {
         subtitle={
           <>
             Governed units for <strong>{environmentLabel(environment)}</strong>. Each
-            workflow links an agent, policy bundle, and evidence readiness score.
+            workflow links an agent and policies when configured.
           </>
         }
         actions={
@@ -164,47 +164,57 @@ export default function WorkflowsPage() {
             <thead>
               <tr>
                 <th>Workflow</th>
-                <th>Agent</th>
-                <th>Policies</th>
-                <th>Coverage</th>
-                <th>Evidence</th>
+                <th>Linked agent</th>
+                <th>Linked policies</th>
+                {workflows.some((w) => w.agent_id && w.policy_ids.length > 0) ? (
+                  <th>Coverage</th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
-              {workflows.map((w) => (
-                <tr key={w.workflow_id}>
-                  <td>
-                    <Link
-                      href={`/aegis/workflows/${encodeURIComponent(w.workflow_id)}`}
-                      className={ui.tableLink}
-                      style={{
-                        fontWeight: 600,
-                        display: "inline-flex",
-                        gap: "0.35rem",
-                        alignItems: "center",
-                      }}
-                    >
-                      <GitBranch size={14} aria-hidden />
-                      {w.name}
-                    </Link>
-                    {w.description ? (
-                      <p className={ui.cardHint} style={{ margin: "0.25rem 0 0" }}>
-                        {w.description}
-                      </p>
+              {workflows.map((w) => {
+                const linked = Boolean(w.agent_id && w.policy_ids.length > 0);
+                const showCoverageCol = workflows.some(
+                  (x) => x.agent_id && x.policy_ids.length > 0,
+                );
+                return (
+                  <tr key={w.workflow_id}>
+                    <td>
+                      <Link
+                        href={`/aegis/workflows/${encodeURIComponent(w.workflow_id)}`}
+                        className={ui.tableLink}
+                        style={{
+                          fontWeight: 600,
+                          display: "inline-flex",
+                          gap: "0.35rem",
+                          alignItems: "center",
+                        }}
+                      >
+                        <GitBranch size={14} aria-hidden />
+                        {w.name}
+                      </Link>
+                      {w.description ? (
+                        <p className={ui.cardHint} style={{ margin: "0.25rem 0 0" }}>
+                          {w.description}
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="mono" style={{ fontSize: "0.8125rem" }}>
+                      {w.agent_id ?? "Not linked"}
+                    </td>
+                    <td>
+                      {w.policy_ids.length > 0
+                        ? `${w.policy_ids.length} linked`
+                        : "Not linked"}
+                    </td>
+                    {showCoverageCol ? (
+                      <td>
+                        {linked && w.coverage_pct != null ? `${w.coverage_pct}%` : "—"}
+                      </td>
                     ) : null}
-                  </td>
-                  <td className="mono" style={{ fontSize: "0.8125rem" }}>
-                    {w.agent_id ?? "-"}
-                  </td>
-                  <td>{w.policy_ids.length}</td>
-                  <td>{w.coverage_pct != null ? `${w.coverage_pct}%` : "-"}</td>
-                  <td>
-                    {w.evidence_readiness_pct != null
-                      ? `${w.evidence_readiness_pct}%`
-                      : "-"}
-                  </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -1,10 +1,13 @@
 import { Hono } from "hono";
+import archiver from "archiver";
+import { PassThrough } from "node:stream";
 import { getPool } from "../../db/pool.js";
 import { simulatePolicyOnHistory } from "../../repo/policy-simulate.js";
+import { ensureDefaultScoreBands } from "../../repo/score-bands.js";
 import {
-  ensureDefaultScoreBands,
-  listScoreBands,
-} from "../../repo/score-bands.js";
+  buildRiskApprovalPack,
+  renderRiskApprovalPdf,
+} from "../../compliance/risk-approval-pack.js";
 import {
   requireConsoleSession,
   type ConsoleVariables,
@@ -24,7 +27,7 @@ proofRoutes.get("/score-bands", requireConsoleSession, async (c) => {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("score_band") || message.includes("does not exist")) {
       return c.json(
-        { error: "Score bands require migration 009. Run: pnpm db:migrate", bands: [] },
+        { error: "Score bands are not available in this database yet.", bands: [] },
         503,
       );
     }
@@ -42,72 +45,45 @@ proofRoutes.get("/policy/simulate", requireConsoleSession, async (c) => {
 
 proofRoutes.get("/risk-approval-pack", requireConsoleSession, async (c) => {
   const orgId = c.get("consoleSession").organizationId;
-  const pool = getPool();
-  const org = await pool.query<{ name: string; slug: string }>(
-    `SELECT name, slug FROM organization WHERE organization_id = $1`,
-    [orgId],
-  );
-  const policies = await pool.query<{
-    policy_id: string;
-    name: string;
-    version: number;
-    status: string;
-  }>(
-    `SELECT policy_id, name, version, status FROM policy
-     WHERE organization_id = $1 AND status = 'active'
-     ORDER BY activated_at DESC NULLS LAST LIMIT 10`,
-    [orgId],
-  );
-  const bands = await listScoreBands(pool, orgId, "production").catch(() => []);
-  const receipts = await pool.query<{
-    event_id: string;
-    trace_id: string;
-    tool_name: string | null;
-    policy_decision: string;
-    emitted_at: Date;
-  }>(
-    `SELECT event_id, trace_id, tool_name, policy_decision, emitted_at
-     FROM event
-     WHERE organization_id = $1
-     ORDER BY emitted_at DESC
-     LIMIT 5`,
-    [orgId],
-  );
-  const pending = await pool.query<{ count: string }>(
-    `SELECT COUNT(*)::text AS count FROM approval
-     WHERE organization_id = $1 AND status = 'pending'`,
-    [orgId],
-  );
+  const pack = await buildRiskApprovalPack(getPool(), orgId);
+  const accept = (c.req.header("accept") ?? "").toLowerCase();
+  const asZip =
+    c.req.query("format") === "zip" ||
+    accept.includes("application/zip") ||
+    accept.includes("application/octet-stream");
 
-  const pack = {
-    pack_type: "risk_approval_pack",
-    generated_at: new Date().toISOString(),
-    organization: {
-      organization_id: orgId,
-      name: org.rows[0]?.name ?? null,
-      slug: org.rows[0]?.slug ?? null,
-    },
-    pilot_limits: {
-      pending_approvals: Number(pending.rows[0]?.count ?? 0),
-      score_bands: bands,
-      note: "Score bands decide when a case is allowed, paused for a person, or stopped. Each decision is sealed.",
-    },
-    active_policies: policies.rows,
-    sample_receipts: receipts.rows.map((r) => ({
-      event_id: r.event_id,
-      trace_id: r.trace_id,
-      tool_name: r.tool_name,
-      policy_decision: r.policy_decision,
-      emitted_at: r.emitted_at.toISOString(),
-    })),
-    sign_off: {
-      statement:
-        "The risk committee acknowledges the receipts, active policies, and score bands in this pack.",
-      fields: ["name", "role", "date", "signature"],
-    },
-  };
+  if (!asZip) {
+    return c.json({ pack });
+  }
 
-  return c.json({ pack });
+  const pdf = renderRiskApprovalPdf(pack);
+  const jsonBytes = Buffer.from(JSON.stringify(pack, null, 2), "utf8");
+  const day = pack.generated_at.slice(0, 10);
+  const filename = `risk-approval-pack-${day}.zip`;
+
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  const pass = new PassThrough();
+  const chunks: Buffer[] = [];
+  pass.on("data", (chunk: Buffer) => chunks.push(chunk));
+  const done = new Promise<Buffer>((resolve, reject) => {
+    pass.on("end", () => resolve(Buffer.concat(chunks)));
+    pass.on("error", reject);
+    archive.on("error", reject);
+  });
+  archive.pipe(pass);
+  archive.append(pdf, { name: "risk-approval-pack.pdf" });
+  archive.append(jsonBytes, { name: "pack.json" });
+  await archive.finalize();
+  const zip = await done;
+
+  return new Response(zip, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/zip",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Length": String(zip.length),
+    },
+  });
 });
 
 proofRoutes.get("/rule-preview", requireConsoleSession, async (c) => {

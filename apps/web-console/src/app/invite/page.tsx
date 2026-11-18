@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { PasswordField } from "@/components/auth/password-field";
 import { PlatformAuthAside } from "@/components/auth/platform-auth-aside";
+import { formatConsoleDate } from "@/lib/format-display";
 import { IdApiError, idApi } from "@/lib/id-api";
 import type { InvitePreview, MeResponse } from "@/lib/types";
 
@@ -279,7 +280,7 @@ function InviteLayout({
               <br />
               Email <strong>{inv.email}</strong>
               <br />
-              Expires {new Date(inv.expires_at).toLocaleDateString()}
+              Expires {formatConsoleDate(inv.expires_at)}
             </div>
           ) : null}
           {children}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
 import { consoleApi } from "@/lib/api";
+import { formatConsoleTime } from "@/lib/format-display";
 import { ui } from "./console-ui";
 
 type ServiceStatus = {
@@ -35,7 +36,7 @@ function dotColor(state: "ok" | "degraded" | "unknown"): string {
 
 function serviceLine(name: string, svc: ServiceStatus): string {
   if (svc.last_run_at && svc.state === "active") {
-    return `${name}: ${svc.label} · ${new Date(svc.last_run_at).toLocaleString()}`;
+    return `${name}: ${svc.label} · ${formatConsoleTime(svc.last_run_at)}`;
   }
   return `${name}: ${svc.label}`;
 }
@@ -71,7 +72,7 @@ export function SystemStatusStrip() {
   }
   if (witness.last_batch_at) {
     metaParts.push(
-      `Last batch: ${new Date(witness.last_batch_at).toLocaleString()}`,
+      `Last batch: ${formatConsoleTime(witness.last_batch_at)}`,
     );
   }
   metaParts.push(serviceLine("Scheduled exports", services.scheduled_exports));

@@ -37,11 +37,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@salanor/aegis"],
   async redirects() {
     return [
-      {
-        source: "/aegis/settings/members",
-        destination: "/aegis/members",
-        permanent: false,
-      },
+      // Members stays under Settings tabs (/aegis/settings/members).
+      // /aegis/members → settings/members is handled by the page redirect.
       {
         source: "/aegis/settings/keys",
         destination: "/aegis/keys",

@@ -14,7 +14,19 @@ import {
   verifyBundleFile,
 } from "../src/forensic/evidence-bundle.js";
 import { renderOnePagePdf, wrapText } from "../src/forensic/minimal-pdf.js";
-import { buildVerifyChecks } from "../src/forensic/verify-messages.js";
+import {
+  buildMerkleTree,
+  getMerkleProof,
+} from "@salanor/witness-merkle";
+import {
+  buildVerifyChecks,
+  witnessLabelFromBundle,
+} from "../src/forensic/verify-messages.js";
+import { witnessCheckpointLabel } from "../src/witness/label.js";
+import {
+  createLocalTestTimestamp,
+} from "../src/forensic/rfc3161.js";
+import { signWitnessCheckpoint } from "../src/witness/sign-checkpoint.js";
 
 const ORG = "00000000-0000-0000-0000-000000000001";
 
@@ -50,10 +62,10 @@ async function chain(n: number, keys: Awaited<ReturnType<typeof keyPair>>) {
       outcome: "allow",
       mode: "enforce",
       policy: { policy_id: "pol_v3", version: 3, content_hash: "sha256:abc" },
-      matched_rules: [{ rule_id: "AUTH-RL", policy_id: "pol_v3", decision: "allow" }],
+      matched_rules: [{ rule_id: "AUTH-RL-1", policy_id: "pol_v3", decision: "allow" }],
       decision_basis: {
         outcome: "allow",
-        decided_by_rule_id: "AUTH-RL",
+        decided_by_rule_id: "AUTH-RL-1",
         explanation: "Within the officer limit.",
         matched: [],
       },
@@ -96,10 +108,10 @@ describe("evidence bundle", () => {
     expect(ev.issued_at_utc).toBe("2026-03-01T10:00:01.000Z");
     expect(ev.event_emitted_at_utc).toBe("2026-03-01T10:00:00.000Z");
     expect(ev.policy).toEqual({ policy_id: "pol_v3", version: 3, content_hash: "sha256:abc" });
-    expect(ev.matched_rules[0]?.rule_id).toBe("AUTH-RL");
+    expect(ev.matched_rules[0]?.rule_id).toBe("AUTH-RL-1");
     expect(ev.decision_basis?.explanation).toMatch(/officer limit/);
     expect(ev.who_approved).toBe(
-      "No approval needed: allowed automatically by rule AUTH-RL.",
+      "No approval needed: allowed automatically by rule AUTH-RL-1 · Within officer limit.",
     );
     expect(bundle.witness).toEqual([{ event_id: "evt_1", status: "pending" }]);
     expect(bundle.how_to_verify).toMatch(/AEGIS-RECEIPT1/);
@@ -276,6 +288,105 @@ describe("verify checks", () => {
       true,
     );
   });
+
+  it("labels Salanor witness checkpoint unless externally anchored", () => {
+    expect(witnessCheckpointLabel("internal")).toBe(
+      "Salanor witness checkpoint (signed)",
+    );
+    expect(witnessCheckpointLabel("bitcoin")).toMatch(/Externally anchored/);
+    const checks = buildVerifyChecks(
+      { ok: true, findings: [] },
+      "included",
+      { witness_label: witnessCheckpointLabel("internal") },
+    );
+    expect(checks.find((c) => c.id === "witness")!.label).toBe(
+      "Salanor witness checkpoint (signed)",
+    );
+  });
+});
+
+describe("A5 witness offline inclusion", () => {
+  it("verifies merkle path + root signature + local-test timestamp in the bundle", async () => {
+    const prevKey = process.env.DEV_SIGNING_PRIVATE_KEY_B64;
+    process.env.DEV_SIGNING_PRIVATE_KEY_B64 =
+      prevKey ?? "mqUA8ONIg7SN0gL8luCakqehaIzp8Lys6ZHMjAoBx/M=";
+    try {
+      const keys = await keyPair();
+      const { receipts, sealed } = await chain(1, keys);
+      const leaf = sealed[0]!.event_hash;
+      const otherLeaf = "sha256:siblingleaf";
+      const { root, layers } = buildMerkleTree([leaf, otherLeaf]);
+      const path = getMerkleProof(layers, 0);
+      expect(path.length).toBeGreaterThan(0);
+      const sig = await signWitnessCheckpoint(root);
+      expect(sig).toBeTruthy();
+      const messageHash = `sha256:${root.toLowerCase()}`;
+      const token = createLocalTestTimestamp(messageHash);
+      const witnessPub = Buffer.from(
+        await (await import("@noble/ed25519")).getPublicKeyAsync(
+          Buffer.from(process.env.DEV_SIGNING_PRIVATE_KEY_B64!, "base64"),
+        ),
+      ).toString("base64");
+
+      const bundle = buildEvidenceBundle({
+        organization_id: ORG,
+        trace_id: "tr_w",
+        receipts,
+        sealed_events: sealed,
+        keys: {
+          [keys.keyId]: keys.publicKeyB64,
+          [sig!.sig_key_id]: witnessPub,
+        },
+        witness: [
+          {
+            event_id: "evt_1",
+            status: "included",
+            label: witnessCheckpointLabel("internal"),
+            root_hash: root,
+            merkle_path: path,
+            root_sig_value_b64: sig!.sig_value_b64,
+            root_sig_key_id: sig!.sig_key_id,
+            anchoring_type: "internal",
+            timestamp: {
+              status: "stamped",
+              authority: "local-test-tsa",
+              gen_time_utc: token.issued_at,
+              tsa_url: null,
+              message_hash: messageHash,
+              token_b64: token.token_b64,
+            },
+          },
+        ],
+      });
+
+      expect(witnessLabelFromBundle(bundle)).toBe(
+        "Salanor witness checkpoint (signed)",
+      );
+      const good = await verifyBundleFile(bundle);
+      expect(good.ok).toBe(true);
+      expect(good.checks.find((c) => c.id === "witness")?.label).toBe(
+        "Salanor witness checkpoint (signed)",
+      );
+
+      const tampered = structuredClone(bundle);
+      tampered.witness![0]!.merkle_path![0]!.sibling = "ff".repeat(32);
+      const bad = await verifyBundleFile(tampered);
+      expect(bad.ok).toBe(false);
+      expect(bad.findings.some((f) => f.code === "witness_inclusion_invalid")).toBe(
+        true,
+      );
+
+      // Pre-A5 bundle without merkle_path still verifies.
+      const legacy = structuredClone(bundle);
+      delete legacy.witness![0]!.merkle_path;
+      delete legacy.witness![0]!.root_sig_value_b64;
+      delete legacy.witness![0]!.timestamp;
+      expect((await verifyBundleFile(legacy)).ok).toBe(true);
+    } finally {
+      if (prevKey === undefined) delete process.env.DEV_SIGNING_PRIVATE_KEY_B64;
+      else process.env.DEV_SIGNING_PRIVATE_KEY_B64 = prevKey;
+    }
+  });
 });
 
 describe("evidence PDF", () => {
@@ -295,8 +406,11 @@ describe("evidence PDF", () => {
     expect(text.trimEnd().endsWith("%%EOF")).toBe(true);
     expect(text).toContain("Aegis evidence record");
     expect(text).toContain("RWF 1,200,000");
-    expect(text).toContain("AUTH-RL");
-    expect(text).toContain("No approval needed: allowed automatically by rule AUTH-RL");
+    expect(text).toContain("AUTH-RL-1 · Within officer limit");
+    expect(text).toContain(
+      "No approval needed: allowed automatically by rule AUTH-RL-1 · Within officer limit",
+    );
+    expect(text).not.toMatch(/pol_v3/);
     expect(text).not.toContain("governed.action");
     expect(text.match(/\/Type \/Page /g)).toHaveLength(1);
 

@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { EmptyStatePanel } from "@/components/console/empty-state-panel";
 import { ErrorAlert, ui } from "@/components/console/console-ui";
+import { ConsoleTime } from "@/components/console/console-time";
 import { consoleApi } from "@/lib/api";
 
 import settings from "../settings.module.css";
@@ -364,9 +365,7 @@ export default function IntegrationsSettingsPage() {
                   </td>
                   <td>{d.status}</td>
                   <td style={{ fontSize: "0.8125rem", whiteSpace: "nowrap" }}>
-                    {d.last_flushed_at
-                      ? new Date(d.last_flushed_at).toLocaleString()
-                      : "-"}
+                    {d.last_flushed_at ? <ConsoleTime iso={d.last_flushed_at} /> : "-"}
                   </td>
                   <td>
                     <button

@@ -127,7 +127,7 @@ export function BundleResultView({
         <p className={styles.pendingNote}>
           <strong>Witness confirmation is pending.</strong>{" "}
           {pendingWitness.detail ??
-            "The outside witness has not confirmed these receipts yet. The signature checks above are not affected."}
+            "The Salanor witness checkpoint has not confirmed these receipts yet. The signature checks above are not affected."}
         </p>
       ) : null}
     </div>

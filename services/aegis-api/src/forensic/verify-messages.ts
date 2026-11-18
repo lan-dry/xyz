@@ -3,6 +3,7 @@
  * Never leaks internal codes as the only explanation.
  */
 
+import { witnessCheckpointLabel } from "../witness/label.js";
 import type { VerifyFinding, VerifyResult } from "./verify-bundle.js";
 
 const PLAIN: Record<string, string> = {
@@ -30,12 +31,20 @@ const PLAIN: Record<string, string> = {
     "The amount in this record no longer matches its signature.",
   summary_mismatch:
     "The readable summary in the file does not match the signed record. The file was edited.",
+  approval_binding_mismatch:
+    "The listed approver, role, reason or decision does not match the signed outcome receipt. The file was edited.",
   key_untrusted:
     "The file lists a public key that differs from the one Aegis published for this key, so the signature cannot be trusted.",
   checkpoint_mismatch: "The closing checkpoint does not match the last record.",
   demo_clock: "This record was created in demo mode with a simulated clock.",
   timestamp_invalid:
     "The trusted-time stamp in the file does not match the signed record. The file was edited or the stamp belongs to something else.",
+  witness_inclusion_invalid:
+    "The Merkle inclusion proof in the file does not recompute to the stated root. The witness section was altered.",
+  witness_root_sig_invalid:
+    "The Salanor witness checkpoint signature does not match the root hash.",
+  witness_timestamp_invalid:
+    "The witness-root timestamp token does not match the root hash.",
 };
 
 export function plainFindingMessage(finding: VerifyFinding): string {
@@ -53,7 +62,12 @@ export type VerifyCheck = {
 
 export type WitnessState = "included" | "pending" | "none";
 
-const FACT_CODES = ["amount_mismatch", "receipt_hash_mismatch", "summary_mismatch"];
+const FACT_CODES = [
+  "amount_mismatch",
+  "receipt_hash_mismatch",
+  "summary_mismatch",
+  "approval_binding_mismatch",
+];
 const SIGNATURE_CODES = ["signature_invalid"];
 const KEY_CODES = ["unknown_key_id", "key_untrusted"];
 const CHAIN_CODES = [
@@ -108,6 +122,9 @@ export type VerifyContext = {
     authority: string | null;
     gen_time_utc: string | null;
   }> | null;
+  /** Honest witness wording (Salanor-signed unless externally anchored). */
+  witness_label?: string;
+  witness_anchoring_type?: string | null;
 };
 
 const CHAIN_CODES_EXT = ["chain_failure", "checkpoint_mismatch", "empty_bundle"];
@@ -142,14 +159,50 @@ function policyHashCheck(ctx: VerifyContext): VerifyCheck {
 }
 
 function approvalsCheck(ctx: VerifyContext): VerifyCheck {
-  const held = (ctx.receipts ?? []).some((r) => r.outcome === "hold");
+  const receipts = ctx.receipts ?? [];
+  const held = receipts.some((r) => r.outcome === "hold" || r.outcome === "stop");
+  const outcomeReceipts = receipts.filter(
+    (r) =>
+      r.outcome === "approved" ||
+      r.outcome === "declined" ||
+      r.outcome === "released",
+  );
   const approvals = ctx.approvals ?? [];
-  if (!held && approvals.length === 0) {
+  if (!held && approvals.length === 0 && outcomeReceipts.length === 0) {
     return {
       id: "approvals",
       label: "Approvals on record",
       status: "pass",
       detail: "No human approval was required for this case.",
+    };
+  }
+  if (outcomeReceipts.length > 0) {
+    const missingIdentity = outcomeReceipts.some((r) => {
+      const body = r as { approvals?: unknown };
+      const sealed = Array.isArray(body.approvals) ? body.approvals[0] : null;
+      if (!sealed || typeof sealed !== "object") return true;
+      const s = sealed as Record<string, unknown>;
+      return !(
+        typeof s.approver_user_id === "string" &&
+        (typeof s.approver_display_name === "string" ||
+          typeof s.approver_email === "string") &&
+        typeof s.decision === "string"
+      );
+    });
+    if (missingIdentity) {
+      return {
+        id: "approvals",
+        label: "Approvals on record",
+        status: "fail",
+        detail:
+          "A signed outcome receipt is missing the approver identity, role, or decision.",
+      };
+    }
+    return {
+      id: "approvals",
+      label: "Approvals on record",
+      status: "pass",
+      detail: "Each human decision is sealed with who decided, their role, and why.",
     };
   }
   const decided = approvals.filter((a) => a.status !== "pending");
@@ -337,26 +390,28 @@ export function buildVerifyChecks(
     checks.push(policyHashCheck(ctx), approvalsCheck(ctx));
   }
 
+  const witnessLabel =
+    ctx?.witness_label ?? witnessCheckpointLabel(ctx?.witness_anchoring_type);
   checks.push(
     witness === "included"
       ? {
           id: "witness",
-          label: "Independent witness inclusion",
+          label: witnessLabel,
           status: extended ? "pass" : "info",
           detail:
-            "Witness inclusion is recorded in the file. Check it on the public Verify page with the event id.",
+            "Merkle inclusion, root signature, and timestamp token are in the file. aegis-verify checks them offline.",
         }
       : witness === "pending"
         ? {
             id: "witness",
-            label: "Independent witness inclusion",
+            label: witnessLabel,
             status: "pending",
             detail:
               "Witness inclusion is still being processed. This does not change the checks above.",
           }
         : {
             id: "witness",
-            label: "Independent witness inclusion",
+            label: witnessLabel,
             status: "pending",
             detail: "No witness proof is attached to this file.",
           },
@@ -370,9 +425,27 @@ export function buildVerifyChecks(
 }
 
 export function witnessStateFromBundle(bundle: {
-  witness?: Array<{ status?: string }> | null;
+  witness?: Array<{ status?: string; label?: string; anchoring_type?: string | null }> | null;
 }): WitnessState {
   const w = bundle.witness;
   if (!Array.isArray(w) || w.length === 0) return "none";
   return w.every((x) => x.status === "included") ? "included" : "pending";
+}
+
+/** Prefer an externally anchored label when any entry is anchored. */
+export function witnessLabelFromBundle(bundle: {
+  witness?: Array<{ label?: string; anchoring_type?: string | null }> | null;
+}): string {
+  const w = bundle.witness;
+  if (!Array.isArray(w) || w.length === 0) {
+    return witnessCheckpointLabel("internal");
+  }
+  const anchored = w.find(
+    (x) =>
+      (x.anchoring_type && x.anchoring_type !== "internal") ||
+      (typeof x.label === "string" && x.label.toLowerCase().includes("externally")),
+  );
+  if (anchored?.label) return anchored.label;
+  if (anchored?.anchoring_type) return witnessCheckpointLabel(anchored.anchoring_type);
+  return w[0]?.label ?? witnessCheckpointLabel(w[0]?.anchoring_type);
 }

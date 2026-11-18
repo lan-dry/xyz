@@ -35,21 +35,31 @@ Signed events: ${vs.events_with_signature} / ${vs.events_total}. Signed checkpoi
 | \`policies.json\` | Active policies |
 | \`approvals.ndjson\` | Approvals — ${manifest.stats.approval_count} |
 | \`audit-log.ndjson\` | Console audit log — ${manifest.stats.audit_log_count} |
-| \`witness-roots.json\` | Checkpoints — ${manifest.stats.witness_root_count} |
-| \`inclusion-proofs.ndjson\` | Inclusion proofs — ${manifest.stats.inclusion_proof_count} |
+| \`witness-roots.json\` | Salanor witness checkpoints (signed) — ${manifest.stats.witness_root_count}. Externally anchored roots are labelled as such. Includes root signature and RFC 3161 timestamp token when present. |
+| \`inclusion-proofs.ndjson\` | Inclusion proofs (merkle path + root) — ${manifest.stats.inclusion_proof_count} |
 | \`public-keys.json\` | Public keys for the signatures |
 | \`manifest.json\` | File list and SHA-256 hashes |
 
 ${mappingList ? `Also included:\n\n${mappingList}\n` : ""}
 Decisions in the files: \`allow\` (allowed), \`allow_with_obligation\` (needs a person), \`deny\` (stopped).
 
+## Merkle hashing rule
+
+- **Leaf:** the event hash (\`event.event_hash\`) used verbatim as the leaf string.
+- **Internal node:** SHA-256 of the **left hex string followed by the right hex string** (UTF-8 concatenation), i.e. \`SHA-256(left + right)\`. When a level has an odd count, the last hash is paired with itself.
+- **Inclusion:** start from the leaf, walk each \`merkle_path\` step (\`position\` is the sibling side), and recompute until the stated \`root_hash\`.
+- **Checkpoint signature:** Ed25519 over \`SHA-256(UTF-8 of lowercase root_hash hex)\`. Label: **Salanor witness checkpoint (signed)** unless \`anchoring_type\` is external (bitcoin/ethereum).
+- **Timestamp:** RFC 3161 token over the root hash (message imprint); stored on the root as \`tsa_token_b64\`.
+
 ## Check the hashes
 
 1. Hash each file with SHA-256 and compare it to \`file_hashes\` in \`manifest.json\`.
-2. The hash of the whole ZIP is on the Evidence page. A ZIP cannot store its own hash.
+2. The SHA-256 of the whole ZIP is shown on the Evidence page / API. It is **not** stored inside the ZIP (a ZIP cannot contain its own hash), so \`manifest.json\` has no empty \`integrity_hash\` field.
 3. Windows: \`Get-FileHash .\\${manifest.export_id}.zip -Algorithm SHA256\`
 
 Event signatures are Ed25519. Match \`sig_key_id\` to \`public-keys.json\`. Checkpoint signatures cover the SHA-256 of the lowercase root hash.
+
+Offline inclusion: use \`aegis-verify\` on an evidence bundle, or recompute the Merkle path as above.
 
 ---
 Salanor Aegis · Evidence archive · ${manifest.version}

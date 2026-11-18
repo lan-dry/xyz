@@ -6,7 +6,9 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { ErrorAlert, ui } from "@/components/console/console-ui";
+import { useOrgProfile } from "@/hooks/use-org-profile";
 import { consoleApi } from "@/lib/api";
+import { formatConsoleDate } from "@/lib/format-display";
 import { idApi } from "@/lib/id-api";
 import { MARKETING_URL } from "@/lib/site-urls";
 import type { MeResponse } from "@/lib/types";
@@ -66,11 +68,7 @@ type BillingHistoryItem = {
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "Not set";
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return formatConsoleDate(iso);
   } catch {
     return "Not set";
   }
@@ -131,6 +129,7 @@ function BillingSettingsInner() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [banner, setBanner] = useState<string | null>(null);
+  const { isDemo } = useOrgProfile();
 
   const meQuery = useQuery({
     queryKey: ["id", "me"],
@@ -213,9 +212,19 @@ function BillingSettingsInner() {
       <section className={settings.settingCard}>
         <h2>Plan and billing</h2>
         <p>
-          Free covers evaluation. Paid plans are billed monthly for production
-          volume. See{" "}
-          <a href={`${MARKETING_URL}/pricing`}>full plan comparison</a>.
+          {isDemo ? (
+            <>
+              This is a demo organisation. Plan meters are shown for realism;
+              there is no invoice for synthetic demo traffic. Production tenants
+              use the same Plan and billing screen with real usage.
+            </>
+          ) : (
+            <>
+              Free covers evaluation. Paid plans are billed monthly for production
+              volume. See{" "}
+              <a href={`${MARKETING_URL}/pricing`}>full plan comparison</a>.
+            </>
+          )}
         </p>
         {banner ? (
           <p

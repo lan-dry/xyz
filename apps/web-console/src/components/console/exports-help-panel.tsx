@@ -25,7 +25,7 @@ const ZIP_FILES = [
   },
   {
     name: "witness-roots.json",
-    desc: "Merkle witness checkpoints for the export window (signed when checkpoint keys are configured).",
+    desc: "Salanor witness checkpoints (signed), unless externally anchored. Includes root signature and RFC 3161 timestamp token when present.",
   },
   {
     name: "inclusion-proofs.ndjson",

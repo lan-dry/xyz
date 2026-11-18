@@ -45,7 +45,7 @@ const currency = pack.currencies[0]!;
 
 const RULES = [
   {
-    rule_id: "AUTH-RL",
+    rule_id: "AUTH-RL-1",
     tool_pattern: "governed.action",
     decision: "allow",
     priority: 10,
@@ -88,14 +88,14 @@ describe("authority matrix view", () => {
     expect(low.product_label).toBe("Loan disbursement");
     expect(low.amount_band).toBe("Under RWF 5,000,000");
     expect(low.required_text).toBe("No approval needed");
-    expect(low.rule_label).toBe("AUTH-RL · Within officer limit");
+    expect(low.rule_label).toBe("AUTH-RL-1 · Within officer limit");
 
     const mid = rows.find((r) => r.matrix_id === "demo_banking_rl_mid")!;
     expect(mid.amount_band).toBe("RWF 5,000,000 to under RWF 20,000,000");
     expect(mid.required_role_label).toBe("Credit Manager");
     expect(mid.required_text).toBe("Credit Manager or above");
     expect(mid.or_above).toBe(true);
-    expect(mid.rule_label).toBe("AUTH-RL · Above officer limit");
+    expect(mid.rule_label).toBe("AUTH-RL-2 · Above officer limit");
 
     const high = rows.find((r) => r.matrix_id === "demo_banking_rl_high")!;
     expect(high.amount_band).toBe("RWF 20,000,000 and above");
@@ -111,9 +111,9 @@ describe("authority matrix view", () => {
 describe("rule code labels", () => {
   it("strips pack/policy prefixes", () => {
     expect(ruleCode("pol_pack_demo_banking_3b9f7043_LN-07")).toBe("LN-07");
-    expect(ruleCode("AUTH-RL")).toBe("AUTH-RL");
-    expect(ruleDisplayLabel("pol_pack_demo_banking_3b9f7043_AUTH-RL")).toBe(
-      "AUTH-RL · Within officer limit",
+    expect(ruleCode("AUTH-RL-2")).toBe("AUTH-RL-2");
+    expect(ruleDisplayLabel("pol_pack_demo_banking_3b9f7043_AUTH-RL-1")).toBe(
+      "AUTH-RL-1 · Within officer limit",
     );
   });
 });
@@ -122,7 +122,7 @@ describe("rules preview (evaluator)", () => {
   it("allows under the officer limit with no approver", () => {
     const p = preview(3_000_000);
     expect(p.outcome).toBe("allow");
-    expect(p.deciding_rule.label).toBe("AUTH-RL · Within officer limit");
+    expect(p.deciding_rule.label).toBe("AUTH-RL-1 · Within officer limit");
     expect(p.required_role).toBeNull();
     expect(p.required_text).toBe("No approval needed");
     expect(p.preview_only).toBe(true);
@@ -132,9 +132,9 @@ describe("rules preview (evaluator)", () => {
   it("holds mid-band and names the required role", () => {
     const p = preview(18_000_000);
     expect(p.outcome).toBe("hold");
-    expect(p.deciding_rule.code).toBe("AUTH-RL");
+    expect(p.deciding_rule.code).toBe("AUTH-RL-2");
     expect(p.deciding_rule.source).toBe("authority_matrix");
-    expect(p.deciding_rule.label).toBe("AUTH-RL · Above officer limit");
+    expect(p.deciding_rule.label).toBe("AUTH-RL-2 · Above officer limit");
     expect(p.required_role_label).toBe("Credit Manager");
     expect(p.required_text).toBe("Credit Manager or above");
     expect(p.explanation).toMatch(/Credit Manager or above must approve/);
@@ -183,7 +183,7 @@ async function signedBundle(opts: { outcome?: string; withPolicy?: boolean } = {
       opts.withPolicy === false
         ? undefined
         : { policy_id: "pol_v3", version: 3, content_hash: "sha256:abc" },
-    matched_rules: [{ rule_id: "AUTH-RL", policy_id: "pol_v3", decision: "allow" }],
+    matched_rules: [{ rule_id: "AUTH-RL-1", policy_id: "pol_v3", decision: "allow" }],
     sealed_events: [ref],
     attributes: { amount: 3_200_000, currency: "RWF" },
     key_id: keyId,

@@ -177,9 +177,9 @@ async function main(): Promise<void> {
   const summary: Array<{ n: string; outcome: string; result: string; trace: string }> = [];
 
   for (const story of STORIES) {
-    const caseId = `DB-HIST-${story.n}`;
-    const traceId = `tr_seedhist_${story.n}`;
-    const idem = `seed-history-${story.n}-v1`;
+    const caseId = `LN-RW-${String(story.n).padStart(4, "0")}`;
+    const traceId = `tr_ln_rw_${String(story.n).padStart(4, "0")}`;
+    const idem = `ln-rw-history-${story.n}-v1`;
 
     const intake = await httpJson<Decision & { error?: string }>(
       `${file.api_base}/v1/aegis/governed/events`,
@@ -195,7 +195,7 @@ async function main(): Promise<void> {
           agent_id: agentId(story.agent),
           emitted_at: new Date().toISOString(), // natural time: never backdated
           actor: { type: "system", id: story.agent },
-          attributes: story.attributes,
+          attributes: { ...story.attributes, demo_history: true },
           trace_id: traceId,
         },
       },

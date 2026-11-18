@@ -117,7 +117,7 @@ export default function IntegrationsPage() {
             Tool coverage
           </p>
           <p className={ui.cardHint} style={{ marginTop: "0.5rem" }}>
-            See governed vs ungoverned tools, including the intentional demo gap.
+            See which tools are covered by active rules and which are not.
           </p>
         </Link>
       </div>

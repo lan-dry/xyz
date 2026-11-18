@@ -1,2 +1,2 @@
-/** Bump when shipping orchestrator community node / one-shot API. */
-export const AEGIS_API_DEPLOY_MARKER = "2026-08-06-n8n-community-node-v1";
+/** Bump when you need a clear “which build is live” string in boot logs. */
+export const AEGIS_API_DEPLOY_MARKER = "2026-11-17-production-schema";

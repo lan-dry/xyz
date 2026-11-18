@@ -24,7 +24,7 @@ Standing: org **Demo Bank**, pending queue empty, live feed showing realistic hi
 1. Open the standalone **bank simulator** (`http://127.0.0.1:4000`, not a console page).
 2. Click **Loan RWF 1,200,000 within officer limit**.
 3. Outcome chip: **Allowed**. Open the case.
-4. Four answers show real facts: who/what amount/which rule/why allowed; **Who approved** = “No approval needed: allowed automatically by rule AUTH-RL”.
+4. Four answers show real facts: who/what amount/which rule/why allowed; **Who approved** = “No approval needed: allowed automatically by rule AUTH-RL-1”.
 5. **What data was seen** lists amount, currency (and other attributes) with field-policy treatment — not “No fields were recorded”.
 6. Click **Verify now**: each check listed pass or fail (signature, hash chain, sequence, policy hash, approvals, witness, trusted time). Pending witness is **amber**, never inside a green Verified box.
 7. **Download evidence bundle** (not the reading summary). Keep the file for step 6.
