@@ -10,6 +10,13 @@ import { ingestHumanApprovalEvent } from "../../console/human-approval-event.js"
 import { issueApprovalOutcomeReceipt } from "../../forensic/issue-approval-outcome.js";
 import { buildRequestPreview } from "../../approvals/request-preview.js";
 import {
+  assertApprovedViewFresh,
+  buildApproverBinding,
+  hashApprovedView,
+  loadSsoSubjectForAccount,
+  type ApproverBinding,
+} from "../../approvals/approver-binding.js";
+import {
   askMoreOnApproval,
   decideApproval,
   expireStaleApprovals,
@@ -107,6 +114,8 @@ function serializeApproval(row: ApprovalRichDetail) {
     approver_email: row.approver_email,
     policy_reason: row.policy_reason,
     request_preview: preview,
+    /** Echo this on approve so a stale console view is refused. */
+    approved_view_hash: hashApprovedView(preview),
     metadata,
     vote_count: votes.length,
   };
@@ -134,6 +143,8 @@ async function finalizeHumanApproval(
     delegation?: DelegationRecord | null;
     /** Sealed into the outcome receipt (demo seed may pass a historical stamp). */
     decidedAt?: string;
+    approvedViewHash?: string | null;
+    approverBinding?: ApproverBinding | null;
   },
 ) {
   const decided = await decideApproval(
@@ -180,6 +191,9 @@ async function finalizeHumanApproval(
         requiredRole,
       },
     );
+    const approvedViewHash =
+      params.approvedViewHash?.trim() ||
+      hashApprovedView(requestPreview(payload));
     const requester = extractRequester(payload);
     const persisted = await ingestHumanApprovalEvent(client, {
       organizationId: params.organizationId,
@@ -218,10 +232,49 @@ async function finalizeHumanApproval(
       decided_at: decidedAt,
       eventPayload: payload,
       delegation: params.delegation ?? null,
+      approved_view_hash: approvedViewHash,
+      approver_binding: params.approverBinding ?? null,
     });
   }
 
   return decided;
+}
+
+async function bindingForSession(
+  client: pg.PoolClient,
+  session: ConsoleSession,
+  roleKey: string | null,
+  stepUpMfa: boolean,
+): Promise<ApproverBinding> {
+  const ssoSubject = await loadSsoSubjectForAccount(client, session.accountId);
+  return buildApproverBinding({
+    accountId: session.accountId,
+    membershipId: session.userId,
+    sessionId: session.sessionId,
+    roleKey,
+    ssoSubject,
+    stepUpMfa,
+  });
+}
+
+async function refuseIfStaleView(
+  client: pg.PoolClient,
+  organizationId: string,
+  approvalId: string,
+  clientHash: string | null | undefined,
+): Promise<
+  | { ok: true; currentHash: string }
+  | { ok: false; code: string; message: string }
+> {
+  const rich = await getApprovalRich(client, organizationId, approvalId);
+  const payload =
+    rich?.event_payload && typeof rich.event_payload === "object"
+      ? rich.event_payload
+      : null;
+  const currentHash = hashApprovedView(requestPreview(payload));
+  const fresh = assertApprovedViewFresh(currentHash, clientHash);
+  if (!fresh.ok) return fresh;
+  return { ok: true, currentHash };
 }
 
 /**
@@ -409,6 +462,33 @@ approvalRoutes.post("/approvals/act", requireConsoleSession, async (c) => {
       await client.query("COMMIT");
       return c.json({ error: guard.message, code: guard.code }, 403);
     }
+    const viewCheck = await refuseIfStaleView(
+      client,
+      session.organizationId,
+      approvalId,
+      undefined,
+    );
+    const richForRole = await getApprovalRich(
+      client,
+      session.organizationId,
+      approvalId,
+    );
+    const requiredRole =
+      typeof richForRole?.metadata?.required_role === "string"
+        ? richForRole.metadata.required_role
+        : null;
+    const { roleKey: actingRole } = await resolveActingBankRole(
+      client,
+      session.organizationId,
+      session.userId,
+      { requiredRole },
+    );
+    const approverBinding = await bindingForSession(
+      client,
+      session,
+      actingRole,
+      false,
+    );
     const decided = await finalizeHumanApproval(client, {
       organizationId: session.organizationId,
       approvalId,
@@ -418,6 +498,8 @@ approvalRoutes.post("/approvals/act", requireConsoleSession, async (c) => {
       role: session.role,
       decision: claims.decision,
       reason: body.reason?.trim(),
+      approvedViewHash: viewCheck.ok ? viewCheck.currentHash : undefined,
+      approverBinding,
     });
     if (!decided) {
       await client.query("ROLLBACK");
@@ -514,11 +596,45 @@ approvalRoutes.post(
         await client.query("COMMIT");
         return c.json({ error: guard.message, code: guard.code }, 403);
       }
+      const viewCheck = await refuseIfStaleView(
+        client,
+        session.organizationId,
+        approvalId,
+        body.approved_view_hash,
+      );
+      if (!viewCheck.ok) {
+        await client.query("COMMIT");
+        return c.json({ error: viewCheck.message, code: viewCheck.code }, 409);
+      }
       const delegation = await delegationRelied(client, session, approvalId);
       const decidedAt = await resolveDecidedAtForOrg(
         client,
         session.organizationId,
         body.decided_at,
+      );
+      const richForRole = await getApprovalRich(
+        client,
+        session.organizationId,
+        approvalId,
+      );
+      const requiredRole =
+        typeof richForRole?.metadata?.required_role === "string"
+          ? richForRole.metadata.required_role
+          : null;
+      const { roleKey: actingRole } = await resolveActingBankRole(
+        client,
+        session.organizationId,
+        session.userId,
+        {
+          delegationRoleKey: delegation?.role_key,
+          requiredRole,
+        },
+      );
+      const approverBinding = await bindingForSession(
+        client,
+        session,
+        actingRole,
+        body.step_up_mfa === true,
       );
       const decided = await finalizeHumanApproval(client, {
         organizationId: session.organizationId,
@@ -531,6 +647,8 @@ approvalRoutes.post(
         reason: body.reason?.trim() ?? body.comment?.trim(),
         delegation,
         decidedAt,
+        approvedViewHash: viewCheck.currentHash,
+        approverBinding,
       });
       if (!decided) {
         await client.query("ROLLBACK");
@@ -620,10 +738,41 @@ approvalRoutes.post(
         await client.query("COMMIT");
         return c.json({ error: guard.message, code: guard.code }, 403);
       }
+      const viewCheck = await refuseIfStaleView(
+        client,
+        session.organizationId,
+        approvalId,
+        body.approved_view_hash,
+      );
+      if (!viewCheck.ok) {
+        await client.query("COMMIT");
+        return c.json({ error: viewCheck.message, code: viewCheck.code }, 409);
+      }
       const decidedAt = await resolveDecidedAtForOrg(
         client,
         session.organizationId,
         body.decided_at,
+      );
+      const richForRole = await getApprovalRich(
+        client,
+        session.organizationId,
+        approvalId,
+      );
+      const requiredRole =
+        typeof richForRole?.metadata?.required_role === "string"
+          ? richForRole.metadata.required_role
+          : null;
+      const { roleKey: actingRole } = await resolveActingBankRole(
+        client,
+        session.organizationId,
+        session.userId,
+        { requiredRole },
+      );
+      const approverBinding = await bindingForSession(
+        client,
+        session,
+        actingRole,
+        body.step_up_mfa === true,
       );
       const decided = await finalizeHumanApproval(client, {
         organizationId: session.organizationId,
@@ -635,6 +784,8 @@ approvalRoutes.post(
         decision: "rejected",
         reason: body.reason.trim(),
         decidedAt,
+        approvedViewHash: viewCheck.currentHash,
+        approverBinding,
       });
       if (!decided) {
         await client.query("ROLLBACK");
@@ -877,6 +1028,21 @@ approvalRoutes.post(
       const releaseReason =
         body.comment?.trim() ?? body.reason?.trim() ?? body.reason_code.trim();
       const releaseRequester = extractRequester(payload);
+      const viewCheck = assertApprovedViewFresh(
+        hashApprovedView(requestPreview(payload)),
+        body.approved_view_hash,
+      );
+      if (!viewCheck.ok) {
+        await client.query("COMMIT");
+        return c.json({ error: viewCheck.message, code: viewCheck.code }, 409);
+      }
+      const approvedViewHash = hashApprovedView(requestPreview(payload));
+      const approverBinding = await bindingForSession(
+        client,
+        session,
+        releaseRole,
+        body.step_up_mfa === true,
+      );
       const persisted = await ingestHumanApprovalEvent(client, {
         organizationId: session.organizationId,
         traceId: rich.trace_id,
@@ -913,6 +1079,8 @@ approvalRoutes.post(
         reason_code: body.reason_code.trim(),
         decided_at: releaseMeta.released_at,
         eventPayload: payload,
+        approved_view_hash: approvedViewHash,
+        approver_binding: approverBinding,
       });
 
       const updated = await getApprovalRich(

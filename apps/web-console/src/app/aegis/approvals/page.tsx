@@ -59,6 +59,8 @@ type ApprovalSummary = {
   approver_email: string | null;
   policy_reason: string | null;
   request_preview: RequestPreview;
+  /** Hash of the preview the console rendered; echoed back on approve. */
+  approved_view_hash?: string;
   event_payload?: Record<string, unknown> | null;
   metadata?: Record<string, unknown> | null;
   vote_count?: number;
@@ -739,11 +741,13 @@ export default function ApprovalsPage() {
       reason,
       reason_code,
       callback_verified,
+      approved_view_hash,
     }: {
       approvalId: string;
       reason?: string;
       reason_code?: string;
       callback_verified?: boolean;
+      approved_view_hash?: string;
     }) => {
       const note = reason?.trim() || undefined;
       const code = reason_code?.trim() || undefined;
@@ -757,6 +761,9 @@ export default function ApprovalsPage() {
             reason_code: code,
             ...(typeof callback_verified === "boolean"
               ? { callback_verified }
+              : {}),
+            ...(approved_view_hash
+              ? { approved_view_hash }
               : {}),
           }),
         },
@@ -819,15 +826,20 @@ export default function ApprovalsPage() {
     mutationFn: ({
       approvalId,
       reason,
+      approved_view_hash,
     }: {
       approvalId: string;
       reason: string;
+      approved_view_hash?: string;
     }) =>
       consoleApi<{ approval: ApprovalSummary }>(
         `/approvals/${encodeURIComponent(approvalId)}/reject`,
         {
           method: "POST",
-          body: JSON.stringify({ reason }),
+          body: JSON.stringify({
+            reason,
+            ...(approved_view_hash ? { approved_view_hash } : {}),
+          }),
         },
       ),
     onMutate: ({ approvalId }) => {
@@ -1535,6 +1547,8 @@ export default function ApprovalsPage() {
                       callback_verified: modalNeedsCallback
                         ? actionCallbackVerified
                         : undefined,
+                      approved_view_hash:
+                        modalApproval?.approved_view_hash,
                     });
                   } else if (actionModal.kind === "release") {
                     release.mutate({
@@ -1546,6 +1560,8 @@ export default function ApprovalsPage() {
                     reject.mutate({
                       approvalId: actionModal.approvalId,
                       reason: actionNote.trim(),
+                      approved_view_hash:
+                        modalApproval?.approved_view_hash,
                     });
                   } else if (actionModal.kind === "ask_more") {
                     askMore.mutate({

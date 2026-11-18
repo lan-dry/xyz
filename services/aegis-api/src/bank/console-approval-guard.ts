@@ -12,6 +12,7 @@ import {
 import type { BankRole } from "./authority-matrix.js";
 import { loadBankApprovalRoleContext } from "./repo.js";
 import { extractRequester } from "./requester.js";
+import { separationOfDutiesEnabled } from "../approvals/approver-binding.js";
 import { getApprovalRich } from "../repo/approvals.js";
 import { nowIso } from "../time/clock.js";
 
@@ -29,6 +30,13 @@ export type ApprovalDecisionBody = {
    * receipt. Ignored unless the organisation is is_demo.
    */
   decided_at?: string;
+  /**
+   * Hash of the request preview the console showed (`approved_view_hash` from GET).
+   * When present and different from the live event preview, approve is refused.
+   */
+  approved_view_hash?: string;
+  /** Whether a step-up MFA challenge was completed for this decision. */
+  step_up_mfa?: boolean;
 };
 
 function asStringArray(value: unknown): string[] | undefined {
@@ -122,6 +130,7 @@ export function buildConsoleApprovalAttempt(input: {
     actor_email: input.actor_email,
     actor_roles: input.actor_roles,
     is_requester: input.is_requester,
+    separation_of_duties: separationOfDutiesEnabled(metadata),
     action: input.action,
     reason_code: typeof body.reason_code === "string" ? body.reason_code : null,
     comment,
@@ -151,8 +160,9 @@ export function evaluateConsoleApprovalAttempt(input: {
   const guarded = checkApprovalAttempt(ladder, attempt);
   if (!guarded.ok) return guarded;
 
+  const sodOn = separationOfDutiesEnabled(input.metadata);
   // Preserve four-eyes on decline (checkApprovalAttempt only blocks self-approve).
-  if (input.is_requester && input.action === "reject") {
+  if (sodOn && input.is_requester && input.action === "reject") {
     return {
       ok: false,
       code: "separation_of_duties",

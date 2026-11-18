@@ -33,6 +33,8 @@ const PLAIN: Record<string, string> = {
     "The readable summary in the file does not match the signed record. The file was edited.",
   approval_binding_mismatch:
     "The listed approver, role, reason or decision does not match the signed outcome receipt. The file was edited.",
+  approval_view_hash_mismatch:
+    "The request the approver saw no longer matches the sealed approval view hash. The file or the underlying event was edited.",
   key_untrusted:
     "The file lists a public key that differs from the one Aegis published for this key, so the signature cannot be trusted.",
   checkpoint_mismatch: "The closing checkpoint does not match the last record.",
@@ -67,6 +69,7 @@ const FACT_CODES = [
   "receipt_hash_mismatch",
   "summary_mismatch",
   "approval_binding_mismatch",
+  "approval_view_hash_mismatch",
   // Stage 2: the sealed source label or grade is inconsistent. Findings carry their own detail.
   "provenance_invalid",
   "grade_change_invalid",

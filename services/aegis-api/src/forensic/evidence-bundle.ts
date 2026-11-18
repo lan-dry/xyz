@@ -74,6 +74,7 @@ import {
   type CaseProvenanceView,
   type ReceiptProvenanceSummary,
 } from "../sources/provenance.js";
+import { hashApprovedViewFromEventPayload } from "../approvals/approver-binding.js";
 
 export const EVIDENCE_BUNDLE_TYPE = "aegis_evidence_bundle";
 
@@ -124,8 +125,13 @@ export type EvidenceApproval = {
   requested_at_utc: string | null;
   decided_at_utc: string | null;
   required_role: string | null;
+  /** Stage 5: mirror of sealed approved_view_hash for soft-section checks. */
+  approved_view_hash?: string | null;
   votes: Array<{
     voter_email: string | null;
+    voter_user_id?: string | null;
+    voter_account_id?: string | null;
+    session_id?: string | null;
     decision: string;
     reason: string | null;
     at_utc: string | null;
@@ -262,6 +268,59 @@ export type EvidenceBundleInput = {
 export function publicKeyFingerprint(publicKeyB64: string): string {
   const raw = Buffer.from(publicKeyB64, "base64");
   return `sha256:${createHash("sha256").update(raw).digest("hex")}`;
+}
+
+/**
+ * Stage 5: copy sealed approver_binding / approved_view_hash into the soft
+ * approvals section so a post-export edit of the soft section fails verify.
+ */
+function enrichApprovalsFromSealed(
+  soft: EvidenceApproval[],
+  receipts: SignedForensicReceipt[],
+): EvidenceApproval[] {
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const r of receipts) {
+    const first = Array.isArray(r.approvals) ? r.approvals[0] : null;
+    if (!first || typeof first !== "object") continue;
+    const s = first as Record<string, unknown>;
+    if (typeof s.approval_id === "string") byId.set(s.approval_id, s);
+  }
+  return soft.map((a) => {
+    const sealed = byId.get(a.approval_id);
+    if (!sealed) return a;
+    const binding =
+      sealed.approver_binding && typeof sealed.approver_binding === "object"
+        ? (sealed.approver_binding as Record<string, unknown>)
+        : null;
+    const votes = a.votes.map((v, i) => {
+      if (i !== 0) return v;
+      return {
+        ...v,
+        voter_user_id:
+          v.voter_user_id ??
+          (typeof sealed.approver_user_id === "string"
+            ? sealed.approver_user_id
+            : typeof binding?.membership_id === "string"
+              ? binding.membership_id
+              : null),
+        voter_account_id:
+          v.voter_account_id ??
+          (typeof binding?.account_id === "string" ? binding.account_id : null),
+        session_id:
+          v.session_id ??
+          (typeof binding?.session_id === "string" ? binding.session_id : null),
+      };
+    });
+    return {
+      ...a,
+      approved_view_hash:
+        a.approved_view_hash ??
+        (typeof sealed.approved_view_hash === "string"
+          ? sealed.approved_view_hash
+          : null),
+      votes,
+    };
+  });
 }
 
 function iso(value: Date | string | null | undefined): string | null {
@@ -486,6 +545,7 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     sig_alg: e.sig_alg,
     sig_value_b64: e.sig_value_b64,
     emitted_at_utc: iso(e.emitted_at ?? null),
+    ...(e.payload !== undefined ? { payload: e.payload } : {}),
   }));
   // Every cited event must be present or the verifier reports it missing.
   // Provisional citations (evt_gov_*) have no stored event: echo the signed ref.
@@ -524,7 +584,10 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     if (signed) key_custody[id] = { custody: signed, label: custodyLabel(signed) };
   }
 
-  const approvals = input.approvals ?? [];
+  const approvals = enrichApprovalsFromSealed(
+    input.approvals ?? [],
+    receipts,
+  );
   const evidence = receipts.map((r) =>
     summarizeReceipt(r, { keys, sealed_events: sealed, approvals }),
   );
@@ -895,6 +958,84 @@ export async function verifyBundleFile(
             findings.push({
               code: "approval_binding_mismatch",
               message: "Unsigned approval reason does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
+          // Stage 5: soft identity fields must match the sealed approver_binding.
+          const binding =
+            s.approver_binding && typeof s.approver_binding === "object"
+              ? (s.approver_binding as Record<string, unknown>)
+              : null;
+          if (
+            softVote?.voter_account_id &&
+            typeof binding?.account_id === "string" &&
+            softVote.voter_account_id !== binding.account_id
+          ) {
+            findings.push({
+              code: "approval_binding_mismatch",
+              message:
+                "Unsigned approver account id does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
+          if (
+            softVote?.voter_user_id &&
+            typeof binding?.membership_id === "string" &&
+            softVote.voter_user_id !== binding.membership_id &&
+            softVote.voter_user_id !== s.approver_user_id
+          ) {
+            findings.push({
+              code: "approval_binding_mismatch",
+              message:
+                "Unsigned approver membership id does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
+          if (
+            softVote?.session_id &&
+            typeof binding?.session_id === "string" &&
+            softVote.session_id !== binding.session_id
+          ) {
+            findings.push({
+              code: "approval_binding_mismatch",
+              message:
+                "Unsigned approver session id does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
+          if (
+            soft.approved_view_hash &&
+            typeof s.approved_view_hash === "string" &&
+            soft.approved_view_hash !== s.approved_view_hash
+          ) {
+            findings.push({
+              code: "approval_view_hash_mismatch",
+              message:
+                "Unsigned approval view hash does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
+        }
+      }
+
+      // Stage 5: approved_view_hash must equal the hash of the gate event's request preview.
+      if (typeof s.approved_view_hash === "string") {
+        const gateId =
+          (Array.isArray(prior.sealed_events) &&
+            prior.sealed_events[0]?.event_id) ||
+          null;
+        const gateEvent = gateId
+          ? (bundle.sealed_events ?? []).find((e) => e.event_id === gateId)
+          : null;
+        if (gateEvent?.payload && typeof gateEvent.payload === "object") {
+          const expected = hashApprovedViewFromEventPayload(
+            gateEvent.payload as Record<string, unknown>,
+          );
+          if (expected !== s.approved_view_hash) {
+            findings.push({
+              code: "approval_view_hash_mismatch",
+              message:
+                "The approved view hash does not match the gate event the approver decided on",
               record: outcome.receipt_id,
             });
           }
@@ -1549,6 +1690,7 @@ export async function loadEvidenceBundle(
         sig_alg: e.sig_alg ?? undefined,
         sig_value_b64: e.sig_value_b64 ?? undefined,
         emitted_at: e.emitted_at,
+        payload: e.payload,
       })),
     keys,
     source_keys,

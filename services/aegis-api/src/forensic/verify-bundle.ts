@@ -31,6 +31,11 @@ export type SealedEventForVerify = {
   sig_value_b64?: string;
   /** Optional precomputed validity from APS verify */
   signature_valid?: boolean;
+  /**
+   * Stage 5: gate event payload so the verifier can recompute approved_view_hash.
+   * Informational for offline checks; not covered by the event signature itself.
+   */
+  payload?: Record<string, unknown> | null;
 };
 
 /** Source key validity window as exported in evidence bundles (ISO timestamps). */

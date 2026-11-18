@@ -32,6 +32,8 @@ import type {
   SignedForensicReceipt,
 } from "./receipt.js";
 import type { DecisionToken } from "@salanor/aegis-sdk";
+import type { ApproverBinding } from "../approvals/approver-binding.js";
+import { hashApprovedViewFromEventPayload } from "../approvals/approver-binding.js";
 
 export type ApprovalOutcome = "approved" | "declined" | "released";
 
@@ -95,6 +97,13 @@ export async function issueApprovalOutcomeReceipt(
     decided_at: string;
     eventPayload?: Record<string, unknown> | null;
     delegation?: DelegationRecord | null;
+    /**
+     * Hash of the exact request preview the approver saw. When omitted, derived
+     * from eventPayload (same canonical preview the console renders).
+     */
+    approved_view_hash?: string | null;
+    /** Authenticated identity bound into the sealed approval (Stage 5 / A1). */
+    approver_binding?: ApproverBinding | null;
     /** Optional software key override for tests. */
     signingKey?: { key_id: string; private_key_b64: string };
   },
@@ -149,6 +158,11 @@ export async function issueApprovalOutcomeReceipt(
     },
   ];
 
+  const approvedViewHash =
+    input.approved_view_hash?.trim() ||
+    hashApprovedViewFromEventPayload(input.eventPayload ?? null);
+  const approverBinding = input.approver_binding ?? null;
+
   const approvalRecord = {
     approval_id: input.approvalId,
     decision: input.outcome,
@@ -157,6 +171,8 @@ export async function issueApprovalOutcomeReceipt(
     approver_role: roleKey,
     approver_role_label: roleLabel,
     approver_email: input.approver.email,
+    approved_view_hash: approvedViewHash,
+    ...(approverBinding ? { approver_binding: approverBinding } : {}),
     reason: input.reason ?? null,
     reason_code: input.reason_code ?? null,
     decided_at: input.decided_at,
@@ -240,6 +256,8 @@ export async function issueApprovalOutcomeReceipt(
           "approver_role",
           "approver_role_label",
           "approval_reason",
+          "approved_view_hash",
+          "approver_binding",
         ],
         {
           derivedKeys: [
@@ -248,6 +266,8 @@ export async function issueApprovalOutcomeReceipt(
             "approver_role",
             "approver_role_label",
             "approval_reason",
+            "approved_view_hash",
+            "approver_binding",
           ],
         },
       ),
@@ -281,6 +301,8 @@ export async function issueApprovalOutcomeReceipt(
       approver_display_name: displayName,
       approver_role: roleKey,
       approver_role_label: roleLabel,
+      approved_view_hash: approvedViewHash,
+      ...(approverBinding ? { approver_binding: approverBinding } : {}),
       approval_reason: input.reason ?? null,
       requester: requester.label,
       requester_email: requester.email,

@@ -162,7 +162,7 @@ Risk Approval Pack ("Where the data came from": counts by grade, legacy cases, c
 | A2 rewrites history | Append-only triggers, receipt key in KMS (when live), witness checkpoints and public log | `docs/APPEND_ONLY.md` | Interim software key is weaker than KMS (`docs/DEMO.md`, key custody) |
 | A3 sends false data from a compromised source | **Not prevented.** The record shows who signed it and how (G1) and that the data is the source's claim | provenance block | Corroboration (G2) or independent capture (G3) is the answer; Stage 2 only labels it |
 | A4 uses a stolen ingest key | Source signature (G1) needs the source's private key, which is separate. Orgs can require signed events | Stage 1 `require_signed_events` | Unsigned orgs remain G0, and the record says so |
-| A5 repudiates an approval | `approver_bound`, approval outcome receipts carry the approver, derived by Aegis | `issue-approval-outcome.ts` | Depends on how the approver authenticated |
+| A5 repudiates an approval | `approver_bound`, sealed `approver_binding` + `approved_view_hash` on outcome receipts | `issue-approval-outcome.ts`, Stage 5 | WebAuthn step-up not yet verified (Partial); binding is session/account today |
 | A6 reads "intact" as "correct" | Two lines; fixed limitations sentence in every export; wording scan fails the build | `provenance.ts`, `check-no-bare-verified.mjs` | A reader can still ignore the text |
 | A7 replays or hides a gap | Stage 1 seq, nonce, clock window, recorded gaps | `src/sources/` | Documented in `SIGNING.md` |
 | Legacy receipt passed off as higher grade | Missing block reads as G0 (legacy); never silently upgraded | `buildCaseProvenance` | Legacy G1 only when a valid Stage 1 envelope is attached |
@@ -173,7 +173,11 @@ Risk Approval Pack ("Where the data came from": counts by grade, legacy cases, c
 |-------|------|--------|
 | 1 | Source-signed events (G1): envelope, registry, keys, sequence, offline verify | Done |
 | 2 | Honest labelling: provenance block, grade at seal, grade changes, wording, exports | Done (see `provenance/STAGE_2_REPORT.md` for partials) |
-| later | Feeds that raise grades automatically (reconciliation, execution match), independent capture, mTLS source authentication | Not built. Today a grade can rise only through `recordGradeChange` |
+| 3 | Decision token + executor confirm | Done (see `provenance/STAGE_3_REPORT.md`) |
+| 4 | Reconciliation + exceptions | Done (see `provenance/STAGE_4_REPORT.md`) |
+| 5 | Approver binding (view hash + authenticated identity) | Done, WebAuthn Partial (see `provenance/STAGE_5_REPORT.md`) |
+| later | Independent capture (G3), third-party signed facts, plausibility | Not built |
 
 Related: [SIGNING.md](./provenance/SIGNING.md), [INTEGRATION.md](./provenance/INTEGRATION.md),
-[STAGE_1_REPORT.md](./provenance/STAGE_1_REPORT.md), [STAGE_2_REPORT.md](./provenance/STAGE_2_REPORT.md).
+[STAGE_1_REPORT.md](./provenance/STAGE_1_REPORT.md), [STAGE_2_REPORT.md](./provenance/STAGE_2_REPORT.md),
+[STAGE_5_REPORT.md](./provenance/STAGE_5_REPORT.md).

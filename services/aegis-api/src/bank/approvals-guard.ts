@@ -9,6 +9,11 @@ export type ApprovalAttempt = {
   actor_email: string;
   actor_roles: string[];
   is_requester: boolean;
+  /**
+   * When true (default), requester cannot approve/release their own case.
+   * Set false only via metadata.separation_of_duties === false.
+   */
+  separation_of_duties?: boolean;
   action: "approve" | "reject" | "release";
   reason_code?: string | null;
   comment?: string | null;
@@ -55,7 +60,8 @@ export function checkApprovalAttempt(
     return { ok: true };
   }
 
-  if (attempt.is_requester && attempt.action === "approve") {
+  const sodOn = attempt.separation_of_duties !== false;
+  if (sodOn && attempt.is_requester && attempt.action === "approve") {
     return {
       ok: false,
       code: "separation_of_duties",
