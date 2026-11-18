@@ -13,6 +13,10 @@ const MIGRATIONS = [
   { version: "001_baseline", file: "001_baseline.sql" },
   { version: "002_witness_root_timestamp", file: "002_witness_root_timestamp.sql" },
   { version: "003_region_and_field_vault", file: "003_region_and_field_vault.sql" },
+  {
+    version: "004_wipe_include_sensitive_field_vault",
+    file: "004_wipe_include_sensitive_field_vault.sql",
+  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {
