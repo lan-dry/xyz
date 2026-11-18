@@ -1,9 +1,13 @@
 # AEGIS-SRC1 signing algorithm
 
 AEGIS-SRC1 is how a source system (loan system, core banking adapter, collector) proves to Aegis that a
-business event came from it and was not changed on the way. It is **not** APS-1 (which Aegis uses for its
-own sealed decisions). Reference implementation: `packages/aegis-sdk`. Independent check:
+business event came from it and was not changed on the way. A valid envelope supports evidence
+grade **G1** (source signed). It does **not** mean the event content is accurate — see
+[PROVENANCE.md](../PROVENANCE.md). It is **not** APS-1 (which Aegis uses for its own sealed
+decisions). Reference implementation: `packages/aegis-sdk`. Independent check:
 `tools/independent-verify/verify_envelope.py`. Shared test vectors: `conformance/vectors.json`.
+
+Integration choices (Connector / SDK / raw API): [INTEGRATION.md](./INTEGRATION.md).
 
 ## 1. The envelope
 
@@ -137,15 +141,23 @@ signature,** is written into the attributes of both the sealed APS-1 event and t
   "source_key_id": "k_los_2026_01",
   "evidence_grade": "G1",
   "checks": { "source_signed": true },
-  "provenance": { "authentication": "source_signature", "grade": "G1" }
+  "provenance": {
+    "schema_version": 1,
+    "authentication": "source_signature",
+    "evidence_grade": "G1",
+    "grade_at_seal": "G1",
+    "checks": { "source_signed": true },
+    "limitations": "Aegis proves when this record was made and that it has not changed since. …"
+  }
 }
 ```
 
 The response is the usual decision JSON plus `"source_signed": true` and `"evidence_grade": "G1"`.
+Full provenance shape: [PROVENANCE.md](../PROVENANCE.md).
 
 If the organisation's field policy hides any attribute of the event, the `event` inside the stored envelope
 is replaced by `{ "redacted_by_field_policy": true }` so masked values cannot leak through the envelope. The
-signature and `event_hash` are kept. Stage 2 should decide how to keep such envelopes verifiable.
+signature and `event_hash` are kept; offline verify still checks the envelope fields that remain.
 
 ## 8. Registry history
 

@@ -77,4 +77,23 @@ pnpm demo:prove-cors-cookie
 pnpm pilot:provision-demo-tenant   # twice — idempotent
 pnpm pilot:seed-history            # demo mode off
 node --test tools/bank-simulator/test/key-leak.test.mjs
+pnpm test:redteam                  # provenance Red Team catalog (Stage 8)
 ```
+
+---
+
+## E. Lying to Aegis (provenance — ~8 minutes)
+
+Manual present path; matches `docs/DEMO_RUNBOOK.md` §12. `demo:runbook-walk` does **not**
+fully automate these beats yet (see skip note in `tools/demo/demo-runbook-walk.mjs`).
+
+| # | You do | Expected | Where |
+|---|--------|----------|-------|
+| E1 | Large loan: hold → manager approve → confirm matching params → reconcile | Case shows grade toward **G2**; five-fact checklist; two-line provenance | Simulator + case |
+| E2 | Confirm / execute with a **different amount** | Refused; `execution_mismatch` sealed | Confirm / Red Team |
+| E3 | Direct ledger edit (or Red Team #11) | Exception `db_change_without_event` (Partial if collector not live) | Exceptions |
+| E4 | Export bundle; Verify page + optional `aegis-verify` / independent Python | Intact checks pass; one-character edit fails | Verify / CLI |
+| E5 | Honest limit: false but signed value | Stays **G1**, labelled source claim; say what raises to G2/G3 | Red Team / case |
+
+Do not write "verified" next to amounts. Screenshots (when capturing):
+`docs/TEST_PACK/provenance/` (Stage 9 Partial until filled).

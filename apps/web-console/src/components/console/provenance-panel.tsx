@@ -68,6 +68,16 @@ export function ProvenancePanel({
       <h2 id="provenance-heading" className={ui.panelTitle}>
         {title}
       </h2>
+      <details style={{ margin: "0 0 0.75rem" }}>
+        <summary style={{ cursor: "pointer", fontSize: "0.8125rem" }}>
+          What Aegis proves and what it does not
+        </summary>
+        <p style={{ margin: "0.5rem 0 0", fontSize: "0.8125rem", lineHeight: 1.55 }}>
+          Aegis proves when this record was made and that it has not changed since.
+          It does not check that the data inside is accurate. The grade says who
+          vouched for the data and how — not whether they were right.
+        </p>
+      </details>
       <p style={{ margin: "0 0 0.75rem", fontSize: "0.9375rem", lineHeight: 1.55 }}>
         {provenance.headline}
       </p>

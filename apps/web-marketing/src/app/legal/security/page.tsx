@@ -53,6 +53,15 @@ export default function SecurityPage() {
           </p>
         </LegalSection>
 
+        <LegalSection title="What Aegis proves and what it does not">
+          <p>
+            Aegis proves when a record was made and that it has not changed since sealing.
+            It does not check that customer-asserted data is accurate. Evidence grades
+            (G0–G3) describe who vouched for the data and how — not whether the content
+            is right. Do not read a passing seal check as content validation.
+          </p>
+        </LegalSection>
+
         <LegalSection title="What we protect">
           <ul>
             <li>

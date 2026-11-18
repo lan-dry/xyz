@@ -16,6 +16,12 @@
  *
  * Writes docs/screens/runbook/NN-name.png and prints one PASS/FAIL line per check.
  *
+ * Stage 9 — "Lying to Aegis" (DEMO_RUNBOOK §12, ~8 min / 5 beats):
+ *   Not fully automated here yet. Present manually, or drive via bank simulator
+ *   Red Team + reconcile. This walk prints a SKIP line for that segment so CI
+ *   does not pretend the five beats were clicked. Screenshots for provenance
+ *   grades belong under docs/TEST_PACK/provenance/ when captured.
+ *
  * Usage: node tools/demo/demo-runbook-walk.mjs
  */
 import { mkdirSync, readdirSync, unlinkSync } from "node:fs";
@@ -399,6 +405,11 @@ try {
   await shot(admin, "reports", "/aegis/reports");
   await shot(admin, "access-log", "/aegis/logs");
   await shot(admin, "live-feed-after", "/aegis/live");
+
+  // Stage 9 — Lying to Aegis (DEMO_RUNBOOK §12): not automated; present manually / Red Team.
+  console.log(
+    "SKIP  §12 Lying to Aegis (5 beats) — manual / Red Team; see docs/DEMO_RUNBOOK.md §12",
+  );
 } finally {
   await browser.close();
 }

@@ -108,10 +108,30 @@ Wording on screen, in the PDF, in the bundle and on the share link:
   appears (`scripts/check-no-bare-verified.mjs`; web-console `build` runs it too).
 
 Grades today: **G0** ingest key only, **G1** signed by the source, **G2** corroborated (reconciled or
-execution matched), **G3** captured independently of the source. In this release a case can reach G2 or
-G3 only by a sealed grade-change record. No feed in the demo does that automatically, so do not say
-the demo reconciles against a ledger. The demo shows G0 and G1.
+execution matched), **G3** captured independently of the source. A case reaches G2 or G3 only by a
+**sealed grade-change** receipt. Story cards may say "target G2/G3"; say the grade only after confirm
++ reconcile (or collector match) actually ran. Live G3 from Postgres logical decoding is still
+**Partial** (`docs/provenance/STAGE_6_REPORT.md`). Present the **"Lying to Aegis"** segment in
+`docs/DEMO_RUNBOOK.md` §12 (~8 minutes).
+
+## Real today vs roadmap
+
+| Real today (say this) | Roadmap / not built (do not imply) |
+|-----------------------|-------------------------------------|
+| Source-signed events (G1), provenance block, two-line wording | HSM / hardware-backed receipt keys as the default claim |
+| Decision tokens + executor confirm (G2 when matched) | Approver **device** signatures (WebAuthn bound into the seal) |
+| Feed reconciliation + Exceptions page (G2 on match) | Regulator / counterparty co-sign of witness roots |
+| Approver binding: view hash + authenticated account/session | Independent external monitors product |
+| Collector **interfaces** + simulated CDC tests; G3 path in code | Live pgoutput G3 in every demo environment |
+| Third-party signed facts (bureau stub), input commitments, plausibility flags | TEE for policy / seal path |
+| Bank simulator multi-system Red Team panel + `pnpm test:redteam` | Certified / attested product; FedRAMP; HIPAA |
+| Offline bundle verify + independent Python envelope check | "Aegis verified the amount / customer is real" |
+
+Full ladder: `docs/provenance/ASSURANCE_LADDER.md`. Stage roll-up: `docs/provenance/FINAL_STATUS.md`.
 
 ## Not done (honest)
 
 - Website **live** publish (founder approval) — preview only; see `WEBSITE_CHANGES.md`
+- Live collector G3 against Docker `wal_level=logical` (Stage 6 Partial)
+- WebAuthn step-up on approve (Stage 5 Partial)
+- Provenance screenshot pack under `docs/TEST_PACK/provenance/` (Stage 9 Partial)

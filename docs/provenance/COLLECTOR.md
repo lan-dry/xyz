@@ -146,3 +146,5 @@ Example config fields: `source_id`, `key_id`, `private_key_path`, `database_url`
 
 See [STAGE_6_REPORT.md](./STAGE_6_REPORT.md). Stage status is **Partial** until
 pgoutput streaming is finished and tested against Docker with `wal_level=logical`.
+Do not present a simulated collector row in a unit test as live independent capture
+in a customer environment. Ladder context: [ASSURANCE_LADDER.md](./ASSURANCE_LADDER.md).

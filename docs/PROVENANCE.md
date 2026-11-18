@@ -180,9 +180,12 @@ Risk Approval Pack ("Where the data came from": counts by grade, legacy cases, c
 | 5 | Approver binding (view hash + authenticated identity) | Done, WebAuthn Partial (see `provenance/STAGE_5_REPORT.md`) |
 | 6 | Independent capture / PG collector (G3) | Partial (see `provenance/STAGE_6_REPORT.md`) |
 | 7 | Third-party signed facts, input commitments, plausibility | Done, with Partials (see `provenance/STAGE_7_REPORT.md`) |
+| 8 | Red Team suite + multi-system bank test environment | Done, with Partials (see `provenance/STAGE_8_REPORT.md`) |
+| 9 | Documentation and demo ("Lying to Aegis", assurance ladder, honest claims) | Done, with Partials (see `provenance/STAGE_9_REPORT.md`) |
 
 Related: [SIGNING.md](./provenance/SIGNING.md), [INTEGRATION.md](./provenance/INTEGRATION.md),
-[COLLECTOR.md](./provenance/COLLECTOR.md),
-[STAGE_1_REPORT.md](./provenance/STAGE_1_REPORT.md), [STAGE_2_REPORT.md](./provenance/STAGE_2_REPORT.md),
-[STAGE_5_REPORT.md](./provenance/STAGE_5_REPORT.md), [STAGE_6_REPORT.md](./provenance/STAGE_6_REPORT.md),
-[STAGE_7_REPORT.md](./provenance/STAGE_7_REPORT.md).
+[EXECUTOR.md](./provenance/EXECUTOR.md), [RECONCILIATION.md](./provenance/RECONCILIATION.md),
+[COLLECTOR.md](./provenance/COLLECTOR.md), [ASSURANCE_LADDER.md](./provenance/ASSURANCE_LADDER.md),
+[CUSTOMER_ASSERTED_DATA.md](./provenance/CUSTOMER_ASSERTED_DATA.md),
+[FINAL_STATUS.md](./provenance/FINAL_STATUS.md),
+[STAGE_1_REPORT.md](./provenance/STAGE_1_REPORT.md) … [STAGE_9_REPORT.md](./provenance/STAGE_9_REPORT.md).

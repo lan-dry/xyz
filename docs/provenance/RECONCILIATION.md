@@ -4,6 +4,8 @@ Aegis seals what sources send. That does not prove the money actually moved, or 
 the ledger agrees with the sealed receipt. Reconciliation closes that gap: a **feed**
 from Core Banking (or another system) is matched to sealed cases / decision tokens, and
 mismatches become **exceptions** that people can acknowledge and resolve with notes.
+A clean match can raise the case to **G2** via a sealed grade change
+([ASSURANCE_LADDER.md](./ASSURANCE_LADDER.md)).
 
 ## 1. Feeds
 

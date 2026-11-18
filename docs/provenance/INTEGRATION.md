@@ -1,5 +1,10 @@
 # Sending signed events to Aegis
 
+How a core banking, LOS, or other source system sends **source-signed** events (grade G1)
+into Aegis. After a decision, executors confirm against a decision token — see
+[EXECUTOR.md](./EXECUTOR.md). Grades and honest limits: [PROVENANCE.md](../PROVENANCE.md),
+[ASSURANCE_LADDER.md](./ASSURANCE_LADDER.md).
+
 Pick the lowest-effort option that fits the source system. All three produce the same AEGIS-SRC1
 envelope (see [SIGNING.md](./SIGNING.md)) and reach the same endpoint, so Aegis treats them identically.
 

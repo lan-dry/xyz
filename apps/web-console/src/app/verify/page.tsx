@@ -138,6 +138,16 @@ function VerifyForm() {
           was sealed. No login needed. Drop an evidence bundle below, or enter the
           organization and event ID printed on a case receipt.
         </p>
+        <section className={styles.lead} style={{ marginTop: "0.75rem" }} aria-labelledby="proves-heading">
+          <h2 id="proves-heading" style={{ fontSize: "1rem", margin: "0 0 0.35rem" }}>
+            What Aegis proves and what it does not
+          </h2>
+          <p style={{ margin: 0 }}>
+            Aegis proves when a record was made and that it has not changed since.
+            It does not check that the data inside is accurate. A grade (G0–G3)
+            says who vouched for the data and how — not whether the content is right.
+          </p>
+        </section>
       </header>
 
       <BundleVerifier />

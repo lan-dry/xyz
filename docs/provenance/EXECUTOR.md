@@ -109,3 +109,68 @@ Under `observe`, Aegis still issues tokens when params are declared, so executor
 are ready can confirm and raise the case toward grade G2 (`execution_matched`). Executors
 that are not yet wired are not blocked. Switch the pack to `enforce` when the core ledger
 (or payment gateway) calls confirm on every disbursement.
+
+## 5. Confirm call — short examples
+
+Call confirm **before** money moves. Pass the decision token from the allow/approve
+response and the **actual** parameters you are about to execute. Prefer wrapping
+`params` in an executor source envelope (see [INTEGRATION.md](./INTEGRATION.md));
+unsigned `params` still work when the Connector signs for you.
+
+### TypeScript (SDK + fetch)
+
+```ts
+import { checkToken } from "@salanor/aegis-sdk";
+
+// Optional offline pre-check (sig / expiry / hash). Single-use still needs online confirm.
+const local = checkToken(token, params, decisionPublicKey);
+if (!local.ok) throw new Error(local.reason);
+
+const res = await fetch(`${AEGIS_URL}/v1/aegis/executions/confirm`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${INGEST_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ token, params }),
+});
+if (!res.ok) {
+  // Do not disburse. Inspect body.exception / sealed execution_mismatch.
+  throw new Error(`confirm refused: ${res.status}`);
+}
+// Safe to disburse the exact params that matched.
+```
+
+### Java (pseudo-code)
+
+```java
+// HttpClient + Jackson (or equivalent). Token and params are the same shapes as above.
+HttpRequest req = HttpRequest.newBuilder()
+    .uri(URI.create(aegisUrl + "/v1/aegis/executions/confirm"))
+    .header("Authorization", "Bearer " + ingestKey)
+    .header("Content-Type", "application/json")
+    .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(
+        Map.of("token", token, "params", params))))
+    .build();
+HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
+if (res.statusCode() != 200) {
+  throw new IllegalStateException("confirm refused: " + res.statusCode());
+}
+// Disburse only after 200.
+```
+
+### C# (pseudo-code)
+
+```csharp
+using var req = new HttpRequestMessage(HttpMethod.Post, $"{aegisUrl}/v1/aegis/executions/confirm");
+req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ingestKey);
+req.Content = JsonContent.Create(new { token, params = actualParams });
+var res = await http.SendAsync(req);
+if (!res.IsSuccessStatusCode)
+  throw new InvalidOperationException($"confirm refused: {(int)res.StatusCode}");
+// Disburse only after success.
+```
+
+When Aegis is unreachable under `enforce` + `allow_and_flag`, proceed only if your local
+policy allows it, then later call confirm with `flagged_unavailable: true`. Under `block`,
+do not execute.
