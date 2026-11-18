@@ -1,0 +1,4 @@
+{
+  "_readme": "Replace with the live map from GET /v1/public/keys (key_id → public_key_b64), or copy the keys object from an evidence bundle after checking fingerprints out of band.",
+  "receipt_dev": "BASE64_32_BYTE_ED25519_PUBLIC_KEY"
+}

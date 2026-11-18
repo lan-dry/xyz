@@ -8,13 +8,20 @@
  */
 
 import { createHash } from "node:crypto";
-import * as ed from "@noble/ed25519";
 import type pg from "pg";
 import {
   describeDecision,
+  formatApprover,
+  formatRuleLabel,
   type DescribeDecisionInput,
 } from "../bank/describe-decision.js";
+import {
+  verifyMerkleProof,
+  type MerklePathStep,
+} from "@salanor/witness-merkle";
+import * as ed from "@noble/ed25519";
 import { getInclusionProofByEvent } from "../repo/witness.js";
+import { checkpointSigningMessage } from "../witness/sign-checkpoint.js";
 import { getReceiptKmsSigner } from "../crypto/kms-ed25519.js";
 import {
   custodyLabel,
@@ -24,6 +31,11 @@ import {
 import { isProductionEnv } from "../boot/production-env.js";
 import { getPool } from "../db/pool.js";
 import { listPublishedReceiptKeys } from "../repo/receipt-keys.js";
+import { witnessCheckpointLabel } from "../witness/label.js";
+import {
+  witnessCheckpointKeyId,
+  witnessCheckpointPublicKeyB64,
+} from "../witness/sign-checkpoint.js";
 import {
   getReceiptTimestamps,
   type ReceiptTimestamp,
@@ -41,9 +53,14 @@ import {
   type VerifyResult,
 } from "./verify-bundle.js";
 import {
+  verifyLocalTestTimestamp,
+  type TimestampToken,
+} from "./rfc3161.js";
+import {
   buildVerifyChecks,
   type VerifyCheck,
   plainFindingMessage,
+  witnessLabelFromBundle,
   witnessStateFromBundle,
 } from "./verify-messages.js";
 import { renderOnePagePdf, type PdfLine } from "./minimal-pdf.js";
@@ -57,17 +74,38 @@ export const HOW_TO_VERIFY =
   '"AEGIS-RECEIPT1\\n<key_id>\\n<canonical_payload>" using the public key listed under ' +
   "keys (compare its fingerprint with the one you were given out of band). Receipts with " +
   "consecutive seq numbers must link: prev_hash of the next equals receipt_hash of the previous. " +
-  "Or run the aegis-verify tool on this file, or drop it on the Verify page in the console. " +
+  "When witness[] status is included, recompute Merkle inclusion offline: the leaf is the " +
+  "event hash; each node is SHA-256 of the left hex string concatenated with the right hex " +
+  "string; walk merkle_path to root_hash, then verify root_sig_value_b64 over " +
+  "SHA-256(UTF-8 of lowercase root_hash) and check the RFC 3161 token imprint equals the " +
+  "root hash. Or run the aegis-verify tool on this file, or drop it on the Verify page. " +
   "Changing any byte of the facts makes verification fail.";
+
+export type EvidenceWitnessTimestamp = {
+  status: "stamped" | "pending";
+  authority: string | null;
+  gen_time_utc: string | null;
+  tsa_url: string | null;
+  message_hash: string;
+  token_b64: string | null;
+};
 
 export type EvidenceWitness = {
   event_id: string;
   status: "included" | "pending";
+  /** Honest label: Salanor-signed unless externally anchored. */
+  label?: string;
   proof_id?: string;
   root_id?: string;
   root_hash?: string;
   leaf_index?: number;
   tree_size?: number;
+  merkle_path?: MerklePathStep[];
+  root_sig_value_b64?: string | null;
+  root_sig_key_id?: string | null;
+  anchoring_type?: string | null;
+  external_tx_id?: string | null;
+  timestamp?: EvidenceWitnessTimestamp | null;
 };
 
 export type EvidenceApproval = {
@@ -220,20 +258,49 @@ function whoApproved(
   receipt: SignedForensicReceipt,
   approvals: EvidenceApproval[],
 ): string {
-  const rule =
+  // Prefer the signed outcome receipt's own approvals[] (A1).
+  const sealed = Array.isArray(receipt.approvals) ? receipt.approvals : [];
+  if (sealed.length > 0) {
+    const first = sealed[0] as Record<string, unknown>;
+    const name =
+      typeof first.approver_display_name === "string"
+        ? first.approver_display_name
+        : null;
+    const role =
+      typeof first.approver_role_label === "string"
+        ? first.approver_role_label
+        : typeof first.approver_role === "string"
+          ? first.approver_role
+          : null;
+    const roleKey =
+      typeof first.approver_role === "string" ? first.approver_role : null;
+    const who =
+      formatApprover(name, roleKey) ??
+      (name && role && role.toLowerCase() !== name.toLowerCase()
+        ? `${name} · ${role}`
+        : name);
+    // Email is technical-only; never the primary "who approved" string.
+    if (receipt.outcome === "approved" && who) return `Approved by ${who}.`;
+    if (receipt.outcome === "declined" && who) return `Declined by ${who}.`;
+    if (receipt.outcome === "released" && who) return `Released by ${who}.`;
+  }
+  const ruleId =
     receipt.decision_basis?.decided_by_rule_id ??
     receipt.matched_rules[0]?.rule_id ??
     null;
+  const rule = formatRuleLabel(ruleId) ?? null;
   const decided = approvals.filter((a) => a.status === "approved");
   if (decided.length > 0) {
     const names = decided.flatMap((a) =>
       a.votes
         .filter((v) => v.decision === "approved")
         .map((v) => {
-          const who = v.delegation?.acted_by_name ?? v.voter_email ?? "an approver";
+          const who =
+            v.delegation?.acted_by_name ??
+            "an authorised approver";
           if (!v.delegation) return who;
           const from =
-            v.delegation.delegated_by_name ?? v.delegation.delegated_by_email ?? "the role holder";
+            v.delegation.delegated_by_name ?? "the role holder";
           return `${who}, acting for ${from} under a time-limited delegation`;
         }),
     );
@@ -242,6 +309,18 @@ function whoApproved(
   }
   if (approvals.some((a) => a.status === "rejected")) return "Declined by an approver.";
   if (approvals.some((a) => a.status === "pending")) return "Waiting for an approver.";
+  // A4: human outcomes never claim an automatic allow.
+  if (
+    receipt.outcome === "approved" ||
+    receipt.outcome === "released" ||
+    receipt.outcome === "declined" ||
+    receipt.outcome === "rejected"
+  ) {
+    if (receipt.outcome === "declined" || receipt.outcome === "rejected") {
+      return "Declined by an authorised approver.";
+    }
+    return "Approved by an authorised approver.";
+  }
   if (receipt.outcome === "allow") {
     return rule
       ? `No approval needed: allowed automatically by rule ${rule}.`
@@ -270,6 +349,10 @@ export function summarizeReceipt(
     product?: string;
     event_type?: string;
   };
+  const sealedApproval =
+    Array.isArray(receipt.approvals) && receipt.approvals[0]
+      ? (receipt.approvals[0] as Record<string, unknown>)
+      : null;
   const plain =
     receipt.plain_summary ??
     describeDecision({
@@ -284,6 +367,26 @@ export function summarizeReceipt(
         null) as DescribeDecisionInput["decision_basis"],
       mode: receipt.mode,
       would_have: receipt.would_have ?? null,
+      approver_name:
+        typeof sealedApproval?.approver_display_name === "string"
+          ? sealedApproval.approver_display_name
+          : null,
+      approver_role:
+        typeof sealedApproval?.approver_role_label === "string"
+          ? sealedApproval.approver_role_label
+          : typeof sealedApproval?.approver_role === "string"
+            ? sealedApproval.approver_role
+            : null,
+      approved_at:
+        typeof sealedApproval?.decided_at === "string"
+          ? sealedApproval.decided_at
+          : null,
+      approval_reason:
+        typeof sealedApproval?.reason === "string" ? sealedApproval.reason : null,
+      required_role_label:
+        typeof sealedApproval?.approver_role_label === "string"
+          ? sealedApproval.approver_role_label
+          : null,
     });
   return {
     receipt_id: receipt.receipt_id,
@@ -580,6 +683,120 @@ export async function verifyBundleFile(
           });
         }
       }
+      // Soft who_approved / plain_summary must match the signed body when present.
+      if (
+        typeof ev.who_approved === "string" &&
+        ev.who_approved !== whoApproved(r, bundle.approvals ?? []) &&
+        (r.outcome === "approved" ||
+          r.outcome === "declined" ||
+          r.outcome === "released")
+      ) {
+        findings.push({
+          code: "approval_binding_mismatch",
+          message: "Approver summary does not match the signed receipt",
+          record: r.receipt_id,
+        });
+      }
+      if (
+        typeof ev.plain_summary === "string" &&
+        typeof r.plain_summary === "string" &&
+        ev.plain_summary !== r.plain_summary &&
+        (r.outcome === "approved" ||
+          r.outcome === "declined" ||
+          r.outcome === "released")
+      ) {
+        findings.push({
+          code: "approval_binding_mismatch",
+          message: "Plain summary does not match the signed receipt",
+          record: r.receipt_id,
+        });
+      }
+    }
+  }
+
+  // A1: hold/stop receipts that were decided must have a follow-on outcome receipt
+  // whose signed approvals[] match the unsigned approvals section when present.
+  for (const prior of bundle.receipts) {
+    if (prior.outcome !== "hold" && prior.outcome !== "stop") continue;
+    const followOns = bundle.receipts.filter((r) => {
+      const attrs = r.attributes as Record<string, unknown> | undefined;
+      const sealed = Array.isArray(r.approvals) ? r.approvals[0] : null;
+      const followHash =
+        (typeof attrs?.follows_receipt_hash === "string"
+          ? attrs.follows_receipt_hash
+          : null) ??
+        (sealed &&
+        typeof (sealed as Record<string, unknown>).follows_receipt_hash === "string"
+          ? String((sealed as Record<string, unknown>).follows_receipt_hash)
+          : null);
+      return (
+        (r.outcome === "approved" ||
+          r.outcome === "declined" ||
+          r.outcome === "released") &&
+        followHash === prior.receipt_hash
+      );
+    });
+    const decidedApprovals = (bundle.approvals ?? []).filter(
+      (a) => a.status === "approved" || a.status === "rejected",
+    );
+    if (decidedApprovals.length > 0 && followOns.length === 0) {
+      findings.push({
+        code: "approval_binding_mismatch",
+        message:
+          "A human decision is listed without a signed outcome receipt that follows the hold record",
+        record: prior.receipt_id,
+      });
+    }
+    for (const outcome of followOns) {
+      const sealed = Array.isArray(outcome.approvals) ? outcome.approvals[0] : null;
+      if (!sealed || typeof sealed !== "object") continue;
+      const s = sealed as Record<string, unknown>;
+      for (const soft of bundle.approvals ?? []) {
+        if (soft.approval_id && soft.approval_id === s.approval_id) {
+          const softDecision =
+            soft.status === "rejected"
+              ? "declined"
+              : soft.status === "approved"
+                ? outcome.outcome === "released"
+                  ? "released"
+                  : "approved"
+                : soft.status;
+          if (
+            softDecision !== s.decision &&
+            soft.status !== "pending" &&
+            soft.status !== s.decision
+          ) {
+            findings.push({
+              code: "approval_binding_mismatch",
+              message: "Unsigned approval decision does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
+          const softVote = soft.votes?.[0];
+          if (
+            softVote?.voter_email &&
+            typeof s.approver_email === "string" &&
+            softVote.voter_email !== s.approver_email
+          ) {
+            findings.push({
+              code: "approval_binding_mismatch",
+              message: "Unsigned approver does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
+          if (
+            softVote?.reason &&
+            typeof s.reason === "string" &&
+            softVote.reason !== s.reason
+          ) {
+            findings.push({
+              code: "approval_binding_mismatch",
+              message: "Unsigned approval reason does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
+        }
+      }
     }
   }
 
@@ -592,6 +809,88 @@ export async function verifyBundleFile(
     });
   }
 
+  // A5: when the bundle includes a complete witness proof, verify it offline.
+  // Older bundles without merkle_path keep verifying (no hard failure).
+  if (Array.isArray(bundle.witness)) {
+    for (const w of bundle.witness) {
+      if (!w || w.status !== "included") continue;
+      const path = w.merkle_path;
+      const rootHash = w.root_hash;
+      if (!Array.isArray(path) || typeof rootHash !== "string") continue;
+      const sealed =
+        bundle.sealed_events?.find((e) => e.event_id === w.event_id) ??
+        bundle.receipts
+          .flatMap((r) => r.sealed_events ?? [])
+          .find((e) => e.event_id === w.event_id);
+      const leaf = sealed?.event_hash;
+      if (typeof leaf !== "string") continue;
+      if (!verifyMerkleProof(leaf, rootHash, path as MerklePathStep[])) {
+        findings.push({
+          code: "witness_inclusion_invalid",
+          message: "Merkle inclusion proof does not match root",
+          record: w.event_id,
+        });
+      }
+      if (
+        typeof w.root_sig_value_b64 === "string" &&
+        w.root_sig_value_b64 &&
+        typeof w.root_sig_key_id === "string"
+      ) {
+        const pub =
+          bundle.keys?.[w.root_sig_key_id] ??
+          (bundle as { witness_keys?: Record<string, string> }).witness_keys?.[
+            w.root_sig_key_id
+          ];
+        if (pub) {
+          const sigOk = await ed.verifyAsync(
+            Buffer.from(w.root_sig_value_b64, "base64"),
+            checkpointSigningMessage(rootHash),
+            Buffer.from(pub, "base64"),
+          );
+          if (!sigOk) {
+            findings.push({
+              code: "witness_root_sig_invalid",
+              message: "Witness root signature invalid",
+              record: w.event_id,
+            });
+          }
+        }
+      }
+      const ts = w.timestamp;
+      if (ts?.status === "stamped" && typeof ts.token_b64 === "string" && ts.token_b64) {
+        const expected = `sha256:${rootHash.replace(/^sha256:/i, "").toLowerCase()}`;
+        if (ts.authority === "local-test-tsa") {
+          const token: TimestampToken = {
+            alg: "local-test-tsa",
+            issued_at: ts.gen_time_utc ?? new Date(0).toISOString(),
+            message_hash: ts.message_hash || expected,
+            token_b64: ts.token_b64,
+          };
+          const local = verifyLocalTestTimestamp(token, expected);
+          if (!local.ok) {
+            findings.push({
+              code: "witness_timestamp_invalid",
+              message: "Witness root timestamp token invalid",
+              record: w.event_id,
+            });
+          }
+        } else {
+          const parsed = parseRfc3161Reply(Buffer.from(ts.token_b64, "base64"));
+          const imprintOk =
+            parsed.ok &&
+            `sha256:${parsed.message_hash_hex}` === expected;
+          if (!imprintOk) {
+            findings.push({
+              code: "witness_timestamp_invalid",
+              message: "Witness root timestamp token invalid",
+              record: w.event_id,
+            });
+          }
+        }
+      }
+    }
+  }
+
   const hard = findings.filter((f) => f.code !== "demo_clock");
   const ok = hard.length === 0;
   const witness = witnessStateFromBundle(bundle);
@@ -599,6 +898,10 @@ export async function verifyBundleFile(
     receipts: bundle.receipts,
     approvals: Array.isArray(bundle.approvals) ? bundle.approvals : [],
     trusted_time: trustedTime,
+    witness_label: witnessLabelFromBundle(bundle),
+    witness_anchoring_type: Array.isArray(bundle.witness)
+      ? bundle.witness.find((x) => x?.anchoring_type)?.anchoring_type ?? null
+      : null,
   });
   return {
     ok,
@@ -812,6 +1115,13 @@ export async function loadEvidenceBundle(
     organizationId,
     [...new Set(receipts.map((r) => r.key_id))],
   );
+  // A5: include the witness checkpoint public key so root signatures verify offline.
+  try {
+    const witnessPub = await witnessCheckpointPublicKeyB64();
+    if (witnessPub) keys[witnessCheckpointKeyId()] = witnessPub;
+  } catch {
+    /* optional */
+  }
 
   let approvals: EvidenceApproval[] = [];
   try {
@@ -905,19 +1215,39 @@ export async function loadEvidenceBundle(
     for (const id of cited) {
       if (id.startsWith("evt_gov_")) continue;
       const proof = await getInclusionProofByEvent(client, organizationId, id);
-      w.push(
-        proof
+      if (!proof) {
+        w.push({
+          event_id: id,
+          status: "pending",
+          label: witnessCheckpointLabel("internal"),
+        });
+        continue;
+      }
+      w.push({
+        event_id: id,
+        status: "included",
+        label: witnessCheckpointLabel(proof.anchoring_type),
+        proof_id: proof.proof_id,
+        root_id: proof.root_id,
+        root_hash: proof.root_hash,
+        leaf_index: proof.leaf_index,
+        tree_size: proof.tree_size,
+        merkle_path: proof.merkle_path,
+        root_sig_value_b64: proof.sig_value_b64,
+        root_sig_key_id: proof.sig_key_id,
+        anchoring_type: proof.anchoring_type,
+        external_tx_id: proof.external_tx_id,
+        timestamp: proof.timestamp
           ? {
-              event_id: id,
-              status: "included",
-              proof_id: proof.proof_id,
-              root_id: proof.root_id,
-              root_hash: proof.root_hash,
-              leaf_index: proof.leaf_index,
-              tree_size: proof.tree_size,
+              status: proof.timestamp.status,
+              authority: proof.timestamp.authority,
+              gen_time_utc: proof.timestamp.gen_time_utc,
+              tsa_url: proof.timestamp.tsa_url,
+              message_hash: proof.timestamp.message_hash,
+              token_b64: proof.timestamp.token_b64,
             }
-          : { event_id: id, status: "pending" },
-      );
+          : null,
+      });
     }
     witness = w.length > 0 ? w : null;
   } catch {
@@ -1056,12 +1386,15 @@ export async function renderEvidencePdf(bundle: EvidenceBundle): Promise<Buffer>
     ],
     [
       "Rule(s)",
-      primary.matched_rules.map((m) => m.rule_id).join(", ") || "none matched",
+      primary.matched_rules
+        .map((m) => formatRuleLabel(m.rule_id) ?? null)
+        .filter((x): x is string => Boolean(x))
+        .join(", ") || "none matched",
     ],
     [
       "Policy",
       primary.policy
-        ? `${primary.policy.policy_id} v${primary.policy.version}` +
+        ? `v${primary.policy.version}` +
           (primary.policy.content_hash ? ` (${primary.policy.content_hash})` : "")
         : "n/a",
     ],

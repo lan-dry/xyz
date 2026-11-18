@@ -7,6 +7,7 @@ import { applyFieldPolicy } from "./field-policy.js";
 import { evaluateBankEvent } from "./evaluate.js";
 import { policyContentHash } from "./policy-hash.js";
 import { sealGovernedDecision } from "./seal-decision.js";
+import { storeMaskedFieldClears } from "./sensitive-field-vault.js";
 import {
   findCaseByIdempotency,
   getWorkflowRecordOnly,
@@ -130,6 +131,15 @@ export async function handleBankEvent(
   const decisionId = `dec_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   let receiptId = `rcpt_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
   const traceId = event.trace_id ?? `tr_gov_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+  await storeMaskedFieldClears(client, {
+    organizationId,
+    caseId: event.case_id,
+    traceId,
+    eventId: null,
+    attributes: event.attributes,
+    rules: fieldRules,
+  });
 
   const matched = evalResult.matched_rules.map((m) => ({
     rule_id: m.rule_id,

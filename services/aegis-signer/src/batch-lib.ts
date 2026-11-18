@@ -1,3 +1,8 @@
+/**
+ * Legacy Stage-8 witness batch (roots + inclusion proofs only).
+ * Production cadence uses `aegis-api` `src/witness/batch.ts`, which also signs
+ * checkpoints and stores RFC 3161 / local-test timestamp tokens (A5).
+ */
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
 import {

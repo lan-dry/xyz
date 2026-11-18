@@ -221,7 +221,11 @@ export type CaseSummary = {
   approvers: CaseApprover[];
   approval_status: string | null;
   required_role: string | null;
+  /** Screen label: "Patience Ingabire · Credit Officer". */
   requester: string | null;
+  /** Technical / SoD match only. */
+  requester_email?: string | null;
+  requester_officer_id?: string | null;
   seal: CaseSealStatus;
   demo_filler: boolean;
   /** Synthetic back-dated history from the demo seed. */

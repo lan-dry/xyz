@@ -24,43 +24,11 @@ function parseDeclaredTools(raw: unknown): string[] {
     .filter(Boolean);
 }
 
-/** Ensure demo orgs always show at least one intentionally ungoverned tool. */
-export async function ensureDemoUngovernedTool(
-  client: pg.Pool | pg.PoolClient,
-  organizationId: string,
-  environment: "production" | "sandbox",
-): Promise<void> {
-  const DEMO_TOOL = "demo.shadow_transfer";
-  const agents = await client.query<{ agent_id: string; declared_tools: unknown }>(
-    `SELECT agent_id, declared_tools FROM agent
-     WHERE organization_id = $1
-       AND COALESCE(environment, 'production') = $2
-     ORDER BY created_at ASC
-     LIMIT 5`,
-    [organizationId, environment],
-  );
-  if (agents.rows.length === 0) return;
-
-  const already = agents.rows.some((a) =>
-    parseDeclaredTools(a.declared_tools).includes(DEMO_TOOL),
-  );
-  if (already) return;
-
-  const target = agents.rows[0]!;
-  const next = [...parseDeclaredTools(target.declared_tools), DEMO_TOOL];
-  await client.query(
-    `UPDATE agent SET declared_tools = $1::jsonb WHERE agent_id = $2 AND organization_id = $3`,
-    [JSON.stringify(next), target.agent_id, organizationId],
-  );
-}
-
 export async function getToolCoverage(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
   environment: "production" | "sandbox" = "production",
 ): Promise<CoverageReport> {
-  await ensureDemoUngovernedTool(client, organizationId, environment);
-
   const patternsResult = await client.query<{ tool_pattern: string }>(
     `SELECT DISTINCT pr.tool_pattern
      FROM policy_rule pr
@@ -142,6 +110,7 @@ export async function getToolCoverage(
   }
 
   const tools: CoverageToolRow[] = [...byTool.values()]
+    .filter((acc) => acc.tool_name !== "demo.shadow_transfer")
     .map((acc) => {
       const matched = patterns.filter((p) => toolMatches(p, acc.tool_name));
       const source: CoverageToolRow["source"] =

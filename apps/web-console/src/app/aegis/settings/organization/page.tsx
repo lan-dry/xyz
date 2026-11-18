@@ -13,6 +13,7 @@ import settings from "../settings.module.css";
 
 type Residency = {
   region: string;
+  region_label?: string;
   topology: string;
   legal_hold: boolean;
   retention_days: number | null;
@@ -51,7 +52,7 @@ function ResidencyLegalHold({ isAdmin }: { isAdmin: boolean }) {
               Region
             </dt>
             <dd style={{ margin: "0.25rem 0 0" }} className="mono">
-              {residency.region}
+              {residency.region_label ?? residency.region}
             </dd>
           </div>
           <div>

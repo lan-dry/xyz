@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { EmptyStatePanel } from "@/components/console/empty-state-panel";
+import { ConsoleTime } from "@/components/console/console-time";
 import {
   ConsolePage,
   ConsolePagination,
@@ -163,7 +164,7 @@ export default function SearchPage() {
                     <StatusBadge status={h.policy_decision} />
                   </td>
                   <td className="mono">{h.tool_name ?? "-"}</td>
-                  <td>{new Date(h.emitted_at).toLocaleString()}</td>
+                  <td><ConsoleTime iso={h.emitted_at} /></td>
                 </tr>
               ))}
             </tbody>

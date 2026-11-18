@@ -1,5 +1,7 @@
 "use client";
 
+import { ConsoleTime } from "@/components/console/console-time";
+import { formatConsoleTime } from "@/lib/format-display";
 import {
   BookOpen,
   CalendarClock,
@@ -197,18 +199,11 @@ export default function ExportsPage() {
               className={`${ui.btn} ${ui.btnPrimary}`}
               onClick={async () => {
                 try {
-                  const data = await consoleApi<{ pack: Record<string, unknown> }>(
-                    "/risk-approval-pack",
+                  const day = new Date().toISOString().slice(0, 10);
+                  await consoleDownload(
+                    "/risk-approval-pack?format=zip",
+                    `risk-approval-pack-${day}.zip`,
                   );
-                  const blob = new Blob([JSON.stringify(data.pack, null, 2)], {
-                    type: "application/json",
-                  });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `risk-approval-pack-${new Date().toISOString().slice(0, 10)}.json`;
-                  a.click();
-                  URL.revokeObjectURL(url);
                 } catch {
                   setDownloadError("Could not download Risk Approval Pack.");
                 }
@@ -389,12 +384,12 @@ export default function ExportsPage() {
               {scheduleEnabled && schedule?.next_run_at ? (
                 <p className={styles.scheduleMeta}>
                   <strong>Next run:</strong>{" "}
-                  {new Date(schedule.next_run_at).toLocaleString()}
+                  <ConsoleTime iso={schedule.next_run_at} />
                   {schedule.last_run_at ? (
                     <>
                       <br />
                       <strong>Last run:</strong>{" "}
-                      {new Date(schedule.last_run_at).toLocaleString()}
+                      <ConsoleTime iso={schedule.last_run_at} />
                     </>
                   ) : null}
                 </p>
@@ -524,14 +519,14 @@ function ExportTable({
                 <StatusBadge status={row.status} />
               </td>
               <td style={{ fontSize: "0.8125rem", whiteSpace: "nowrap" }}>
-                {new Date(row.period_start).toLocaleDateString()} –{" "}
-                {new Date(row.period_end).toLocaleDateString()}
+                <ConsoleTime iso={row.period_start} /> –{" "}
+                <ConsoleTime iso={row.period_end} />
               </td>
               <td>{row.event_count ?? "-"}</td>
               <td>{formatBytes(row.byte_size)}</td>
               <td style={{ fontSize: "0.8125rem", whiteSpace: "nowrap" }}>
                 {row.generated_at
-                  ? new Date(row.generated_at).toLocaleString()
+                  ? formatConsoleTime(row.generated_at)
                   : "-"}
               </td>
               <td>

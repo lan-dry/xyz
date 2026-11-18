@@ -51,7 +51,7 @@ export const AEGIS_NAV: ConsoleNavItem[] = [
   { href: "/aegis/keys", label: "API keys", icon: KeyRound },
   { href: "/aegis/workflows", label: t("nav.workflows", "Workflows"), icon: GitBranch },
   { href: "/aegis/incidents", label: "Incidents", icon: AlertTriangle },
-  { href: "/aegis/evidence", label: t("receipt.title", "Receipts"), icon: FileCheck },
+  { href: "/aegis/evidence", label: t("nav.evidence", "Evidence"), icon: FileCheck },
   { href: "/aegis/integrations", label: "Integrations", icon: Plug },
   { href: "/aegis/settings", label: t("nav.settings", "Settings"), icon: Settings },
 ];

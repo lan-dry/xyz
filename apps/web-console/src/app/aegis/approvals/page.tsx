@@ -22,11 +22,18 @@ import {
 import { ConsoleTime } from "@/components/console/console-time";
 import { useCaseSummaries } from "@/hooks/use-case-summaries";
 import { consoleApi } from "@/lib/api";
-import { productFromSummary, roleLabel, titleFromSummary } from "@/lib/case-row";
+import {
+  approverDisplay,
+  productFromSummary,
+  roleLabel,
+  ruleLabels,
+  titleFromSummary,
+} from "@/lib/case-row";
 import {
   readConsoleEnvironment,
   type ConsoleEnvironment,
 } from "@/lib/console-environment";
+import { formatApprover } from "@/lib/describe-decision";
 import { formatMoney } from "@/lib/format-display";
 import { idApi } from "@/lib/id-api";
 import { toolActionPlain } from "@/lib/outcome-vocab";
@@ -153,7 +160,11 @@ function ApprovalCard({
 }: {
   summary?: CaseSummary;
   /** Current console user, for the "You are signed in as…" line. */
-  signedIn?: { email: string; role: string } | null;
+  signedIn?: {
+    email: string;
+    display_name: string | null;
+    bank_role: string | null;
+  } | null;
   approval: ApprovalSummary;
   focusRef?: RefObject<HTMLDivElement | null>;
   focused?: boolean;
@@ -184,11 +195,22 @@ function ApprovalCard({
 
   const title = titleFromSummary(summary) ?? toolActionPlain(a.tool_name);
   const amountText = formatMoney(summary?.amount, summary?.currency);
-  const triggeringRule = summary?.rules[0] ?? null;
-  const requester = summary?.requester ?? null;
+  const triggeringRuleLabel = summary ? (ruleLabels(summary)[0] ?? null) : null;
+  const requesterLabel = summary?.requester ?? null;
+  const requesterEmail = summary?.requester_email ?? null;
   const selfRequested =
-    Boolean(signedIn && requester) &&
-    signedIn!.email.toLowerCase() === requester!.toLowerCase();
+    Boolean(signedIn && requesterEmail) &&
+    signedIn!.email.toLowerCase() === requesterEmail!.toLowerCase();
+  const signedInLabel =
+    signedIn
+      ? formatApprover(signedIn.display_name, signedIn.bank_role) ??
+        signedIn.display_name ??
+        signedIn.email
+      : null;
+  const decidedApprover =
+    summary?.approvers?.find((v) =>
+      ["approved", "rejected", "declined", "released"].includes(v.decision),
+    ) ?? null;
   const titleId = `approval-title-${a.approval_id}`;
 
   return (
@@ -316,15 +338,15 @@ function ApprovalCard({
                   </>
                 ) : null}
                 <dt style={{ color: "var(--console-fg-muted)" }}>Requested by</dt>
-                <dd style={{ margin: 0 }}>{requester ?? "Not recorded"}</dd>
+                <dd style={{ margin: 0 }}>{requesterLabel ?? "Not recorded"}</dd>
                 <dt style={{ color: "var(--console-fg-muted)" }}>Triggering rule</dt>
-                <dd style={{ margin: 0 }} className="mono">
-                  {triggeringRule ?? "Not recorded"}
+                <dd style={{ margin: 0 }}>
+                  {triggeringRuleLabel ?? "Not recorded"}
                 </dd>
                 <dt style={{ color: "var(--console-fg-muted)" }}>Required role</dt>
                 <dd style={{ margin: 0 }}>{roleLabel(summary.required_role)}</dd>
               </dl>
-              {!showDecided && signedIn ? (
+              {!showDecided && signedIn && signedInLabel ? (
                 <p
                   style={{
                     margin: "0.65rem 0 0",
@@ -332,11 +354,10 @@ function ApprovalCard({
                     color: "var(--console-fg-muted)",
                   }}
                 >
-                  You are signed in as <strong>{signedIn.email}</strong> (
-                  {signedIn.role.replace(/_/g, " ")}). This needs{" "}
+                  You are signed in as <strong>{signedInLabel}</strong>. This needs{" "}
                   <strong>{roleLabel(summary.required_role)}</strong>.
                   {selfRequested
-                    ? " You requested this case, so someone else has to decide it."
+                    ? " Separation of duties: you requested this case, so someone else has to decide it."
                     : ""}
                 </p>
               ) : null}
@@ -392,7 +413,7 @@ function ApprovalCard({
             </div>
           )}
 
-          {showDecided && a.approver_email ? (
+          {showDecided && (decidedApprover || a.approver_email) ? (
             <div
               className={ui.card}
               style={{
@@ -412,7 +433,9 @@ function ApprovalCard({
                   : a.status === "rejected"
                     ? "Declined by"
                     : "Decided by"}{" "}
-                <span className="mono">{a.approver_email}</span>
+                {decidedApprover
+                  ? approverDisplay(decidedApprover)
+                  : a.approver_email}
               </p>
               {a.decided_at ? (
                 <p
@@ -600,6 +623,17 @@ export default function ApprovalsPage() {
   const meQuery = useQuery({
     queryKey: ["id", "me"],
     queryFn: () => idApi<MeResponse>("/auth/me"),
+  });
+  const consoleMeQuery = useQuery({
+    queryKey: ["console", "me", "bank-roles"],
+    queryFn: () =>
+      consoleApi<{
+        user: {
+          email: string;
+          display_name: string | null;
+          bank_roles?: string[];
+        };
+      }>("/auth/me"),
   });
   const bankMode = isBankDemoProfile();
   const role = meQuery.data?.user?.role?.trim().toLowerCase();
@@ -873,7 +907,14 @@ export default function ApprovalsPage() {
   ]);
   const summaries = summariesQuery.data;
   const me = meQuery.data?.user;
-  const signedIn = me ? { email: me.email, role: me.role } : null;
+  const consoleMe = consoleMeQuery.data?.user;
+  const signedIn = me
+    ? {
+        email: me.email,
+        display_name: me.display_name ?? consoleMe?.display_name ?? null,
+        bank_role: consoleMe?.bank_roles?.[0] ?? null,
+      }
+    : null;
   const historyTotal = historyQuery.data?.total ?? 0;
   const blockedTraces = pendingQuery.data?.blocked_traces ?? pending.length;
   const isEmptyPending = pending.length === 0 && !pendingQuery.isLoading;
@@ -893,9 +934,10 @@ export default function ApprovalsPage() {
         title="Approvals"
         subtitle={
           <>
-            When a rule says <strong>{bankMode ? "Needs approval" : "Ask a person"}</strong>, {bankMode ? "the case waits here" : "the payment waits here"}. You have
-            up to <strong>{ttlHours} hours</strong> to Approve or Decline. Admins can get
-            Slack or email notify under Settings → Governance.
+            When a rule says <strong>{bankMode ? "Needs approval" : "Ask a person"}</strong>,
+            cases waiting for a person appear here. You have up to{" "}
+            <strong>{ttlHours} hours</strong> to Approve or Decline. Admins can get Slack or
+            email notify under Settings → Governance.
           </>
         }
       />
@@ -1195,7 +1237,9 @@ export default function ApprovalsPage() {
         {detailApproval ? (
           <>
             <div style={{ display: "grid", gap: "1rem" }}>
-              {detailApproval.status !== "pending" && detailApproval.approver_email ? (
+              {detailApproval.status !== "pending" &&
+              (detailApproval.approver_email ||
+                (summaries?.[detailApproval.trace_id]?.approvers.length ?? 0) > 0) ? (
                 <div
                   className={ui.card}
                   style={{
@@ -1214,7 +1258,17 @@ export default function ApprovalsPage() {
                       : detailApproval.status === "rejected"
                         ? "Declined by"
                         : "Decided by"}{" "}
-                    <span className="mono">{detailApproval.approver_email}</span>
+                    {(() => {
+                      const vote = summaries?.[detailApproval.trace_id]?.approvers.find(
+                        (v) =>
+                          ["approved", "rejected", "declined", "released"].includes(
+                            v.decision,
+                          ),
+                      );
+                      return vote
+                        ? approverDisplay(vote)
+                        : detailApproval.approver_email;
+                    })()}
                   </p>
                   {detailApproval.decided_at ? (
                     <p

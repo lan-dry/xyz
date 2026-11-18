@@ -1186,7 +1186,7 @@ export default function PoliciesPage() {
                     {bank ? (
                       <ActivatedCell v={versionById.get(p.policy_id)} />
                     ) : p.activated_at ? (
-                      new Date(p.activated_at).toLocaleString()
+                      <ConsoleTime iso={p.activated_at} />
                     ) : (
                       "n/a"
                     )}
@@ -1454,11 +1454,7 @@ export default function PoliciesPage() {
               {detailQuery.data.policy.activated_at ? (
                 <>
                   {" · Activated "}
-                  {bank ? (
-                    <ConsoleTime iso={detailQuery.data.policy.activated_at} />
-                  ) : (
-                    new Date(detailQuery.data.policy.activated_at).toLocaleString()
-                  )}
+                  <ConsoleTime iso={detailQuery.data.policy.activated_at} />
                 </>
               ) : null}
             </p>

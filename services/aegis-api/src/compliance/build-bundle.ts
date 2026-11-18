@@ -34,8 +34,11 @@ export type BundleManifest = {
   period_end: string;
   event_count: number;
   generated_at: string;
-  /** Always null inside the ZIP — a ZIP cannot contain its own hash. See console / API. */
-  integrity_hash: string | null;
+  /**
+   * Omitted from the in-ZIP manifest (a ZIP cannot contain its own hash).
+   * The console / API store the SHA-256 of the finished ZIP separately.
+   */
+  integrity_hash?: string;
   file_hashes: Record<string, string>;
   artifacts: string[];
   control_mapping_files: string[];
@@ -166,7 +169,7 @@ export async function buildComplianceZip(input: {
         agent_event_signature:
           "Ed25519 over the APS-1 signing digest for each event (see packages/aegis-ledger-sdk digest). Verify with the public_key_b64 for sig_key_id.",
         witness_checkpoint_signature:
-          "Ed25519 over SHA-256(UTF-8 of lowercase root_hash hex). Fields tree_size and interval are not part of the signed message; they are metadata next to the signed root_hash.",
+          "Ed25519 over SHA-256(UTF-8 of lowercase root_hash hex). Product label: Salanor witness checkpoint (signed), unless anchoring_type is external. Merkle: leaf = event hash; node = SHA-256(left hex + right hex). Fields tree_size and interval are not part of the signed message.",
       },
     },
     null,
@@ -200,7 +203,6 @@ export async function buildComplianceZip(input: {
     period_end: input.periodEnd.toISOString(),
     event_count: input.events.length,
     generated_at: new Date().toISOString(),
-    integrity_hash: null,
     file_hashes,
     artifacts: [...baseArtifacts, ...controlMappingFiles],
     control_mapping_files: controlMappingFiles,
@@ -251,6 +253,7 @@ export async function buildComplianceZip(input: {
   return {
     integrityHash,
     byteSize: size,
+    // integrity_hash is returned for the API/DB only — never written inside the ZIP.
     manifest: { ...manifest, integrity_hash: integrityHash },
   };
 }

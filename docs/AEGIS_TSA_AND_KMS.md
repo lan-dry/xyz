@@ -11,9 +11,9 @@ The notes below describe the lower-level providers.
 
 | Env | Purpose |
 |-----|---------|
-| `AEGIS_TSA_URL` | HTTP endpoint accepting `application/timestamp-query` (RFC 3161). When set, checkpoints use `requestRfc3161Timestamp`. When unset, local test HMAC TSA is used (dev/tests only). |
+| `AEGIS_TSA_URL` | HTTP endpoint accepting `application/timestamp-query` (RFC 3161). When set, forensic receipts and Merkle witness roots use `requestRfc3161Timestamp` / `requestReceiptStamp`. When unset, local test HMAC TSA is used (dev/tests only). |
 
-Client: `services/aegis-api/src/forensic/rfc3161.ts` (`buildRfc3161TimestampRequest`, `requestRfc3161Timestamp`, `createCheckpointTimestamp`).
+Client: `services/aegis-api/src/forensic/rfc3161.ts` (`buildRfc3161TimestampRequest`, `requestRfc3161Timestamp`, `createCheckpointTimestamp`). Witness roots: `services/aegis-api/src/witness/root-timestamp.ts` (stores `tsa_token_b64` on `merkle_root`).
 
 ## KeyProvider Sign
 

@@ -7,6 +7,7 @@ import type pg from "pg";
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import { getPool } from "../../db/pool.js";
 import { ingestHumanApprovalEvent } from "../../console/human-approval-event.js";
+import { issueApprovalOutcomeReceipt } from "../../forensic/issue-approval-outcome.js";
 import { buildRequestPreview } from "../../approvals/request-preview.js";
 import {
   askMoreOnApproval,
@@ -33,6 +34,7 @@ import {
   listMembershipBankRoles,
   loadBankApprovalRoleContext,
 } from "../../bank/repo.js";
+import { extractRequester } from "../../bank/requester.js";
 import {
   requireConsoleSession,
   type ConsoleVariables,
@@ -103,6 +105,8 @@ async function finalizeHumanApproval(
     approvalId: string;
     userId: string;
     email: string;
+    displayName?: string | null;
+    role?: string | null;
     decision: "approved" | "rejected";
     reason?: string;
     /** Set when the approver relied on a time-bound delegation (not a permanent role). */
@@ -130,17 +134,57 @@ async function finalizeHumanApproval(
       decided.detail.agent_id,
       decided.detail.key_id,
     );
-    await ingestHumanApprovalEvent(client, {
+    const rich = await getApprovalRich(
+      client,
+      params.organizationId,
+      params.approvalId,
+    );
+    const payload =
+      rich?.event_payload && typeof rich.event_payload === "object"
+        ? rich.event_payload
+        : null;
+    const requiredRole =
+      typeof rich?.metadata?.required_role === "string"
+        ? rich.metadata.required_role
+        : null;
+    const actingRole =
+      params.delegation?.role_key ?? params.role ?? requiredRole;
+    const requester = extractRequester(payload);
+    const persisted = await ingestHumanApprovalEvent(client, {
       organizationId: params.organizationId,
       traceId: decided.detail.trace_id,
       agentId: decided.detail.agent_id,
       keyId: approvalKeyId,
       parentEventId: decided.detail.event_id,
       approverEmail: params.email,
+      approverUserId: params.userId,
+      approverDisplayName: params.displayName ?? null,
+      approverRole: actingRole,
       approvalId: params.approvalId,
       decision: params.decision,
       toolName: decided.detail.tool_name ?? undefined,
       reason: params.reason,
+      requesterEmail: requester.email,
+      requesterOfficerId: requester.officer_id,
+      delegation: params.delegation ?? null,
+    });
+    await issueApprovalOutcomeReceipt(client, {
+      organizationId: params.organizationId,
+      approvalId: params.approvalId,
+      outcome: params.decision === "approved" ? "approved" : "declined",
+      gateEventId: decided.detail.event_id,
+      humanEventId: persisted.eventId,
+      humanEventHash: persisted.eventHash,
+      humanEventSeq: persisted.sequenceNum,
+      approver: {
+        user_id: params.userId,
+        display_name: params.displayName ?? null,
+        email: params.email,
+        role: actingRole,
+      },
+      reason: params.reason ?? null,
+      decided_at: new Date().toISOString(),
+      eventPayload: payload,
       delegation: params.delegation ?? null,
     });
   }
@@ -338,6 +382,8 @@ approvalRoutes.post("/approvals/act", requireConsoleSession, async (c) => {
       approvalId,
       userId: session.userId,
       email: session.email,
+      displayName: session.displayName,
+      role: session.role,
       decision: claims.decision,
       reason: body.reason?.trim(),
     });
@@ -442,6 +488,8 @@ approvalRoutes.post(
         approvalId,
         userId: session.userId,
         email: session.email,
+        displayName: session.displayName,
+        role: session.role,
         decision: "approved",
         reason: body.reason?.trim() ?? body.comment?.trim(),
         delegation,
@@ -539,6 +587,8 @@ approvalRoutes.post(
         approvalId,
         userId: session.userId,
         email: session.email,
+        displayName: session.displayName,
+        role: session.role,
         decision: "rejected",
         reason: body.reason.trim(),
       });
@@ -760,6 +810,59 @@ approvalRoutes.post(
           reason_code: body.reason_code.trim(),
           comment: body.comment?.trim() ?? null,
         },
+      });
+
+      const approvalKeyId = await getOrCreateApprovalSigningKeyId(
+        client,
+        session.organizationId,
+        rich.agent_id,
+        rich.key_id,
+      );
+      const payload =
+        rich.event_payload && typeof rich.event_payload === "object"
+          ? rich.event_payload
+          : null;
+      const requiredRole =
+        typeof meta.required_role === "string" ? meta.required_role : null;
+      const releaseReason =
+        body.comment?.trim() ?? body.reason?.trim() ?? body.reason_code.trim();
+      const releaseRequester = extractRequester(payload);
+      const persisted = await ingestHumanApprovalEvent(client, {
+        organizationId: session.organizationId,
+        traceId: rich.trace_id,
+        agentId: rich.agent_id,
+        keyId: approvalKeyId,
+        parentEventId: rich.event_id,
+        approverEmail: session.email,
+        approverUserId: session.userId,
+        approverDisplayName: session.displayName,
+        approverRole: requiredRole ?? session.role,
+        approvalId,
+        decision: "released",
+        toolName: rich.tool_name ?? undefined,
+        reason: releaseReason,
+        reasonCode: body.reason_code.trim(),
+        requesterEmail: releaseRequester.email,
+        requesterOfficerId: releaseRequester.officer_id,
+      });
+      await issueApprovalOutcomeReceipt(client, {
+        organizationId: session.organizationId,
+        approvalId,
+        outcome: "released",
+        gateEventId: rich.event_id,
+        humanEventId: persisted.eventId,
+        humanEventHash: persisted.eventHash,
+        humanEventSeq: persisted.sequenceNum,
+        approver: {
+          user_id: session.userId,
+          display_name: session.displayName,
+          email: session.email,
+          role: requiredRole ?? session.role,
+        },
+        reason: releaseReason,
+        reason_code: body.reason_code.trim(),
+        decided_at: releaseMeta.released_at,
+        eventPayload: payload,
       });
 
       const updated = await getApprovalRich(

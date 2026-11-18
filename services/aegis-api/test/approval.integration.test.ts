@@ -367,6 +367,8 @@ describeIfDb("human approvals (Stage 7 exit)", () => {
         keyId: DEV_KEY,
         parentEventId: caught!.eventId,
         approverEmail,
+        approverUserId: DEV_USER,
+        approverDisplayName: "Test Approver",
         approvalId: caught!.approvalId,
         decision: "approved",
       });

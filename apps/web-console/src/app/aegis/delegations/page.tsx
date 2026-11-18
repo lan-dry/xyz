@@ -14,6 +14,7 @@ import {
   ui,
 } from "@/components/console/console-ui";
 import { consoleApi } from "@/lib/api";
+import { formatApprover, formatRoleLabel } from "@/lib/describe-decision";
 
 type Person = { membership_id: string; name: string | null; email: string };
 
@@ -52,8 +53,17 @@ const DURATIONS: Array<{ label: string; minutes: number }> = [
   { label: "7 days", minutes: 60 * 24 * 7 },
 ];
 
-function personLabel(p: Person): string {
-  return p.name ? `${p.name} (${p.email})` : p.email;
+/** Dropdown / table: name first; email stays for title tooltip only. */
+function personLabel(
+  p: Person,
+  bankRole?: string | null,
+): string {
+  return (
+    formatApprover(p.name, bankRole) ??
+    p.name?.trim() ??
+    formatRoleLabel(bankRole) ??
+    p.email
+  );
 }
 
 export default function DelegationsPage() {
@@ -146,8 +156,15 @@ export default function DelegationsPage() {
                   >
                     <option value="">Choose a colleague</option>
                     {candidates.map((m) => (
-                      <option key={m.membership_id} value={m.membership_id}>
-                        {m.name ? `${m.name} (${m.email})` : m.email}
+                      <option
+                        key={m.membership_id}
+                        value={m.membership_id}
+                        title={m.email}
+                      >
+                        {personLabel(
+                          { membership_id: m.membership_id, name: m.name, email: m.email },
+                          m.bank_roles[0] ?? null,
+                        )}
                       </option>
                     ))}
                   </select>
@@ -228,8 +245,8 @@ export default function DelegationsPage() {
                   <tbody>
                     {data.delegations.map((d) => (
                       <tr key={d.delegate_id}>
-                        <td>{personLabel(d.delegate)}</td>
-                        <td>{personLabel(d.granted_by)}</td>
+                        <td title={d.delegate.email}>{personLabel(d.delegate, d.role_key)}</td>
+                        <td title={d.granted_by.email}>{personLabel(d.granted_by)}</td>
                         <td>{roleName(d.role_key)}</td>
                         <td>
                           <ConsoleTime iso={d.revoked_at ?? d.expires_at} />

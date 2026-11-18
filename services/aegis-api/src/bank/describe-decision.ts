@@ -24,6 +24,9 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
  * Not engine defaults — missing codes fall through to the raw rule id.
  */
 export const RULE_TITLES: Record<string, string> = {
+  "AUTH-RL-1": "Within officer limit",
+  "AUTH-RL-2": "Above officer limit",
+  // Legacy single-id band (pre-AUTH-RL-1/2); title still resolved by id, not effect.
   "AUTH-RL": "Within officer limit",
   "AUTH-RL-HIGH": "Above manager band",
   "LN-07": "High model score requires Credit Manager",
@@ -141,27 +144,36 @@ function productLabel(product?: string | null, eventType?: string | null): strin
 /** "Loan disbursement" / "Payment release" / "Customer data access" (event_type first). */
 export const actionLabel = productLabel;
 
-/** Display "AUTH-RL · Within officer limit"; strip UUID-like policy ids. */
-export function formatRuleLabel(
-  ruleId: string | null | undefined,
-  /** Effect of the rule on this case. AUTH-RL on a hold/stop is "Above officer limit". */
-  effect?: "allow" | "hold" | "stop" | string | null,
-): string | null {
+/** Extract the short rule id from a stored pack/policy rule id. */
+export function ruleIdCode(ruleId: string | null | undefined): string | null {
   if (!ruleId) return null;
   if (/^[0-9a-f-]{36}$/i.test(ruleId)) return null;
-  let code = ruleId;
   if (/^pol_/i.test(ruleId)) {
     // Pack rules are stored as `pol_pack_<pack>_<hash>_<CODE>`; show only the code.
     const m = /_([A-Z]{2,8}(?:-[A-Z0-9]+)+)$/.exec(ruleId);
-    if (!m) return null;
-    code = m[1]!;
+    return m?.[1] ?? null;
   }
+  return ruleId;
+}
+
+/**
+ * Display "AUTH-RL-2 · Above officer limit". Titles resolve by rule id
+ * (AUTH-RL-1 / AUTH-RL-2 / …). Strip UUID-like and opaque pack policy ids.
+ * Legacy bare AUTH-RL (pre-split bands) still accepts effect so old mid-band
+ * holds keep reading "Above officer limit"; new ids never use effect.
+ */
+export function formatRuleLabel(
+  ruleId: string | null | undefined,
+  effect?: "allow" | "hold" | "stop" | string | null,
+): string | null {
+  const code = ruleIdCode(ruleId);
+  if (!code) return null;
   if (code === "AUTH-RL" && (effect === "hold" || effect === "stop")) {
-    return `${code} · Above officer limit`;
+    return "AUTH-RL · Above officer limit";
   }
-  // Collapse r_v4_… demo ids to a short code when no title
   const title = RULE_TITLES[code];
   if (title) return `${code} · ${title}`;
+  // Collapse r_v4_… demo ids to a short code when no title
   if (/^r_v4_/i.test(code)) return `${code} · Dual-publish hold rule`;
   return code;
 }
@@ -179,6 +191,13 @@ export function dedupeRuleLabels(
     out.push(label);
   }
   return out;
+}
+
+/** Trim trailing sentence punctuation so callers can append a single full stop. */
+export function trimReason(reason: string | null | undefined): string | null {
+  if (!reason) return null;
+  const t = reason.trim().replace(/[.!?]+$/u, "").trim();
+  return t || null;
 }
 
 function policyPhrase(input: DescribeDecisionInput): string {
@@ -214,9 +233,8 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
   const pol = policyPhrase(receipt);
   const who = formatApprover(receipt.approver_name, receipt.approver_role);
   const when = receipt.approved_at ? ` on ${formatUtc(receipt.approved_at)}` : "";
-  const reason = receipt.approval_reason
-    ? `, reason: ${receipt.approval_reason}`
-    : "";
+  const reasonText = trimReason(receipt.approval_reason);
+  const reason = reasonText ? `, reason: ${reasonText}` : "";
 
   if (receipt.mode === "record_only" && receipt.would_have) {
     const would = OUTCOME_LABELS[receipt.would_have] ?? String(receipt.would_have);
@@ -241,7 +259,11 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
     ).trim();
   }
 
-  if (receipt.outcome === "allow") {
+  // A4: a named human approver must never read as an automatic allow.
+  const outcome =
+    receipt.outcome === "allow" && who ? "released" : receipt.outcome;
+
+  if (outcome === "allow") {
     const basis = receipt.decision_basis?.explanation;
     if (basis && /non-human obligation|do not become a hold/i.test(basis)) {
       return `${subject} was allowed. ${basis} ${pol}`.trim();
@@ -253,7 +275,7 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
     ).trim();
   }
 
-  if (receipt.outcome === "hold") {
+  if (outcome === "hold") {
     const role =
       receipt.required_role_label ??
       formatRoleLabel(receipt.required_role) ??
@@ -265,7 +287,7 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
     ).trim();
   }
 
-  if (receipt.outcome === "stop") {
+  if (outcome === "stop") {
     return (
       `${subject} was stopped` +
       (rule ? ` by rule ${rule}` : " by policy") +
@@ -273,7 +295,7 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
     ).trim();
   }
 
-  if (receipt.outcome === "released" || receipt.outcome === "approved") {
+  if (outcome === "released" || outcome === "approved") {
     return (
       `${subject} was held` +
       (rule
@@ -284,7 +306,7 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
           }`
         : "") +
       `. Approved by ${who ?? "an authorised approver"}${when}${
-        receipt.approval_reason ? ` with the reason: ${receipt.approval_reason}` : ""
+        reasonText ? ` with the reason: ${reasonText}` : ""
       }. ${pol}`
     ).trim();
   }

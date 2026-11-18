@@ -253,7 +253,15 @@ CREATE TABLE merkle_root (
   anchoring_type  TEXT CHECK (anchoring_type IN ('internal', 'bitcoin', 'ethereum')),
   external_tx_id  TEXT,
   published       BOOLEAN NOT NULL DEFAULT false,
-  published_at    TIMESTAMPTZ
+  published_at    TIMESTAMPTZ,
+  tsa_status      TEXT,
+  tsa_authority   TEXT,
+  tsa_url         TEXT,
+  tsa_gen_time    TIMESTAMPTZ,
+  tsa_token_b64   TEXT,
+  tsa_message_hash TEXT,
+  tsa_last_error  TEXT,
+  tsa_next_attempt_at TIMESTAMPTZ
 );
 
 CREATE TABLE inclusion_proof (

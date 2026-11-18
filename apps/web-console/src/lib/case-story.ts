@@ -17,7 +17,7 @@ import {
   type DescribeDecisionInput,
 } from "./describe-decision";
 import type { CaseApprover } from "./types";
-import { formatRwf } from "./format-display";
+import { formatConsoleTime, formatRwf } from "./format-display";
 
 export type CaseEventLike = {
   action_kind: string;
@@ -54,6 +54,11 @@ export type CaseStory = {
   policyReason: string | null;
   policyId: string | null;
   waitingForPerson: boolean;
+  /** "Patience Ingabire · Credit Officer" (email under Technical details). */
+  requester: string | null;
+  /** Technical only. */
+  requesterEmail: string | null;
+  requesterOfficerId: string | null;
   approver: string | null;
   approvalDecision: string | null;
   approvalAt: string | null;
@@ -92,6 +97,10 @@ export type CaseSummaryMeta = {
   decided_by_rule_id?: string | null;
   /** Approve/decline votes with display names (emails stay in Technical details). */
   approvers?: CaseApprover[];
+  /** Screen label for who requested the action. */
+  requester?: string | null;
+  requester_email?: string | null;
+  requester_officer_id?: string | null;
 };
 
 function payloadRecord(payload: unknown): Record<string, unknown> | null {
@@ -235,7 +244,11 @@ function collectDataSeen(
       field,
       label: humanLabel(field),
       treatment,
-      value: treatment === "stored" ? displayValue(field, value, currency) : null,
+      // Masked values keep the masked form (****1234); hashed/name_only hide the value.
+      value:
+        treatment === "hashed" || treatment === "name_only"
+          ? null
+          : displayValue(field, value, currency),
     });
   }
 
@@ -345,6 +358,7 @@ function collectFromEvents(events: CaseEventLike[]) {
   let approver: string | null = null;
   let approvalDecision: string | null = null;
   let approvalAt: string | null = null;
+  let approvalReason: string | null = null;
   let dataTouched: string[] = [];
   let dataSensitivity: string | null = null;
   let anomalyReason: string | null = null;
@@ -427,13 +441,16 @@ function collectFromEvents(events: CaseEventLike[]) {
     }
 
     if (e.action_kind === "human_approval") {
+      // Prefer display name; email stays available for summary.approvers matching.
       approver =
+        str(p?.approver_display_name) ??
         str(p?.approver_email) ??
         str(p?.approver) ??
         e.actor_principal ??
         approver;
       approvalDecision = str(p?.decision) ?? e.policy_decision ?? approvalDecision;
       approvalAt = e.emitted_at ?? approvalAt;
+      approvalReason = str(p?.reason) ?? approvalReason;
     }
 
     if (e.action_kind === "result" && e.tool_name?.includes("stripe")) {
@@ -457,6 +474,7 @@ function collectFromEvents(events: CaseEventLike[]) {
     approver,
     approvalDecision,
     approvalAt,
+    approvalReason,
     dataTouched,
     dataSensitivity,
     anomalyReason,
@@ -551,6 +569,42 @@ export function buildCaseStory(
   let noApprovalNeeded: string | null = null;
   /** "Jean Mutabazi · Credit Manager" when the summary names the approver, else the raw actor. */
   let approverShown: string | null = c.approver;
+  const requesterFromAttrs = (() => {
+    const src = bankAttributes ?? bp;
+    if (!src) return null;
+    const name =
+      str(src.requester_name) ?? str(src.officer_name) ?? null;
+    const role =
+      str(src.requester_role) ?? str(src.officer_role) ?? null;
+    const email =
+      str(src.requester_email) ?? str(src.officer_email) ?? null;
+    const officerId =
+      str(src.requester_officer_id) ?? str(src.officer_id) ?? null;
+    const systemAccount =
+      str(src.system_account) ?? str(src.bank_system_account) ?? null;
+    const label =
+      formatApprover(name, role) ??
+      (systemAccount && officerId ? `${systemAccount} · ${officerId}` : null) ??
+      email ??
+      officerId;
+    return {
+      label,
+      email,
+      officerId,
+    };
+  })();
+  const requesterLabel =
+    meta.summary?.requester?.trim() ||
+    requesterFromAttrs?.label ||
+    null;
+  const requesterEmail =
+    meta.summary?.requester_email?.trim() ||
+    requesterFromAttrs?.email ||
+    null;
+  const requesterOfficerId =
+    meta.summary?.requester_officer_id?.trim() ||
+    requesterFromAttrs?.officerId ||
+    null;
   if (bp) {
     const bankOutcome = str(bp.outcome) ?? "allow";
     const approved = c.approvalDecision === "approved";
@@ -576,7 +630,7 @@ export function buildCaseStory(
       str(bp.decided_by_rule_id) ??
       (isRecord(bp.decision_basis) ? str(bp.decision_basis.decided_by_rule_id) : null) ??
       (bankOutcome === "hold" || bankOutcome === "stop"
-        ? ruleIds.find((r) => !/(^|_)AUTH-RL$/.test(r))
+        ? ruleIds.find((r) => !/(^|_)AUTH-RL(-1)?$/.test(r))
         : null) ??
       ruleIds[0] ??
       null;
@@ -601,7 +655,8 @@ export function buildCaseStory(
       approver_name: approved || declined ? approverName : null,
       approver_role: approved || declined ? approverRole : null,
       approved_at: approved || declined ? (c.approvalAt ?? vote?.decided_at ?? null) : null,
-      approval_reason: approved || declined ? (vote?.reason ?? null) : null,
+      approval_reason:
+        approved || declined ? (vote?.reason ?? c.approvalReason ?? null) : null,
       mode: str(bp.mode),
       would_have: str(bp.would_have),
     };
@@ -673,7 +728,7 @@ export function buildCaseStory(
   } else if (c.obligation && (c.approvalDecision === "approved" || c.allowedPayment)) {
     const who = approverShown ?? "a person";
     const when = c.approvalAt
-      ? ` at ${new Date(c.approvalAt).toLocaleString()}`
+      ? ` at ${formatConsoleTime(c.approvalAt)}`
       : "";
     headline = `${action}${refBit} was approved by ${who} and completed${when}.`;
   } else if (waitingForPerson) {
@@ -820,6 +875,9 @@ export function buildCaseStory(
     policyReason: c.ruleReason,
     policyId: c.policyId,
     waitingForPerson,
+    requester: requesterLabel,
+    requesterEmail,
+    requesterOfficerId,
     approver: approverShown,
     approvalDecision: c.approvalDecision,
     approvalAt: c.approvalAt,
@@ -924,38 +982,56 @@ export function stepTitlePlain(
     if (isBankPayload(p)) {
       const attrs = p!.attributes as Record<string, unknown>;
       const rules = ruleIdsFromPayload(p);
+      const decided =
+        str(p!.decided_by_rule_id) ??
+        (isRecord(p!.decision_basis) ? str(p!.decision_basis.decided_by_rule_id) : null) ??
+        (str(p!.outcome) === "hold" || str(p!.outcome) === "stop"
+          ? rules.find((r) => !/(^|_)AUTH-RL(-1)?$/.test(r))
+          : null) ??
+        rules[0] ??
+        null;
+      const outcome = str(p!.outcome) ?? "allow";
+      // Timeline: short "held by AUTH-RL-2 · Above officer limit" for hold steps.
+      if (outcome === "hold") {
+        const label = formatRuleLabel(decided, "hold");
+        return label ? `held by ${label}` : "held for approval";
+      }
       return describeDecision({
-        outcome: str(p!.outcome) ?? "allow",
+        outcome,
         product: str(p!.product),
         event_type: str(p!.event_type),
         amount: num(attrs.amount ?? attrs.amount_rwf ?? attrs.loan_amount),
         currency: str(attrs.currency) ?? null,
         matched_rules: rules.map((rule_id) => ({ rule_id })),
-        decided_by_rule_id:
-          str(p!.decided_by_rule_id) ??
-          (isRecord(p!.decision_basis) ? str(p!.decision_basis.decided_by_rule_id) : null) ??
-          (str(p!.outcome) === "hold" || str(p!.outcome) === "stop"
-            ? rules.find((r) => !/(^|_)AUTH-RL$/.test(r))
-            : null) ??
-          rules[0] ??
-          null,
+        decided_by_rule_id: decided,
         mode: str(p!.mode),
         would_have: str(p!.would_have),
       });
     }
     const reason = str(p?.reason);
     if (reason) return reason;
-    // Never a bare "Rule check: Allowed": say which rule decided.
-    const policyId = str(p?.policy_id);
-    return policyId ? `${o.label} under rule ${policyId}` : o.label;
+    // Never a bare "Rule check: Allowed": say which rule decided — never a raw policy id.
+    const decidedRule =
+      str(p?.decided_by_rule_id) ??
+      (isRecord(p?.decision_basis) ? str(p!.decision_basis.decided_by_rule_id) : null);
+    const ruleLabel = formatRuleLabel(decidedRule);
+    return ruleLabel ? `${o.label} under rule ${ruleLabel}` : o.label;
   }
   if (actionKind === "human_approval") {
-    const o = outcomeFromPolicyDecision(policyDecision);
-    return o.kind === "approved" || policyDecision === "allow"
-      ? "A person approved"
-      : o.kind === "declined" || policyDecision === "deny"
-        ? "A person declined"
-        : base;
+    const decision = str(p?.decision);
+    const declined =
+      decision === "rejected" ||
+      decision === "declined" ||
+      decision === "denied" ||
+      policyDecision === "deny";
+    const who =
+      formatApprover(
+        str(p?.approver_display_name),
+        str(p?.approver_role),
+      ) ?? str(p?.approver_display_name);
+    // Never "allowed automatically" for a human step (A4).
+    if (who) return declined ? `Declined by ${who}` : `Approved by ${who}`;
+    return declined ? "A person declined" : "A person approved";
   }
   return subject ?? base;
 }

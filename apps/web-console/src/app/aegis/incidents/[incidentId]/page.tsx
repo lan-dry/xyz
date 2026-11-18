@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { ConsoleTime } from "@/components/console/console-time";
 import {
   ConsolePage,
   ErrorAlert,
@@ -198,7 +199,7 @@ export default function IncidentDetailPage() {
               >
                 <p style={{ margin: 0 }}>{n.body}</p>
                 <p className={ui.cardHint} style={{ margin: "0.25rem 0 0" }}>
-                  {new Date(n.created_at).toLocaleString()}
+                  <ConsoleTime iso={n.created_at} />
                 </p>
               </li>
             ))}

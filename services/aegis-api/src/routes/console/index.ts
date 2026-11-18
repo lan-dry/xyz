@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { getPool } from "../../db/pool.js";
+import { listMembershipBankRoles } from "../../bank/repo.js";
 import { authenticateDevUser } from "../../console/dev-login.js";
 import {
   auditAuthLoginDenied,
@@ -352,7 +353,20 @@ consoleRoutes.post("/auth/logout", async (c) => {
 });
 
 consoleRoutes.get("/auth/me", requireConsoleSession, async (c) => {
-  return c.json({ user: serializeUser(c.get("consoleSession")) });
+  const session = c.get("consoleSession");
+  let bankRoles: string[] = [];
+  try {
+    bankRoles = await listMembershipBankRoles(
+      getPool(),
+      session.organizationId,
+      session.userId,
+    );
+  } catch {
+    // bank tables may be absent
+  }
+  return c.json({
+    user: { ...serializeUser(session), bank_roles: bankRoles },
+  });
 });
 
 consoleRoutes.get("/insights", requireConsoleSession, async (c) => {

@@ -31,13 +31,23 @@ export function formatUtc(iso: string | Date): string {
 }
 
 /**
- * Kigali 24h in the bank_demo profile, browser locale elsewhere.
- * Pair with `title={formatUtc(iso)}` so UTC shows on hover.
+ * Kigali 24h (`DD-MM-YYYY HH:mm`) in the bank_demo profile, browser locale elsewhere.
+ * Pair with `title={formatUtc(iso)}` / ConsoleTime so UTC shows on hover.
  */
 export function formatConsoleTime(iso: string | Date, withSeconds = false): string {
   if (isBankDemoProfile()) return formatKigali(iso, withSeconds);
   const d = typeof iso === "string" ? new Date(iso) : iso;
   return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleString();
+}
+
+/** Date-only: `DD-MM-YYYY` in bank_demo, locale date elsewhere. */
+export function formatConsoleDate(iso: string | Date): string {
+  if (isBankDemoProfile()) {
+    const full = formatKigali(iso, false);
+    return full.split(" ")[0] ?? full;
+  }
+  const d = typeof iso === "string" ? new Date(iso) : iso;
+  return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString();
 }
 
 /**

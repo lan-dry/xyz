@@ -85,7 +85,9 @@ export async function gatherExportContext(
         .query(
           `SELECT root_id, root_hash, tree_size, interval_start, interval_end,
                   sig_value_b64, sig_key_id, anchoring_type, external_tx_id,
-                  published, published_at
+                  published, published_at,
+                  tsa_status, tsa_authority, tsa_url, tsa_gen_time,
+                  tsa_token_b64, tsa_message_hash
            FROM merkle_root
            WHERE organization_id = $1
              AND interval_end >= $2
@@ -93,12 +95,30 @@ export async function gatherExportContext(
            ORDER BY interval_end DESC`,
           [organizationId, periodStart, periodEnd],
         )
-        .then((r) => r.rows),
+        .then((r) => r.rows)
+        .catch(async (err) => {
+          if ((err as { code?: string }).code !== "42703") throw err;
+          const r = await client.query(
+            `SELECT root_id, root_hash, tree_size, interval_start, interval_end,
+                    sig_value_b64, sig_key_id, anchoring_type, external_tx_id,
+                    published, published_at
+             FROM merkle_root
+             WHERE organization_id = $1
+               AND interval_end >= $2
+               AND interval_start <= $3
+             ORDER BY interval_end DESC`,
+            [organizationId, periodStart, periodEnd],
+          );
+          return r.rows;
+        }),
 
       client
         .query(
           `SELECT p.proof_id, p.event_id, p.root_id, p.merkle_path, p.leaf_index,
-                  p.generated_at, r.root_hash, r.tree_size
+                  p.generated_at, r.root_hash, r.tree_size,
+                  r.sig_value_b64, r.sig_key_id, r.anchoring_type,
+                  r.tsa_status, r.tsa_authority, r.tsa_url, r.tsa_gen_time,
+                  r.tsa_token_b64, r.tsa_message_hash
            FROM inclusion_proof p
            JOIN merkle_root r ON r.root_id = p.root_id
            JOIN event e ON e.event_id = p.event_id
@@ -108,7 +128,23 @@ export async function gatherExportContext(
            ORDER BY p.generated_at ASC`,
           [organizationId, periodStart, periodEnd],
         )
-        .then((r) => r.rows),
+        .then((r) => r.rows)
+        .catch(async (err) => {
+          if ((err as { code?: string }).code !== "42703") throw err;
+          const r = await client.query(
+            `SELECT p.proof_id, p.event_id, p.root_id, p.merkle_path, p.leaf_index,
+                    p.generated_at, r.root_hash, r.tree_size
+             FROM inclusion_proof p
+             JOIN merkle_root r ON r.root_id = p.root_id
+             JOIN event e ON e.event_id = p.event_id
+             WHERE p.organization_id = $1
+               AND e.emitted_at >= $2
+               AND e.emitted_at <= $3
+             ORDER BY p.generated_at ASC`,
+            [organizationId, periodStart, periodEnd],
+          );
+          return r.rows;
+        }),
 
       client
         .query<{ key_id: string; public_key_b64: string; algorithm: string | null }>(

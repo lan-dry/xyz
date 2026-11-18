@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import styles from "../share.module.css";
+import { ConsoleTime } from "@/components/console/console-time";
 
 type ShareReceiptResponse = {
   share: {
@@ -13,7 +14,7 @@ type ShareReceiptResponse = {
     organization_name: string;
     organization_slug: string;
   };
-    receipt: {
+  receipt: {
     event_id: string;
     trace_id: string;
     agent_id: string;
@@ -45,18 +46,26 @@ type ShareReceiptResponse = {
     anomaly: string | null;
     status: string;
     fields?: string[];
+    approver?: string | null;
+    rule_label?: string | null;
   };
   error?: string;
 };
 
-function outcomeLabel(decision: string): string {
-  const d = decision.toLowerCase();
-  if (d === "allow") return "Allowed";
-  if (d === "deny") return "Stopped";
-  if (d === "allow_with_obligation" || d === "pending") return "Ask a person";
-  if (d === "approved") return "Approved";
-  if (d === "rejected") return "Declined";
-  return decision;
+/** Never show engine ids (governed.action / policy_decision) as copy. */
+function safeLead(
+  description: string | null | undefined,
+  whatHappened: string | null | undefined,
+): string {
+  const candidates = [description, whatHappened];
+  for (const c of candidates) {
+    const t = c?.trim();
+    if (!t) continue;
+    if (t === "governed.action" || t === "policy_decision") continue;
+    if (/governed\.action|policy_decision/i.test(t)) continue;
+    return t;
+  }
+  return "Read-only record of what this agent did. No console login required.";
 }
 
 export default function ShareReceiptPage() {
@@ -96,16 +105,26 @@ export default function ShareReceiptPage() {
       ? styles.badgeWarn
       : styles.badgeFail;
 
+  const decisionText = data
+    ? safeLead(
+        data.story?.description ?? data.story?.policy_reason ?? data.receipt.reason,
+        data.story?.what_happened,
+      )
+    : null;
+
   return (
     <main className={styles.page}>
       <div className={styles.inner}>
         <p className={styles.eyebrow}>Salanor Aegis · Shared receipt</p>
         <h1 className={styles.title}>
-          {data?.story?.what_happened ?? "Shared receipt"}
+          {data
+            ? safeLead(data.story?.what_happened, data.story?.description)
+            : "Shared receipt"}
         </h1>
         <p className={styles.lead}>
-          {data?.story?.description?.trim() ||
-            "Read-only record of what this agent did. No console login required."}
+          {decisionText && decisionText !== "Shared receipt"
+            ? decisionText
+            : "Read-only record of what this agent did. No console login required."}
         </p>
 
         {query.isPending ? (
@@ -127,7 +146,7 @@ export default function ShareReceiptPage() {
           <>
             <p className={styles.meta}>
               {data.share.organization_name} · expires{" "}
-              {new Date(data.share.expires_at).toLocaleString()}
+              <ConsoleTime iso={data.share.expires_at} />
             </p>
 
             <p className={styles.statusRow}>
@@ -158,16 +177,11 @@ export default function ShareReceiptPage() {
               <h2 id="happened-heading" className={styles.cardTitle}>
                 What happened
               </h2>
-              <p className={styles.prose}>
-                {data.story?.description?.trim() ||
-                  data.story?.what_happened ||
-                  data.receipt.tool_name ||
-                  data.receipt.action_kind}
-              </p>
+              <p className={styles.prose}>{decisionText}</p>
               <p className={styles.metaInline}>
                 {data.receipt.agent_name?.trim() || data.receipt.agent_id}
                 {" · "}
-                {new Date(data.receipt.emitted_at).toLocaleString()}
+                <ConsoleTime iso={data.receipt.emitted_at} />
                 {data.story?.status ? ` · ${data.story.status}` : ""}
               </p>
             </section>
@@ -192,23 +206,23 @@ export default function ShareReceiptPage() {
               ) : null}
             </section>
 
-            <section className={styles.card} aria-labelledby="policy-heading">
-              <h2 id="policy-heading" className={styles.cardTitle}>
-                Policy decision
+            <section className={styles.card} aria-labelledby="decision-heading">
+              <h2 id="decision-heading" className={styles.cardTitle}>
+                Decision
               </h2>
               <p className={styles.prose}>
                 <span className={styles.badge}>
-                  {data.story?.policy_decision ??
-                    outcomeLabel(data.receipt.policy_decision)}
+                  {data.story?.policy_decision ?? data.receipt.decision}
                 </span>
               </p>
-              {data.story?.policy_reason || data.receipt.reason ? (
-                <p className={styles.prose}>
-                  {data.story?.policy_reason ?? data.receipt.reason}
-                </p>
+              <p className={styles.prose}>{decisionText}</p>
+              {data.story?.rule_label ? (
+                <p className={styles.metaInline}>Rule {data.story.rule_label}</p>
               ) : null}
-              {data.receipt.approver ? (
-                <p className={styles.metaInline}>Approver {data.receipt.approver}</p>
+              {data.story?.approver || data.receipt.approver ? (
+                <p className={styles.metaInline}>
+                  Approver {data.story?.approver ?? data.receipt.approver}
+                </p>
               ) : null}
             </section>
 

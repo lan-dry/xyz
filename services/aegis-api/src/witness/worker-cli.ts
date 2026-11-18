@@ -7,7 +7,7 @@ import { getPool } from "../db/pool.js";
 import { publishTransparencyLogForOrg } from "../transparency/publish.js";
 import { recordWorkerRunResult } from "../workers/record-run.js";
 import {
-  backfillUnsignedCheckpoints,
+  backfillWitnessCompleteness,
   listOrganizationIds,
   runWitnessBatchForOrg,
 } from "./batch.js";
@@ -18,6 +18,11 @@ const intervalMs = Math.max(
 );
 const runOnce = process.argv.includes("--once");
 
+/** Postgres undefined_table — empty / unmigrated database. */
+function isMissingRelation(err: unknown): boolean {
+  return (err as { code?: string }).code === "42P01";
+}
+
 async function tick(): Promise<void> {
   const pool = getPool();
   const startedAt = new Date();
@@ -27,6 +32,7 @@ async function tick(): Promise<void> {
       [];
 
     let checkpointsBackfilled = 0;
+    let timestampsBackfilled = 0;
     for (const organizationId of orgIds) {
       const batch = await runWitnessBatchForOrg(pool, organizationId);
       if (batch) {
@@ -45,10 +51,9 @@ async function tick(): Promise<void> {
         }
       }
       try {
-        checkpointsBackfilled += await backfillUnsignedCheckpoints(
-          pool,
-          organizationId,
-        );
+        const catchUp = await backfillWitnessCompleteness(pool, organizationId);
+        checkpointsBackfilled += catchUp.signed;
+        timestampsBackfilled += catchUp.stamped + catchUp.retried;
       } catch (err) {
         console.error(
           `[witness-worker] checkpoint backfill failed for ${organizationId}:`,
@@ -63,17 +68,27 @@ async function tick(): Promise<void> {
       batches: results,
       batch_count: results.length,
       checkpoints_backfilled: checkpointsBackfilled,
+      timestamps_backfilled: timestampsBackfilled,
     };
 
     await recordWorkerRunResult(pool, {
       workerName: "witness",
       status:
-        results.length > 0 || checkpointsBackfilled > 0 ? "ok" : "skipped",
+        results.length > 0 ||
+        checkpointsBackfilled > 0 ||
+        timestampsBackfilled > 0
+          ? "ok"
+          : "skipped",
       startedAt,
       summary,
     });
 
-    if (results.length > 0 || checkpointsBackfilled > 0 || runOnce) {
+    if (
+      results.length > 0 ||
+      checkpointsBackfilled > 0 ||
+      timestampsBackfilled > 0 ||
+      runOnce
+    ) {
       console.log(
         JSON.stringify({
           ok: true,
@@ -83,6 +98,13 @@ async function tick(): Promise<void> {
       );
     }
   } catch (err) {
+    if (isMissingRelation(err)) {
+      console.warn(
+        "[witness-worker] database schema missing; migrate on aegis-api (MIGRATION_DATABASE_URL / preDeploy), then wait — will retry",
+      );
+      if (runOnce) process.exitCode = 1;
+      return;
+    }
     const message = err instanceof Error ? err.message : String(err);
     try {
       await recordWorkerRunResult(pool, {
@@ -106,7 +128,9 @@ if (runOnce) {
   console.log(
     `[witness-worker] starting; interval=${intervalMs}ms (set WITNESS_INTERVAL_MS to change)`,
   );
-  await tick();
+  await tick().catch((err) => {
+    console.error("[witness-worker] tick failed:", err);
+  });
   setInterval(() => {
     void tick().catch((err) => console.error("[witness-worker] tick failed:", err));
   }, intervalMs);

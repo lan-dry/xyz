@@ -36,21 +36,34 @@ function decisiveApprover(s: CaseSummary): CaseApprover | null {
   return approved[approved.length - 1] ?? null;
 }
 
-/** Rule that drove the outcome. A hold names the hold rule, never the AUTH-RL allow. */
+/** True for the low-band / default-allow authority id (AUTH-RL-1 or legacy AUTH-RL). */
+function isDefaultAllowRuleId(ruleId: string): boolean {
+  return /(^|_)AUTH-RL(-1)?$/.test(ruleId);
+}
+
+/** Rule that drove the outcome. A hold names the hold rule, never the default allow. */
 export function decidingRuleId(s: CaseSummary): string | null {
   if (s.decided_by_rule_id) return s.decided_by_rule_id;
   if (s.outcome === "hold" || s.outcome === "stop") {
-    const nonAllow = s.rules.find((r) => !/(^|_)AUTH-RL$/.test(r));
+    const nonAllow = s.rules.find((r) => !isDefaultAllowRuleId(r));
     if (nonAllow) return nonAllow;
   }
   return s.rules[0] ?? null;
 }
 
-/** Deduped "AUTH-RL · Within officer limit" labels, deciding rule first. */
+/**
+ * Labels for rules that drove the outcome only. A default allow overridden by a
+ * hold/stop is omitted; titles resolve by rule id.
+ */
 export function ruleLabels(s: CaseSummary | undefined): string[] {
   if (!s) return [];
   const first = decidingRuleId(s);
-  const ids = first ? [first, ...s.rules.filter((r) => r !== first)] : s.rules;
+  const ids =
+    s.outcome === "hold" || s.outcome === "stop"
+      ? (first ? [first, ...s.rules.filter((r) => r !== first && !isDefaultAllowRuleId(r))] : s.rules.filter((r) => !isDefaultAllowRuleId(r)))
+      : first
+        ? [first, ...s.rules.filter((r) => r !== first)]
+        : s.rules;
   return dedupeRuleLabels(ids, s.outcome);
 }
 

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { ErrorAlert, ui } from "@/components/console/console-ui";
 import { consoleApi } from "@/lib/api";
+import { isBankDemoProfile } from "@/lib/ui-profile";
 
 import settings from "../settings.module.css";
 
@@ -192,7 +193,7 @@ export default function GovernanceSettingsPage() {
               </select>
               <p className={settings.settingsRowHint}>
                 When set to 2, Approve stays pending until a second distinct admin confirms.
-                Self-approve of the requester is always blocked when requester email is known.
+                Separation of duties: the requester cannot approve or decline their own case when requester identity is recorded.
               </p>
             </div>
 
@@ -271,7 +272,7 @@ export default function GovernanceSettingsPage() {
               />
             </div>
 
-            {s?.score_bands && s.score_bands.length > 0 ? (
+            {s?.score_bands && s.score_bands.length > 0 && !isBankDemoProfile() ? (
               <div className={settings.settingsRow}>
                 <p className={settings.settingsRowLabel}>Score bands (read-only defaults)</p>
                 <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.8125rem" }}>

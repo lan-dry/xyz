@@ -399,13 +399,13 @@ async function ensureService({
 
 /** Personas of the LOCAL Demo Bank. Same password for all, written into the tenant file. */
 const LOCAL_PERSONAS = {
-  admin: { email: "admin@demo.test", display_name: "Demo Admin" },
-  officer: { email: "officer@demo.test", display_name: "Demo Credit Officer" },
-  manager: { email: "manager@demo.test", display_name: "Demo Credit Manager" },
-  compliance: { email: "comp@demo.test", display_name: "Demo Compliance Officer" },
-  head: { email: "head@demo.test", display_name: "Demo Head of Compliance" },
-  dpo: { email: "dpo@demo.test", display_name: "Demo DPO" },
-  deputy: { email: "deputy@demo.test", display_name: "Demo Deputy" },
+  admin: { email: "admin@demo.test", display_name: "Theogene Rugamba" },
+  officer: { email: "officer@demo.test", display_name: "Patience Ingabire" },
+  manager: { email: "manager@demo.test", display_name: "Jean Mutabazi" },
+  compliance: { email: "comp@demo.test", display_name: "Diane Uwizeye" },
+  head: { email: "head@demo.test", display_name: "Olivier Kayitesi" },
+  dpo: { email: "dpo@demo.test", display_name: "Sandra Murekatete" },
+  deputy: { email: "deputy@demo.test", display_name: "Aimee Nyirahabimana" },
 };
 
 /** Reuse the existing local-stack password when present; otherwise generate one into the tenant file. */

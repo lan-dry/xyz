@@ -50,7 +50,7 @@ boot (`src/boot/production-guards.ts`).
 
 ### Publishing the key
 
-- `GET /v1/public/keys` (also `/v1/public/keys.json`): every receipt key id, public key, fingerprint, custody, status, `created_at` / `retired_at`. Retired keys stay listed.
+- `GET /v1/public/keys` (also `/v1/public/keys.json`): every receipt key id, public key, fingerprint, custody, status, `created_at` / `retired_at`. Retired keys stay listed. See `docs/PUBLIC_KEYS.md`.
 - Evidence bundles carry the key id, public key, and custody for the receipts they contain. `keys.json` in a bundle export has the same shape.
 - The `receipt_signing_key` table (migration 019) stores the public side only. In production a given `key_id` maps to one public key forever; issuing under the same id with a different key is refused.
 - When verifying a bundle, the API only trusts a key if it is the configured receipt key or a key published in `receipt_signing_key`; a key carried only inside the bundle is not trusted on its own. Publish the fingerprint **out of band** (website, contract, board pack) so an attacker who controls the API cannot swap both.

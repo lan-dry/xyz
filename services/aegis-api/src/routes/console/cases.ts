@@ -1,9 +1,14 @@
 import { Hono } from "hono";
+import { extractRequester } from "../../bank/requester.js";
+import { readMaskedFieldClear } from "../../bank/sensitive-field-vault.js";
+import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import { getPool } from "../../db/pool.js";
 import {
   requireConsoleSession,
   type ConsoleVariables,
 } from "../../middleware/console-session.js";
+
+const FIELD_REVEAL_ROLES = new Set(["auditor", "admin", "owner"]);
 
 export const caseRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
@@ -41,7 +46,11 @@ export type CaseSummary = {
   }>;
   approval_status: string | null;
   required_role: string | null;
+  /** Screen label: "Patience Ingabire · Credit Officer". */
   requester: string | null;
+  /** Technical / SoD match only. */
+  requester_email: string | null;
+  requester_officer_id: string | null;
   seal: CaseSealStatus;
   demo_filler: boolean;
   /** Synthetic back-dated history from pilot:seed-history (labelled on screens). */
@@ -101,6 +110,8 @@ caseRoutes.get("/cases/summary", requireConsoleSession, async (c) => {
       approval_status: null,
       required_role: null,
       requester: null,
+      requester_email: null,
+      requester_officer_id: null,
       seal: "unknown",
       demo_filler: false,
       demo_history: false,
@@ -141,10 +152,17 @@ caseRoutes.get("/cases/summary", requireConsoleSession, async (c) => {
             .filter((x): x is string => typeof x === "string" && x !== ""),
         ),
       ];
-      s.requester =
-        typeof a.requester_email === "string" ? a.requester_email : null;
+      {
+        const req = extractRequester(a);
+        s.requester = req.label;
+        s.requester_email = req.email;
+        s.requester_officer_id = req.officer_id;
+      }
       s.demo_filler = a.demo_filler === true;
-      s.demo_history = a.demo_history === true;
+      s.demo_history =
+        a.demo_history === true ||
+        /^LN-RW-\d{4}$/i.test(r.case_id) ||
+        /^DB-HIST-/i.test(r.case_id);
       s.created_at = r.created_at.toISOString();
     }
 
@@ -292,3 +310,75 @@ caseRoutes.get("/cases/summary", requireConsoleSession, async (c) => {
 
   return c.json({ cases: out });
 });
+
+/**
+ * Reveal a masked field (applicant_name, national_id, …) from the vault.
+ * Auditor (and admin/owner) only; every reveal is written to the access log.
+ */
+caseRoutes.post(
+  "/cases/:traceId/fields/reveal",
+  requireConsoleSession,
+  async (c) => {
+    const session = c.get("consoleSession");
+    if (!FIELD_REVEAL_ROLES.has(session.role)) {
+      return c.json(
+        {
+          error: "forbidden",
+          message: "Only the auditor role (or an admin) can reveal masked fields.",
+        },
+        403,
+      );
+    }
+    const traceId = c.req.param("traceId")?.trim();
+    if (!traceId) return c.json({ error: "trace_id required" }, 422);
+    let body: { field_path?: string };
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON" }, 422);
+    }
+    const fieldPath = body.field_path?.trim();
+    if (!fieldPath) return c.json({ error: "field_path required" }, 422);
+
+    const pool = getPool();
+    let clear: string | null = null;
+    try {
+      clear = await readMaskedFieldClear(pool, {
+        organizationId: session.organizationId,
+        traceId,
+        fieldPath,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (/sensitive_field_vault/i.test(message) && /does not exist/i.test(message)) {
+        return c.json(
+          {
+            error: "vault_unavailable",
+            message: "Masked-field vault is not available yet. Run database migrations.",
+          },
+          503,
+        );
+      }
+      throw err;
+    }
+    if (clear == null) {
+      return c.json(
+        { error: "not_found", message: "No clear value is stored for this field." },
+        404,
+      );
+    }
+
+    await auditFromConsoleSession(pool, session, {
+      action: "field.revealed",
+      resourceType: "case_field",
+      resourceId: traceId,
+      metadata: { field_path: fieldPath, case_trace_id: traceId },
+    });
+
+    return c.json({
+      field_path: fieldPath,
+      value: clear,
+      revealed_at: new Date().toISOString(),
+    });
+  },
+);

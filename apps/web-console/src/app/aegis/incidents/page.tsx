@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { AegisMark } from "@/components/console/aegis-mark";
 import { EmptyStatePanel } from "@/components/console/empty-state-panel";
+import { ConsoleTime } from "@/components/console/console-time";
 import {
   ConsolePage,
   ErrorAlert,
@@ -76,7 +77,7 @@ export default function IncidentsPage() {
         <EmptyStatePanel
           mark={<AegisMark />}
           title="No incidents yet"
-          description="Blocked cases still appear in Live feed. Duplicate-payout seed appears after migrate 009."
+          description="Blocked cases still appear in Live feed."
           action={
             <Link href="/aegis/live?status=blocked" className={`${ui.btn} ${ui.btnPrimary}`}>
               <AlertTriangle size={14} aria-hidden /> Blocked in live feed
@@ -119,7 +120,7 @@ export default function IncidentsPage() {
                   <td>
                     <StatusBadge status={inc.status} />
                   </td>
-                  <td>{new Date(inc.created_at).toLocaleString()}</td>
+                  <td><ConsoleTime iso={inc.created_at} /></td>
                 </tr>
               ))}
             </tbody>

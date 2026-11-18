@@ -11,6 +11,7 @@ import {
 } from "./approvals-guard.js";
 import type { BankRole } from "./authority-matrix.js";
 import { loadBankApprovalRoleContext } from "./repo.js";
+import { extractRequester } from "./requester.js";
 import { getApprovalRich } from "../repo/approvals.js";
 import { nowIso } from "../time/clock.js";
 
@@ -63,6 +64,7 @@ export function isRequesterFromPayload(
   approverEmail: string | null | undefined,
 ): boolean {
   if (!approverEmail?.trim() || !payload) return false;
+  const extracted = extractRequester(payload);
   const attrs =
     payload.attributes &&
     typeof payload.attributes === "object" &&
@@ -70,6 +72,7 @@ export function isRequesterFromPayload(
       ? (payload.attributes as Record<string, unknown>)
       : {};
   const candidates = [
+    extracted.email,
     payload.requester_email,
     payload.on_behalf_of_email,
     payload.on_behalf_of,

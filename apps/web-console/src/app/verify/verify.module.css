@@ -6,6 +6,32 @@
   color: #0f172a;
 }
 
+.themeBar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 1rem;
+}
+
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+:global(html.dark) .themeToggle {
+  border-color: rgba(67, 194, 169, 0.28);
+  background: #141917;
+  color: #e8ede9;
+}
+
 .header {
   margin-bottom: 1.75rem;
 }

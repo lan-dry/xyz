@@ -59,9 +59,18 @@ organizationRoutes.get(
     );
     const row = result.rows[0];
     if (!row) return c.json({ error: "Not found" }, 404);
+    const regionLabel =
+      row.region === "eu-west"
+        ? "eu-west (EU West — Amsterdam Railway / EU Postgres)"
+        : row.region === "us-east"
+          ? "us-east (US East)"
+          : row.region === "ap-southeast"
+            ? "ap-southeast (Southeast Asia)"
+            : row.region;
     return c.json({
       residency: {
         region: row.region,
+        region_label: regionLabel,
         topology: row.topology,
         legal_hold: row.legal_hold,
         retention_days: row.retention_days,

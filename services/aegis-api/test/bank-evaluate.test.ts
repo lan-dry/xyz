@@ -29,13 +29,13 @@ describe("F2 matched_rules vs outcome (decision_basis)", () => {
   const ladder = packRoles(pack);
   const currency = pack.currencies[0]!;
 
-  it("amount_gte rule below threshold does not match; outcome allow under AUTH-RL", () => {
+  it("amount_gte rule below threshold does not match; outcome allow under AUTH-RL-1", () => {
     const result = evaluateBankEvent({
       policy_id: "pol_v3",
       combine: "all_matching",
       rules: [
         {
-          rule_id: "AUTH-RL",
+          rule_id: "AUTH-RL-1",
           tool_pattern: "governed.action",
           decision: "allow",
           priority: 10,
@@ -60,7 +60,7 @@ describe("F2 matched_rules vs outcome (decision_basis)", () => {
     });
     expect(result.outcome).toBe("allow");
     expect(result.matched_rules.map((m) => m.rule_id)).not.toContain("r_v4_demo");
-    expect(result.matched_rules.some((m) => m.rule_id === "AUTH-RL")).toBe(true);
+    expect(result.matched_rules.some((m) => m.rule_id === "AUTH-RL-1")).toBe(true);
     expect(result.decision_basis.explanation).toMatch(/Allowed|No human approval/i);
   });
 
@@ -70,7 +70,7 @@ describe("F2 matched_rules vs outcome (decision_basis)", () => {
       combine: "all_matching",
       rules: [
         {
-          rule_id: "AUTH-RL",
+          rule_id: "AUTH-RL-1",
           tool_pattern: "governed.action",
           decision: "allow",
           priority: 10,
@@ -104,7 +104,7 @@ describe("F2 matched_rules vs outcome (decision_basis)", () => {
       combine: "all_matching",
       rules: [
         {
-          rule_id: "AUTH-RL",
+          rule_id: "AUTH-RL-1",
           tool_pattern: "governed.action",
           decision: "allow",
           priority: 10,
@@ -170,7 +170,7 @@ describe("evaluateBankEvent with pack config", () => {
       combine: "all_matching",
       rules: [
         {
-          rule_id: "AUTH-RL",
+          rule_id: "AUTH-RL-1",
           tool_pattern: "governed.action",
           decision: "allow",
           priority: 10,
@@ -183,9 +183,116 @@ describe("evaluateBankEvent with pack config", () => {
       product: "retail_loan",
     });
     expect(result.outcome).toBe("allow");
-    expect(result.matched_rules.some((m) => m.rule_id === "AUTH-RL")).toBe(
+    expect(result.matched_rules.some((m) => m.rule_id === "AUTH-RL-1")).toBe(
       true,
     );
+  });
+
+  it("lists only SANC-01 for the RWF 2,500,000 PEP stop (not the default allow)", () => {
+    const result = evaluateBankEvent({
+      policy_id: "pol_v3",
+      combine: "all_matching",
+      rules: [
+        {
+          rule_id: "AUTH-RL-1",
+          tool_pattern: "governed.action",
+          decision: "allow",
+          priority: 10,
+        },
+        {
+          rule_id: "SANC-01",
+          tool_pattern: "governed.action",
+          decision: "deny",
+          priority: 100,
+          conditions: {
+            hard_stop: true,
+            expr: {
+              or: [
+                { eq: ["screening.sanctions_hit", true] },
+                { eq: ["screening.pep_hit", true] },
+              ],
+            },
+          },
+        },
+      ],
+      tool_name: "governed.action",
+      attributes: {
+        amount: 2_500_000,
+        currency,
+        product: "retail_loan",
+        screening: { sanctions_hit: false, pep_hit: true },
+      },
+      matrix_rows: matrix,
+      ladder,
+      product: "retail_loan",
+    });
+    expect(result.outcome).toBe("stop");
+    expect(result.matched_rules.map((m) => m.rule_id)).toEqual(["SANC-01"]);
+    expect(result.decision_basis.decided_by_rule_id).toBe("SANC-01");
+  });
+
+  it("lists only PAY-03 for the RWF 4,800,000 unverified payment (not AUTH-RL-1)", () => {
+    const result = evaluateBankEvent({
+      policy_id: "pol_v3",
+      combine: "all_matching",
+      rules: [
+        {
+          rule_id: "AUTH-RL-1",
+          tool_pattern: "governed.action",
+          decision: "allow",
+          priority: 10,
+        },
+        {
+          rule_id: "PAY-03",
+          tool_pattern: "governed.action",
+          decision: "allow_with_obligation",
+          priority: 60,
+          conditions: {
+            expr: { eq: ["payment.callback_verified", false] },
+          },
+          obligations: {
+            kind: "human_approval",
+            required_role: "credit_manager",
+          },
+        },
+      ],
+      tool_name: "governed.action",
+      attributes: {
+        amount: 4_800_000,
+        currency,
+        product: "retail_loan",
+        payment: { callback_verified: false },
+      },
+      matrix_rows: matrix,
+      ladder,
+      product: "retail_loan",
+    });
+    expect(result.outcome).toBe("hold");
+    expect(result.matched_rules.map((m) => m.rule_id)).toEqual(["PAY-03"]);
+    expect(result.decision_basis.decided_by_rule_id).toBe("PAY-03");
+  });
+
+  it("mid-band hold is AUTH-RL-2 only", () => {
+    const result = evaluateBankEvent({
+      policy_id: "pol_v3",
+      combine: "all_matching",
+      rules: [
+        {
+          rule_id: "AUTH-RL-1",
+          tool_pattern: "governed.action",
+          decision: "allow",
+          priority: 10,
+        },
+      ],
+      tool_name: "governed.action",
+      attributes: { amount: 15_000_000, currency, product: "retail_loan" },
+      matrix_rows: matrix,
+      ladder,
+      product: "retail_loan",
+    });
+    expect(result.outcome).toBe("hold");
+    expect(result.matched_rules.map((m) => m.rule_id)).toEqual(["AUTH-RL-2"]);
+    expect(result.decision_basis.decided_by_rule_id).toBe("AUTH-RL-2");
   });
 
   it("record-only: would have held but outcome allow", () => {

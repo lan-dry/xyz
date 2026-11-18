@@ -250,9 +250,17 @@ export function evaluateBankEvent(input: BankEvalInput): BankEvalResult {
     }
   }
 
+  // Case / receipt list only rules that drove the outcome. A default allow that
+  // was overridden by a hold or stop is not listed as a match.
+  const driving = drivingMatchedRules(
+    finalOutcome,
+    combined.matched_rules,
+    ruleObligations,
+  );
+
   const decision_basis = buildDecisionBasis({
     outcome: finalOutcome,
-    matched_rules: combined.matched_rules,
+    matched_rules: driving,
     rule_obligations: ruleObligations,
     decided_rule_id: combined.rule_id,
     reason: combined.reason,
@@ -265,7 +273,7 @@ export function evaluateBankEvent(input: BankEvalInput): BankEvalResult {
       would_have,
       mode: "record_only",
       decision_internal: combined.decision,
-      matched_rules: combined.matched_rules,
+      matched_rules: driving,
       policy_id: combined.policy_id,
       rule_id: combined.rule_id,
       reason: combined.reason,
@@ -280,7 +288,7 @@ export function evaluateBankEvent(input: BankEvalInput): BankEvalResult {
     outcome: finalOutcome,
     mode: "enforce",
     decision_internal: combined.decision,
-    matched_rules: combined.matched_rules,
+    matched_rules: driving,
     policy_id: combined.policy_id,
     rule_id: combined.rule_id,
     reason: combined.reason,
@@ -289,4 +297,35 @@ export function evaluateBankEvent(input: BankEvalInput): BankEvalResult {
     obligations,
     decision_basis,
   };
+}
+
+/** Keep only matches that drove the bank outcome (no overridden default allow). */
+function drivingMatchedRules(
+  outcome: BankOutcome,
+  matched: MatchedRule[],
+  ruleObligations: Record<string, unknown>,
+): MatchedRule[] {
+  if (matched.length === 0) return matched;
+  if (outcome === "stop") {
+    const stops = matched.filter((m) => m.decision === "deny" || m.hard_stop);
+    return stops.length > 0 ? stops : matched;
+  }
+  if (outcome === "hold") {
+    const holds = matched.filter((m) => {
+      if (m.decision !== "allow_with_obligation") return false;
+      const obl = ruleObligations[m.rule_id];
+      // Matrix-synthesised holds get a human_approval stub; treat null as hold too.
+      return obl == null || isHumanApprovalObligation(obl);
+    });
+    return holds.length > 0 ? holds : matched;
+  }
+  // allow: keep allowing rules and non-human obligations (D2); drop unused denies.
+  return matched.filter((m) => {
+    if (m.decision === "allow") return true;
+    if (m.decision === "allow_with_obligation") {
+      const obl = ruleObligations[m.rule_id];
+      return !isHumanApprovalObligation(obl);
+    }
+    return false;
+  });
 }

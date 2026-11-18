@@ -5,6 +5,11 @@ import {
   getMerkleProof,
 } from "@salanor/witness-merkle";
 import { signWitnessCheckpoint } from "./sign-checkpoint.js";
+import {
+  backfillRootTimestamps,
+  processPendingRootTimestamps,
+  stampWitnessRootNow,
+} from "./root-timestamp.js";
 
 export async function runWitnessBatchForOrg(
   client: pg.Pool | pg.PoolClient,
@@ -38,27 +43,55 @@ export async function runWitnessBatchForOrg(
   const checkpointSig = await signWitnessCheckpoint(root);
   const publishedAt = new Date();
 
+  const messageHash = `sha256:${root.replace(/^sha256:/i, "").toLowerCase()}`;
   await client.query("BEGIN");
 
   try {
-    await client.query(
-      `INSERT INTO merkle_root (
-         root_id, organization_id, root_hash, tree_size,
-         interval_start, interval_end, anchoring_type, published, published_at,
-         sig_value_b64, sig_key_id
-       ) VALUES ($1, $2, $3, $4, $5, $6, 'internal', true, $7, $8, $9)`,
-      [
-        rootId,
-        organizationId,
-        root,
-        size,
-        intervalStart,
-        intervalEnd,
-        publishedAt,
-        checkpointSig?.sig_value_b64 ?? null,
-        checkpointSig?.sig_key_id ?? null,
-      ],
-    );
+    await client.query("SAVEPOINT witness_root_insert");
+    try {
+      await client.query(
+        `INSERT INTO merkle_root (
+           root_id, organization_id, root_hash, tree_size,
+           interval_start, interval_end, anchoring_type, published, published_at,
+           sig_value_b64, sig_key_id, tsa_status, tsa_message_hash
+         ) VALUES ($1, $2, $3, $4, $5, $6, 'internal', true, $7, $8, $9, 'pending', $10)`,
+        [
+          rootId,
+          organizationId,
+          root,
+          size,
+          intervalStart,
+          intervalEnd,
+          publishedAt,
+          checkpointSig?.sig_value_b64 ?? null,
+          checkpointSig?.sig_key_id ?? null,
+          messageHash,
+        ],
+      );
+      await client.query("RELEASE SAVEPOINT witness_root_insert");
+    } catch (err) {
+      // Pre-002 schema without tsa_* columns.
+      if ((err as { code?: string }).code !== "42703") throw err;
+      await client.query("ROLLBACK TO SAVEPOINT witness_root_insert");
+      await client.query(
+        `INSERT INTO merkle_root (
+           root_id, organization_id, root_hash, tree_size,
+           interval_start, interval_end, anchoring_type, published, published_at,
+           sig_value_b64, sig_key_id
+         ) VALUES ($1, $2, $3, $4, $5, $6, 'internal', true, $7, $8, $9)`,
+        [
+          rootId,
+          organizationId,
+          root,
+          size,
+          intervalStart,
+          intervalEnd,
+          publishedAt,
+          checkpointSig?.sig_value_b64 ?? null,
+          checkpointSig?.sig_key_id ?? null,
+        ],
+      );
+    }
 
     for (let i = 0; i < pending.rows.length; i++) {
       const row = pending.rows[i]!;
@@ -77,6 +110,9 @@ export async function runWitnessBatchForOrg(
     await client.query("ROLLBACK");
     throw err;
   }
+
+  // Stamp outside the transaction so a slow/down TSA never rolls back proofs.
+  await stampWitnessRootNow(client, { root_id: rootId, root_hash: root });
 
   return { root_id: rootId, root_hash: root, tree_size: size };
 }
@@ -113,6 +149,17 @@ export async function backfillUnsignedCheckpoints(
     signed += 1;
   }
   return signed;
+}
+
+/** Sign + timestamp catch-up for older roots (A5). */
+export async function backfillWitnessCompleteness(
+  client: pg.Pool | pg.PoolClient,
+  organizationId?: string,
+): Promise<{ signed: number; stamped: number; retried: number }> {
+  const signed = await backfillUnsignedCheckpoints(client, organizationId);
+  const stamped = await backfillRootTimestamps(client, organizationId);
+  const retried = await processPendingRootTimestamps(client);
+  return { signed, stamped, retried: retried.stamped };
 }
 
 export async function listOrganizationIds(

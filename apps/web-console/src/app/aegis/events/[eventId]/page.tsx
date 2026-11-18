@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { ConsoleTime } from "@/components/console/console-time";
+import { formatConsoleTime } from "@/lib/format-display";
 import {
   BackLink,
   ConsolePage,
@@ -16,12 +18,15 @@ import {
 } from "@/components/console/console-ui";
 import { ProvenanceClaimPanel } from "@/components/console/provenance-claim-panel";
 import { PublicVerifyShare } from "@/components/console/public-verify-share";
+import { useCaseSummaries } from "@/hooks/use-case-summaries";
 import { consoleApi } from "@/lib/api";
 import { idApi } from "@/lib/id-api";
-import { stepTitlePlain } from "@/lib/case-story";
+import { agentLabel } from "@/lib/agent-label";
+import { buildCaseStory, stepTitlePlain } from "@/lib/case-story";
 import { buildEventProvenance, userFacingSummary } from "@/lib/event-provenance";
+import { formatApprover, formatRuleLabel } from "@/lib/describe-decision";
 import { outcomeFromPolicyDecision } from "@/lib/outcome-vocab";
-import type { EventDetail, MeResponse } from "@/lib/types";
+import type { EventDetail, MeResponse, TraceSummary } from "@/lib/types";
 
 type VerifyResult = {
   verification: {
@@ -125,6 +130,57 @@ export default function EventDetailPage() {
   });
   const orgSlug = meQuery.data?.organization?.slug ?? "";
 
+  const e = data?.event;
+  const traceId = e?.trace_id;
+
+  // Load the full case so the event page shows the same decision text as the case page (A4).
+  const traceQuery = useQuery({
+    queryKey: ["console", "trace", traceId],
+    queryFn: () =>
+      consoleApi<{
+        trace: TraceSummary;
+        events: EventDetail[];
+      }>(`/traces/${encodeURIComponent(traceId!)}`),
+    enabled: Boolean(traceId),
+  });
+  const summaryQuery = useCaseSummaries(traceId ? [traceId] : []);
+  const caseSummary = traceId ? summaryQuery.data?.[traceId] : undefined;
+  const caseStory =
+    traceQuery.data
+      ? buildCaseStory(traceQuery.data.events, {
+          summary: caseSummary
+            ? {
+                required_role: caseSummary.required_role,
+                amount: caseSummary.amount,
+                currency: caseSummary.currency,
+                product: caseSummary.product,
+                event_type: caseSummary.event_type,
+                rules: caseSummary.rules,
+                decided_by_rule_id: caseSummary.decided_by_rule_id ?? null,
+                approvers: caseSummary.approvers,
+                requester: caseSummary.requester,
+                requester_email: caseSummary.requester_email ?? null,
+                requester_officer_id: caseSummary.requester_officer_id ?? null,
+              }
+            : null,
+          traceId: traceQuery.data.trace.trace_id,
+          agentId: traceQuery.data.trace.agent_id,
+          agentName: agentLabel(
+            traceQuery.data.trace.agent_name,
+            traceQuery.data.trace.agent_id,
+          ),
+          status: traceQuery.data.trace.status,
+          pendingApproval: traceQuery.data.trace.pending_approval,
+          deniedEvents: traceQuery.data.trace.denied_events,
+          startedAt: traceQuery.data.trace.started_at,
+        })
+      : null;
+  const caseDecision =
+    caseStory?.bankDecision ??
+    caseStory?.fourAnswers.whyAllowed.detail ??
+    caseStory?.noApprovalNeeded ??
+    null;
+
   const verify = useMutation({
     mutationFn: () =>
       consoleApi<VerifyResult>(
@@ -133,7 +189,6 @@ export default function EventDetailPage() {
     onSuccess: (result) => setVerifyResult(result),
   });
 
-  const e = data?.event;
   const p = e ? payloadRecord(e.payload_enriched ?? e.payload) : null;
   const outcome = e ? outcomeFromPolicyDecision(e.policy_decision) : null;
   const title = e
@@ -150,22 +205,53 @@ export default function EventDetailPage() {
         action_kind: e.action_kind,
         policy_decision: e.policy_decision,
         payload: e.payload_enriched ?? e.payload,
+        caseDecision,
       })
     : null;
 
-  const amount = p?.amount_usd ?? p?.amount;
+  const amount =
+    caseStory?.amountDisplay ??
+    (typeof p?.amount_usd === "number" || typeof p?.amount === "number"
+      ? (p.amount_usd ?? p.amount)
+      : null);
   const reason =
+    caseDecision ||
     (typeof p?.reason === "string" && p.reason) ||
     userFacingSummary(p?.investor_summary) ||
     null;
-  const policyId = typeof p?.policy_id === "string" ? p.policy_id : null;
-  const ruleId = typeof p?.rule_id === "string" ? p.rule_id : null;
+  const ruleId =
+    caseStory?.ruleIds[0] ||
+    (typeof p?.decided_by_rule_id === "string" && p.decided_by_rule_id) ||
+    (typeof p?.rule_id === "string" && p.rule_id) ||
+    null;
   const approver =
-    (typeof p?.approver_email === "string" && p.approver_email) ||
+    caseStory?.approver ||
+    formatApprover(
+      typeof p?.approver_display_name === "string" ? p.approver_display_name : null,
+      typeof p?.approver_role === "string" ? p.approver_role : null,
+    ) ||
     (typeof p?.approver === "string" && p.approver) ||
     null;
+  const decisionRaw =
+    (typeof p?.decision === "string" && p.decision) ||
+    caseStory?.approvalDecision ||
+    null;
   const decision =
-    (typeof p?.decision === "string" && p.decision) || e?.policy_decision || null;
+    decisionRaw === "approved" || decisionRaw === "released"
+      ? "Approved"
+      : decisionRaw === "rejected" ||
+          decisionRaw === "declined" ||
+          decisionRaw === "denied"
+        ? "Declined"
+        : decisionRaw &&
+            decisionRaw !== "allow" &&
+            decisionRaw !== "deny" &&
+            decisionRaw !== "allow_with_obligation" &&
+            decisionRaw !== "policy_decision"
+          ? decisionRaw
+          : e?.action_kind === "human_approval"
+            ? outcome?.label ?? null
+            : null;
 
   return (
     <ConsolePage>
@@ -206,10 +292,14 @@ export default function EventDetailPage() {
                   {e.event_id.startsWith("evt_gov_") ? "provisional" : "sealed"}
                 </span>
                 <span style={{ marginLeft: "0.5rem" }}>
-                  {outcome.label}
-                  {typeof amount === "number" ? ` · $${amount}` : ""}
+                  {caseStory?.outcome.label ?? outcome.label}
+                  {typeof amount === "string"
+                    ? ` · ${amount}`
+                    : typeof amount === "number"
+                      ? ` · $${amount}`
+                      : ""}
                   {" · "}
-                  {new Date(e.emitted_at).toLocaleString()}
+                  <ConsoleTime iso={e.emitted_at} />
                 </span>
               </>
             }
@@ -297,7 +387,12 @@ export default function EventDetailPage() {
                     </dd>
                   </>
                 ) : null}
-                {typeof amount === "number" ? (
+                {typeof amount === "string" ? (
+                  <>
+                    <dt style={{ color: "var(--console-fg-subtle)" }}>Amount</dt>
+                    <dd style={{ margin: "0 0 0.5rem" }}>{amount}</dd>
+                  </>
+                ) : typeof amount === "number" ? (
                   <>
                     <dt style={{ color: "var(--console-fg-subtle)" }}>Amount</dt>
                     <dd style={{ margin: "0 0 0.5rem" }}>${amount} USD</dd>
@@ -316,10 +411,12 @@ export default function EventDetailPage() {
               </dl>
             </Panel>
 
-            <Panel title="Policy">
+            <Panel title="Decision">
               <dl style={{ margin: 0, fontSize: "0.875rem" }}>
                 <dt style={{ color: "var(--console-fg-subtle)" }}>Outcome</dt>
-                <dd style={{ margin: "0 0 0.5rem" }}>{outcome.label}</dd>
+                <dd style={{ margin: "0 0 0.5rem" }}>
+                  {caseStory?.outcome.label ?? outcome.label}
+                </dd>
                 {reason ? (
                   <>
                     <dt style={{ color: "var(--console-fg-subtle)" }}>Why</dt>
@@ -373,19 +470,11 @@ export default function EventDetailPage() {
                     </dd>
                   </>
                 ) : null}
-                {policyId ? (
-                  <>
-                    <dt style={{ color: "var(--console-fg-subtle)" }}>Policy</dt>
-                    <dd className="mono" style={{ margin: "0 0 0.5rem", fontSize: "0.75rem" }}>
-                      {policyId}
-                    </dd>
-                  </>
-                ) : null}
-                {ruleId ? (
+                {ruleId && formatRuleLabel(ruleId) ? (
                   <>
                     <dt style={{ color: "var(--console-fg-subtle)" }}>Rule</dt>
-                    <dd className="mono" style={{ margin: 0, fontSize: "0.75rem" }}>
-                      {ruleId}
+                    <dd style={{ margin: 0, fontSize: "0.75rem" }}>
+                      {formatRuleLabel(ruleId)}
                     </dd>
                   </>
                 ) : null}
@@ -393,22 +482,39 @@ export default function EventDetailPage() {
             </Panel>
 
             <Panel title="Approval trail">
-              {e.action_kind === "human_approval" || approver ? (
+              {e.action_kind === "human_approval" ||
+              approver ||
+              caseStory?.approver ? (
                 <dl style={{ margin: 0, fontSize: "0.875rem" }}>
                   <dt style={{ color: "var(--console-fg-subtle)" }}>Who</dt>
-                  <dd style={{ margin: "0 0 0.5rem" }}>{approver ?? "Recorded approver"}</dd>
-                  <dt style={{ color: "var(--console-fg-subtle)" }}>Decision</dt>
-                  <dd style={{ margin: "0 0 0.5rem" }}>{decision}</dd>
+                  <dd style={{ margin: "0 0 0.5rem" }}>
+                    {approver ?? caseStory?.approver ?? "Recorded approver"}
+                  </dd>
+                  {decision ? (
+                    <>
+                      <dt style={{ color: "var(--console-fg-subtle)" }}>Decision</dt>
+                      <dd style={{ margin: "0 0 0.5rem" }}>{decision}</dd>
+                    </>
+                  ) : null}
                   <dt style={{ color: "var(--console-fg-subtle)" }}>When</dt>
-                  <dd style={{ margin: 0 }}>{new Date(e.emitted_at).toLocaleString()}</dd>
+                  <dd style={{ margin: 0 }}>
+                    {caseStory?.approvalAt
+                      ? formatConsoleTime(caseStory.approvalAt)
+                      : formatConsoleTime(e.emitted_at)}
+                  </dd>
                 </dl>
-              ) : e.policy_decision === "allow_with_obligation" ? (
+              ) : caseStory?.noApprovalNeeded ? (
+                <p style={{ margin: 0, fontSize: "0.875rem" }}>
+                  {caseStory.noApprovalNeeded}
+                </p>
+              ) : e.policy_decision === "allow_with_obligation" ||
+                caseStory?.waitingForPerson ? (
                 <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--console-fg-muted)" }}>
                   This step asked a person. Open the case timeline for the approval decision.
                 </p>
               ) : (
                 <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--console-fg-muted)" }}>
-                  No human approval on this step: policy allowed or stopped automatically.
+                  No human approval is linked to this step.
                 </p>
               )}
             </Panel>

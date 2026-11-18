@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import {
   BackLink,
@@ -26,6 +27,7 @@ import { consoleApi } from "@/lib/api";
 import { idApi } from "@/lib/id-api";
 import { agentLabel } from "@/lib/agent-label";
 import { buildCaseStory, TREATMENT_LABEL } from "@/lib/case-story";
+import { formatRuleLabel } from "@/lib/describe-decision";
 import type {
   EventDetail,
   EventSpanGroup,
@@ -34,9 +36,13 @@ import type {
   TraceSummary,
 } from "@/lib/types";
 
+const REVEAL_ROLES = new Set(["auditor", "admin", "owner"]);
+
 export default function TraceDetailPage() {
   const params = useParams<{ traceId: string }>();
   const traceId = decodeURIComponent(params.traceId);
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [revealError, setRevealError] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["console", "trace", traceId],
@@ -57,6 +63,25 @@ export default function TraceDetailPage() {
 
   const summaryQuery = useCaseSummaries([traceId]);
   const caseSummary = summaryQuery.data?.[traceId];
+  const canReveal = REVEAL_ROLES.has(meQuery.data?.user?.role ?? "");
+
+  const revealMutation = useMutation({
+    mutationFn: (fieldPath: string) =>
+      consoleApi<{ field_path: string; value: string }>(
+        `/cases/${encodeURIComponent(traceId)}/fields/reveal`,
+        {
+          method: "POST",
+          body: JSON.stringify({ field_path: fieldPath }),
+        },
+      ),
+    onSuccess: (res) => {
+      setRevealError(null);
+      setRevealed((prev) => ({ ...prev, [res.field_path]: res.value }));
+    },
+    onError: (err) => {
+      setRevealError(err instanceof Error ? err.message : "Could not reveal field.");
+    },
+  });
 
   const story = data
     ? buildCaseStory(data.events, {
@@ -70,6 +95,9 @@ export default function TraceDetailPage() {
               rules: caseSummary.rules,
               decided_by_rule_id: caseSummary.decided_by_rule_id ?? null,
               approvers: caseSummary.approvers,
+              requester: caseSummary.requester,
+              requester_email: caseSummary.requester_email ?? null,
+              requester_officer_id: caseSummary.requester_officer_id ?? null,
             }
           : null,
         traceId: data.trace.trace_id,
@@ -176,6 +204,8 @@ export default function TraceDetailPage() {
                   <Link
                     href={`/verify?org=${encodeURIComponent(orgSlug)}&event=${encodeURIComponent(firstEventId)}`}
                     className={`${ui.btn} ${ui.btnGhost}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
                     Verify seal
                   </Link>
@@ -183,6 +213,8 @@ export default function TraceDetailPage() {
                   <Link
                     href={`/aegis/events/${encodeURIComponent(firstEventId)}`}
                     className={`${ui.btn} ${ui.btnGhost}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
                     Verify seal
                   </Link>
@@ -255,21 +287,71 @@ export default function TraceDetailPage() {
                       lineHeight: 1.5,
                     }}
                   >
-                    {story.dataSeen.map((f) => (
-                      <li key={f.field}>
-                        {f.label}
-                        {f.value ? `: ${f.value}` : ""}{" "}
-                        <span
-                          style={{
-                            fontSize: "0.75rem",
-                            color: "var(--console-fg-muted)",
-                          }}
-                        >
-                          ({TREATMENT_LABEL[f.treatment]})
-                        </span>
-                      </li>
-                    ))}
+                    {story.dataSeen.map((f) => {
+                      const clear = revealed[f.field];
+                      const showReveal =
+                        canReveal &&
+                        f.treatment === "masked" &&
+                        !clear &&
+                        (f.field === "applicant_name" ||
+                          f.field === "national_id" ||
+                          /id$/i.test(f.field) ||
+                          /name$/i.test(f.field));
+                      return (
+                        <li key={f.field}>
+                          {f.label}
+                          {clear
+                            ? `: ${clear}`
+                            : f.value
+                              ? `: ${f.value}`
+                              : ""}{" "}
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "var(--console-fg-muted)",
+                            }}
+                          >
+                            (
+                            {clear
+                              ? "revealed (logged)"
+                              : TREATMENT_LABEL[f.treatment]}
+                            )
+                          </span>
+                          {showReveal ? (
+                            <>
+                              {" "}
+                              <button
+                                type="button"
+                                className={ui.tableLink}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  padding: 0,
+                                  fontSize: "0.75rem",
+                                  cursor: "pointer",
+                                }}
+                                disabled={revealMutation.isPending}
+                                onClick={() => revealMutation.mutate(f.field)}
+                              >
+                                Reveal
+                              </button>
+                            </>
+                          ) : null}
+                        </li>
+                      );
+                    })}
                   </ul>
+                  {revealError ? (
+                    <p
+                      style={{
+                        margin: "0 0 0.65rem",
+                        fontSize: "0.8125rem",
+                        color: "var(--console-danger, #b91c1c)",
+                      }}
+                    >
+                      {revealError}
+                    </p>
+                  ) : null}
                   {story.dataSensitivity ? (
                     <p
                       style={{
@@ -303,14 +385,16 @@ export default function TraceDetailPage() {
             </section>
 
             <section className={`${ui.card} ${ui.cardPad}`}>
-              <h2 className={ui.panelTitle}>Policy decision</h2>
+              <h2 className={ui.panelTitle}>Decision</h2>
               <p style={{ margin: "0 0 0.5rem", fontSize: "0.875rem" }}>
                 <OutcomeChip chip={story.outcome.chip} kind={story.outcome.kind} />
               </p>
               <p style={{ margin: 0, fontSize: "0.875rem", lineHeight: 1.5 }}>
-                {story.policyReason ?? story.fourAnswers.whyAllowed.detail}
+                {story.bankDecision ??
+                  story.policyReason ??
+                  story.fourAnswers.whyAllowed.detail}
               </p>
-              {story.policyId ? (
+              {story.ruleIds.length > 0 ? (
                 <p
                   style={{
                     margin: "0.65rem 0 0",
@@ -318,7 +402,11 @@ export default function TraceDetailPage() {
                     color: "var(--console-fg-muted)",
                   }}
                 >
-                  Rule: <code className="mono">{story.policyId}</code>
+                  Rule:{" "}
+                  {story.ruleIds
+                    .map((id) => formatRuleLabel(id))
+                    .filter((x): x is string => Boolean(x))
+                    .join(", ")}
                 </p>
               ) : null}
               {story.evaluationContext &&
@@ -346,6 +434,17 @@ export default function TraceDetailPage() {
 
             <section className={`${ui.card} ${ui.cardPad}`}>
               <h2 className={ui.panelTitle}>Who approved</h2>
+              {story.requester ? (
+                <p
+                  style={{
+                    margin: "0 0 0.65rem",
+                    fontSize: "0.875rem",
+                    color: "var(--console-fg-muted)",
+                  }}
+                >
+                  Requested by <strong>{story.requester}</strong>.
+                </p>
+              ) : null}
               {story.approver ? (
                 <p style={{ margin: 0, fontSize: "0.875rem" }}>
                   {story.approvalDecision === "rejected" ? "Declined" : "Approved"} by{" "}
@@ -407,7 +506,7 @@ export default function TraceDetailPage() {
                 Seal status: <SealChip seal={caseSummary.seal} />
                 {caseSummary.seal === "sealed_pending_witness" ? (
                   <span style={{ color: "var(--console-warning)", marginLeft: "0.5rem" }}>
-                    The outside witness has not confirmed yet. This does not change the
+                    The Salanor witness checkpoint has not confirmed yet. This does not change the
                     signature check above.
                   </span>
                 ) : null}
@@ -424,6 +523,8 @@ export default function TraceDetailPage() {
                 <Link
                   href={`/verify?org=${encodeURIComponent(orgSlug)}&event=${encodeURIComponent(firstEventId)}`}
                   className={`${ui.btn} ${ui.btnSecondary}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
                   Verify seal
                 </Link>
@@ -473,6 +574,20 @@ export default function TraceDetailPage() {
                 </>
               ) : null}{" "}
               · <StatusBadge status={data.trace.status} />
+              {story?.requesterEmail || story?.requesterOfficerId ? (
+                <>
+                  <br />
+                  Requester email:{" "}
+                  <code className="mono">{story.requesterEmail ?? "—"}</code>
+                  {story.requesterOfficerId ? (
+                    <>
+                      {" "}
+                      · officer id:{" "}
+                      <code className="mono">{story.requesterOfficerId}</code>
+                    </>
+                  ) : null}
+                </>
+              ) : null}
             </p>
             {data.events.every((e) => e.chain_valid) ? (
               <p

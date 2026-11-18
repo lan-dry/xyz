@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { ErrorAlert, ui } from "@/components/console/console-ui";
+import { formatConsoleDate } from "@/lib/format-display";
 import { idApi } from "@/lib/id-api";
 import type { MeResponse } from "@/lib/types";
 
@@ -118,7 +119,7 @@ export default function ProfileSettingsPage() {
                 <strong>{m.organization_name}</strong>
                 <br />
                 <span className={ui.muted} style={{ fontSize: "0.75rem" }}>
-                  Joined {new Date(m.joined_at).toLocaleDateString()} · {m.role}
+                  Joined {formatConsoleDate(m.joined_at)} · {m.role}
                   {m.is_active ? " · current" : ""}
                 </span>
               </span>

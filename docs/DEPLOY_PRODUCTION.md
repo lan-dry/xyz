@@ -39,10 +39,10 @@ output anywhere else.
 `salanor-id` is required: the console signs people in against it, and the API validates every console
 session by calling it (`SALANOR_ID_URL`). It was not on your short list, but nothing works without it.
 
-**Hosting region (placeholder):** `<HOSTING_REGION: founder to choose before creating the Railway services>`.
-Keep API, witness, ID and Postgres in the same region. Do not state a region to a customer until this
-is filled in and verified in the Railway dashboard. Vercel serves the console from its edge network; the
-console holds no data.
+**Hosting region:** **eu-west** — Railway EU West Metal (`europe-west4-drams3a`, Amsterdam) for
+`aegis-api`, witness, and `salanor-id`. Prefer Neon Postgres in AWS `eu-central-1` (Frankfurt) so data
+stays in the EU. Keep API, witness, ID and Postgres in the same product region (`eu-west` in
+Organization settings). Vercel serves the console from its edge network; the console holds no data.
 
 ---
 
@@ -212,7 +212,7 @@ Lead times are typical, not guaranteed. Start the slow ones first, in parallel.
 | 1 | Day 0 | Confirm you control DNS for `salanor.com` and can add CNAME/TXT records | minutes | everything below |
 | 2 | Day 0 | **Resend:** add the sending domain, publish the DKIM / SPF / return-path records, wait for "verified". Create an API key | records minutes; verification from about 15 min up to 72 h | approval and invite email; the API **refuses to boot in production without an email provider** |
 | 3 | Day 0 | **AWS (Plan A):** account with billing, then create the KMS key and IAM user (section 5). New accounts can need one to three business days for verification | hours to days | KMS custody label. **Not a blocker**: use Plan B interim until it is ready |
-| 4 | Day 0 | Create the **Vercel** project (Pro/Team for an org repo) and the **Railway** project; pick `<HOSTING_REGION>` | same day | |
+| 4 | Day 0 | Create the **Vercel** project (Pro/Team for an org repo) and the **Railway** project; pick **EU West (Amsterdam)** | same day | |
 | 5 | Day 0 | Generate secrets on your machine (commands in 4.1) and store them in a password manager | minutes | |
 | 6 | Day 0 to 1 | Railway: add Postgres, create the owner and app roles and grants (section 7), create services `aegis-api`, `aegis-witness`, `salanor-id` with their variables | 1 to 2 h | |
 | 7 | Day 0 to 1 | Railway: add custom domains `api.` and `id.`; create the CNAMEs at your DNS | DNS up to your record TTL (usually minutes to 1 h), then certificate issuance minutes | console login |
