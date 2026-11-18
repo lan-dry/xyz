@@ -45,6 +45,10 @@ import { createServer } from "node:http";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { STORIES, getStory } from "./stories.mjs";
+import { SYSTEMS } from "./systems.mjs";
+import { SimulatedConnectors } from "./connectors-sim.mjs";
+import { CoreLedger } from "./core-ledger.mjs";
+import { ATTACKS, HONEST_LIMIT, runAttack } from "./redteam-attacks.mjs";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 
@@ -84,6 +88,33 @@ const ledger = [];
 const refusedDisbursements = [];
 /** case_id → action snapshot queued for disburse after approve */
 const pendingDisburse = new Map();
+
+const connectors = new SimulatedConnectors(join(DATA_DIR, "connectors"), {
+  apiBase: ENV_CONFIG.apiBase,
+  ingestKey: ENV_CONFIG.ingestKey,
+});
+const coreLedger = new CoreLedger({
+  databaseUrl: process.env.BANK_CORE_DATABASE_URL ?? "",
+  dataDir: join(DATA_DIR, "ledger"),
+  permitFn: async (caseId, action) => askExecutionPermit(caseId, action, null),
+  confirmFn: async ({ token, params }) => {
+    const c = cfg();
+    if (!c.configured) return { ok: false, code: "not_configured", reason: "Not configured" };
+    const res = await postJson("/v1/aegis/executions/confirm", { token, params }, {}, {});
+    if (res.status === 200 && res.data?.ok !== false && !res.data?.error) {
+      return { ok: true, ...res.data };
+    }
+    return {
+      ok: false,
+      code: res.data?.code ?? "confirm_failed",
+      reason: res.data?.reason ?? res.data?.error ?? `HTTP ${res.status}`,
+      ...res.data,
+    };
+  },
+});
+await connectors.init();
+await coreLedger.init();
+// Refresh connector cfg when setup changes — see saveConfig.
 
 function publicBaseUrl() {
   const host = HOST === "0.0.0.0" ? "127.0.0.1" : HOST;
@@ -454,6 +485,20 @@ async function coreDisburse(input, { calls } = {}) {
   ledger.unshift(entry);
   if (ledger.length > 100) ledger.length = 100;
   pendingDisburse.delete(caseId);
+  // Mirror into Stage-8 core ledger (Postgres or memory) for feeds / red team.
+  try {
+    await coreLedger.postTxn({
+      case_id: caseId,
+      account_id: String(action.beneficiary_account ?? action.account_id ?? "ACCT-DEMO-001"),
+      amount: Number(action.amount ?? 0),
+      currency: String(action.currency ?? "RWF"),
+      token_id: permit.data?.token_id ?? null,
+      meta: { via: "permit", receipt_id: entry.receipt_id },
+    });
+    await connectors.recordSend("core");
+  } catch (err) {
+    console.warn("[bank-simulator] core ledger mirror failed:", err instanceof Error ? err.message : err);
+  }
   return { status: 200, body: { ok: true, permitted: true, entry, permit: permit.data } };
 }
 
@@ -617,6 +662,13 @@ async function runStory(storyId) {
   const built = buildEvent(story);
   try {
     const { decision, sealed, approvalId, action } = await submit(built.body, steps, calls);
+    try {
+      await connectors.recordSend("los");
+    } catch {
+      /* ignore */
+    }
+    const targetGrade = story.target_grade ?? null;
+    if (targetGrade) steps.push(`Target evidence grade for this story: ${targetGrade}.`);
     return {
       status: 200,
       body: {
@@ -626,6 +678,7 @@ async function runStory(storyId) {
         approval_id: approvalId,
         sealed,
         action,
+        target_grade: targetGrade,
         can_disburse: decision.outcome === "allow" || decision.outcome === "hold",
         steps,
         requests: calls,
@@ -842,6 +895,7 @@ async function saveConfig(body) {
   if (ingestKey || keep) next.ingestKey = ingestKey || keep;
   saved = next;
   await persistSaved();
+  connectors.cfg = { apiBase: next.apiBase, ingestKey: next.ingestKey || cfg().ingestKey };
   return { status: 200, body: publicConfig() };
 }
 
@@ -937,17 +991,37 @@ const server = createServer(async (req, res) => {
         label: "Simulated core banking system",
         ledger_count: ledger.length,
         refused_count: refusedDisbursements.length,
+        core_ledger: coreLedger.status(),
+        systems: SYSTEMS.length,
+        redteam_attacks: ATTACKS.length,
       });
     }
 
+    if (req.method === "GET" && url.pathname === "/api/systems") {
+      connectors.cfg = { apiBase: cfg().apiBase, ingestKey: cfg().ingestKey };
+      return sendJson(res, 200, {
+        systems: connectors.health(),
+        core_ledger: coreLedger.status(),
+        bureau_url: process.env.DEMO_BUREAU_URL?.trim() || "http://127.0.0.1:4100",
+      });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/redteam") {
+      return sendJson(res, 200, { attacks: ATTACKS, honest_limit: HONEST_LIMIT });
+    }
+
     if (req.method === "GET" && url.pathname === "/api/ledger") {
+      const coreTxns = await coreLedger.listTransactions(40);
       return sendJson(res, 200, {
         ledger: ledger.slice(0, 40),
+        core_transactions: coreTxns,
         refused: refusedDisbursements.slice(0, 40),
+        core_refused: coreLedger.refused.slice(0, 40),
         pending: [...pendingDisburse.entries()].map(([case_id, v]) => ({
           case_id,
           ...v,
         })),
+        core_ledger: coreLedger.status(),
       });
     }
 
@@ -1010,6 +1084,32 @@ const server = createServer(async (req, res) => {
         if (offline) return sendJson(res, 200, { offline, queued: (await readQueue()).length });
         const replay = await replayQueue();
         return sendJson(res, 200, { offline, ...replay });
+      }
+      if (url.pathname === "/api/redteam/run") {
+        const attackId = body.attack_id ?? body.id ?? body.attack;
+        const out = await runAttack(attackId, {
+          core: coreLedger,
+          connectors,
+          postJson,
+          cfg,
+        });
+        const status = out.status && !out.ok ? out.status : 200;
+        return sendJson(res, status, out);
+      }
+      if (url.pathname === "/api/honest-limit") {
+        const out = await runAttack("honest_limit", { core: coreLedger, connectors });
+        return sendJson(res, 200, out);
+      }
+      if (url.pathname === "/api/feed/export") {
+        const format = body.format === "csv" ? "csv" : "jsonl";
+        const feed = await coreLedger.exportFeed(format);
+        return sendJson(res, 200, {
+          ok: true,
+          format: feed.format,
+          path: feed.path,
+          rows: feed.rows,
+          preview: feed.text.split("\n").slice(0, 5),
+        });
       }
     }
 

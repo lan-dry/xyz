@@ -108,16 +108,41 @@
 
   <section id="result" class="hidden" aria-live="polite"></section>
 
+  <section class="card" id="systemsPanel">
+    <h3 style="margin:0">Systems (one Connector per system)</h3>
+    <p class="meta" style="margin:0">
+      LOS, Core Banking, Payment Gateway, and Credit Bureau — each with its own key and sequence.
+      Panels show connection, key id, last seq, and outbox size.
+    </p>
+    <div class="row" style="margin-top:.5rem">
+      <button type="button" class="secondary" id="refreshSystems">Refresh systems</button>
+      <button type="button" class="secondary" id="exportFeed">Export ledger feed (JSONL)</button>
+    </div>
+    <div class="grid" id="systemsView" style="margin-top:.75rem"></div>
+  </section>
+
   <section class="card" id="ledgerPanel">
     <h3 style="margin:0">Core ledger (in-path gate)</h3>
     <p class="meta" style="margin:0">
-      Disbursement always asks Aegis <code>/v1/aegis/execution/permit</code>.
+      Disbursement always asks Aegis <code>/v1/aegis/execution/permit</code> (or confirms a decision token).
       Skipping Aegis is refused by the ledger — sealed fiction does not pay.
     </p>
     <div class="row" style="margin-top:.5rem">
       <button type="button" class="secondary" id="refreshLedger">Refresh ledger</button>
     </div>
     <div id="ledgerView" class="attrs" style="margin-top:.75rem"></div>
+  </section>
+
+  <section class="card" id="redteamPanel">
+    <h3 style="margin:0">Red Team</h3>
+    <p class="meta" style="margin:0">
+      Each button runs an attack from the Stage 8 brief and shows what an attacker would gain
+      and what Aegis (or the bank) did. The honest-limits case shows what Aegis does <em>not</em> catch.
+    </p>
+    <div class="row" style="margin-top:.5rem">
+      <button type="button" class="secondary" id="runHonestLimit">Honest limit (false signed value → G1)</button>
+    </div>
+    <div class="grid" id="redteamView" style="margin-top:.75rem"></div>
   </section>
 
   <section>
@@ -170,7 +195,7 @@
   function start() {
     loginEl.hidden = true;
     appEl.hidden = false;
-    Promise.all([api("/api/stories"), refreshState(), loadConfig()])
+    Promise.all([api("/api/stories"), refreshState(), loadConfig(), loadSystems(), loadRedteam()])
       .then(function (res) {
         logoutEl.hidden = !state.auth_enabled;
         renderStories(res[0].stories);
@@ -403,6 +428,7 @@
         el("p", { class: "attrs", text: preview(s.attributes || {}) }),
         el("p", { text: s.expect_detail })
       ];
+      if (s.target_grade) children.push(el("p", { class: "attrs", text: "Target grade: " + s.target_grade }));
       if (s.resolver) children.push(el("p", { class: "attrs", text: "Resolved by: " + s.resolver }));
       var row = el("div", { class: "row" }, [btn]);
       if (s.console_hint) {
@@ -438,8 +464,93 @@
       .then(function () { offlineEl.disabled = false; return refreshState(); });
   });
 
+  function loadSystems() {
+    return api("/api/systems").then(function (data) {
+      var view = document.getElementById("systemsView");
+      if (!view) return;
+      view.textContent = "";
+      (data.systems || []).forEach(function (s) {
+        view.appendChild(el("article", { class: "card" }, [
+          el("h3", { text: s.name }),
+          el("p", { class: "attrs", text: s.role || "" }),
+          el("p", { text: "Connection: " + (s.connected ? s.connection : "not connected") }),
+          el("p", { text: "Key id: " + (s.key_id || "—") }),
+          el("p", { text: "Last seq: " + (s.last_seq == null ? "n/a" : s.last_seq) }),
+          el("p", { text: "Outbox size: " + (s.outbox_size == null ? "n/a" : s.outbox_size) }),
+          el("p", { class: "meta", text: s.source_id + " · " + s.mode })
+        ]));
+      });
+      if (data.core_ledger) {
+        view.appendChild(el("p", { class: "meta", text: "Core ledger mode: " + data.core_ledger.mode }));
+      }
+    }).catch(function () {});
+  }
+
+  function loadRedteam() {
+    return api("/api/redteam").then(function (data) {
+      var view = document.getElementById("redteamView");
+      if (!view) return;
+      view.textContent = "";
+      (data.attacks || []).forEach(function (a) {
+        var btn = el("button", { text: "Run #" + a.id });
+        btn.addEventListener("click", function () {
+          btn.disabled = true;
+          api("/api/redteam/run", { attack_id: a.id })
+            .then(function (r) {
+              var box = el("div");
+              box.appendChild(el("p", { text: "What attacker gains: " + (r.attack && r.attack.attacker_gains) }));
+              box.appendChild(el("p", { text: "Expected: " + (r.attack && r.attack.expected) }));
+              box.appendChild(el("p", { text: "Outcome: " + (r.result || "") }));
+              box.appendChild(steps(r.steps));
+              showResult("Red Team #" + a.id + " — " + a.title, box);
+            })
+            .catch(function (e) {
+              showResult("Red Team #" + a.id + " failed", el("p", { class: "err", text: e.message }));
+            })
+            .then(function () { btn.disabled = false; return loadSystems(); });
+        });
+        view.appendChild(el("article", { class: "card" }, [
+          el("div", {}, [el("span", { class: "chip", text: "#" + a.id })]),
+          el("h3", { text: a.title }),
+          el("p", { text: "What attacker gains: " + a.attacker_gains }),
+          el("p", { class: "meta", text: "Expected outcome: " + a.expected }),
+          el("div", { class: "row" }, [btn])
+        ]));
+      });
+    }).catch(function () {});
+  }
+
   var refreshLedgerBtn = document.getElementById("refreshLedger");
   if (refreshLedgerBtn) refreshLedgerBtn.addEventListener("click", function () { loadLedger(); });
+  var refreshSystemsBtn = document.getElementById("refreshSystems");
+  if (refreshSystemsBtn) refreshSystemsBtn.addEventListener("click", function () { loadSystems(); });
+  var exportFeedBtn = document.getElementById("exportFeed");
+  if (exportFeedBtn) exportFeedBtn.addEventListener("click", function () {
+    api("/api/feed/export", { format: "jsonl" }).then(function (r) {
+      showResult("Ledger feed exported", el("div", {}, [
+        el("p", { text: r.path + " (" + r.rows + " rows)" }),
+        el("pre", { text: (r.preview || []).join("\n") })
+      ]));
+    }).catch(function (e) {
+      showResult("Feed export failed", el("p", { class: "err", text: e.message }));
+    });
+  });
+  var honestBtn = document.getElementById("runHonestLimit");
+  if (honestBtn) honestBtn.addEventListener("click", function () {
+    honestBtn.disabled = true;
+    api("/api/honest-limit", {})
+      .then(function (r) {
+        var box = el("div");
+        box.appendChild(el("p", { text: "What attacker gains: " + (r.attack && r.attack.attacker_gains) }));
+        box.appendChild(el("p", { text: "Outcome: " + (r.result || "") }));
+        box.appendChild(el("p", { class: "meta", text: (r.attack && r.attack.what_aegis_does_not_catch) || "" }));
+        box.appendChild(steps(r.steps));
+        showResult("Honest limit", box);
+      })
+      .catch(function (e) { showResult("Honest limit failed", el("p", { class: "err", text: e.message })); })
+      .then(function () { honestBtn.disabled = false; });
+  });
+
   start();
   loadLedger();
 })();

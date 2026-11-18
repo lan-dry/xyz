@@ -3,12 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Standalone bank system simulator: sends governed events to a hosted Aegis tenant (port 4000).",
+  "description": "Standalone multi-system bank simulator: LOS, core ledger, pay gateway, bureau; red team panel (port 4000).",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test test/key-leak.test.mjs test/permit-gate.test.mjs"
+    "test": "node --test test/key-leak.test.mjs test/permit-gate.test.mjs test/redteam-panel.test.mjs test/systems.test.mjs"
   },
   "dependencies": {
-    "@salanor/aegis": "workspace:*"
+    "@salanor/aegis": "workspace:*",
+    "@salanor/aegis-sdk": "workspace:*",
+    "pg": "^8.16.0"
   }
 }
