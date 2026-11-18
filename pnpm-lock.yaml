@@ -1087,6 +1087,12 @@ importers:
       '@salanor/aegis':
         specifier: workspace:*
         version: link:../../sdks/typescript
+      '@salanor/aegis-sdk':
+        specifier: workspace:*
+        version: link:../../packages/aegis-sdk
+      pg:
+        specifier: ^8.16.0
+        version: 8.21.0
 
   tools/conformance:
     dependencies:
