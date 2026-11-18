@@ -74,6 +74,11 @@ import {
   type CaseProvenanceView,
   type ReceiptProvenanceSummary,
 } from "../sources/provenance.js";
+import {
+  collectCommitmentsFromReceipts,
+  verifySuppliedDocuments,
+  type SuppliedDocument,
+} from "../sources/input-commitments.js";
 import { hashApprovedViewFromEventPayload } from "../approvals/approver-binding.js";
 
 export const EVIDENCE_BUNDLE_TYPE = "aegis_evidence_bundle";
@@ -230,6 +235,16 @@ export type EvidenceBundle = ForensicBundle & {
   decision_keys?: Record<string, string>;
   /** Stage 3: signed decision tokens issued for this case. */
   decision_tokens?: Array<Record<string, unknown>>;
+  /**
+   * Stage 7: SHA-256 commitments to source documents, bound from sealed receipt attributes.
+   * The verifier accepts supplied documents and checks them against these hashes.
+   */
+  input_commitments?: Array<{
+    name: string;
+    sha256: string;
+    media_type?: string | null;
+    size_bytes?: number | null;
+  }>;
   how_to_verify: string;
   /** Result when the server exported this file; informational only. */
   export_check?: { ok: boolean; findings: string[] };
@@ -608,6 +623,7 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     input.decision_tokens && input.decision_tokens.length > 0
       ? input.decision_tokens
       : undefined;
+  const input_commitments = collectCommitmentsFromReceipts(receipts);
 
   return {
     bundle_type: EVIDENCE_BUNDLE_TYPE,
@@ -623,6 +639,7 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     ...(source_registry ? { source_registry } : {}),
     ...(decision_keys ? { decision_keys } : {}),
     ...(decision_tokens ? { decision_tokens } : {}),
+    ...(input_commitments.length > 0 ? { input_commitments } : {}),
     key_fingerprints,
     key_custody,
     trusted_time: input.trusted_time ?? null,
@@ -761,7 +778,11 @@ export function readTrustedTime(bundle: {
  */
 export async function verifyBundleFile(
   raw: unknown,
-  opts: { trustedKeys?: Record<string, string> } = {},
+  opts: {
+    trustedKeys?: Record<string, string>;
+    /** Stage 7: optional documents to check against bundle.input_commitments. */
+    suppliedDocuments?: SuppliedDocument[];
+  } = {},
 ): Promise<BundleFileVerification> {
   if (!isRecord(raw) || !Array.isArray(raw.receipts)) {
     return notABundle(
@@ -1055,6 +1076,34 @@ export async function verifyBundleFile(
       code: "summary_mismatch",
       message: "Source and grade in the summary do not match the signed receipts",
     });
+  }
+
+  // Stage 7: input commitments bound from sealed receipts; optional document check.
+  const boundCommitments = collectCommitmentsFromReceipts(bundle.receipts);
+  if (
+    bundle.input_commitments !== undefined &&
+    stableJson(bundle.input_commitments) !== stableJson(boundCommitments)
+  ) {
+    findings.push({
+      code: "summary_mismatch",
+      message: "Input commitments in the summary do not match the signed receipts",
+    });
+  }
+  if (opts.suppliedDocuments && opts.suppliedDocuments.length > 0) {
+    const docCheck = verifySuppliedDocuments(
+      boundCommitments.length > 0
+        ? boundCommitments
+        : (bundle.input_commitments ?? []),
+      opts.suppliedDocuments,
+    );
+    for (const c of docCheck.checks) {
+      if (!c.ok) {
+        findings.push({
+          code: "input_commitment_mismatch",
+          message: c.message,
+        });
+      }
+    }
   }
 
   const trustedTime = readTrustedTime(bundle);

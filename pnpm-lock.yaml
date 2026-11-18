@@ -1119,6 +1119,12 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
+  tools/demo-bureau:
+    dependencies:
+      '@salanor/aegis-sdk':
+        specifier: workspace:*
+        version: link:../../packages/aegis-sdk
+
   tools/verifier: {}
 
 packages:

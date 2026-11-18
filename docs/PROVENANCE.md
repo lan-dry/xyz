@@ -82,8 +82,10 @@ Shown as a checklist on the case page, and in the PDF, bundle, share link and ve
 | `independently_captured` | Captured independently of the source |
 
 Per-field assertions record how each field got into the record: `asserted_by_source`,
-`derived_by_aegis` (for example the approver fields), `corroborated`, or `independently_captured`.
-Today the sender's own fields are `asserted_by_source` and Aegis-added fields are `derived_by_aegis`.
+`derived_by_aegis` (for example the approver fields), `corroborated`,
+`independently_captured`, or `signed_by_third_party` (Stage 7 bureau / third-party
+signature verified against a registered `kind=third_party` key). Fields without a
+third-party signature remain `asserted_by_source`.
 
 ## What is inside the signed receipt
 
@@ -176,8 +178,11 @@ Risk Approval Pack ("Where the data came from": counts by grade, legacy cases, c
 | 3 | Decision token + executor confirm | Done (see `provenance/STAGE_3_REPORT.md`) |
 | 4 | Reconciliation + exceptions | Done (see `provenance/STAGE_4_REPORT.md`) |
 | 5 | Approver binding (view hash + authenticated identity) | Done, WebAuthn Partial (see `provenance/STAGE_5_REPORT.md`) |
-| later | Independent capture (G3), third-party signed facts, plausibility | Not built |
+| 6 | Independent capture / PG collector (G3) | Partial (see `provenance/STAGE_6_REPORT.md`) |
+| 7 | Third-party signed facts, input commitments, plausibility | Done, with Partials (see `provenance/STAGE_7_REPORT.md`) |
 
 Related: [SIGNING.md](./provenance/SIGNING.md), [INTEGRATION.md](./provenance/INTEGRATION.md),
+[COLLECTOR.md](./provenance/COLLECTOR.md),
 [STAGE_1_REPORT.md](./provenance/STAGE_1_REPORT.md), [STAGE_2_REPORT.md](./provenance/STAGE_2_REPORT.md),
-[STAGE_5_REPORT.md](./provenance/STAGE_5_REPORT.md).
+[STAGE_5_REPORT.md](./provenance/STAGE_5_REPORT.md), [STAGE_6_REPORT.md](./provenance/STAGE_6_REPORT.md),
+[STAGE_7_REPORT.md](./provenance/STAGE_7_REPORT.md).

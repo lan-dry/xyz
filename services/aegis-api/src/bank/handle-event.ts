@@ -30,6 +30,13 @@ import {
   buildFieldAssertions,
   buildProvenanceBlock,
 } from "../sources/provenance.js";
+import {
+  applySignedOverrides,
+  resolveThirdPartyFacts,
+} from "../sources/third-party-facts.js";
+import { parseInputCommitments } from "../sources/input-commitments.js";
+import { upsertException } from "../reconciliation/exceptions.js";
+import { raisePlausibilityFlags } from "../reconciliation/plausibility.js";
 import { nowIso } from "../time/clock.js";
 import { issueDecisionToken } from "../execution/decision-token.js";
 import { resolveExecutionConfigForCase } from "../execution/workflow-config.js";
@@ -95,6 +102,36 @@ export async function handleBankEvent(
         eventContainsRedactedFields: fielded.redacted_paths.length > 0,
       })
     : {};
+
+  // Stage 7: verify nested third-party facts; policy uses signed values.
+  const thirdParty = await resolveThirdPartyFacts(
+    client,
+    organizationId,
+    { ...fielded.for_evaluate, ...fielded.stored },
+  );
+  fielded.for_evaluate = applySignedOverrides(
+    fielded.for_evaluate,
+    thirdParty.overrides,
+  );
+  fielded.stored = applySignedOverrides(fielded.stored, thirdParty.overrides);
+  for (const m of thirdParty.mismatches) {
+    await upsertException(client, {
+      organization_id: organizationId,
+      kind: "fact_mismatch",
+      case_id: event.case_id,
+      source_name: m.source_name,
+      fingerprint_key: m.field,
+      detail: {
+        field: m.field,
+        asserted_value: m.asserted_value,
+        signed_value: m.signed_value,
+        third_party_source_id: m.source_id,
+        third_party_key_id: m.key_id,
+        used_value: m.signed_value,
+      },
+    });
+  }
+  const inputCommitments = parseInputCommitments(event.attributes);
 
   const recordOnly =
     options?.forceRecordOnly === true ||
@@ -297,6 +334,12 @@ export async function handleBankEvent(
       : evalResult.outcome === "hold" && evalResult.mode === "enforce"
         ? { requester_missing: true }
         : {}),
+    ...(thirdParty.sealed.length > 0
+      ? { third_party_signed: thirdParty.sealed }
+      : {}),
+    ...(inputCommitments.length > 0
+      ? { input_commitments: inputCommitments }
+      : {}),
   };
   // Stage 2 honest labelling: sealed into the receipt body (inside the signature).
   const sourceLabel = options?.sourceEnvelope
@@ -307,11 +350,36 @@ export async function handleBankEvent(
           options.sourceEnvelope.source_id,
       }
     : bearerSource(options?.ingestKeyId);
+
+  // Stage 7: non-blocking plausibility flags (never change the outcome).
+  const plausibilityFlags = await raisePlausibilityFlags(client, {
+    organization_id: organizationId,
+    case_id: event.case_id,
+    source_id:
+      options?.sourceEnvelope?.source_id ??
+      (typeof receiptAttributes.source_id === "string"
+        ? receiptAttributes.source_id
+        : null),
+    source_name: sourceLabel.source_name,
+    attributes: receiptAttributes,
+    emitted_at: event.emitted_at,
+  });
+  if (plausibilityFlags.length > 0) {
+    receiptAttributes.plausibility_flags = plausibilityFlags.map((f) => ({
+      kind: f.kind,
+      title: f.title,
+      detail: f.detail,
+      non_blocking: true,
+    }));
+  }
+
   const provenance = buildProvenanceBlock({
     ...sourceLabel,
     source_key_id: options?.sourceEnvelope?.source_key_id ?? null,
     authentication: options?.sourceEnvelope ? "source_signature" : "bearer_key",
-    field_assertions: buildFieldAssertions(Object.keys(receiptAttributes)),
+    field_assertions: buildFieldAssertions(Object.keys(receiptAttributes), {
+      overrides: thirdParty.assertion_overrides,
+    }),
     recorded_at: nowIso(),
   });
   let plainSummary = describeDecision({

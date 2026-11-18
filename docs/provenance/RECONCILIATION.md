@@ -59,7 +59,8 @@ Export: `…/runs/:runId/report.json` and `…/runs/:runId/report.pdf`.
 | `source_silent` | A source has been silent longer than expected |
 | `below_required_grade_past_deadline` | Evidence grade still below the required level past the deadline |
 | `db_change_without_event` | Ledger row changed with no matching application event (Stage 6 collector) |
-| `plausibility_flag` | Stub for Stage 7 (raise manually) |
+| `plausibility_flag` | Non-blocking Stage 7 detector (amount outlier, off-hours, schema drift, volume spike) |
+| `fact_mismatch` | LOS asserted a value that differs from a signed third-party fact; signed value used |
 
 Exceptions are idempotent by fingerprint: a rerun updates `last_seen_at` and does not
 duplicate open items.

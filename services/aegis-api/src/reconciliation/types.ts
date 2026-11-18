@@ -15,6 +15,7 @@ export const RECONCILIATION_EXCEPTION_KINDS = [
   "below_required_grade_past_deadline",
   "db_change_without_event",
   "plausibility_flag",
+  "fact_mismatch",
 ] as const;
 
 export type ReconciliationExceptionKind =

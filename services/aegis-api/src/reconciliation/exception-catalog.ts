@@ -55,8 +55,12 @@ export const EXCEPTION_CATALOG: Record<
     severity: "high",
   },
   plausibility_flag: {
-    title: "Plausibility check flagged this case (Stage 7)",
+    title: "Plausibility check flagged this case",
     severity: "medium",
+  },
+  fact_mismatch: {
+    title: "Source asserted a value that differs from a signed third-party fact",
+    severity: "high",
   },
 };
 

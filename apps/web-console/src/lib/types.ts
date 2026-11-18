@@ -241,7 +241,8 @@ export type FieldAssertionKind =
   | "asserted_by_source"
   | "derived_by_aegis"
   | "corroborated"
-  | "independently_captured";
+  | "independently_captured"
+  | "signed_by_third_party";
 
 /**
  * Mirrors aegis-api CaseProvenanceView. The grade says how the data was vouched for; it never
@@ -267,6 +268,17 @@ export type CaseProvenance = {
   }>;
   checklist: Array<{ id: string; label: string; met: boolean }>;
   field_assertions: Record<string, FieldAssertionKind>;
+  /** Stage 7: e.g. "Credit score 612, signed by Demo Credit Bureau". */
+  signed_facts?: Array<{
+    field: string;
+    value: unknown;
+    source_id: string;
+    source_name: string;
+    key_id: string;
+    display_line: string;
+  }>;
+  /** Stage 7: non-blocking plausibility flags. */
+  plausibility_flags?: Array<{ kind: string; title: string }>;
   limitations: string;
   recorded_at: string | null;
   headline: string;

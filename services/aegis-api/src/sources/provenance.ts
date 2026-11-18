@@ -25,6 +25,8 @@ export const FIELD_ASSERTIONS = [
   "derived_by_aegis",
   "corroborated",
   "independently_captured",
+  /** Stage 7: value taken from a verified third-party (e.g. bureau) signature. */
+  "signed_by_third_party",
 ] as const;
 export type FieldAssertion = (typeof FIELD_ASSERTIONS)[number];
 
@@ -144,6 +146,12 @@ const BOOKKEEPING_KEYS = new Set([
   "checks",
   "provenance",
   "demo_history",
+  "third_party_facts",
+  "signed_facts",
+  "bureau_response",
+  "third_party_signed",
+  "input_commitments",
+  "plausibility_flags",
 ]);
 
 /** Receipt-level fields Aegis always derives from the policy. */
@@ -420,6 +428,16 @@ export function summarizeReceiptProvenance(
   };
 }
 
+export type SignedFactView = {
+  field: string;
+  value: unknown;
+  source_id: string;
+  source_name: string;
+  key_id: string;
+  /** e.g. "Credit score 612, signed by Demo Credit Bureau" */
+  display_line: string;
+};
+
 export type CaseProvenanceView = {
   schema_version: 1;
   /** True when the first data receipt has no provenance block (sealed before Stage 2). */
@@ -437,6 +455,10 @@ export type CaseProvenanceView = {
   /** The five facts, in the order the case page shows them. */
   checklist: Array<{ id: ProvenanceCheckId; label: string; met: boolean }>;
   field_assertions: Record<string, FieldAssertion>;
+  /** Stage 7: third-party signed field lines for the case page. Omitted when empty (legacy bundles). */
+  signed_facts?: SignedFactView[];
+  /** Stage 7: non-blocking plausibility flags sealed on the receipt. Omitted when empty. */
+  plausibility_flags?: Array<{ kind: string; title: string }>;
   limitations: string;
   recorded_at: string | null;
   /** "Data signed by X (key k). Aegis proves it was recorded at … (grade G1)." */
@@ -581,12 +603,50 @@ export function buildCaseProvenance(
   }
 
   let current = gradeAtSeal;
+  const signedFacts: SignedFactView[] = [];
+  const signedSeen = new Set<string>();
+  const plausibilityFlags: Array<{ kind: string; title: string }> = [];
+  const plausSeen = new Set<string>();
+
   for (const r of data) {
     if (isProvenanceBlock(r.provenance)) {
       dataChecks.push(r.provenance.checks);
       current = maxGrade(current, r.provenance.evidence_grade);
       for (const [k, v] of Object.entries(r.provenance.field_assertions)) {
         if (!(k in assertions)) assertions[k] = v;
+      }
+    }
+    const attrs = r.attributes ?? {};
+    const sealedFacts = attrs.third_party_signed;
+    if (Array.isArray(sealedFacts)) {
+      for (const f of sealedFacts) {
+        if (!isRecord(f) || typeof f.field !== "string") continue;
+        const key = `${f.field}|${String(f.source_id ?? "")}`;
+        if (signedSeen.has(key)) continue;
+        signedSeen.add(key);
+        signedFacts.push({
+          field: f.field,
+          value: f.value,
+          source_id: typeof f.source_id === "string" ? f.source_id : "",
+          source_name: typeof f.source_name === "string" ? f.source_name : "",
+          key_id: typeof f.key_id === "string" ? f.key_id : "",
+          display_line:
+            typeof f.display_line === "string"
+              ? f.display_line
+              : `${f.field} ${String(f.value)}, signed by ${String(f.source_name ?? "third party")}`,
+        });
+      }
+    }
+    const flags = attrs.plausibility_flags;
+    if (Array.isArray(flags)) {
+      for (const fl of flags) {
+        if (!isRecord(fl) || typeof fl.kind !== "string") continue;
+        if (plausSeen.has(fl.kind)) continue;
+        plausSeen.add(fl.kind);
+        plausibilityFlags.push({
+          kind: fl.kind,
+          title: typeof fl.title === "string" ? fl.title : fl.kind,
+        });
       }
     }
   }
@@ -617,6 +677,10 @@ export function buildCaseProvenance(
       met: checks[id],
     })),
     field_assertions: assertions,
+    ...(signedFacts.length > 0 ? { signed_facts: signedFacts } : {}),
+    ...(plausibilityFlags.length > 0
+      ? { plausibility_flags: plausibilityFlags }
+      : {}),
     limitations,
     recorded_at: recordedAt,
     headline: words.headline,

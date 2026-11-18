@@ -8,6 +8,7 @@ const ASSERTION_WORDS: Record<FieldAssertionKind, string> = {
   derived_by_aegis: "Worked out or recorded by Aegis",
   corroborated: "Corroborated by another record",
   independently_captured: "Captured independently of the source",
+  signed_by_third_party: "Signed by a registered third party",
 };
 
 const AUTH_WORDS: Record<string, string> = {
@@ -70,6 +71,39 @@ export function ProvenancePanel({
       <p style={{ margin: "0 0 0.75rem", fontSize: "0.9375rem", lineHeight: 1.55 }}>
         {provenance.headline}
       </p>
+      {provenance.signed_facts && provenance.signed_facts.length > 0 ? (
+        <ul
+          style={{
+            margin: "0 0 0.75rem",
+            padding: 0,
+            listStyle: "none",
+            display: "grid",
+            gap: "0.3rem",
+          }}
+        >
+          {provenance.signed_facts.map((f) => (
+            <li key={`${f.field}:${f.source_id}`} style={{ fontSize: "0.9375rem", lineHeight: 1.5 }}>
+              {f.display_line}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {provenance.plausibility_flags && provenance.plausibility_flags.length > 0 ? (
+        <div
+          className={`${ui.alert} ${ui.alertInfo}`}
+          role="status"
+          style={{ marginBottom: "0.75rem" }}
+        >
+          <strong style={{ display: "block", marginBottom: "0.25rem" }}>
+            Plausibility flags (did not change the outcome)
+          </strong>
+          <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.875rem" }}>
+            {provenance.plausibility_flags.map((f) => (
+              <li key={f.kind}>{f.title}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <ul style={{ margin: "0 0 0.75rem", padding: 0, listStyle: "none", display: "grid", gap: "0.3rem" }}>
         {provenance.checklist.map((item) => (
           <li

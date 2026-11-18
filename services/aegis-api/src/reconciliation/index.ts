@@ -7,3 +7,4 @@ export * from "./report.js";
 export * from "./run.js";
 export * from "./schedule-runner.js";
 export * from "./collector-match.js";
+export * from "./plausibility.js";
