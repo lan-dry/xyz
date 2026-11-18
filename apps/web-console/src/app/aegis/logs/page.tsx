@@ -215,7 +215,7 @@ export default function AuditLogsPage() {
           </button>
         ) : null}
         {bank ? null : (
-          <Link href="/aegis/members" className={ui.tableLink} style={{ alignSelf: "center", fontSize: "0.8125rem" }}>
+          <Link href="/aegis/settings/members" className={ui.tableLink} style={{ alignSelf: "center", fontSize: "0.8125rem" }}>
             Manage members →
           </Link>
         )}

@@ -3,6 +3,12 @@
   --background: #f8fafc;
 }
 
+html.dark {
+  --foreground: #e8ede9;
+  --background: #0a0c0b;
+  color-scheme: dark;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);

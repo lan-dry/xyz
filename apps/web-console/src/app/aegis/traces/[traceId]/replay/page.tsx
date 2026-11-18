@@ -235,8 +235,6 @@ export default function TraceReplayPage() {
                 href={`/aegis/events/${encodeURIComponent(step.event_id)}`}
                 className={`${ui.btn} ${ui.btnSecondary}`}
                 style={{ marginTop: "1rem", display: "inline-flex" }}
-                target="_blank"
-                rel="noopener noreferrer"
               >
                 Open signed event
               </Link>

@@ -246,7 +246,7 @@ export default function GetStartedPage() {
             : Slack notify when something waits for a person
           </li>
           <li style={{ marginBottom: "0.35rem" }}>
-            <Link href="/aegis/members" className={ui.tableLink}>
+            <Link href="/aegis/settings/members" className={ui.tableLink}>
               Members
             </Link>
             : invite an approver

@@ -29,7 +29,7 @@ import {
   readConsoleEnvironment,
   type ConsoleEnvironment,
 } from "@/lib/console-environment";
-import { PLATFORM_PRODUCTS } from "@/lib/products";
+import { VISIBLE_PLATFORM_PRODUCTS } from "@/lib/products";
 import { docsUrl, MARKETING_URL, PLATFORM_URL } from "@/lib/site-urls";
 import { consoleApi } from "@/lib/api";
 import type { ConsoleImpersonation, ConsoleOrganization, ConsoleUser } from "@/lib/types";
@@ -243,14 +243,14 @@ export function ConsoleShell({
 
         {bankDemo ? null : <div className={shell.productBlock}>
           {!collapsed ? <p className={shell.productLabel}>Products</p> : null}
-          {PLATFORM_PRODUCTS.map((p) => {
+          {VISIBLE_PLATFORM_PRODUCTS.map((p) => {
             const active =
               !p.external &&
               (pathname === p.href || pathname.startsWith(`${p.href}/`));
             const label = (
               <>
                 {p.name}
-                {p.status === "preview" ? " · preview" : ""}
+                {p.status !== "active" && p.status !== "hidden" ? " · preview" : ""}
               </>
             );
             if (p.external) {

@@ -450,8 +450,6 @@ export default function EventDetailPage() {
                 href={`/verify`}
                 className={`${ui.btn} ${ui.btnSecondary}`}
                 style={{ fontSize: "0.8125rem" }}
-                target="_blank"
-                rel="noopener noreferrer"
               >
                 Open public Verify
               </Link>

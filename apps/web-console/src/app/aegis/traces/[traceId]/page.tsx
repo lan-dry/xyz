@@ -176,8 +176,6 @@ export default function TraceDetailPage() {
                   <Link
                     href={`/verify?org=${encodeURIComponent(orgSlug)}&event=${encodeURIComponent(firstEventId)}`}
                     className={`${ui.btn} ${ui.btnGhost}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
                   >
                     Verify seal
                   </Link>
@@ -185,8 +183,6 @@ export default function TraceDetailPage() {
                   <Link
                     href={`/aegis/events/${encodeURIComponent(firstEventId)}`}
                     className={`${ui.btn} ${ui.btnGhost}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
                   >
                     Verify seal
                   </Link>
@@ -428,8 +424,6 @@ export default function TraceDetailPage() {
                 <Link
                   href={`/verify?org=${encodeURIComponent(orgSlug)}&event=${encodeURIComponent(firstEventId)}`}
                   className={`${ui.btn} ${ui.btnSecondary}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
                 >
                   Verify seal
                 </Link>

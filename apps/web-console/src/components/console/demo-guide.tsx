@@ -40,7 +40,7 @@ const STEPS = [
     id: "members",
     label: "Invite teammate & change role",
     hint: "Members: invite, role dropdown",
-    href: "/aegis/members",
+    href: "/aegis/settings/members",
   },
   {
     id: "export",

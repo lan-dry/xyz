@@ -389,3 +389,95 @@
   margin-top: 0.75rem;
 }
 
+/* Match console dark theme when html.dark is set (shared localStorage key). */
+:global(html.dark) .page {
+  color: #e8ede9;
+}
+
+:global(html.dark) .eyebrow,
+:global(html.dark) .lead,
+:global(html.dark) .demoHeader p,
+:global(html.dark) .demoHint,
+:global(html.dark) .footnote,
+:global(html.dark) .bundle > p,
+:global(html.dark) .meta dt {
+  color: #9eb0ac;
+}
+
+:global(html.dark) .form,
+:global(html.dark) .result,
+:global(html.dark) .demo,
+:global(html.dark) .bundle {
+  border-color: rgba(67, 194, 169, 0.18);
+  background: #141917;
+}
+
+:global(html.dark) .form label {
+  color: #c5d4d0;
+}
+
+:global(html.dark) .form input {
+  border-color: rgba(67, 194, 169, 0.28);
+  background: #0a0c0b;
+  color: #e8ede9;
+}
+
+:global(html.dark) .form button,
+:global(html.dark) .demoButton {
+  background: #43c2a9;
+  color: #0a0c0b;
+}
+
+:global(html.dark) .demoCard,
+:global(html.dark) .dropzone,
+:global(html.dark) .errors {
+  border-color: rgba(67, 194, 169, 0.18);
+  background: #0a0c0b;
+  color: #c5d4d0;
+}
+
+:global(html.dark) .dropzone:focus-visible,
+:global(html.dark) .dropzoneActive {
+  border-color: #43c2a9;
+  background: #141917;
+}
+
+:global(html.dark) .verdictOk,
+:global(html.dark) .bundleVerdictPass {
+  background: rgba(4, 120, 87, 0.2);
+  color: #6ee7b7;
+}
+
+:global(html.dark) .verdictFail,
+:global(html.dark) .bundleVerdictFail,
+:global(html.dark) .findings {
+  background: rgba(185, 28, 28, 0.15);
+  color: #fca5a5;
+}
+
+:global(html.dark) .checkOk {
+  color: #6ee7b7;
+}
+
+:global(html.dark) .checkFail {
+  color: #fca5a5;
+}
+
+:global(html.dark) .checkPending,
+:global(html.dark) .pendingNote {
+  background: rgba(180, 83, 9, 0.2);
+  color: #fcd34d;
+}
+
+:global(html.dark) .checkInfo {
+  color: #9eb0ac;
+}
+
+:global(html.dark) .error {
+  color: #fca5a5;
+}
+
+:global(html.dark) .linkButton {
+  color: #5dd4bb;
+}
+
