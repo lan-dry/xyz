@@ -87,6 +87,7 @@ CREATE FUNCTION public.platform_tenant_wipe_tables() RETURNS text[]
     'forensic_receipt',
     'forensic_checkpoint',
     'forensic_receipt_seq',
+    'sensitive_field_vault',
     'bank_case',
     'membership_bank_role',
     'authority_matrix',
