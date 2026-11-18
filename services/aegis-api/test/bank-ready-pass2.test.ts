@@ -217,8 +217,11 @@ describe("demo sample bundles + verify checklist", () => {
       "approvals",
       "witness",
       "trusted_time",
+      // Stage 2: where the data came from (an information line, never a pass mark for the data).
+      "source_of_data",
     ]);
     expect(good.checks.filter((c) => c.status === "fail")).toEqual([]);
+    expect(good.checks.find((c) => c.id === "source_of_data")?.status).toBe("info");
     expect(good.checks.find((c) => c.id === "witness")?.status).toBe("pending");
 
     const tampered = tamperBundleAmount(bundle)!;

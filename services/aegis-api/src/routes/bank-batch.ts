@@ -118,6 +118,7 @@ export async function postBankEventBatch(c: Context): Promise<Response> {
         : async (event) =>
             handleBankEvent(client, auth.organizationId, event, {
               forceRecordOnly: true,
+              ingestKeyId: auth.keyId,
             }),
     });
 

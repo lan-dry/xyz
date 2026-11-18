@@ -356,6 +356,17 @@
   color: #991b1b;
 }
 
+/* Where the data came from. Neutral on purpose: a grade is not a pass mark for the data. */
+.sourceLine {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
 .checkPending,
 .checkInfo {
   display: flex;
@@ -378,7 +389,7 @@
   opacity: 0.85;
 }
 
-/* Amber note for a pending witness. Always outside the green Verified box. */
+/* Amber note for a pending witness. Always outside the green record-intact box. */
 .pendingNote {
   margin: 0.75rem 0 0;
   padding: 0.65rem 0.85rem;
@@ -479,6 +490,11 @@
 :global(html.dark) .findings {
   background: rgba(185, 28, 28, 0.15);
   color: #fca5a5;
+}
+
+:global(html.dark) .sourceLine {
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
 }
 
 :global(html.dark) .checkOk {

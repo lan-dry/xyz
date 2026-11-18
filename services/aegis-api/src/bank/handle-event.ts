@@ -25,6 +25,12 @@ import {
   sourceProvenanceAttributes,
   type VerifiedSourceEnvelope,
 } from "../sources/grade.js";
+import {
+  bearerSource,
+  buildFieldAssertions,
+  buildProvenanceBlock,
+} from "../sources/provenance.js";
+import { nowIso } from "../time/clock.js";
 
 /** UI/seed labelling only — never seal into the forensic receipt body. */
 function attributesForSeal(
@@ -47,6 +53,11 @@ export type HandleBankEventOptions = {
    * evidence grade G1 are sealed into the APS event and the forensic receipt attributes.
    */
   sourceEnvelope?: VerifiedSourceEnvelope;
+  /**
+   * Ingest key id when the caller authenticated with a bearer key only (no source signature).
+   * Labels the receipt "sent by an ingest key" (grade G0) instead of an unknown sender.
+   */
+  ingestKeyId?: string;
 };
 
 export async function handleBankEvent(
@@ -285,6 +296,22 @@ export async function handleBankEvent(
         ? { requester_missing: true }
         : {}),
   };
+  // Stage 2 honest labelling: sealed into the receipt body (inside the signature).
+  const sourceLabel = options?.sourceEnvelope
+    ? {
+        source_id: options.sourceEnvelope.source_id,
+        source_name:
+          options.sourceEnvelope.source_name?.trim() ||
+          options.sourceEnvelope.source_id,
+      }
+    : bearerSource(options?.ingestKeyId);
+  const provenance = buildProvenanceBlock({
+    ...sourceLabel,
+    source_key_id: options?.sourceEnvelope?.source_key_id ?? null,
+    authentication: options?.sourceEnvelope ? "source_signature" : "bearer_key",
+    field_assertions: buildFieldAssertions(Object.keys(receiptAttributes)),
+    recorded_at: nowIso(),
+  });
   let plainSummary = describeDecision({
     outcome: evalResult.outcome,
     product: event.product,
@@ -337,6 +364,7 @@ export async function handleBankEvent(
           },
         ],
         attributes: receiptAttributes,
+        provenance,
         issued_at: event.emitted_at,
         timeline: [
           {

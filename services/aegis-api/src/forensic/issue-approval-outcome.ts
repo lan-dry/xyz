@@ -17,6 +17,13 @@ import { roleDisplayName } from "../bank/rule-preview.js";
 import {
   issueForensicReceipt,
 } from "./issue.js";
+import { loadCaseReceiptsLite } from "./case-provenance.js";
+import {
+  buildCaseProvenance,
+  buildFieldAssertions,
+  buildProvenanceBlock,
+} from "../sources/provenance.js";
+import { nowIso } from "../time/clock.js";
 import type {
   ForensicReceiptBody,
   SealedEventRef,
@@ -206,10 +213,50 @@ export async function issueApprovalOutcomeReceipt(
     approval_reason: input.reason ?? null,
   });
 
+  // Stage 2: the human decision inherits where the DATA came from (and any grade rise since),
+  // and adds that Aegis itself bound the approver to the decision.
+  const caseReceipts =
+    (await loadCaseReceiptsLite(client, input.organizationId, [prior.case_id])).get(
+      prior.case_id,
+    ) ?? [];
+  const caseView = buildCaseProvenance(caseReceipts);
+  const provenance = buildProvenanceBlock({
+    source_id: caseView?.source?.source_id ?? "unlabelled",
+    source_name:
+      caseView?.source?.source_name ??
+      "Source not labelled (sealed before labelling)",
+    source_key_id: caseView?.source?.key_id ?? null,
+    authentication: caseView?.source?.authentication ?? "bearer_key",
+    checks: { ...(caseView?.checks ?? {}), approver_bound: true },
+    field_assertions: {
+      ...(caseView?.field_assertions ?? {}),
+      ...buildFieldAssertions(
+        [
+          "approver_user_id",
+          "approver_display_name",
+          "approver_role",
+          "approver_role_label",
+          "approval_reason",
+        ],
+        {
+          derivedKeys: [
+            "approver_user_id",
+            "approver_display_name",
+            "approver_role",
+            "approver_role_label",
+            "approval_reason",
+          ],
+        },
+      ),
+    },
+    recorded_at: nowIso(),
+  });
+
   return issueForensicReceipt(client, {
     organization_id: input.organizationId,
     case_id: prior.case_id,
     decision_id: `${prior.decision_id}:${input.outcome}`,
+    provenance,
     product: prior.body.product,
     event_type: prior.body.event_type,
     outcome: input.outcome,

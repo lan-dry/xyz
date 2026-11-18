@@ -69,6 +69,20 @@ describe("B3 Risk Approval Pack PDF", () => {
         label: "Public RFC 3161 time authority",
         detail: "Stamps come from a public TSA.",
       },
+      data_provenance: {
+        by_grade: [
+          { grade: "G0", label: "G0: sent with an ingest key; the sender did not sign it", cases: 1 },
+          { grade: "G1", label: "G1: signed by the source system with its own key", cases: 1 },
+          { grade: "G2", label: "G2: signed, and corroborated by another record", cases: 0 },
+          { grade: "G3", label: "G3: captured independently of the source", cases: 0 },
+        ],
+        total_cases: 2,
+        legacy_cases: 0,
+        raised_cases: 0,
+        statement: "Aegis proves when this record was made and that it has not changed since.",
+        does_not_claim:
+          "Aegis does not check that the data is accurate. A grade says how the data was vouched for, not that it is true.",
+      },
       sign_off: {
         statement: "I approve this pack for the pilot scope.",
         fields: ["name", "role", "date", "signature"],
@@ -81,6 +95,8 @@ describe("B3 Risk Approval Pack PDF", () => {
     expect(text).toContain("Authority matrix");
     expect(text).toContain("LN-07");
     expect(text).toContain("Sign-off");
+    expect(text).toContain("Where the data came from");
+    expect(text).toContain("does not check that the data is accurate");
     expect(text).not.toMatch(/policy_decision|merkle|APS-1/i);
   });
 });

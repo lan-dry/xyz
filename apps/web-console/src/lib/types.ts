@@ -227,10 +227,52 @@ export type CaseSummary = {
   requester_email?: string | null;
   requester_officer_id?: string | null;
   seal: CaseSealStatus;
+  /** Where the data came from (Stage 2 honest labelling). Null when the case has no sealed receipt. */
+  provenance?: CaseProvenance | null;
   demo_filler: boolean;
   /** Synthetic history from the demo seed (intake times staggered across prior weeks). */
   demo_history?: boolean;
   created_at: string | null;
+};
+
+export type EvidenceGradeId = "G0" | "G1" | "G2" | "G3";
+
+export type FieldAssertionKind =
+  | "asserted_by_source"
+  | "derived_by_aegis"
+  | "corroborated"
+  | "independently_captured";
+
+/**
+ * Mirrors aegis-api CaseProvenanceView. The grade says how the data was vouched for; it never
+ * says the data is accurate. `record_line` is only shown when the record check passed.
+ */
+export type CaseProvenance = {
+  legacy: boolean;
+  source: {
+    source_id: string;
+    source_name: string;
+    key_id: string | null;
+    authentication: "bearer_key" | "source_signature" | "mtls";
+  } | null;
+  grade_at_seal: EvidenceGradeId;
+  current_grade: EvidenceGradeId;
+  grade_changes: Array<{
+    receipt_id: string;
+    at: string;
+    from_grade: EvidenceGradeId;
+    to_grade: EvidenceGradeId;
+    reason: string;
+    feed_name: string | null;
+  }>;
+  checklist: Array<{ id: string; label: string; met: boolean }>;
+  field_assertions: Record<string, FieldAssertionKind>;
+  limitations: string;
+  recorded_at: string | null;
+  headline: string;
+  record_line: string;
+  source_line: string;
+  source_line_short: string;
 };
 
 /** Signed-event source registry (GET /v1/console/sources). */

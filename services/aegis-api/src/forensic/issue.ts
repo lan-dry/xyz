@@ -10,6 +10,7 @@ import { nowIso } from "../time/clock.js";
 import { resolveReceiptSigning } from "../crypto/receipt-signing.js";
 import { publishReceiptSigningKey } from "../repo/receipt-keys.js";
 import { scheduleReceiptTimestamp } from "./receipt-timestamp.js";
+import type { ProvenanceBlock } from "../sources/provenance.js";
 
 function isPoolClient(
   client: pg.Pool | pg.PoolClient,
@@ -143,6 +144,8 @@ export async function issueForensicReceipt(
     plain_summary?: string;
     sealed_events: SealedEventRef[];
     attributes?: Record<string, unknown>;
+    /** Stage 2: sealed inside the signed payload. Omit only for receipts that assert no data. */
+    provenance?: ProvenanceBlock;
     timeline?: Array<Record<string, unknown>>;
     approvals?: Array<Record<string, unknown>>;
     flags?: {
@@ -207,6 +210,7 @@ export async function issueForensicReceipt(
         plain_summary: input.plain_summary,
         sealed_events: input.sealed_events,
         attributes: input.attributes,
+        provenance: input.provenance,
         timeline: input.timeline,
         approvals: input.approvals,
         flags: Object.keys(flags).length > 0 ? flags : undefined,

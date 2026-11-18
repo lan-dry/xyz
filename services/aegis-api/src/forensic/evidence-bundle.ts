@@ -67,6 +67,13 @@ import {
   witnessStateFromBundle,
 } from "./verify-messages.js";
 import { renderOnePagePdf, type PdfLine } from "./minimal-pdf.js";
+import {
+  buildCaseProvenance,
+  GRADE_CHANGE_OUTCOME,
+  summarizeReceiptProvenance,
+  type CaseProvenanceView,
+  type ReceiptProvenanceSummary,
+} from "../sources/provenance.js";
 
 export const EVIDENCE_BUNDLE_TYPE = "aegis_evidence_bundle";
 
@@ -181,6 +188,11 @@ export type EvidenceReceiptSummary = {
   decision_basis: SignedForensicReceipt["decision_basis"] | null;
   plain_summary: string;
   who_approved: string;
+  /**
+   * Where this receipt's data came from, read from its signed provenance block.
+   * Absent on bundles exported before Stage 2.
+   */
+  provenance?: ReceiptProvenanceSummary;
 };
 
 export type EvidenceBundle = ForensicBundle & {
@@ -199,6 +211,12 @@ export type EvidenceBundle = ForensicBundle & {
   evidence: EvidenceReceiptSummary[];
   approvals: EvidenceApproval[];
   witness: EvidenceWitness[] | null;
+  /**
+   * Stage 2 honest labelling: grade at seal, current grade (from sealed grade-change receipts),
+   * the five checks, and plain wording. Derived from the signed receipts above; the verifier
+   * recomputes it and flags any difference. Absent on bundles exported before Stage 2.
+   */
+  provenance?: CaseProvenanceView | null;
   how_to_verify: string;
   /** Result when the server exported this file; informational only. */
   export_check?: { ok: boolean; findings: string[] };
@@ -423,7 +441,25 @@ export function summarizeReceipt(
     decision_basis: receipt.decision_basis ?? null,
     plain_summary: plain,
     who_approved: whoApproved(receipt, opts.approvals),
+    provenance: summarizeReceiptProvenance(receipt),
   };
+}
+
+/** Stable JSON (sorted keys) for comparing derived sections with their recomputation. */
+function stableJson(value: unknown): string {
+  const sort = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(sort);
+    if (v !== null && typeof v === "object") {
+      const o = v as Record<string, unknown>;
+      return Object.fromEntries(
+        Object.keys(o)
+          .sort()
+          .map((k) => [k, sort(o[k])]),
+      );
+    }
+    return v;
+  };
+  return JSON.stringify(sort(value));
 }
 
 /** Pure builder: all inputs already loaded. Unit-testable without a database. */
@@ -511,6 +547,7 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     evidence,
     approvals,
     witness: input.witness ?? null,
+    provenance: buildCaseProvenance(receipts),
     how_to_verify: HOW_TO_VERIFY,
   };
 }
@@ -531,6 +568,15 @@ export type BundleFileVerification = {
   case_id: string | null;
   trace_id: string | null;
   witness: "included" | "pending" | "none";
+  /**
+   * Two separate answers (never one green "verified"):
+   * record_line  — is the record intact (signed, unchanged)?
+   * source_line  — where did the data come from, and how much is vouched for?
+   */
+  record_line: string | null;
+  source_line: string | null;
+  /** Provenance recomputed from the signed receipts in the file (not copied from the file's summary). */
+  provenance: CaseProvenanceView | null;
 };
 
 function notABundle(message: string): BundleFileVerification {
@@ -544,6 +590,9 @@ function notABundle(message: string): BundleFileVerification {
     case_id: null,
     trace_id: null,
     witness: "none",
+    record_line: null,
+    source_line: null,
+    provenance: null,
   };
 }
 
@@ -705,6 +754,17 @@ export async function verifyBundleFile(
           });
         }
       }
+      // Stage 2: the unsigned provenance summary must match the signed provenance block.
+      if (
+        ev.provenance !== undefined &&
+        stableJson(ev.provenance) !== stableJson(summarizeReceiptProvenance(r))
+      ) {
+        findings.push({
+          code: "summary_mismatch",
+          message: "Source label in the summary does not match the signed receipt",
+          record: r.receipt_id,
+        });
+      }
       // Soft who_approved / plain_summary must match the signed body when present.
       if (
         typeof ev.who_approved === "string" &&
@@ -822,6 +882,19 @@ export async function verifyBundleFile(
     }
   }
 
+  // Stage 2: the case-level provenance in the file (grades, checks, wording) is derived from the
+  // signed receipts. Recompute it; a file that edits the displayed grade no longer matches.
+  const provenance = buildCaseProvenance(bundle.receipts);
+  if (
+    bundle.provenance !== undefined &&
+    stableJson(bundle.provenance) !== stableJson(provenance)
+  ) {
+    findings.push({
+      code: "summary_mismatch",
+      message: "Source and grade in the summary do not match the signed receipts",
+    });
+  }
+
   const trustedTime = readTrustedTime(bundle);
   for (const bad of trustedTime.filter((t) => t.status === "invalid")) {
     findings.push({
@@ -925,11 +998,28 @@ export async function verifyBundleFile(
       ? bundle.witness.find((x) => x?.anchoring_type)?.anchoring_type ?? null
       : null,
   });
+  if (provenance) {
+    // Reported separately from the record checks: this is about the data's origin, not the seal.
+    checks.push({
+      id: "source_of_data",
+      label: provenance.source_line,
+      status: "info",
+      detail: provenance.headline,
+    });
+  }
   return {
     ok,
     message: ok
       ? "The record is intact and signed by a recognised key."
-      : "Verification failed. This record cannot be relied on.",
+      : "Record check failed. This record cannot be relied on.",
+    record_line: ok
+      ? provenance?.record_line ??
+        `Record intact: signed and unchanged since ${formatUtc(
+          bundle.receipts[0]?.issued_at,
+        )}`
+      : "Record check failed: it was changed after signing, or is incomplete.",
+    source_line: provenance?.source_line ?? null,
+    provenance,
     checks,
     findings: findings.map((f) => ({
       code: f.code,
@@ -1460,8 +1550,17 @@ export function trustedTimeText(
 export async function renderEvidencePdf(bundle: EvidenceBundle): Promise<Buffer> {
   const verification = await verifyForensicBundle(bundle);
   const checks = buildVerifyChecks(verification, witnessStateFromBundle(bundle));
-  const primary = bundle.evidence[bundle.evidence.length - 1];
-  const receipt = bundle.receipts[bundle.receipts.length - 1];
+  // The page describes the decision, not a later grade-change receipt.
+  const decisionEvidence = bundle.evidence.filter(
+    (e) => e.outcome !== GRADE_CHANGE_OUTCOME,
+  );
+  const primary =
+    decisionEvidence[decisionEvidence.length - 1] ??
+    bundle.evidence[bundle.evidence.length - 1];
+  const receipt =
+    bundle.receipts.find((r) => r.receipt_id === primary?.receipt_id) ??
+    bundle.receipts[bundle.receipts.length - 1];
+  const provenance = buildCaseProvenance(bundle.receipts);
   const lines: PdfLine[] = [];
   lines.push({ text: "Aegis evidence record", bold: true, size: 18 });
   lines.push({
@@ -1526,6 +1625,29 @@ export async function renderEvidencePdf(bundle: EvidenceBundle): Promise<Buffer>
   ];
   for (const [k, v] of facts) lines.push({ text: `${k}: ${v}` });
 
+  // Stage 2: where the data came from. Never implies the data is accurate.
+  if (provenance) {
+    lines.push({ text: "Where this data came from", bold: true, size: 12, gapBefore: 10 });
+    lines.push({ text: provenance.headline, size: 9 });
+    lines.push({
+      text:
+        "Five facts: " +
+        provenance.checklist
+          .map((item) => `${item.label}: ${item.met ? "yes" : "no"}`)
+          .join("; "),
+      size: 8,
+    });
+    for (const change of provenance.grade_changes) {
+      lines.push({
+        text:
+          `Grade rose ${change.from_grade} to ${change.to_grade} at ${formatUtc(change.at)}` +
+          `${change.feed_name ? ` (${change.feed_name})` : ""}: ${change.reason}`,
+        size: 8,
+      });
+    }
+    lines.push({ text: provenance.limitations, size: 8 });
+  }
+
   // Plain summary is the auditor-facing sentence; skip engine decision_basis text.
 
   lines.push({ text: "Seal", bold: true, size: 12, gapBefore: 10 });
@@ -1550,6 +1672,14 @@ export async function renderEvidencePdf(bundle: EvidenceBundle): Promise<Buffer>
   lines.push({ text: trustedTimeText(bundle, receipt.receipt_id), size: 8 });
 
   lines.push({ text: "Checked when this page was made", bold: true, size: 12, gapBefore: 10 });
+  lines.push({
+    text: verification.ok
+      ? (provenance?.record_line ??
+        `Record intact: signed and unchanged since ${formatUtc(receipt.issued_at)}`)
+      : "Record check failed: it was changed after signing, or is incomplete.",
+    size: 9,
+  });
+  if (provenance) lines.push({ text: provenance.source_line, size: 9 });
   for (const c of checks) {
     const mark =
       c.status === "pass" ? "PASS" : c.status === "fail" ? "FAIL" : c.status === "info" ? "NOTE" : "PENDING";

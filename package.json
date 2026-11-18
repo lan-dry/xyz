@@ -18,6 +18,7 @@
     "db:seed:stoa": "pnpm --filter stoa-api db:seed:dev",
     "lint": "nx run-many -t lint --all",
     "typecheck": "nx run-many -t typecheck --all",
+    "check:wording": "node scripts/check-no-bare-verified.mjs",
     "test": "nx run-many -t test --all",
     "db:migrate": "pnpm --filter aegis-api db:migrate",
     "db:seed:bootstrap": "pnpm --filter aegis-api db:seed:bootstrap",

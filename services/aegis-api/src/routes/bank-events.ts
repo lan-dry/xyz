@@ -113,6 +113,7 @@ export async function postBankEvent(c: Context): Promise<Response> {
       // receipt more conservative ("decided without Aegis"); it can never relax a rule.
       const decision = await handleBankEvent(client, auth.organizationId, event, {
         decidedWithoutAegis: event.attributes.decided_without_aegis === true,
+        ingestKeyId: auth.keyId,
       });
       await client.query("COMMIT");
       return c.json(decision, 200);

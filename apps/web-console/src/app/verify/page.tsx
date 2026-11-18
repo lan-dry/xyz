@@ -12,7 +12,7 @@ import {
   toggleConsoleTheme,
   type ConsoleTheme,
 } from "@/lib/console-theme";
-import type { MeResponse } from "@/lib/types";
+import type { CaseProvenance, MeResponse } from "@/lib/types";
 
 import { BundleVerifier, DemoBundleTry } from "./bundle-verifier";
 import styles from "./verify.module.css";
@@ -31,6 +31,7 @@ type VerifyResponse = {
   event_id: string;
   event_hash: string;
   verification?: Verification;
+  provenance?: CaseProvenance | null;
   error?: string;
 };
 
@@ -182,7 +183,14 @@ function VerifyForm() {
       {result && verification ? (
         <section className={styles.result}>
           <div className={verification.ok ? styles.verdictOk : styles.verdictFail}>
-            {verification.ok ? "Verified" : "Verification failed"}
+            {verification.ok
+              ? (result.provenance?.record_line ??
+                "Record intact: signed and unchanged since it was sealed")
+              : "Record check failed: this record does not match its seal"}
+          </div>
+          <div className={styles.sourceLine}>
+            {result.provenance?.source_line ??
+              "Source of the data: not labelled. Aegis does not check that the data is accurate."}
           </div>
           <dl className={styles.meta}>
             <div>

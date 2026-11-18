@@ -10,6 +10,13 @@ import {
   verifyForensicReceiptSignature,
   type SignedForensicReceipt,
 } from "./receipt.js";
+import {
+  buildCaseProvenance,
+  GRADE_CHANGE_OUTCOME,
+  gradeChangeFromReceipt,
+  gradeChangeProblems,
+  provenanceProblems,
+} from "../sources/provenance.js";
 
 export type KeySet = Record<string, string>; // key_id -> public_key_b64
 
@@ -169,6 +176,62 @@ async function verifyReceiptSourceEnvelope(
   });
 }
 
+/**
+ * Stage 2 labelling checks. A receipt WITHOUT a provenance block is legacy (G0) and fine.
+ * A block that is present must be well formed, its grade must follow from its checks, and a
+ * claimed source signature must be backed by the envelope attached to the receipt. A
+ * grade_change receipt must raise the grade from what the case had reached before it.
+ * (Editing any of these facts already fails the receipt hash; this catches a re-signed or
+ * mis-built block.)
+ */
+function verifyReceiptProvenance(
+  receipt: SignedForensicReceipt,
+  all: SignedForensicReceipt[],
+  findings: VerifyFinding[],
+): void {
+  if (receipt.provenance !== undefined) {
+    const envelope = extractSourceEnvelope(receipt);
+    const problems = provenanceProblems(receipt.provenance, {
+      hasEnvelope: envelope !== null,
+      envelopeSourceId:
+        envelope && typeof envelope.source_id === "string"
+          ? envelope.source_id
+          : undefined,
+      envelopeKeyId:
+        envelope && typeof envelope.key_id === "string" ? envelope.key_id : undefined,
+    });
+    if (problems.length > 0) {
+      findings.push({
+        code: "provenance_invalid",
+        message: problems.join(" "),
+        record: receipt.receipt_id,
+      });
+    }
+  }
+  if (receipt.outcome === GRADE_CHANGE_OUTCOME) {
+    const problems = gradeChangeProblems(receipt);
+    const change = gradeChangeFromReceipt(receipt);
+    if (problems.length === 0 && change) {
+      const earlier = all.filter(
+        (x) => x.case_id === receipt.case_id && x.seq < receipt.seq,
+      );
+      const before = buildCaseProvenance(earlier);
+      if (before && before.current_grade !== change.from_grade) {
+        problems.push(
+          `The change starts from ${change.from_grade} but the case was at ${before.current_grade}.`,
+        );
+      }
+    }
+    if (problems.length > 0) {
+      findings.push({
+        code: "grade_change_invalid",
+        message: problems.join(" "),
+        record: receipt.receipt_id,
+      });
+    }
+  }
+}
+
 export async function verifyForensicBundle(
   bundle: ForensicBundle,
 ): Promise<VerifyResult> {
@@ -296,6 +359,7 @@ export async function verifyForensicBundle(
     }
 
     await verifyReceiptSourceEnvelope(r, bundle, findings);
+    verifyReceiptProvenance(r, receipts, findings);
 
     expectedPrev = r.receipt_hash;
   }

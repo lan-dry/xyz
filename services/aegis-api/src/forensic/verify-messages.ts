@@ -67,6 +67,9 @@ const FACT_CODES = [
   "receipt_hash_mismatch",
   "summary_mismatch",
   "approval_binding_mismatch",
+  // Stage 2: the sealed source label or grade is inconsistent. Findings carry their own detail.
+  "provenance_invalid",
+  "grade_change_invalid",
 ];
 const SIGNATURE_CODES = ["signature_invalid"];
 const KEY_CODES = ["unknown_key_id", "key_untrusted"];

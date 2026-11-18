@@ -10,6 +10,15 @@ import { listAuthorityMatrix, listBankRoleLadder } from "../bank/repo.js";
 import { renderOnePagePdf, type PdfLine } from "../forensic/minimal-pdf.js";
 import { fingerprintOfPublicKey } from "../repo/receipt-keys.js";
 import { configuredReceiptKey } from "../forensic/evidence-bundle.js";
+import { EVIDENCE_GRADES, type EvidenceGrade } from "../sources/grade.js";
+import {
+  DOES_NOT_VERIFY_ACCURACY,
+  GRADE_CHANGE_OUTCOME,
+  isEvidenceGrade,
+  isProvenanceBlock,
+  maxGrade,
+  PROVENANCE_LIMITATIONS,
+} from "../sources/provenance.js";
 
 export type RiskApprovalPack = {
   pack_type: "risk_approval_pack";
@@ -50,6 +59,21 @@ export type RiskApprovalPack = {
     label: string;
     detail: string;
   };
+  /**
+   * Stage 2 honest labelling: how the data behind these cases was vouched for. Committee readers
+   * must not take a grade as proof the data is accurate.
+   */
+  data_provenance: {
+    /** Cases by CURRENT grade (seal-time grade raised by sealed grade changes). */
+    by_grade: Array<{ grade: EvidenceGrade; label: string; cases: number }>;
+    total_cases: number;
+    /** Cases sealed before labelling existed (counted as G0 unless they carry a source envelope). */
+    legacy_cases: number;
+    /** Cases whose grade has risen since they were sealed. */
+    raised_cases: number;
+    statement: string;
+    does_not_claim: string;
+  };
   sign_off: {
     statement: string;
     fields: string[];
@@ -83,6 +107,78 @@ function money(amount: unknown, currency: unknown): string | null {
   const cur = typeof currency === "string" && currency.trim() ? currency.trim().toUpperCase() : "";
   const formatted = Math.round(n).toLocaleString("en-US");
   return cur ? `${cur} ${formatted}` : formatted;
+}
+
+const GRADE_PLAIN: Record<EvidenceGrade, string> = {
+  G0: "G0: sent with an ingest key; the sender did not sign it",
+  G1: "G1: signed by the source system with its own key",
+  G2: "G2: signed, and corroborated by another record",
+  G3: "G3: captured independently of the source",
+};
+
+/** Cases by current grade, from the signed receipts (seal-time grade + sealed grade changes). */
+async function dataProvenanceSection(
+  pool: pg.Pool | pg.PoolClient,
+  orgId: string,
+): Promise<RiskApprovalPack["data_provenance"]> {
+  const counts = new Map<EvidenceGrade, number>(EVIDENCE_GRADES.map((g) => [g, 0]));
+  let legacy = 0;
+  let raised = 0;
+  let total = 0;
+  try {
+    const first = await pool.query<{
+      case_id: string;
+      provenance: unknown;
+      has_envelope: boolean;
+    }>(
+      `SELECT DISTINCT ON (case_id) case_id,
+              body->'provenance' AS provenance,
+              (body->'attributes'->'source_envelope') IS NOT NULL AS has_envelope
+         FROM forensic_receipt
+        WHERE organization_id = $1 AND outcome <> $2
+        ORDER BY case_id, seq ASC`,
+      [orgId, GRADE_CHANGE_OUTCOME],
+    );
+    const changes = await pool.query<{ case_id: string; to_grade: string | null }>(
+      `SELECT case_id, body->'attributes'->'grade_change'->>'to_grade' AS to_grade
+         FROM forensic_receipt
+        WHERE organization_id = $1 AND outcome = $2`,
+      [orgId, GRADE_CHANGE_OUTCOME],
+    );
+    const risen = new Map<string, EvidenceGrade>();
+    for (const c of changes.rows) {
+      if (isEvidenceGrade(c.to_grade)) {
+        risen.set(c.case_id, maxGrade(risen.get(c.case_id) ?? "G0", c.to_grade));
+      }
+    }
+    for (const row of first.rows) {
+      total += 1;
+      let atSeal: EvidenceGrade;
+      if (isProvenanceBlock(row.provenance)) {
+        atSeal = row.provenance.grade_at_seal;
+      } else {
+        legacy += 1;
+        atSeal = row.has_envelope ? "G1" : "G0";
+      }
+      const current = maxGrade(atSeal, risen.get(row.case_id) ?? "G0");
+      if (current !== atSeal) raised += 1;
+      counts.set(current, (counts.get(current) ?? 0) + 1);
+    }
+  } catch {
+    // forensic tables absent: report an empty section.
+  }
+  return {
+    by_grade: EVIDENCE_GRADES.map((g) => ({
+      grade: g,
+      label: GRADE_PLAIN[g],
+      cases: counts.get(g) ?? 0,
+    })),
+    total_cases: total,
+    legacy_cases: legacy,
+    raised_cases: raised,
+    statement: PROVENANCE_LIMITATIONS,
+    does_not_claim: `${DOES_NOT_VERIFY_ACCURACY} A grade says how the data was vouched for, not that it is true.`,
+  };
 }
 
 function plainOutcome(raw: string | null | undefined): string {
@@ -246,6 +342,7 @@ export async function buildRiskApprovalPack(
       label: "Public RFC 3161 time authority",
       detail: `Stamps come from ${tsa}. A stamp may stay pending; the record remains valid either way.`,
     },
+    data_provenance: await dataProvenanceSection(pool, orgId),
     sign_off: {
       statement:
         "I have reviewed the authority matrix, active rules (version and hash), case volumes, sample cases, key custody and time authority in this pack, and approve them for the stated pilot scope.",
@@ -334,6 +431,25 @@ export function renderRiskApprovalPdf(pack: RiskApprovalPack): Buffer {
   lines.push({ text: "Time authority", bold: true, size: 12, gapBefore: 10 });
   lines.push({ text: pack.time_authority.label, size: 9 });
   lines.push({ text: pack.time_authority.detail, size: 8 });
+
+  lines.push({ text: "Where the data came from", bold: true, size: 12, gapBefore: 10 });
+  const dp = pack.data_provenance;
+  if (dp.total_cases === 0) {
+    lines.push({ text: "No cases yet.", size: 9 });
+  } else {
+    for (const g of dp.by_grade) {
+      lines.push({ text: `${g.label}: ${g.cases} case(s)`, size: 9 });
+    }
+    if (dp.legacy_cases > 0 || dp.raised_cases > 0) {
+      lines.push({
+        text:
+          `${dp.legacy_cases} case(s) were sealed before sources were labelled; ` +
+          `${dp.raised_cases} case(s) have a grade that rose after sealing.`,
+        size: 8,
+      });
+    }
+  }
+  lines.push({ text: dp.does_not_claim, size: 8 });
 
   lines.push({ text: "Sign-off", bold: true, size: 12, gapBefore: 12 });
   lines.push({ text: pack.sign_off.statement, size: 9 });

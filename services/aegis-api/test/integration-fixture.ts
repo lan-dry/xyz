@@ -75,6 +75,11 @@ export async function applyIntegrationFixture(
     await client.query(`DELETE FROM event WHERE organization_id = $1`, [
       INTEGRATION_ORG_A,
     ]);
+    // Stage 2 grade-change index (migration 007) is append-only like the receipts.
+    await client.query(
+      `DELETE FROM evidence_grade_change WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
     await client.query(`DELETE FROM forensic_receipt WHERE organization_id = $1`, [
       INTEGRATION_ORG_A,
     ]);

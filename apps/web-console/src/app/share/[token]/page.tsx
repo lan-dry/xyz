@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import styles from "../share.module.css";
 import { ConsoleTime } from "@/components/console/console-time";
+import type { CaseProvenance } from "@/lib/types";
 
 type ShareReceiptResponse = {
   share: {
@@ -49,6 +50,7 @@ type ShareReceiptResponse = {
     approver?: string | null;
     rule_label?: string | null;
   };
+  provenance?: CaseProvenance | null;
   error?: string;
 };
 
@@ -152,10 +154,10 @@ export default function ShareReceiptPage() {
             <p className={styles.statusRow}>
               <span className={`${styles.badge} ${verifyClass}`}>
                 {showVerified
-                  ? "Verified"
+                  ? "Record intact"
                   : data.verification.status === "pending"
-                    ? "Verification pending"
-                    : "Verification unavailable"}
+                    ? "Record check pending"
+                    : "Record check unavailable"}
               </span>
               <span className={styles.metaInline}>
                 {showVerified
@@ -164,6 +166,10 @@ export default function ShareReceiptPage() {
                     : "Signature chain is intact."
                   : data.verification.detail}
               </span>
+            </p>
+            <p className={styles.metaInline} style={{ margin: "0 0 1rem" }}>
+              {data.provenance?.source_line ??
+                "Source of the data: not labelled. Aegis does not check that the data is accurate."}
             </p>
 
             {data.story?.anomaly ? (
@@ -206,6 +212,23 @@ export default function ShareReceiptPage() {
               ) : null}
             </section>
 
+            {data.provenance ? (
+              <section className={styles.card} aria-labelledby="provenance-heading">
+                <h2 id="provenance-heading" className={styles.cardTitle}>
+                  Where this data came from
+                </h2>
+                <p className={styles.prose}>{data.provenance.headline}</p>
+                <ul className={styles.fieldList}>
+                  {data.provenance.checklist.map((item) => (
+                    <li key={item.id}>
+                      {item.met ? "Yes" : "No"}: {item.label}
+                    </li>
+                  ))}
+                </ul>
+                <p className={styles.metaInline}>{data.provenance.limitations}</p>
+              </section>
+            ) : null}
+
             <section className={styles.card} aria-labelledby="decision-heading">
               <h2 id="decision-heading" className={styles.cardTitle}>
                 Decision
@@ -239,7 +262,7 @@ export default function ShareReceiptPage() {
                   <dt className={styles.dt}>Public inclusion</dt>
                   <dd className={styles.dd}>
                     {data.verification.inclusion_status === "ok"
-                      ? "Witness and transparency verified"
+                      ? "Witness and transparency log entries match"
                       : inclusionPending
                         ? data.verification.inclusion_detail ||
                           "Witness inclusion is still processing"

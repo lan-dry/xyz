@@ -85,6 +85,33 @@ Also true: sealed decisions cannot be altered by the application database role
 
 Hosted stack: `docs/DEPLOY_PRODUCTION.md`. The marketing site is **not published**.
 
+## Must not claim: what Aegis proves about data
+
+Aegis proves **when a record was made** and that it has **not changed since**. It does **not** check
+that the data inside the record is accurate. Every screen and export says where the data came from
+(see `docs/PROVENANCE.md`). Say the same thing out loud.
+
+| Say | Never say |
+|-----|-----------|
+| "The record is intact: signed and unchanged since 14:02 UTC." | "Verified", "validated", "certified" next to an amount, a name, or a decision |
+| "The data was signed by Demo Core Banking with its own key (grade G1)." | "Aegis verified the loan amount" / "Aegis confirms the customer is real" |
+| "The data was sent with an ingest key; the sender did not sign it (grade G0)." | "Trusted data" or "clean data" for G0 or G1 |
+| "Aegis does not check that the data is accurate." | "Aegis proves the transaction happened" (only a reconciled feed or an independent capture says that, and those are G2 and G3) |
+| "Grade G1 means the source system signed this data." | "G1 means accurate" (a grade is about **who vouches for the data**, never about whether they are right) |
+| "A source that signs false data produces a validly signed false record. Aegis shows who signed it." | "Tamper-proof data" (the **record** is tamper-evident; the data can still be wrong at the source) |
+
+Wording on screen, in the PDF, in the bundle and on the share link:
+
+- Line one: **Record intact: signed and unchanged since \<time\>**
+- Line two: **Source of the data: \<grade and plain wording\>**
+- Never the standalone word "Verified" next to data content. `pnpm check:wording` fails the build if it
+  appears (`scripts/check-no-bare-verified.mjs`; web-console `build` runs it too).
+
+Grades today: **G0** ingest key only, **G1** signed by the source, **G2** corroborated (reconciled or
+execution matched), **G3** captured independently of the source. In this release a case can reach G2 or
+G3 only by a sealed grade-change record. No feed in the demo does that automatically, so do not say
+the demo reconciles against a ledger. The demo shows G0 and G1.
+
 ## Not done (honest)
 
 - Website **live** publish (founder approval) — preview only; see `WEBSITE_CHANGES.md`

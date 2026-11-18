@@ -105,7 +105,7 @@ export async function ingestSignedEnvelope(
       auth.organizationId,
       body,
       {
-        process: async ({ envelope, key }) => {
+        process: async ({ envelope, key, source }) => {
           // Signature is valid; the event inside must still be a well-formed decision request.
           const event = parseBankEvent(envelope.event);
           const decision = await handleBankEvent(client, auth.organizationId, event, {
@@ -114,6 +114,7 @@ export async function ingestSignedEnvelope(
               envelope,
               source_id: envelope.source_id,
               source_key_id: key.key_id,
+              source_name: source.name,
             },
           });
           return {

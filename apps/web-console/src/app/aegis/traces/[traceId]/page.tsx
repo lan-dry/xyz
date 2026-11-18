@@ -18,6 +18,10 @@ import {
 } from "@/components/console/console-ui";
 import { CaseFourAnswersPanel } from "@/components/console/case-four-answers";
 import { ChainRootPanel } from "@/components/console/chain-root-panel";
+import {
+  ProvenancePanel,
+  RecordAndSourceLines,
+} from "@/components/console/provenance-panel";
 import { SpanTreePanel } from "@/components/console/span-tree-panel";
 import { ConsoleTime } from "@/components/console/console-time";
 import { EvidenceDownloads } from "@/components/console/evidence-downloads";
@@ -100,6 +104,7 @@ export default function TraceDetailPage() {
               requester_officer_id: caseSummary.requester_officer_id ?? null,
             }
           : null,
+        provenance: caseSummary?.provenance ?? null,
         traceId: data.trace.trace_id,
         agentId: data.trace.agent_id,
         agentName: agentLabel(data.trace.agent_name, data.trace.agent_id),
@@ -117,6 +122,8 @@ export default function TraceDetailPage() {
     headline: story?.headline,
     outcome: story?.outcome.label,
     four_answers: story?.fourAnswers,
+    // Where the data came from. A grade says how it was vouched for, never that it is accurate.
+    provenance: caseSummary?.provenance ?? null,
     data_seen: story?.dataSeen.map((f) => ({
       field: f.field,
       treatment: f.treatment,
@@ -245,6 +252,8 @@ export default function TraceDetailPage() {
           ) : null}
 
           <CaseFourAnswersPanel answers={story.fourAnswers} />
+
+          <ProvenancePanel provenance={caseSummary?.provenance} />
 
           <p
             style={{
@@ -485,21 +494,17 @@ export default function TraceDetailPage() {
             className={`${ui.card} ${ui.cardPad}`}
             style={{ marginBottom: "1.5rem" }}
           >
-            <h2 className={ui.panelTitle}>Verification status</h2>
-            <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem" }}>
-              {data.events.every((e) => e.chain_valid) ? (
-                <>
-                  <StatusBadge status="ok" />{" "}
-                  <strong>Verified.</strong> Signature chain is intact on every
-                  step.
-                </>
-              ) : (
-                <>
-                  Chain check failed on at least one step. Open Technical details.
-                </>
-              )}{" "}
+            <h2 className={ui.panelTitle}>Record and source</h2>
+            <div style={{ margin: "0 0 0.75rem" }}>
+              <RecordAndSourceLines
+                provenance={caseSummary?.provenance}
+                recordIntact={data.events.every((e) => e.chain_valid)}
+              />
+            </div>
+            <p style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem", color: "var(--console-fg-muted)" }}>
               Each step is signed and the record is append-only. Changing a field after
-              signing fails verification.
+              signing fails the check. The check covers the record, not whether the data
+              inside it is accurate.
             </p>
             {caseSummary && caseSummary.seal !== "unknown" ? (
               <p style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem" }}>
@@ -599,7 +604,7 @@ export default function TraceDetailPage() {
               >
                 Seal chain: intact. Public witness or transparency inclusion may
                 still be processing for a minute after ingest — that does not change
-                the verified chain above.
+                the intact chain above.
               </p>
             ) : null}
             {data.trace.chain_root_hash ? (

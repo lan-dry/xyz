@@ -27,6 +27,7 @@ import {
 } from "../../forensic/public-keys.js";
 import { getDidDocumentByAgent, getDidDocumentByDid } from "../../repo/did.js";
 import { buildPublicVerificationBundle } from "../../transparency/bundle.js";
+import { loadProvenanceForEvent } from "../../forensic/case-provenance.js";
 import { verifyPublicVerificationBundle } from "../../transparency/verify-public.js";
 
 export const publicRoutes = new Hono();
@@ -659,9 +660,25 @@ publicRoutes.get("/orgs/:slug/verify/:eventId", async (c) => {
     const includeVerification =
       c.req.query("verify") === "1" || c.req.query("include") === "verification";
     if (includeVerification) {
+      // Stage 2: say where the data came from next to the seal check. The seal check is about
+      // the record; the source line is about the data. They are never merged into one "verified".
+      let provenance = null;
+      try {
+        const org = await client.query<{ organization_id: string }>(
+          `SELECT organization_id FROM organization WHERE slug = $1`,
+          [slug],
+        );
+        const organizationId = org.rows[0]?.organization_id;
+        if (organizationId) {
+          provenance = await loadProvenanceForEvent(client, organizationId, eventId);
+        }
+      } catch {
+        provenance = null;
+      }
       return c.json({
         ...bundle,
         verification: verifyPublicVerificationBundle(bundle),
+        provenance,
       });
     }
     return c.json(bundle);
@@ -786,6 +803,14 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
       [row.organization_id, ev.agent_id],
     );
 
+    // Stage 2: where the data came from (separate from the seal check below).
+    let provenance = null;
+    try {
+      provenance = await loadProvenanceForEvent(client, row.organization_id, row.event_id);
+    } catch {
+      provenance = null;
+    }
+
     let verification: {
       status: "valid" | "pending" | "unavailable";
       detail: string;
@@ -794,7 +819,7 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
     } = {
       status: ev.chain_valid ? "valid" : "unavailable",
       detail: ev.chain_valid
-        ? "Signature chain verified."
+        ? "Signature chain is intact."
         : "Public cryptographic bundle not built for this receipt yet.",
       inclusion_status: "pending",
       inclusion_detail: ev.chain_valid
@@ -812,10 +837,10 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
         verification = {
           status: checked.ok || ev.chain_valid ? "valid" : "unavailable",
           detail: checked.ok
-            ? "Witness and transparency inclusion verified."
+            ? "Witness and transparency log entries match this record."
             : ev.chain_valid
-              ? "Signature chain verified."
-              : checked.errors.join("; ") || "Verification failed.",
+              ? "Signature chain is intact."
+              : checked.errors.join("; ") || "Record check failed.",
           inclusion_status: checked.ok ? "ok" : "unavailable",
           inclusion_detail: checked.ok
             ? null
@@ -824,7 +849,7 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
       } else if (ev.chain_valid) {
         verification = {
           status: "valid",
-          detail: "Signature chain verified.",
+          detail: "Signature chain is intact.",
           inclusion_status: "pending",
           inclusion_detail:
             "Witness or transparency inclusion may still be processing.",
@@ -865,6 +890,7 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
       },
       story,
       verification,
+      provenance,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

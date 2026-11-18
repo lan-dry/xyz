@@ -66,21 +66,21 @@ function verifyBanner(v: VerifyResult["verification"]): {
 
   if (status === "valid") {
     return {
-      title: "Verified: unchanged since it was sealed",
+      title: "Record intact: unchanged since it was sealed",
       className: ui.alertSuccess,
       inclusionLabel: "ok",
     };
   }
   if (status === "pending_inclusion") {
     return {
-      title: "Verified: signature chain intact",
+      title: "Record intact: signature chain unbroken",
       className: ui.alertSuccess,
       inclusionLabel: "pending",
       note: "Witness inclusion is still processing. Details stay under the seal checks below — the record itself is finished.",
     };
   }
   return {
-    title: "Verification failed: the record may have been changed",
+    title: "Record check failed: the record may have been changed",
     className: ui.alertError,
     inclusionLabel:
       v.inclusion_status ??
@@ -173,6 +173,7 @@ export default function EventDetailPage() {
           pendingApproval: traceQuery.data.trace.pending_approval,
           deniedEvents: traceQuery.data.trace.denied_events,
           startedAt: traceQuery.data.trace.started_at,
+          provenance: caseSummary?.provenance ?? null,
         })
       : null;
   const caseDecision =
@@ -333,6 +334,11 @@ export default function EventDetailPage() {
                   style={{ marginBottom: "1rem" }}
                 >
                   <strong>{banner.title}</strong>
+                  {caseSummary?.provenance ? (
+                    <p style={{ margin: "0.5rem 0 0", fontSize: "0.875rem" }}>
+                      {caseSummary.provenance.source_line}
+                    </p>
+                  ) : null}
                   <ul style={{ margin: "0.5rem 0 0", paddingLeft: "1.25rem" }}>
                     <li>
                       Chain: {verifyResult.verification.chain_ok ? "ok" : "fail"}

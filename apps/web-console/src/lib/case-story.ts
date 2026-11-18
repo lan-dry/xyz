@@ -16,7 +16,7 @@ import {
   formatRuleLabel,
   type DescribeDecisionInput,
 } from "./describe-decision";
-import type { CaseApprover } from "./types";
+import type { CaseApprover, CaseProvenance } from "./types";
 import { formatConsoleTime, formatRwf } from "./format-display";
 
 export type CaseEventLike = {
@@ -33,7 +33,17 @@ export type CaseFourAnswers = {
   whatHappened: { title: string; detail: string };
   who: { title: string; detail: string };
   whyAllowed: { title: string; detail: string };
-  canTrust: { title: string; detail: string; verifiedHint: string };
+  /**
+   * Two separate answers, never one green "verified":
+   * the record (signed, unchanged) and the source of the data (grade and plain wording).
+   */
+  trust: {
+    title: string;
+    recordLine: string;
+    sourceLine: string;
+    /** False when a step failed its chain check. */
+    recordIntact: boolean;
+  };
 };
 
 export type CaseStory = {
@@ -552,6 +562,8 @@ export function buildCaseStory(
     deniedEvents?: number;
     startedAt?: string;
     summary?: CaseSummaryMeta | null;
+    /** Where the data came from (case summary API). */
+    provenance?: CaseProvenance | null;
   },
 ): CaseStory {
   const c = collectFromEvents(events);
@@ -839,15 +851,21 @@ export function buildCaseStory(
       title: "Why was it allowed, and who approved?",
       detail: whyDetail,
     },
-    canTrust: {
-      title: "Can the record be trusted?",
-      detail: events.every((e) => e.chain_valid !== false)
-        ? "Verified. Each step is signed and the record is append-only."
-        : "Each step is signed and the record is append-only. Changing a field after the fact breaks verification.",
-      verifiedHint: events.every((e) => e.chain_valid !== false)
-        ? "The signature chain is intact."
-        : "Open Technical details to check the seal.",
-    },
+    trust: (() => {
+      const recordIntact = events.every((e) => e.chain_valid !== false);
+      const prov = meta.provenance ?? null;
+      return {
+        title: "Record and source",
+        recordIntact,
+        recordLine: recordIntact
+          ? (prov?.record_line ??
+            "Record intact: signed and unchanged since it was sealed")
+          : "Record check failed: a step does not match its signature. Open Technical details.",
+        sourceLine:
+          prov?.source_line ??
+          "Source of the data: not labelled for this case. Aegis does not check that the data is accurate.",
+      };
+    })(),
   };
 
   const bankWhat = bp

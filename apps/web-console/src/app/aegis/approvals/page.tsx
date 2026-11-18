@@ -345,6 +345,19 @@ function ApprovalCard({
                 </dd>
                 <dt style={{ color: "var(--console-fg-muted)" }}>Required role</dt>
                 <dd style={{ margin: 0 }}>{roleLabel(summary.required_role)}</dd>
+                <dt style={{ color: "var(--console-fg-muted)" }}>Source of the data</dt>
+                <dd
+                  style={{ margin: 0 }}
+                  title={summary.provenance?.headline ?? undefined}
+                >
+                  {summary.provenance
+                    ? summary.provenance.source_line_short
+                    : "Not labelled"}
+                  <span style={{ color: "var(--console-fg-subtle)" }}>
+                    {" "}
+                    · not checked for accuracy
+                  </span>
+                </dd>
               </dl>
               {!showDecided && signedIn && signedInLabel ? (
                 <p
