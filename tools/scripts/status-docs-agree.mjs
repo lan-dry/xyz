@@ -311,7 +311,8 @@ for (const g of gapVsFinal) {
   const needs = [
     ["key custody", /key custody/i, /KMS/i, /interim/i],
     ["public TSA / no SLA", /RFC 3161|time authority/i, /no SLA/i],
-    ["hosting region placeholder", /HOSTING_REGION/],
+    // B7: real region, not a HOSTING_REGION placeholder or us-east default.
+    ["hosting region (eu-west)", /eu-west/i, /not.*us-east|not `us-east`/i],
     ["SOC 2 / EU AI Act mapping only", /SOC 2/i, /EU AI Act/i, /mapping/i],
     ["no latency SLA", /no latency SLA/i],
     ["no FedRAMP / HIPAA", /FedRAMP/i, /HIPAA/i],

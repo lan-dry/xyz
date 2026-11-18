@@ -241,7 +241,7 @@ export function ConsoleShell({
           </nav>
         </div>
 
-        {bankDemo ? null : <div className={shell.productBlock}>
+        {bankDemo || VISIBLE_PLATFORM_PRODUCTS.length <= 1 ? null : <div className={shell.productBlock}>
           {!collapsed ? <p className={shell.productLabel}>Products</p> : null}
           {VISIBLE_PLATFORM_PRODUCTS.map((p) => {
             const active =
