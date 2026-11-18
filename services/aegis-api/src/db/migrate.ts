@@ -17,6 +17,10 @@ const MIGRATIONS = [
     version: "004_wipe_include_sensitive_field_vault",
     file: "004_wipe_include_sensitive_field_vault.sql",
   },
+  {
+    version: "005_forensic_receipt_outcome_declined_released",
+    file: "005_forensic_receipt_outcome_declined_released.sql",
+  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {

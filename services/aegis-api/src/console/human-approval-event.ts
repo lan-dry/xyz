@@ -46,6 +46,8 @@ export async function ingestHumanApprovalEvent(
     requesterOfficerId?: string | null;
     /** Time-bound delegation relied on: both people are named in the signed event. */
     delegation?: DelegationRecord | null;
+    /** Historical emit time (demo seed). Defaults to now. */
+    emitted_at?: string;
   },
 ): Promise<PersistResult> {
   const keyMaterial = await getSigningKeyMaterial(client, params.organizationId, params.keyId);
@@ -63,7 +65,7 @@ export async function ingestHumanApprovalEvent(
     trace_id: params.traceId,
     agent_id: params.agentId,
     key_id: params.keyId,
-    emitted_at: new Date().toISOString(),
+    emitted_at: params.emitted_at?.trim() || new Date().toISOString(),
     actor_type: "human",
     actor_principal: params.approverEmail,
     action_kind: "human_approval",

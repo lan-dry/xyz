@@ -1,41 +1,91 @@
 {
-  "_readme": "Synthetic Demo Bank history seeded by `pnpm pilot:seed-history` / `pnpm demo:fresh`. All names, amounts and branches are invented. Real people's emails and passwords never go in this file: they live only in the uncommitted .demo-tenant-emails.local.json. Point DEMO_HISTORY_FILE at another JSON file with the same shape to change the story. `decide.by` is a persona key from that local file (manager, head, ...). Case ids and idempotency keys are derived from `n`, so a re-run never duplicates a case.",
-  "version": 1,
+  "_readme": "Synthetic Demo Bank history seeded by `pnpm pilot:seed-history` / `pnpm demo:fresh`. All names, amounts and branches are invented. Real people's emails and passwords never go in this file: they live only in the uncommitted .demo-tenant-emails.local.json. Point DEMO_HISTORY_FILE at another JSON file with the same shape to change the story. `decide.by` is a persona key from that local file (manager, head, ...). Case ids and idempotency keys are derived from `n` + event_type (LN-RW-2026-##### / PAY-RW-2026-#####).",
+  "version": 2,
   "stories": [
     {
       "n": "01",
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 1200000, "currency": "RWF", "applicant_name": "Uwase Aline", "branch": "Kigali - Nyarugenge", "loan_purpose": "School fees bridge loan" }
+      "attributes": {
+        "amount": 1200000,
+        "currency": "RWF",
+        "applicant_name": "Uwase Aline",
+        "branch": "Kigali - Nyarugenge",
+        "loan_purpose": "School fees bridge loan",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
     },
     {
       "n": "02",
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 850000, "currency": "RWF", "applicant_name": "Habimana Jean Claude", "branch": "Huye", "loan_purpose": "Motorcycle taxi licence" }
+      "attributes": {
+        "amount": 850000,
+        "currency": "RWF",
+        "applicant_name": "Habimana Jean Claude",
+        "branch": "Huye",
+        "loan_purpose": "Motorcycle taxi licence",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-HY-0088",
+        "requester_email": "officer@demo-bank.local"
+      }
     },
     {
       "n": "03",
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 3400000, "currency": "RWF", "applicant_name": "Mukeshimana Joselyne", "branch": "Musanze", "loan_purpose": "Tailoring workshop" }
+      "attributes": {
+        "amount": 3400000,
+        "currency": "RWF",
+        "applicant_name": "Mukeshimana Joselyne",
+        "branch": "Musanze",
+        "loan_purpose": "Tailoring workshop",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-MS-0211",
+        "requester_email": "officer@demo-bank.local"
+      }
     },
     {
       "n": "04",
       "event_type": "data_access",
       "product": "customer_data",
       "agent": "customer-data",
-      "attributes": { "amount": 1000000, "currency": "RWF", "national_id": "1199880045123456", "purpose": "kyc_refresh", "applicant_name": "Ishimwe Grace" }
+      "attributes": {
+        "amount": 1000000,
+        "currency": "RWF",
+        "national_id": "1199880045123456",
+        "purpose": "kyc_refresh",
+        "applicant_name": "Ishimwe Grace",
+        "requester_name": "Diane Uwizeye",
+        "requester_role": "compliance_officer",
+        "requester_officer_id": "CMP-KG-0007",
+        "requester_email": "compliance@demo-bank.local"
+      }
     },
     {
       "n": "05",
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 18000000, "currency": "RWF", "applicant_name": "Mukamana Divine", "branch": "Rubavu", "loan_purpose": "Dairy cooperative equipment" },
+      "attributes": {
+        "amount": 18000000,
+        "currency": "RWF",
+        "applicant_name": "Mukamana Divine",
+        "branch": "Rubavu",
+        "loan_purpose": "Dairy cooperative equipment",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-RB-0033",
+        "requester_email": "officer@demo-bank.local"
+      },
       "decide": { "by": "manager", "decision": "approve", "reason": "Cooperative accounts reviewed, repayment plan fits cash flow.", "reason_code": "within_policy" }
     },
     {
@@ -43,7 +93,17 @@
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 9500000, "currency": "RWF", "applicant_name": "Nkurunziza Alexis", "branch": "Rwamagana", "loan_purpose": "Poultry house expansion" },
+      "attributes": {
+        "amount": 9500000,
+        "currency": "RWF",
+        "applicant_name": "Nkurunziza Alexis",
+        "branch": "Rwamagana",
+        "loan_purpose": "Poultry house expansion",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-RW-0155",
+        "requester_email": "officer@demo-bank.local"
+      },
       "decide": { "by": "manager", "decision": "approve", "reason": "Collateral verified on site.", "reason_code": "within_policy" }
     },
     {
@@ -51,7 +111,17 @@
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 28000000, "currency": "RWF", "applicant_name": "Kamanzi Emmanuel", "branch": "Rwamagana", "loan_purpose": "Commercial property fit-out" },
+      "attributes": {
+        "amount": 28000000,
+        "currency": "RWF",
+        "applicant_name": "Kamanzi Emmanuel",
+        "branch": "Rwamagana",
+        "loan_purpose": "Commercial property fit-out",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-RW-0156",
+        "requester_email": "officer@demo-bank.local"
+      },
       "decide": { "by": "manager", "decision": "decline", "reason": "Collateral does not cover the exposure." }
     },
     {
@@ -65,7 +135,11 @@
         "applicant_name": "Niyonsenga Eric",
         "branch": "Kigali - Gasabo",
         "loan_purpose": "Minibus (public transport) purchase",
-        "model": { "id": "risk-v2", "version": "2.1", "score": 0.82, "recommendation": "decline" }
+        "model": { "id": "risk-v2", "version": "2.1", "score": 0.82, "recommendation": "decline" },
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-GS-0091",
+        "requester_email": "officer@demo-bank.local"
       },
       "decide": { "by": "head", "decision": "approve", "reason": "Model override reviewed: stable licensed route income.", "reason_code": "model_override_reviewed" }
     },
@@ -80,7 +154,11 @@
         "applicant_name": "Nsengiyumva Patrick",
         "branch": "Kigali - Kicukiro",
         "loan_purpose": "Disbursement to settlement account",
-        "payment": { "callback_verified": false, "beneficiary_bank": "Synthetic Bank Kigali" }
+        "payment": { "callback_verified": false, "beneficiary_bank": "Synthetic Bank Kigali" },
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KC-0044",
+        "requester_email": "officer@demo-bank.local"
       },
       "decide": { "by": "manager", "decision": "decline", "reason": "Beneficiary bank callback not verified." }
     },
@@ -95,7 +173,11 @@
         "applicant_name": "Test Subject (screening hit)",
         "branch": "Kigali - Nyarugenge",
         "loan_purpose": "Personal loan",
-        "screening": { "sanctions_hit": false, "pep_hit": true, "list": "PEP watchlist (synthetic)" }
+        "screening": { "sanctions_hit": false, "pep_hit": true, "list": "PEP watchlist (synthetic)" },
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0143",
+        "requester_email": "officer@demo-bank.local"
       }
     },
     {
@@ -103,7 +185,17 @@
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 15000000, "currency": "RWF", "applicant_name": "Mutesi Chantal", "branch": "Huye", "loan_purpose": "Agro-processing equipment" },
+      "attributes": {
+        "amount": 15000000,
+        "currency": "RWF",
+        "applicant_name": "Mutesi Chantal",
+        "branch": "Huye",
+        "loan_purpose": "Agro-processing equipment",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-HY-0089",
+        "requester_email": "officer@demo-bank.local"
+      },
       "decide": { "by": "manager", "decision": "approve", "reason": "Cash-flow forecast reviewed.", "reason_code": "within_policy" }
     }
   ]

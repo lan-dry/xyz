@@ -24,6 +24,7 @@ import { getInclusionProofByEvent } from "../repo/witness.js";
 import { checkpointSigningMessage } from "../witness/sign-checkpoint.js";
 import { getReceiptKmsSigner } from "../crypto/kms-ed25519.js";
 import {
+  CUSTODY_PRODUCTION_NOTE,
   custodyLabel,
   receiptKeyIdFromEnv,
   type KeyCustody,
@@ -353,6 +354,10 @@ export function summarizeReceipt(
     Array.isArray(receipt.approvals) && receipt.approvals[0]
       ? (receipt.approvals[0] as Record<string, unknown>)
       : null;
+  const attrs =
+    receipt.attributes && typeof receipt.attributes === "object"
+      ? (receipt.attributes as Record<string, unknown>)
+      : {};
   const plain =
     receipt.plain_summary ??
     describeDecision({
@@ -372,20 +377,20 @@ export function summarizeReceipt(
           ? sealedApproval.approver_display_name
           : null,
       approver_role:
-        typeof sealedApproval?.approver_role_label === "string"
-          ? sealedApproval.approver_role_label
-          : typeof sealedApproval?.approver_role === "string"
-            ? sealedApproval.approver_role
-            : null,
+        typeof sealedApproval?.approver_role === "string"
+          ? sealedApproval.approver_role
+          : null,
       approved_at:
         typeof sealedApproval?.decided_at === "string"
           ? sealedApproval.decided_at
           : null,
       approval_reason:
         typeof sealedApproval?.reason === "string" ? sealedApproval.reason : null,
+      required_role:
+        typeof attrs.required_role === "string" ? attrs.required_role : null,
       required_role_label:
-        typeof sealedApproval?.approver_role_label === "string"
-          ? sealedApproval.approver_role_label
+        typeof attrs.required_role_label === "string"
+          ? attrs.required_role_label
           : null,
     });
   return {
@@ -1342,7 +1347,7 @@ export function trustedTimeText(
     return "Trusted time: not stamped by an outside authority (signing time only)";
   }
   if (entry.status === "stamped") {
-    return `Trusted time: ${entry.authority ?? "time authority"} at ${formatUtc(entry.gen_time_utc)}`;
+    return `Timestamped by ${entry.authority ?? "time authority"} at ${formatUtc(entry.gen_time_utc)}`;
   }
   if (entry.status === "invalid") {
     return "Trusted time: stamp does not match this record";
@@ -1372,6 +1377,21 @@ export async function renderEvidencePdf(bundle: EvidenceBundle): Promise<Buffer>
   lines.push({ text: primary.plain_summary });
 
   const { amount, currency } = attrAmount(receipt.attributes);
+  const pdfAttrs =
+    receipt.attributes && typeof receipt.attributes === "object"
+      ? (receipt.attributes as Record<string, unknown>)
+      : {};
+  const requesterLine =
+    (typeof pdfAttrs.requester === "string" && pdfAttrs.requester.trim()) ||
+    (typeof pdfAttrs.requester_name === "string"
+      ? formatApprover(
+          pdfAttrs.requester_name,
+          typeof pdfAttrs.requester_role === "string"
+            ? pdfAttrs.requester_role
+            : null,
+        )
+      : null) ||
+    (pdfAttrs.requester_missing === true ? "Not recorded" : null);
   lines.push({ text: "Facts", bold: true, size: 12, gapBefore: 10 });
   const facts: Array<[string, string]> = [
     ["Case", bundle.case_id ?? bundle.trace_id],
@@ -1398,16 +1418,14 @@ export async function renderEvidencePdf(bundle: EvidenceBundle): Promise<Buffer>
           (primary.policy.content_hash ? ` (${primary.policy.content_hash})` : "")
         : "n/a",
     ],
+    ...(requesterLine ? ([["Requested by", requesterLine]] as Array<[string, string]>) : []),
     ["Who approved", primary.who_approved],
     ["Recorded at", formatUtc(primary.issued_at_utc)],
     ["Mode", receipt.mode === "record_only" ? "Record only (not blocking)" : "Enforced"],
   ];
   for (const [k, v] of facts) lines.push({ text: `${k}: ${v}` });
 
-  if (primary.decision_basis?.explanation) {
-    lines.push({ text: "Why", bold: true, size: 12, gapBefore: 10 });
-    lines.push({ text: primary.decision_basis.explanation });
-  }
+  // Plain summary is the auditor-facing sentence; skip engine decision_basis text.
 
   lines.push({ text: "Seal", bold: true, size: 12, gapBefore: 10 });
   lines.push({ text: `Receipt number: ${primary.seq}` });
@@ -1422,7 +1440,12 @@ export async function renderEvidencePdf(bundle: EvidenceBundle): Promise<Buffer>
   lines.push({ text: `Signature: ${primary.sig_value_b64}`, size: 8 });
   const custody =
     receipt.flags?.key_custody ?? bundle.key_custody?.[primary.key_id]?.custody;
-  if (custody) lines.push({ text: custodyLabel(custody), size: 8 });
+  if (custody) {
+    lines.push({ text: custodyLabel(custody), size: 8 });
+    if (custody === "software" || custody === "software_interim") {
+      lines.push({ text: CUSTODY_PRODUCTION_NOTE, size: 8 });
+    }
+  }
   lines.push({ text: trustedTimeText(bundle, receipt.receipt_id), size: 8 });
 
   lines.push({ text: "Checked when this page was made", bold: true, size: 12, gapBefore: 10 });

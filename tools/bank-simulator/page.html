@@ -108,6 +108,18 @@
 
   <section id="result" class="hidden" aria-live="polite"></section>
 
+  <section class="card" id="ledgerPanel">
+    <h3 style="margin:0">Core ledger (in-path gate)</h3>
+    <p class="meta" style="margin:0">
+      Disbursement always asks Aegis <code>/v1/aegis/execution/permit</code>.
+      Skipping Aegis is refused by the ledger — sealed fiction does not pay.
+    </p>
+    <div class="row" style="margin-top:.5rem">
+      <button type="button" class="secondary" id="refreshLedger">Refresh ledger</button>
+    </div>
+    <div id="ledgerView" class="attrs" style="margin-top:.75rem"></div>
+  </section>
+
   <section>
     <div class="grid" id="stories"></div>
   </section>
@@ -307,9 +319,63 @@
     if (r.resolver) box.appendChild(el("p", { class: "meta", text: "Resolved by: " + r.resolver }));
     box.appendChild(steps(r.steps));
     if (r.console_url) box.appendChild(caseLink(r));
+    if (r.can_disburse && r.case_id) {
+      var gate = el("div", { class: "row", style: "margin-top:.75rem;flex-wrap:wrap" });
+      var pay = el("button", { text: "Disburse via core ledger (Aegis permit)" });
+      var skip = el("button", { class: "secondary", text: "Try disburse without Aegis (must fail)" });
+      pay.addEventListener("click", function () {
+        pay.disabled = true;
+        api("/api/disburse", { case_id: r.case_id, action: r.action || {} })
+          .then(function (d) {
+            showResult("Disbursed", el("div", {}, [
+              el("p", { text: "Paid " + (d.entry && d.entry.id) + " under sealed " + (d.permit && d.permit.outcome) }),
+              el("p", { class: "meta", text: "receipt " + (d.permit && d.permit.receipt_id) })
+            ]));
+            return loadLedger();
+          })
+          .catch(function (e) {
+            showResult("Disburse refused", el("p", { class: "err", text: (e.data && (e.data.reason || e.data.error)) || e.message }));
+            return loadLedger();
+          })
+          .then(function () { pay.disabled = false; });
+      });
+      skip.addEventListener("click", function () {
+        skip.disabled = true;
+        api("/api/disburse/skip-aegis", { case_id: r.case_id, action: r.action || {} })
+          .then(function () {
+            showResult("Unexpected", el("p", { class: "err", text: "Ledger should have refused ungated pay" }));
+          })
+          .catch(function (e) {
+            showResult("Ungated pay blocked (expected)", el("p", { text: (e.data && (e.data.reason || e.data.error)) || e.message }));
+            return loadLedger();
+          })
+          .then(function () { skip.disabled = false; });
+      });
+      gate.appendChild(pay);
+      gate.appendChild(skip);
+      box.appendChild(gate);
+      if (r.outcome === "hold") {
+        box.appendChild(el("p", { class: "meta", text: "For holds: approve in the console first, then Disburse via core ledger." }));
+      }
+    }
     var sent = renderSent(r.requests);
     if (sent) box.appendChild(sent);
     showResult(r.queued ? "Queued while Aegis is unreachable" : "Sent", box);
+  }
+
+  function loadLedger() {
+    return api("/api/ledger").then(function (data) {
+      var view = document.getElementById("ledgerView");
+      if (!view) return;
+      view.textContent = "";
+      view.appendChild(el("p", { text: "Paid: " + (data.ledger || []).length + " · Refused: " + (data.refused || []).length + " · Pending: " + (data.pending || []).length }));
+      (data.ledger || []).slice(0, 8).forEach(function (row) {
+        view.appendChild(el("p", { text: "PAY " + row.case_id + " · " + JSON.stringify(row.action) + " · " + row.at }));
+      });
+      (data.refused || []).slice(0, 5).forEach(function (row) {
+        view.appendChild(el("p", { class: "err", text: "REFUSED " + row.case_id + " · " + row.reason }));
+      });
+    }).catch(function () {});
   }
 
   function send(story, btn) {
@@ -372,7 +438,10 @@
       .then(function () { offlineEl.disabled = false; return refreshState(); });
   });
 
+  var refreshLedgerBtn = document.getElementById("refreshLedger");
+  if (refreshLedgerBtn) refreshLedgerBtn.addEventListener("click", function () { loadLedger(); });
   start();
+  loadLedger();
 })();
 </script>
 </body>

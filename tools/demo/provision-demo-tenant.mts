@@ -68,6 +68,18 @@ async function ensureOrganization(file: TenantFile): Promise<string> {
         ...(isSmokeSlug(slug) ? { is_test: true } : {}),
       },
     });
+    // Existing Demo Bank orgs may predate the local admin account — attach before login,
+    // otherwise login falls through to another membership (e.g. Northwind) and setup 403s.
+    const admin = file.personas.admin;
+    await platformCall(file, `/organizations/${existing}/members`, {
+      method: "PUT",
+      body: {
+        email: admin.email.trim(),
+        role: "admin",
+        display_name: admin.display_name.trim(),
+        password: admin.password,
+      },
+    });
     log(`Organisation "${slug}" already exists (is_demo + enterprise seats confirmed).`);
     return existing;
   }

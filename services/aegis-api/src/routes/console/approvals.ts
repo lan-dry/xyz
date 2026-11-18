@@ -34,7 +34,9 @@ import {
   listMembershipBankRoles,
   loadBankApprovalRoleContext,
 } from "../../bank/repo.js";
+import { resolveActingBankRole } from "../../bank/resolve-acting-role.js";
 import { extractRequester } from "../../bank/requester.js";
+import { isOrganizationDemo } from "../../bank/demo-tenant.js";
 import {
   requireConsoleSession,
   type ConsoleVariables,
@@ -44,6 +46,25 @@ import { getOrCreateApprovalSigningKeyId } from "../../repo/signing-keys.js";
 import { verifyApprovalActionToken } from "../../approvals/action-token.js";
 import { getGovernanceSettings } from "../../repo/governance-settings.js";
 import { dispatchOrgWebhookEvent } from "../../webhooks/dispatch.js";
+import { nowIso } from "../../time/clock.js";
+
+/**
+ * Demo seed may pass a historical decided_at so approval receipts are minutes/hours
+ * after the hold. Non-demo orgs always use wall clock. Never accept a future stamp.
+ */
+async function resolveDecidedAtForOrg(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  raw: string | undefined,
+): Promise<string> {
+  const fallback = nowIso();
+  if (!raw?.trim()) return fallback;
+  if (!(await isOrganizationDemo(client, organizationId))) return fallback;
+  const ms = Date.parse(raw.trim());
+  if (!Number.isFinite(ms)) return fallback;
+  if (ms > Date.now() + 60_000) return fallback;
+  return new Date(ms).toISOString();
+}
 
 /** Expire stale approvals, then raise any whose configured escalation window has elapsed. */
 async function expireAndEscalate(
@@ -111,6 +132,8 @@ async function finalizeHumanApproval(
     reason?: string;
     /** Set when the approver relied on a time-bound delegation (not a permanent role). */
     delegation?: DelegationRecord | null;
+    /** Sealed into the outcome receipt (demo seed may pass a historical stamp). */
+    decidedAt?: string;
   },
 ) {
   const decided = await decideApproval(
@@ -128,6 +151,7 @@ async function finalizeHumanApproval(
   if (!decided) return null;
 
   if (decided.finalized) {
+    const decidedAt = params.decidedAt?.trim() || nowIso();
     const approvalKeyId = await getOrCreateApprovalSigningKeyId(
       client,
       params.organizationId,
@@ -147,8 +171,15 @@ async function finalizeHumanApproval(
       typeof rich?.metadata?.required_role === "string"
         ? rich.metadata.required_role
         : null;
-    const actingRole =
-      params.delegation?.role_key ?? params.role ?? requiredRole;
+    const { roleKey: actingRole } = await resolveActingBankRole(
+      client,
+      params.organizationId,
+      params.userId,
+      {
+        delegationRoleKey: params.delegation?.role_key,
+        requiredRole,
+      },
+    );
     const requester = extractRequester(payload);
     const persisted = await ingestHumanApprovalEvent(client, {
       organizationId: params.organizationId,
@@ -167,6 +198,7 @@ async function finalizeHumanApproval(
       requesterEmail: requester.email,
       requesterOfficerId: requester.officer_id,
       delegation: params.delegation ?? null,
+      emitted_at: decidedAt,
     });
     await issueApprovalOutcomeReceipt(client, {
       organizationId: params.organizationId,
@@ -183,7 +215,7 @@ async function finalizeHumanApproval(
         role: actingRole,
       },
       reason: params.reason ?? null,
-      decided_at: new Date().toISOString(),
+      decided_at: decidedAt,
       eventPayload: payload,
       delegation: params.delegation ?? null,
     });
@@ -483,6 +515,11 @@ approvalRoutes.post(
         return c.json({ error: guard.message, code: guard.code }, 403);
       }
       const delegation = await delegationRelied(client, session, approvalId);
+      const decidedAt = await resolveDecidedAtForOrg(
+        client,
+        session.organizationId,
+        body.decided_at,
+      );
       const decided = await finalizeHumanApproval(client, {
         organizationId: session.organizationId,
         approvalId,
@@ -493,6 +530,7 @@ approvalRoutes.post(
         decision: "approved",
         reason: body.reason?.trim() ?? body.comment?.trim(),
         delegation,
+        decidedAt,
       });
       if (!decided) {
         await client.query("ROLLBACK");
@@ -582,6 +620,11 @@ approvalRoutes.post(
         await client.query("COMMIT");
         return c.json({ error: guard.message, code: guard.code }, 403);
       }
+      const decidedAt = await resolveDecidedAtForOrg(
+        client,
+        session.organizationId,
+        body.decided_at,
+      );
       const decided = await finalizeHumanApproval(client, {
         organizationId: session.organizationId,
         approvalId,
@@ -591,6 +634,7 @@ approvalRoutes.post(
         role: session.role,
         decision: "rejected",
         reason: body.reason.trim(),
+        decidedAt,
       });
       if (!decided) {
         await client.query("ROLLBACK");
@@ -824,6 +868,12 @@ approvalRoutes.post(
           : null;
       const requiredRole =
         typeof meta.required_role === "string" ? meta.required_role : null;
+      const { roleKey: releaseRole } = await resolveActingBankRole(
+        client,
+        session.organizationId,
+        session.userId,
+        { requiredRole },
+      );
       const releaseReason =
         body.comment?.trim() ?? body.reason?.trim() ?? body.reason_code.trim();
       const releaseRequester = extractRequester(payload);
@@ -836,7 +886,7 @@ approvalRoutes.post(
         approverEmail: session.email,
         approverUserId: session.userId,
         approverDisplayName: session.displayName,
-        approverRole: requiredRole ?? session.role,
+        approverRole: releaseRole,
         approvalId,
         decision: "released",
         toolName: rich.tool_name ?? undefined,
@@ -857,7 +907,7 @@ approvalRoutes.post(
           user_id: session.userId,
           display_name: session.displayName,
           email: session.email,
-          role: requiredRole ?? session.role,
+          role: releaseRole,
         },
         reason: releaseReason,
         reason_code: body.reason_code.trim(),

@@ -24,6 +24,11 @@ export type ApprovalDecisionBody = {
   required_role?: string;
   /** Target bank role when escalating (metadata.escalate_to_role). */
   escalate_to_role?: string;
+  /**
+   * Demo-tenant seed only: historical decide time sealed into the outcome
+   * receipt. Ignored unless the organisation is is_demo.
+   */
+  decided_at?: string;
 };
 
 function asStringArray(value: unknown): string[] | undefined {

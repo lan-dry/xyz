@@ -149,6 +149,12 @@ export async function issueForensicReceipt(
       decided_without_aegis?: boolean;
       provisional?: boolean;
     };
+    /**
+     * Wall time sealed into the receipt. Defaults to now.
+     * Demo seed uses the event's historical emitted_at / decided_at so
+     * sealed_receipts.csv spans multiple days without rewriting after sign.
+     */
+    issued_at?: string;
     /** Test software key override. Refused when AEGIS_ENV=production. */
     signingKey?: { key_id: string; private_key_b64: string };
   },
@@ -205,7 +211,7 @@ export async function issueForensicReceipt(
         approvals: input.approvals,
         flags: Object.keys(flags).length > 0 ? flags : undefined,
         key_id: keyId,
-        issued_at: nowIso(),
+        issued_at: input.issued_at ?? nowIso(),
       });
       const signed = await signForensicReceiptWith(body, signing);
       await persistForensicReceipt(c, signed);

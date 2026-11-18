@@ -241,20 +241,16 @@ export function ConsoleShell({
           </nav>
         </div>
 
-        {bankDemo || VISIBLE_PLATFORM_PRODUCTS.length <= 1 ? null : <div className={shell.productBlock}>
-          {!collapsed ? <p className={shell.productLabel}>Products</p> : null}
-          {VISIBLE_PLATFORM_PRODUCTS.map((p) => {
-            const active =
-              !p.external &&
-              (pathname === p.href || pathname.startsWith(`${p.href}/`));
-            const label = (
-              <>
-                {p.name}
-                {p.status !== "active" && p.status !== "hidden" ? " · preview" : ""}
-              </>
-            );
-            if (p.external) {
-              return (
+        {/* Only show a product switcher when more than one product is active.
+            Insurance stays status=hidden until connected — never render a dead preview. */}
+        {bankDemo || VISIBLE_PLATFORM_PRODUCTS.length <= 1 ? null : (
+          <div className={shell.productBlock}>
+            {!collapsed ? <p className={shell.productLabel}>Products</p> : null}
+            {VISIBLE_PLATFORM_PRODUCTS.map((p) => {
+              const active =
+                !p.external &&
+                (pathname === p.href || pathname.startsWith(`${p.href}/`));
+              return p.external ? (
                 <a
                   key={p.slug}
                   href={p.href}
@@ -263,22 +259,21 @@ export function ConsoleShell({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  {label}
+                  {p.name}
                 </a>
+              ) : (
+                <Link
+                  key={p.slug}
+                  href={p.href}
+                  className={`${shell.productLink} ${active ? shell.productLinkActive : ""}`}
+                  title={collapsed ? p.name : undefined}
+                >
+                  {p.name}
+                </Link>
               );
-            }
-            return (
-              <Link
-                key={p.slug}
-                href={p.href}
-                className={`${shell.productLink} ${active ? shell.productLinkActive : ""}`}
-                title={collapsed ? p.name : undefined}
-              >
-                {label}
-              </Link>
-            );
-          })}
-        </div>}
+            })}
+          </div>
+        )}
       </aside>
 
       <div className={shell.main}>

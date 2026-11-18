@@ -30,6 +30,8 @@ export type SealDecisionInput = {
   agent_id?: string;
   key_id?: string;
   idempotency_key?: string;
+  /** When set, sealed into the APS event (demo seed uses historical emit times). */
+  emitted_at?: string;
 };
 
 export type SealDecisionResult = {
@@ -129,7 +131,7 @@ export async function sealGovernedDecision(
     trace_id: input.trace_id,
     agent_id: resolved.agent_id,
     key_id: resolved.key_id,
-    emitted_at: new Date().toISOString(),
+    emitted_at: input.emitted_at?.trim() || new Date().toISOString(),
     actor_type: "system",
     actor_principal: "aegis.governed.decide",
     action_kind: "policy_decision",

@@ -228,7 +228,7 @@ export type CaseSummary = {
   requester_officer_id?: string | null;
   seal: CaseSealStatus;
   demo_filler: boolean;
-  /** Synthetic back-dated history from the demo seed. */
+  /** Synthetic history from the demo seed (intake times staggered across prior weeks). */
   demo_history?: boolean;
   created_at: string | null;
 };

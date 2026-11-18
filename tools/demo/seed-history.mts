@@ -3,8 +3,9 @@
  *
  * Gives the hosted Demo Bank a believable history: 11 cases sent through the REAL
  * governed intake (ingest key), with holds requested through the real approvals
- * endpoint and decided by the personas' own console sessions. Nothing is backdated:
- * every timestamp is the moment this command ran.
+ * endpoint and decided by the personas' own console sessions. Intake emitted_at
+ * and sealed issued_at values are staggered across ~45 prior days; approvals use
+ * a historical decided_at hours after each hold (demo org only).
  *
  * Idempotent: case ids and idempotency keys are fixed, so a re-run re-sends nothing new
  * and decides only approvals that are still pending.
@@ -176,10 +177,75 @@ async function main(): Promise<void> {
 
   const summary: Array<{ n: string; outcome: string; result: string; trace: string }> = [];
 
-  for (const story of STORIES) {
-    const caseId = `LN-RW-${String(story.n).padStart(4, "0")}`;
-    const traceId = `tr_ln_rw_${String(story.n).padStart(4, "0")}`;
-    const idem = `ln-rw-history-${story.n}-v1`;
+  /** Production-like bank references (no seedhist / DB-HIST / tr_seedhist). */
+  function caseTraceIds(story: Story): { caseId: string; traceId: string; idem: string } {
+    const num = Number(story.n);
+    const year = 2026;
+    let prefix = "LN-RW";
+    let base = 400;
+    if (story.event_type === "payment_transfer") {
+      prefix = "PAY-RW";
+      base = 800;
+    } else if (story.event_type === "data_access") {
+      prefix = "CD-RW";
+      base = 200;
+    }
+    const ref = String(base + (Number.isFinite(num) ? num : 0)).padStart(5, "0");
+    return {
+      caseId: `${prefix}-${year}-${ref}`,
+      traceId: `TR-RW-${year}-${ref}`,
+      idem: `${prefix.toLowerCase()}-history-${year}-${ref}-v4`,
+    };
+  }
+
+  /**
+   * Spread intake across ~45 days of business hours. Newest story is still ≥2 days
+   * ago so an approval hours later stays in the past (API refuses future decided_at).
+   */
+  function emittedAtForIndex(index: number, total: number): string {
+    const oldestMs = 45 * 24 * 60 * 60 * 1000;
+    const newestMs = 2 * 24 * 60 * 60 * 1000;
+    const frac = (total - 1 - index) / Math.max(total - 1, 1);
+    const offset = newestMs + (oldestMs - newestMs) * frac;
+    const d = new Date(Date.now() - offset);
+    d.setUTCHours(7 + (index % 7), 10 + ((index * 11) % 45), 20 + (index % 30), 0);
+    return d.toISOString();
+  }
+
+  /**
+   * Approval / decline wall time: hours after the hold (same case), never the same
+   * second, and never in the future.
+   */
+  function decidedAtAfterHold(holdAt: string, index: number): string {
+    const hold = new Date(holdAt).getTime();
+    const hoursLater = 2 + ((index * 5) % 28); // 2–29h
+    const minutesExtra = 15 + ((index * 13) % 40);
+    let t = hold + (hoursLater * 60 + minutesExtra) * 60_000;
+    const maxT = Date.now() - 60_000;
+    if (t > maxT) {
+      const room = maxT - hold;
+      t =
+        room > 30 * 60_000
+          ? hold + Math.min(room - 60_000, (3 * 60 + 20) * 60_000)
+          : hold + Math.max(5 * 60_000, Math.floor(Math.max(room, 0) / 2));
+    }
+    if (t <= hold) t = hold + 15 * 60_000;
+    const d = new Date(t);
+    if (d.getUTCHours() < 7) d.setUTCHours(8 + (index % 3), 15 + (index % 30), 0, 0);
+    if (d.getUTCHours() > 17) {
+      d.setUTCDate(d.getUTCDate() + 1);
+      d.setUTCHours(8 + (index % 4), 20 + ((index * 7) % 35), 0, 0);
+    }
+    if (d.getTime() <= hold) d.setTime(hold + 15 * 60_000);
+    if (d.getTime() > maxT) d.setTime(Math.max(hold + 15 * 60_000, maxT));
+    return d.toISOString();
+  }
+
+  for (let i = 0; i < STORIES.length; i++) {
+    const story = STORIES[i]!;
+    const { caseId, traceId, idem } = caseTraceIds(story);
+    const emittedAt = emittedAtForIndex(i, STORIES.length);
+    const decidedAt = decidedAtAfterHold(emittedAt, i);
 
     const intake = await httpJson<Decision & { error?: string }>(
       `${file.api_base}/v1/aegis/governed/events`,
@@ -193,9 +259,10 @@ async function main(): Promise<void> {
           event_type: story.event_type,
           product: story.product,
           agent_id: agentId(story.agent),
-          emitted_at: new Date().toISOString(), // natural time: never backdated
+          emitted_at: emittedAt,
           actor: { type: "system", id: story.agent },
-          attributes: { ...story.attributes, demo_history: true },
+          // demo_history stays out of signed attributes; UI badges use case_id pattern.
+          attributes: { ...story.attributes },
           trace_id: traceId,
         },
       },
@@ -243,6 +310,7 @@ async function main(): Promise<void> {
                 body: {
                   reason: story.decide.reason,
                   comment: story.decide.reason,
+                  decided_at: decidedAt,
                   ...(story.decide.reason_code ? { reason_code: story.decide.reason_code } : {}),
                 },
               });

@@ -45,6 +45,11 @@ a deployment is not blocked while KMS is being provisioned; it is not a
 long-term position. Anyone who can read the process environment can forge
 receipts under that key.
 
+Local / Demo Bank software keys use **"Key custody: software key (demo tenant)"**
+instead — never claim those are HSM-held. Production deployments can use a
+customer-held key in AWS KMS, GCP KMS or an HSM; the private key never leaves
+the customer's key store.
+
 Without KMS and without the interim flag, `AEGIS_ENV=production` refuses to
 boot (`src/boot/production-guards.ts`).
 

@@ -18,7 +18,17 @@ import {
 } from "./repo.js";
 import type { BankEvent, BankDecisionResponse } from "./types.js";
 import type { RuleCombineMode } from "../policy/evaluate-rules.js";
-import { describeDecision } from "./describe-decision.js";
+import { describeDecision, formatRoleLabel } from "./describe-decision.js";
+import { extractRequester } from "./requester.js";
+import { roleDisplayName } from "./rule-preview.js";
+
+/** UI/seed labelling only — never seal into the forensic receipt body. */
+function attributesForSeal(
+  attrs: Record<string, unknown>,
+): Record<string, unknown> {
+  const { demo_history: _demoHistory, ...rest } = attrs;
+  return rest;
+}
 
 export type HandleBankEventOptions = {
   /** Force evaluate/seal in record-only mode (batch import pilot). */
@@ -165,13 +175,14 @@ export async function handleBankEvent(
         product: event.product,
         event_type: event.event_type,
         tool_name: toolName,
-        attributes: fielded.stored,
+        attributes: attributesForSeal(fielded.stored),
         matched_rules: matched,
         policy_id: policyId,
         policy_version: policyVersion,
         policy_content_hash: contentHash,
         agent_id: event.agent_id,
         idempotency_key: event.idempotency_key,
+        emitted_at: event.emitted_at,
       });
       if (sealed) {
         eventId = sealed.event_id;
@@ -185,6 +196,21 @@ export async function handleBankEvent(
         "[governed] APS seal failed; issuing provisional citation",
         err instanceof Error ? err.message : err,
       );
+      // persistSignedEvent / key lookup may have aborted this transaction. Without a
+      // fresh BEGIN, provisional citation + upsertBankCase fail with 25P02 and the
+      // whole governed intake returns 500 (breaks demo:fresh / seed-history).
+      if ("query" in client) {
+        try {
+          await (client as pg.PoolClient).query("ROLLBACK");
+          await (client as pg.PoolClient).query("BEGIN");
+        } catch (recoverErr) {
+          console.error(
+            "[governed] failed to recover transaction after seal error",
+            recoverErr instanceof Error ? recoverErr.message : recoverErr,
+          );
+          throw err instanceof Error ? err : new Error(String(err));
+        }
+      }
     }
   }
 
@@ -220,7 +246,31 @@ export async function handleBankEvent(
     typeof fielded.stored.currency === "string"
       ? fielded.stored.currency
       : null;
-  const plainSummary = describeDecision({
+  const requiredRole = evalResult.required_roles[0] ?? null;
+  const requiredRoleLabel =
+    roleDisplayName(ladder, requiredRole) ?? formatRoleLabel(requiredRole);
+  const requester = extractRequester(fielded.stored);
+  const receiptAttributes: Record<string, unknown> = {
+    ...attributesForSeal(fielded.stored),
+    ...(requiredRole
+      ? {
+          required_role: requiredRole,
+          required_role_label: requiredRoleLabel,
+        }
+      : {}),
+    ...(requester.label
+      ? {
+          requester: requester.label,
+          requester_name: requester.name,
+          requester_role: requester.role,
+          requester_email: requester.email,
+          requester_officer_id: requester.officer_id,
+        }
+      : evalResult.outcome === "hold" && evalResult.mode === "enforce"
+        ? { requester_missing: true }
+        : {}),
+  };
+  let plainSummary = describeDecision({
     outcome: evalResult.outcome,
     product: event.product,
     event_type: event.event_type,
@@ -231,10 +281,18 @@ export async function handleBankEvent(
     matched_rules: matched,
     decided_by_rule_id: evalResult.decision_basis.decided_by_rule_id,
     decision_basis: evalResult.decision_basis,
-    required_role: evalResult.required_roles[0] ?? null,
+    required_role: requiredRole,
+    required_role_label: requiredRoleLabel,
     would_have: evalResult.would_have,
     mode: evalResult.mode,
   });
+  if (
+    !requester.label &&
+    evalResult.outcome === "hold" &&
+    evalResult.mode === "enforce"
+  ) {
+    plainSummary = `${plainSummary} Requester was not recorded.`.trim();
+  }
 
   let evidenceStatus: "ok" | "failed" | "skipped" = "skipped";
   if (isReceiptSigningConfigured()) {
@@ -263,7 +321,8 @@ export async function handleBankEvent(
             sequence_num: sequenceNum,
           },
         ],
-        attributes: fielded.stored,
+        attributes: receiptAttributes,
+        issued_at: event.emitted_at,
         timeline: [
           {
             at: event.emitted_at,
@@ -346,7 +405,7 @@ export async function handleBankEvent(
     outcome: evalResult.outcome,
     mode: evalResult.mode,
     status: evalResult.mode === "record_only" ? "approved" : status,
-    attributes: fielded.stored,
+    attributes: receiptAttributes,
     matched_rules: evalResult.matched_rules,
     policy_id: policyId,
     policy_version: policyVersion,

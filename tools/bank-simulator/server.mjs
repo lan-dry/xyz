@@ -79,6 +79,17 @@ process.env.AEGIS_SIGNED_BUFFER_DIR ||= join(DATA_DIR, "sdk-buffer");
 
 const CONFIG_FILE = join(DATA_DIR, "config.json");
 
+/** In-memory core ledger: money only moves after Aegis execution/permit. */
+const ledger = [];
+const refusedDisbursements = [];
+/** case_id → action snapshot queued for disburse after approve */
+const pendingDisburse = new Map();
+
+function publicBaseUrl() {
+  const host = HOST === "0.0.0.0" ? "127.0.0.1" : HOST;
+  return `http://${host}:${PORT}`;
+}
+
 // ---------------------------------------------------------------- config (env defaults + saved override)
 
 /** Fields saved through Setup. Overrides the environment per field. May hold the plaintext key. */
@@ -345,6 +356,107 @@ function buildEvent(story, { decidedWithoutAegis, queuedAt } = {}) {
   };
 }
 
+/**
+ * Ask Aegis whether the core ledger may pay. This is the in-path gate:
+ * without a sealed allow/approve matching the action, disbursement is refused.
+ */
+async function askExecutionPermit(caseId, action, calls) {
+  return postJson(
+    "/v1/aegis/execution/permit",
+    { case_id: caseId, action },
+    {},
+    { calls },
+  );
+}
+
+function actionFromAttributes(attrs) {
+  const a = attrs && typeof attrs === "object" ? attrs : {};
+  const out = {};
+  for (const key of [
+    "amount",
+    "amount_usd",
+    "currency",
+    "beneficiary",
+    "expected_beneficiary",
+    "merchant_id",
+    "order_id",
+    "customer_email",
+  ]) {
+    if (a[key] != null && a[key] !== "") out[key] = a[key];
+  }
+  return out;
+}
+
+/**
+ * Core ledger disburse. Always requires Aegis execution/permit unless the caller
+ * explicitly tries the "skip Aegis" demo path — which the ledger still refuses.
+ */
+async function coreDisburse(input, { calls } = {}) {
+  const caseId = String(input.case_id ?? "").trim();
+  const action = actionFromAttributes(input.action ?? input);
+  if (!caseId) {
+    return { status: 422, body: { error: "case_id required", permitted: false } };
+  }
+  if (input.skip_aegis === true) {
+    const row = {
+      at: new Date().toISOString(),
+      case_id: caseId,
+      action,
+      reason: "Core ledger refuses ungated disbursement (skip_aegis attempted)",
+      code: "permit_required",
+    };
+    refusedDisbursements.unshift(row);
+    if (refusedDisbursements.length > 100) refusedDisbursements.length = 100;
+    return {
+      status: 403,
+      body: {
+        ok: false,
+        permitted: false,
+        code: "permit_required",
+        error: row.reason,
+        case_id: caseId,
+      },
+    };
+  }
+
+  const permit = await askExecutionPermit(caseId, action, calls);
+  if (permit.status !== 200 || !permit.data?.permitted) {
+    const row = {
+      at: new Date().toISOString(),
+      case_id: caseId,
+      action,
+      reason: permit.data?.reason ?? `permit HTTP ${permit.status}`,
+      code: permit.data?.code ?? "denied",
+      permit: permit.data ?? null,
+    };
+    refusedDisbursements.unshift(row);
+    if (refusedDisbursements.length > 100) refusedDisbursements.length = 100;
+    return {
+      status: 403,
+      body: {
+        ok: false,
+        permitted: false,
+        ...(permit.data && typeof permit.data === "object" ? permit.data : {}),
+        error: row.reason,
+      },
+    };
+  }
+
+  const entry = {
+    id: `pay_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+    at: new Date().toISOString(),
+    case_id: caseId,
+    action,
+    receipt_id: permit.data.receipt_id ?? null,
+    receipt_hash: permit.data.receipt_hash ?? null,
+    outcome: permit.data.outcome ?? null,
+  };
+  ledger.unshift(entry);
+  if (ledger.length > 100) ledger.length = 100;
+  pendingDisburse.delete(caseId);
+  return { status: 200, body: { ok: true, permitted: true, entry, permit: permit.data } };
+}
+
 /** Send one governed event, then raise an approval request for a hold or a hard stop. */
 async function submit(body, steps, calls) {
   const orgId = cfg().orgId;
@@ -361,10 +473,25 @@ async function submit(body, steps, calls) {
   steps.push(`Governed intake: ${decision.outcome}`);
   const sealed = Boolean(decision.event_id) && !String(decision.event_id).startsWith("evt_gov_");
   let approvalId = null;
+  const action = actionFromAttributes(body.attributes);
+  if (decision.outcome === "allow" && sealed) {
+    pendingDisburse.set(body.case_id, {
+      action,
+      trace_id: body.trace_id,
+      outcome: "allow",
+    });
+    steps.push("Auto-allowed: core ledger may disburse after Aegis execution/permit.");
+  }
   if ((decision.outcome === "hold" || decision.outcome === "stop") && sealed) {
+    pendingDisburse.set(body.case_id, {
+      action,
+      trace_id: body.trace_id,
+      outcome: decision.outcome,
+    });
     if (!orgId) {
       steps.push("Approval not raised: set the organisation id in Setup to also create the approval request.");
     } else {
+      const resumeUrl = `${publicBaseUrl()}/core/loans/disburse-resume`;
       const req = await postJson(
         "/v1/aegis/approvals/request",
         {
@@ -372,14 +499,18 @@ async function submit(body, steps, calls) {
           event_id: decision.event_id,
           trace_id: body.trace_id,
           tool_name: "governed.action",
-          deferred: { url: "https://example.test/demo-callback", method: "POST" },
+          deferred: { url: resumeUrl, method: "POST" },
         },
         {},
         { calls },
       );
       if (req.status < 300 && req.data?.approval_id) {
         approvalId = req.data.approval_id;
-        steps.push("Approval requested: waiting in the console Approvals page.");
+        const pending = pendingDisburse.get(body.case_id);
+        if (pending) pending.approval_id = approvalId;
+        steps.push(
+          "Approval requested: approve in the console, then disburse via the core ledger (permit gate).",
+        );
       } else {
         steps.push(`Approval request failed (${req.status}).`);
       }
@@ -387,7 +518,7 @@ async function submit(body, steps, calls) {
   } else if (decision.outcome === "hold" && !sealed) {
     steps.push("Held but not sealed: the API's signing bridge is not configured.");
   }
-  return { decision, sealed, approvalId };
+  return { decision, sealed, approvalId, action };
 }
 
 function consoleUrl(traceId) {
@@ -485,7 +616,7 @@ async function runStory(storyId) {
 
   const built = buildEvent(story);
   try {
-    const { decision, sealed, approvalId } = await submit(built.body, steps, calls);
+    const { decision, sealed, approvalId, action } = await submit(built.body, steps, calls);
     return {
       status: 200,
       body: {
@@ -494,6 +625,8 @@ async function runStory(storyId) {
         matched_rules: decision.matched_rules ?? [],
         approval_id: approvalId,
         sealed,
+        action,
+        can_disburse: decision.outcome === "allow" || decision.outcome === "hold",
         steps,
         requests: calls,
       },
@@ -802,7 +935,43 @@ const server = createServer(async (req, res) => {
         sdk_drain_configured: Boolean(sdkSignOptions()),
         auth_enabled: AUTH_ENABLED,
         label: "Simulated core banking system",
+        ledger_count: ledger.length,
+        refused_count: refusedDisbursements.length,
       });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/ledger") {
+      return sendJson(res, 200, {
+        ledger: ledger.slice(0, 40),
+        refused: refusedDisbursements.slice(0, 40),
+        pending: [...pendingDisburse.entries()].map(([case_id, v]) => ({
+          case_id,
+          ...v,
+        })),
+      });
+    }
+
+    // Core ledger paths (in-path gate). Open to loopback deferred callbacks from Aegis.
+    if (req.method === "POST" && url.pathname === "/core/loans/disburse") {
+      const body = await readJson(req);
+      const out = await coreDisburse(body, { calls: [] });
+      return sendJson(res, out.status, out.body);
+    }
+    if (req.method === "POST" && url.pathname === "/core/loans/disburse-resume") {
+      const body = await readJson(req);
+      const caseId =
+        String(body.case_id ?? body.caseId ?? "").trim() ||
+        [...pendingDisburse.keys()].at(-1) ||
+        "";
+      const pending = pendingDisburse.get(caseId);
+      const out = await coreDisburse(
+        {
+          case_id: caseId,
+          action: body.action ?? pending?.action ?? {},
+        },
+        { calls: [] },
+      );
+      return sendJson(res, out.status, out.body);
     }
 
     if (req.method === "POST" && url.pathname.startsWith("/api/")) {
@@ -820,6 +989,14 @@ const server = createServer(async (req, res) => {
       }
       if (url.pathname === "/api/story") {
         const out = await runStory(String(body.story_id ?? ""));
+        return sendJson(res, out.status, out.body);
+      }
+      if (url.pathname === "/api/disburse") {
+        const out = await coreDisburse(body, { calls: [] });
+        return sendJson(res, out.status, out.body);
+      }
+      if (url.pathname === "/api/disburse/skip-aegis") {
+        const out = await coreDisburse({ ...body, skip_aegis: true }, { calls: [] });
         return sendJson(res, out.status, out.body);
       }
       if (url.pathname === "/api/unreachable") {

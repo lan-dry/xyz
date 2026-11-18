@@ -12,6 +12,8 @@ import {
 } from "../bank/describe-decision.js";
 import { extractRequester } from "../bank/requester.js";
 import type { DelegationRecord } from "../bank/approval-delegate.js";
+import { listBankRoleLadder } from "../bank/repo.js";
+import { roleDisplayName } from "../bank/rule-preview.js";
 import {
   issueForensicReceipt,
 } from "./issue.js";
@@ -101,12 +103,32 @@ export async function issueApprovalOutcomeReceipt(
     input.delegation?.role_key ??
     input.approver.role ??
     null;
-  const roleLabel = formatRoleLabel(roleKey);
+  const ladder = await listBankRoleLadder(client, input.organizationId);
+  const roleLabel =
+    roleDisplayName(ladder, roleKey) ?? formatRoleLabel(roleKey);
   const displayName =
     input.approver.display_name?.trim() ||
     input.delegation?.delegate.name ||
     input.approver.email;
-  const requester = extractRequester(input.eventPayload);
+  const requester = extractRequester(
+    input.eventPayload ??
+      (prior.body.attributes as Record<string, unknown> | undefined),
+  );
+  const priorAttrsRaw =
+    prior.body.attributes && typeof prior.body.attributes === "object"
+      ? (prior.body.attributes as Record<string, unknown>)
+      : {};
+  const { demo_history: _demoHistory, ...priorAttrs } = priorAttrsRaw;
+  const holdRequiredRole =
+    typeof priorAttrs.required_role === "string"
+      ? priorAttrs.required_role
+      : null;
+  const holdRequiredLabel =
+    (typeof prior.body.attributes?.required_role_label === "string"
+      ? prior.body.attributes.required_role_label
+      : null) ??
+    roleDisplayName(ladder, holdRequiredRole) ??
+    formatRoleLabel(holdRequiredRole);
 
   const sealed_events: SealedEventRef[] = [
     ...(prior.body.sealed_events ?? []),
@@ -158,9 +180,15 @@ export async function issueApprovalOutcomeReceipt(
         ? Number(amountRaw)
         : null;
   const currency = typeof attrs.currency === "string" ? attrs.currency : null;
-  // Same sentence as the case page: amount, rule, approver, reason (A4).
+  // Same sentence as the case page: amount, rule, approver, reason.
+  // Hold's required role (not acting role) for "requires a Credit Manager".
   const plain = describeDecision({
-    outcome: input.outcome === "declined" ? "declined" : "released",
+    outcome:
+      input.outcome === "declined"
+        ? "declined"
+        : input.outcome === "approved"
+          ? "approved"
+          : "released",
     product: prior.body.product ?? null,
     event_type: prior.body.event_type ?? null,
     amount: Number.isFinite(amount) ? amount : null,
@@ -170,8 +198,8 @@ export async function issueApprovalOutcomeReceipt(
     decision_basis: (prior.body.decision_basis ??
       null) as Parameters<typeof describeDecision>[0]["decision_basis"],
     decided_by_rule_id: prior.body.decision_basis?.decided_by_rule_id ?? null,
-    required_role_label: roleLabel,
-    required_role: roleKey,
+    required_role_label: holdRequiredLabel ?? roleLabel,
+    required_role: holdRequiredRole ?? roleKey,
     approver_name: displayName,
     approver_role: roleKey,
     approved_at: input.decided_at,
@@ -192,8 +220,9 @@ export async function issueApprovalOutcomeReceipt(
     decision_basis: prior.body.decision_basis,
     plain_summary: plain,
     sealed_events,
+    issued_at: input.decided_at,
     attributes: {
-      ...(prior.body.attributes ?? {}),
+      ...priorAttrs,
       follows_receipt_hash: prior.receipt_hash,
       follows_receipt_id: prior.receipt_id,
       approval_id: input.approvalId,
@@ -201,9 +230,13 @@ export async function issueApprovalOutcomeReceipt(
       approver_user_id: input.approver.user_id,
       approver_display_name: displayName,
       approver_role: roleKey,
+      approver_role_label: roleLabel,
       approval_reason: input.reason ?? null,
       requester: requester.label,
       requester_email: requester.email,
+      requester_officer_id: requester.officer_id,
+      requester_name: requester.name,
+      requester_role: requester.role,
     },
     timeline: [
       ...(prior.body.timeline ?? []),

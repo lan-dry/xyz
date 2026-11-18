@@ -47,11 +47,15 @@ export function custodyLabel(custody: KeyCustody | string | null | undefined): s
     case "software_interim":
       return "Key custody: software key (interim)";
     case "software":
-      return "Key custody: software key (development)";
+      return "Key custody: software key (demo tenant)";
     default:
       return "Key custody: unknown";
   }
 }
+
+/** One sentence for Settings / PDF / README — do not claim the demo key is in an HSM. */
+export const CUSTODY_PRODUCTION_NOTE =
+  "Production deployments can use a customer-held key in AWS KMS, GCP KMS or an HSM. The private key never leaves the customer’s key store.";
 
 /** Stable key id for a KMS key when AEGIS_RECEIPT_KEY_ID is not set. */
 export function derivedKmsReceiptKeyId(kmsKeyId: string): string {

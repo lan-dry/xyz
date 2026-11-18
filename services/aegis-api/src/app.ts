@@ -8,6 +8,7 @@ import {
   postApprovalComplete,
   postApprovalRequest,
 } from "./routes/approvals.js";
+import { postExecutionPermit } from "./routes/execution-permit.js";
 import { consoleRoutes } from "./routes/console/index.js";
 import { postEvent } from "./routes/events.js";
 import { postBankEvent } from "./routes/bank-events.js";
@@ -98,6 +99,8 @@ export function createApp(): Hono {
   aegis.get("/approvals/:approvalId", getApprovalStatus);
   aegis.post("/approvals/:approvalId/bind-check", postApprovalBindCheck);
   aegis.post("/approvals/:approvalId/complete", postApprovalComplete);
+  /** In-path gate: core ledger must ask before disbursing. */
+  aegis.post("/execution/permit", postExecutionPermit);
   aegis.get("/events/:eventId/inclusion-proof", getEventInclusionProof);
   // One-shot capture must be registered before /workflows/runs/:traceId/*
   // so "capture" is never treated as a trace id.

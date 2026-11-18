@@ -251,8 +251,9 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
     const heldRole =
       receipt.required_role_label ??
       (receipt.required_role ? formatRoleLabel(receipt.required_role) : null);
+    const article = heldRole && /^[aeiou]/i.test(heldRole) ? "an" : "a";
     const held = rule
-      ? ` It was held because rule ${rule} requires ${heldRole ? `a ${heldRole}` : "human approval"}.`
+      ? ` It was held because rule ${rule} requires ${heldRole ? `${article} ${heldRole}` : "human approval"}.`
       : "";
     return (
       `${subject} was declined by ${who ?? "an authorised approver"}${when}${reason}.${held} ${pol}`
@@ -296,15 +297,14 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
   }
 
   if (outcome === "released" || outcome === "approved") {
+    const needRole =
+      receipt.required_role_label ??
+      formatRoleLabel(receipt.required_role) ??
+      "authorised approver";
+    const article = /^[aeiou]/i.test(needRole) ? "an" : "a";
     return (
       `${subject} was held` +
-      (rule
-        ? ` because rule ${rule} requires a ${
-            receipt.required_role_label ??
-            formatRoleLabel(receipt.required_role) ??
-            "authorised approver"
-          }`
-        : "") +
+      (rule ? ` because rule ${rule} requires ${article} ${needRole}` : "") +
       `. Approved by ${who ?? "an authorised approver"}${when}${
         reasonText ? ` with the reason: ${reasonText}` : ""
       }. ${pol}`

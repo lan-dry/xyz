@@ -53,7 +53,7 @@ export type CaseSummary = {
   requester_officer_id: string | null;
   seal: CaseSealStatus;
   demo_filler: boolean;
-  /** Synthetic back-dated history from pilot:seed-history (labelled on screens). */
+  /** Synthetic history from pilot:seed-history (labelled on screens). */
   demo_history: boolean;
   created_at: string | null;
 };
@@ -161,7 +161,7 @@ caseRoutes.get("/cases/summary", requireConsoleSession, async (c) => {
       s.demo_filler = a.demo_filler === true;
       s.demo_history =
         a.demo_history === true ||
-        /^LN-RW-\d{4}$/i.test(r.case_id) ||
+        /^(LN|PAY|CD)-RW-/i.test(r.case_id) ||
         /^DB-HIST-/i.test(r.case_id);
       s.created_at = r.created_at.toISOString();
     }

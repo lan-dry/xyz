@@ -65,7 +65,7 @@ const WIZARDS: Array<{
 ];
 
 export default function IntegrationsPage() {
-  const [active, setActive] = useState<WizardId>(null);
+  const [active, setActive] = useState<WizardId>("slack");
   const wizard = WIZARDS.find((w) => w.id === active) ?? null;
 
   return (
