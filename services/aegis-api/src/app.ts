@@ -9,6 +9,7 @@ import {
   postApprovalRequest,
 } from "./routes/approvals.js";
 import { postExecutionPermit } from "./routes/execution-permit.js";
+import { postExecutionsConfirm } from "./routes/executions-confirm.js";
 import { consoleRoutes } from "./routes/console/index.js";
 import { postEvent } from "./routes/events.js";
 import { postBankEvent } from "./routes/bank-events.js";
@@ -85,6 +86,21 @@ export function createApp(): Hono {
   app.route("/v1/console", consoleRoutes);
   app.route("/v1/public", publicRoutes);
 
+  /**
+   * Well-known decision public keys (Stage 3). Same material as
+   * GET /v1/public/decision-keys.json — published here so executors can
+   * discover keys without knowing the API version prefix.
+   */
+  app.get("/.well-known/aegis/decision-keys.json", async (c) => {
+    const { collectPublicKeys } = await import("./forensic/public-keys.js");
+    const keys = await collectPublicKeys();
+    return c.json(
+      Object.fromEntries(keys.map((k) => [k.key_id, k.public_key_b64])),
+      200,
+      { "Cache-Control": "public, max-age=300" },
+    );
+  });
+
   const aegis = new Hono();
   aegis.post("/events", postEvent);
   /** Banking-pack convenience alias (sector example). Prefer /governed/events. */
@@ -104,6 +120,8 @@ export function createApp(): Hono {
   aegis.post("/approvals/:approvalId/complete", postApprovalComplete);
   /** In-path gate: core ledger must ask before disbursing. */
   aegis.post("/execution/permit", postExecutionPermit);
+  /** Stage 3: executor confirms decision token + actual params (single-use). */
+  aegis.post("/executions/confirm", postExecutionsConfirm);
   aegis.get("/events/:eventId/inclusion-proof", getEventInclusionProof);
   // One-shot capture must be registered before /workflows/runs/:traceId/*
   // so "capture" is never treated as a trace id.

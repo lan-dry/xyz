@@ -26,7 +26,7 @@ Register the printed public key with Aegis for your `source_id` / `key_id`.
 | --- | --- |
 | `POST /events` | Body = business event (JSON object; money as decimal strings, integers only). Optional `Idempotency-Key: <uuid>` header makes caller retries safe. Returns **200** `{status:"delivered", seq, idempotency_key, event_hash, receipt}` if Aegis accepted it within `sync_wait_ms`, otherwise **202** `{status:"queued", ...}`. 422 if the same key is reused with a different event. |
 | `GET /health` | `{connected, outbox_size, last_seq, key_id, source_id, public_key_b64, clock_skew_ms, last_success_at, last_error}`. `connected` = last delivery attempt succeeded. `clock_skew_ms` = Aegis `Date` header minus local clock (1 s resolution). |
-| `POST /execute/confirm` | Stub, always **501** (Stage 3). |
+| `POST /execute/confirm` | Forwards to Aegis `POST /v1/aegis/executions/confirm`. When `params` is present and `source_envelope` is not, the Connector source-signs the params (AEGIS-SRC1) so the executor claim is attributable. |
 
 If `local_auth_token` (or `AEGIS_CONNECTOR_LOCAL_TOKEN`) is set, `POST` routes require `Authorization: Bearer <token>`.
 

@@ -20,6 +20,8 @@ export interface ConnectorConfig {
   aegis_url: string;
   /** Path of the source-event ingest endpoint on aegis_url. */
   ingest_path: string;
+  /** Path of the execution confirm endpoint on aegis_url (Stage 3). */
+  confirm_path: string;
   /** Ingest bearer key (normally via AEGIS_INGEST_BEARER). */
   ingest_bearer: string;
   state_dir: string;
@@ -33,6 +35,7 @@ export interface ConnectorConfig {
 }
 
 export const DEFAULT_INGEST_PATH = "/v1/aegis/source-events";
+export const DEFAULT_CONFIRM_PATH = "/v1/aegis/executions/confirm";
 
 const ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 
@@ -97,6 +100,8 @@ export function parseConfig(raw: unknown, baseDir: string, env: Env = process.en
       (typeof c.private_key_passphrase === "string" ? c.private_key_passphrase : undefined),
     aegis_url,
     ingest_path: typeof c.ingest_path === "string" ? c.ingest_path : DEFAULT_INGEST_PATH,
+    confirm_path:
+      typeof c.confirm_path === "string" ? c.confirm_path : DEFAULT_CONFIRM_PATH,
     ingest_bearer,
     state_dir: resolve(baseDir, typeof c.state_dir === "string" ? c.state_dir : ".aegis-connector"),
     listen: {
@@ -135,4 +140,10 @@ export function loadConfigFile(path: string, env: Env = process.env): ConnectorC
 
 export function ingestUrl(config: Pick<ConnectorConfig, "aegis_url" | "ingest_path">): string {
   return new URL(config.ingest_path, config.aegis_url).toString();
+}
+
+export function confirmUrl(
+  config: Pick<ConnectorConfig, "aegis_url" | "confirm_path">,
+): string {
+  return new URL(config.confirm_path, config.aegis_url).toString();
 }

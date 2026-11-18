@@ -31,6 +31,8 @@ import {
   buildProvenanceBlock,
 } from "../sources/provenance.js";
 import { nowIso } from "../time/clock.js";
+import { issueDecisionToken } from "../execution/decision-token.js";
+import { resolveExecutionConfigForCase } from "../execution/workflow-config.js";
 
 /** UI/seed labelling only — never seal into the forensic receipt body. */
 function attributesForSeal(
@@ -479,6 +481,41 @@ export async function handleBankEvent(
     }
   }
 
+  let decisionToken: Record<string, unknown> | undefined;
+  if (evalResult.outcome === "allow" && evalResult.mode === "enforce") {
+    try {
+      const execConfig = await resolveExecutionConfigForCase(client, organizationId, {
+        workflow_id: event.workflow_id,
+        product: event.product,
+        case_id: event.case_id,
+      });
+      const tokenAttrs: Record<string, unknown> = {
+        ...receiptAttributes,
+        ...(event.product ? { product: event.product } : {}),
+      };
+      // Accept common aliases so packs that name beneficiary_account still bind.
+      if (
+        tokenAttrs.beneficiary_account == null &&
+        tokenAttrs.beneficiary != null
+      ) {
+        tokenAttrs.beneficiary_account = tokenAttrs.beneficiary;
+      }
+      const issued = await issueDecisionToken(client, {
+        organizationId,
+        caseId: event.case_id,
+        decisionId,
+        attributes: tokenAttrs,
+        config: execConfig,
+      });
+      if (issued) decisionToken = issued as unknown as Record<string, unknown>;
+    } catch (err) {
+      console.error(
+        "[governed] decision token issue failed",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   return {
     case_id: event.case_id,
     decision_id: decisionId,
@@ -504,6 +541,7 @@ export async function handleBankEvent(
     event_id: eventId,
     event_hash: eventHash,
     sequence_num: sequenceNum,
+    ...(decisionToken ? { decision_token: decisionToken } : {}),
     flags: {
             ...(provisional ? { provisional: true } : {}),
       ...(options?.decidedWithoutAegis ? { decided_without_aegis: true } : {}),

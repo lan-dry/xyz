@@ -217,6 +217,13 @@ export type EvidenceBundle = ForensicBundle & {
    * recomputes it and flags any difference. Absent on bundles exported before Stage 2.
    */
   provenance?: CaseProvenanceView | null;
+  /**
+   * Stage 3: Aegis decision public keys (same custody as receipt keys; domain AEGIS-TOKEN1).
+   * key_id -> public_key_b64. Present when the case has decision tokens or keys were supplied.
+   */
+  decision_keys?: Record<string, string>;
+  /** Stage 3: signed decision tokens issued for this case. */
+  decision_tokens?: Array<Record<string, unknown>>;
   how_to_verify: string;
   /** Result when the server exported this file; informational only. */
   export_check?: { ok: boolean; findings: string[] };
@@ -246,6 +253,10 @@ export type EvidenceBundleInput = {
    * every missing/swapped receipt must be detected.
    */
   subset?: boolean;
+  /** Stage 3 decision public keys (key_id -> public_key_b64). */
+  decision_keys?: Record<string, string>;
+  /** Stage 3 decision tokens for this case. */
+  decision_tokens?: Array<Record<string, unknown>>;
 };
 
 export function publicKeyFingerprint(publicKeyB64: string): string {
@@ -526,6 +537,14 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     input.source_registry && input.source_registry.length > 0
       ? input.source_registry
       : undefined;
+  const decision_keys =
+    input.decision_keys && Object.keys(input.decision_keys).length > 0
+      ? { ...input.decision_keys }
+      : undefined;
+  const decision_tokens =
+    input.decision_tokens && input.decision_tokens.length > 0
+      ? input.decision_tokens
+      : undefined;
 
   return {
     bundle_type: EVIDENCE_BUNDLE_TYPE,
@@ -539,6 +558,8 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     keys,
     ...(source_keys ? { source_keys } : {}),
     ...(source_registry ? { source_registry } : {}),
+    ...(decision_keys ? { decision_keys } : {}),
+    ...(decision_tokens ? { decision_tokens } : {}),
     key_fingerprints,
     key_custody,
     trusted_time: input.trusted_time ?? null,
@@ -1486,10 +1507,36 @@ export async function loadEvidenceBundle(
     receipts,
   );
 
+  const caseIdForTokens = receipts[0]?.case_id ?? [...caseIds][0] ?? null;
+  let decision_tokens: Array<Record<string, unknown>> | undefined;
+  let decision_keys: Record<string, string> | undefined;
+  if (caseIdForTokens) {
+    try {
+      const tokenRows = await client.query<{
+        token_body: Record<string, unknown>;
+        key_id: string;
+      }>(
+        `SELECT token_body, key_id FROM decision_token
+         WHERE organization_id = $1 AND case_id = $2
+         ORDER BY issued_at ASC`,
+        [organizationId, caseIdForTokens],
+      );
+      if (tokenRows.rows.length > 0) {
+        decision_tokens = tokenRows.rows.map((r) => r.token_body);
+        decision_keys = { ...keys };
+        for (const r of tokenRows.rows) {
+          if (keys[r.key_id]) decision_keys[r.key_id] = keys[r.key_id]!;
+        }
+      }
+    } catch {
+      /* migration 008 not applied yet */
+    }
+  }
+
   const bundle = buildEvidenceBundle({
     organization_id: organizationId,
     trace_id: traceId,
-    case_id: receipts[0]?.case_id ?? [...caseIds][0] ?? null,
+    case_id: caseIdForTokens,
     receipts,
     sealed_events: events.rows
       .filter((e) => cited.has(e.event_id))
@@ -1506,6 +1553,8 @@ export async function loadEvidenceBundle(
     keys,
     source_keys,
     source_registry,
+    decision_keys,
+    decision_tokens,
     key_custody,
     trusted_time,
     approvals,

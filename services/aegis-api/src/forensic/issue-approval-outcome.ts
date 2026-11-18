@@ -24,11 +24,14 @@ import {
   buildProvenanceBlock,
 } from "../sources/provenance.js";
 import { nowIso } from "../time/clock.js";
+import { issueDecisionToken } from "../execution/decision-token.js";
+import { resolveExecutionConfigForCase } from "../execution/workflow-config.js";
 import type {
   ForensicReceiptBody,
   SealedEventRef,
   SignedForensicReceipt,
 } from "./receipt.js";
+import type { DecisionToken } from "@salanor/aegis-sdk";
 
 export type ApprovalOutcome = "approved" | "declined" | "released";
 
@@ -95,7 +98,7 @@ export async function issueApprovalOutcomeReceipt(
     /** Optional software key override for tests. */
     signingKey?: { key_id: string; private_key_b64: string };
   },
-): Promise<SignedForensicReceipt | null> {
+): Promise<(SignedForensicReceipt & { decision_token?: DecisionToken }) | null> {
   const prior = await findPriorHoldOrStopReceipt(
     client,
     input.organizationId,
@@ -252,7 +255,7 @@ export async function issueApprovalOutcomeReceipt(
     recorded_at: nowIso(),
   });
 
-  return issueForensicReceipt(client, {
+  const receipt = await issueForensicReceipt(client, {
     organization_id: input.organizationId,
     case_id: prior.case_id,
     decision_id: `${prior.decision_id}:${input.outcome}`,
@@ -303,4 +306,46 @@ export async function issueApprovalOutcomeReceipt(
       : undefined,
     signingKey: input.signingKey,
   });
+
+  if (input.outcome !== "approved") {
+    return receipt;
+  }
+
+  let decision_token: DecisionToken | undefined;
+  try {
+    const execConfig = await resolveExecutionConfigForCase(
+      client,
+      input.organizationId,
+      {
+        case_id: prior.case_id,
+        product: prior.body.product ?? null,
+      },
+    );
+    const tokenAttrs: Record<string, unknown> = {
+      ...priorAttrs,
+      ...(prior.body.product ? { product: prior.body.product } : {}),
+    };
+    if (
+      tokenAttrs.beneficiary_account == null &&
+      tokenAttrs.beneficiary != null
+    ) {
+      tokenAttrs.beneficiary_account = tokenAttrs.beneficiary;
+    }
+    const issued = await issueDecisionToken(client, {
+      organizationId: input.organizationId,
+      caseId: prior.case_id,
+      decisionId: `${prior.decision_id}:approved`,
+      attributes: tokenAttrs,
+      config: execConfig,
+      signingKey: input.signingKey,
+    });
+    if (issued) decision_token = issued;
+  } catch (err) {
+    console.error(
+      "[approval] decision token issue failed",
+      err instanceof Error ? err.message : err,
+    );
+  }
+
+  return decision_token ? { ...receipt, decision_token } : receipt;
 }

@@ -80,6 +80,14 @@ export async function applyIntegrationFixture(
       `DELETE FROM evidence_grade_change WHERE organization_id = $1`,
       [INTEGRATION_ORG_A],
     );
+    // Stage 3 decision tokens / exceptions (migration 008).
+    await client.query(
+      `DELETE FROM execution_exception WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(`DELETE FROM decision_token WHERE organization_id = $1`, [
+      INTEGRATION_ORG_A,
+    ]);
     await client.query(`DELETE FROM forensic_receipt WHERE organization_id = $1`, [
       INTEGRATION_ORG_A,
     ]);

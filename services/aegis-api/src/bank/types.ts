@@ -68,6 +68,8 @@ export type BankDecisionResponse = {
   /** Present on decisions made from a verified source envelope (Stage 1 provenance). */
   source_signed?: boolean;
   evidence_grade?: "G1";
+  /** Stage 3: issued when outcome is allow and the workflow declares executable_params. */
+  decision_token?: Record<string, unknown>;
   flags?: {
     /** Historical only — new decisions never set this (demo clock removed). */
     demo_clock?: boolean;

@@ -11,7 +11,7 @@ import {
   type BusinessEvent,
   type SignedEnvelope,
 } from "@salanor/aegis-sdk";
-import { ingestUrl, type ConnectorConfig } from "./config.js";
+import { confirmUrl, ingestUrl, type ConnectorConfig } from "./config.js";
 import { readPrivateKey } from "./keystore.js";
 import { OutboxSender } from "./outbox.js";
 import { ConnectorState, type DeliveredRecord } from "./state.js";
@@ -214,9 +214,84 @@ export async function createConnector(
       if (!authorized(req)) return sendJson(res, 401, { error: "unauthorized" });
 
       if (path === "/execute/confirm") {
-        // Stage 3: execution confirmations are not implemented yet.
-        await readBody(req).catch(() => undefined);
-        return sendJson(res, 501, { error: "not_implemented", stage: 3 });
+        let body: unknown;
+        try {
+          body = JSON.parse((await readBody(req)).toString("utf8"));
+        } catch (err) {
+          const status = (err as { status?: number }).status === 413 ? 413 : 400;
+          return sendJson(res, status, {
+            error: status === 413 ? "payload_too_large" : "invalid_json",
+          });
+        }
+        if (typeof body !== "object" || body === null || Array.isArray(body)) {
+          return sendJson(res, 400, {
+            error: "invalid_body",
+            detail: "body must be a JSON object",
+          });
+        }
+        const payload = { ...(body as Record<string, unknown>) };
+        // Prefer source-signing params so the executor claim is attributable.
+        // Confirm envelopes are signature-checked only (not sequence-accepted),
+        // so we use a dedicated confirm seq space that does not touch the outbox.
+        if (
+          payload.params &&
+          typeof payload.params === "object" &&
+          !Array.isArray(payload.params) &&
+          !payload.source_envelope
+        ) {
+          try {
+            const tokenId =
+              payload.token &&
+              typeof payload.token === "object" &&
+              !Array.isArray(payload.token) &&
+              typeof (payload.token as Record<string, unknown>).token_id === "string"
+                ? String((payload.token as Record<string, unknown>).token_id)
+                : null;
+            const unsigned = buildEnvelope({
+              source_id: config.source_id,
+              key_id: config.key_id,
+              // Large constant offset keeps confirm envelopes out of the event seq stream.
+              seq: 900_000_000 + (Math.floor(now() / 1000) % 99_999_999),
+              ts: new Date(now()),
+              event: {
+                type: "execution.confirm",
+                token_id: tokenId,
+                params: payload.params as BusinessEvent,
+              },
+            });
+            payload.source_envelope = await signEnvelope(unsigned, seed);
+          } catch (err) {
+            return sendJson(res, 400, {
+              error: "invalid_params",
+              detail: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+        try {
+          const doFetch = deps.fetch ?? fetch;
+          const upstream = await doFetch(confirmUrl(config), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${config.ingest_bearer}`,
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(config.request_timeout_ms),
+          });
+          const text = await upstream.text();
+          let parsed: unknown = text;
+          try {
+            parsed = JSON.parse(text);
+          } catch {
+            /* keep text */
+          }
+          return sendJson(res, upstream.status, parsed);
+        } catch (err) {
+          return sendJson(res, 502, {
+            error: "aegis_unreachable",
+            detail: err instanceof Error ? err.message : String(err),
+          });
+        }
       }
 
       let event: unknown;

@@ -138,11 +138,22 @@ describe("other routes", () => {
     expect(String(connector.health().last_error)).toContain("401");
   });
 
-  it("POST /execute/confirm is a 501 stub", async () => {
+  it("POST /execute/confirm forwards to Aegis executions/confirm", async () => {
     const { base } = await h.start();
-    const res = await post(base, "/execute/confirm", { anything: true });
-    expect(res.status).toBe(501);
-    expect(await res.json()).toMatchObject({ error: "not_implemented", stage: 3 });
+    const res = await post(base, "/execute/confirm", {
+      token: { token_id: "dtk_1", v: 1 },
+      params: { amount: "100.00", currency: "RWF" },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; echoed: Record<string, unknown> };
+    expect(body.ok).toBe(true);
+    expect(body.echoed.params).toEqual({ amount: "100.00", currency: "RWF" });
+    expect(body.echoed.source_envelope).toMatchObject({
+      aegis_envelope: "1",
+      source_id: "src_test",
+    });
+    expect(h.aegis.confirms).toHaveLength(1);
+    expect(h.aegis.confirms[0].headers.Authorization).toBe("Bearer ingest_test_key");
   });
 
   it("404 and 405", async () => {

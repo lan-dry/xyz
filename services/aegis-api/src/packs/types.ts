@@ -42,6 +42,19 @@ export type PackWorkflow = {
   product: string;
   record_only?: boolean;
   on_unreachable?: "hold" | "proceed_and_flag";
+  /**
+   * Fields bound into the decision token (Stage 3). Empty / omitted → no token.
+   * Typical: amount, currency, beneficiary_account, product.
+   */
+  executable_params?: string[];
+  /** observe (default) = token issued but executor not required; enforce = must confirm. */
+  execution_control?: "observe" | "enforce";
+  /** When Aegis cannot be reached for confirm (enforce). Default allow_and_flag. */
+  on_aegis_unavailable?: "allow_and_flag" | "block";
+  /** Bound into the token; default loan.disburse. */
+  action_type?: string;
+  /** Token lifetime in seconds; default 3600. */
+  token_ttl_sec?: number;
 };
 
 /** Optional display strings — configuration, never engine defaults. */

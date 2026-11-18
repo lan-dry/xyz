@@ -7,6 +7,7 @@ import type pg from "pg";
 import { policyContentHash } from "../bank/policy-hash.js";
 import { seedAuthorityFromPack } from "../bank/repo.js";
 import { PolicyRuleValidationError, validatePolicyRules } from "../bank/rule-validate.js";
+import { executionConfigFromPackWorkflow } from "../execution/workflow-config.js";
 import { loadDemoPack, packMatrixRows, packRoles } from "./load.js";
 
 export type ApplyPackOptions = {
@@ -178,28 +179,34 @@ export async function applyDemoPack(
 
   for (const wf of pack.workflows) {
     const workflowId = `wf_${pack.id.replace(/\W/g, "_")}_${wf.product}`;
+    const executionConfig = {
+      ...executionConfigFromPackWorkflow(wf),
+      product: wf.product,
+    };
     if (force) {
       await client.query(
         `INSERT INTO governed_workflow (
-           workflow_id, organization_id, name, description, record_only
-         ) VALUES ($1, $2, $3, $4, $5)
+           workflow_id, organization_id, name, description, record_only, execution_config
+         ) VALUES ($1, $2, $3, $4, $5, $6::jsonb)
          ON CONFLICT (workflow_id) DO UPDATE SET
            name = EXCLUDED.name,
            description = EXCLUDED.description,
-           record_only = EXCLUDED.record_only`,
+           record_only = EXCLUDED.record_only,
+           execution_config = EXCLUDED.execution_config`,
         [
           workflowId,
           orgId,
           wf.name,
           `pack:${pack.id} product=${wf.product} on_unreachable=${wf.on_unreachable ?? "hold"}`,
           Boolean(wf.record_only),
+          JSON.stringify(executionConfig),
         ],
       );
     } else {
       await client.query(
         `INSERT INTO governed_workflow (
-           workflow_id, organization_id, name, description, record_only
-         ) VALUES ($1, $2, $3, $4, $5)
+           workflow_id, organization_id, name, description, record_only, execution_config
+         ) VALUES ($1, $2, $3, $4, $5, $6::jsonb)
          ON CONFLICT (workflow_id) DO NOTHING`,
         [
           workflowId,
@@ -207,6 +214,7 @@ export async function applyDemoPack(
           wf.name,
           `pack:${pack.id} product=${wf.product} on_unreachable=${wf.on_unreachable ?? "hold"}`,
           Boolean(wf.record_only),
+          JSON.stringify(executionConfig),
         ],
       );
     }

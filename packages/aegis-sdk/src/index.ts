@@ -11,6 +11,31 @@ export {
   signatureInputHex,
   verifyEnvelope,
 } from "./envelope.js";
+export {
+  TOKEN_VERSION,
+  TOKEN_SIGNATURE_DOMAIN,
+  paramsHash,
+  pickExecutableParams,
+  diffExecutableParams,
+  buildDecisionToken,
+  signDecisionToken,
+  verifyDecisionToken,
+  checkToken,
+  tokenSignatureInput,
+  tokenSignatureInputHex,
+  resolveOnAegisUnavailable,
+} from "./token.js";
+export type {
+  ExecutableParams,
+  UnsignedDecisionToken,
+  DecisionToken,
+  BuildDecisionTokenInput,
+  TokenVerifyFailureReason,
+  TokenVerifyResult,
+  CheckTokenResult,
+  OnAegisUnavailable,
+  UnavailablePolicyResult,
+} from "./token.js";
 export { generateKeyPair, keyPairFromSeed } from "./keys.js";
 export { sendEvent } from "./send.js";
 export type { SendEventOptions, SendEventResult } from "./send.js";

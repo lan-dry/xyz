@@ -12,6 +12,8 @@ export interface FakeAegis {
   attempts: Array<{ envelope: SignedEnvelope; headers: Record<string, string> }>;
   /** Envelopes accepted (2xx). */
   accepted: SignedEnvelope[];
+  /** Confirm bodies forwarded to /executions/confirm. */
+  confirms: Array<{ body: Record<string, unknown>; headers: Record<string, string> }>;
   mode: "ok" | "down" | "error500" | "unauthorized";
 }
 
@@ -19,10 +21,24 @@ export function fakeAegis(): FakeAegis {
   const fake: FakeAegis = {
     attempts: [],
     accepted: [],
+    confirms: [],
     mode: "ok",
-    fetch: (async (_url: string, init: RequestInit) => {
+    fetch: (async (url: string, init: RequestInit) => {
+      const urlText = String(url);
+      const headers = init.headers as Record<string, string>;
+      if (urlText.includes("/executions/confirm") || urlText.includes("/execute/confirm")) {
+        const body = JSON.parse(init.body as string) as Record<string, unknown>;
+        fake.confirms.push({ body, headers });
+        if (fake.mode === "down") {
+          throw new Error("ECONNREFUSED");
+        }
+        return new Response(
+          JSON.stringify({ ok: true, code: "matched", echoed: body }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
       const envelope = JSON.parse(init.body as string) as SignedEnvelope;
-      fake.attempts.push({ envelope, headers: init.headers as Record<string, string> });
+      fake.attempts.push({ envelope, headers });
       if (fake.mode === "down") {
         throw new Error("ECONNREFUSED");
       }

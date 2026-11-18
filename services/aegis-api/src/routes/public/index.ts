@@ -97,6 +97,37 @@ publicRoutes.get("/keys.json", async (c) => {
 });
 
 /**
+ * Stage 3 decision-token public keys (same Ed25519 custody as receipts;
+ * signature domain AEGIS-TOKEN1). Also published at
+ * /.well-known/aegis/decision-keys.json.
+ */
+export const DECISION_TOKEN_SIGNATURE_SCHEME =
+  'Ed25519 (pure, RFC 8032) over SHA-256 of the text "AEGIS-TOKEN1\\n<key_id>\\n" + JCS(token without signature); public_key_b64 is the raw 32-byte key (standard base64).';
+
+publicRoutes.get("/decision-keys", async (c) => {
+  const keys = await collectPublicKeys();
+  return c.json(
+    {
+      generated_at: new Date().toISOString(),
+      signature_scheme: DECISION_TOKEN_SIGNATURE_SCHEME,
+      domain: "AEGIS-TOKEN1",
+      keys,
+    },
+    200,
+    { "Cache-Control": "public, max-age=300" },
+  );
+});
+
+publicRoutes.get("/decision-keys.json", async (c) => {
+  const keys = await collectPublicKeys();
+  return c.json(
+    Object.fromEntries(keys.map((k) => [k.key_id, k.public_key_b64])),
+    200,
+    { "Cache-Control": "public, max-age=300" },
+  );
+});
+
+/**
  * Demo Bank only: latest real evidence bundle + a tampered copy for Verify.
  * Requires organization.is_demo.
  */
