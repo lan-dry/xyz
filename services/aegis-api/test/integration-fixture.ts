@@ -80,6 +80,14 @@ export async function applyIntegrationFixture(
       `DELETE FROM evidence_grade_change WHERE organization_id = $1`,
       [INTEGRATION_ORG_A],
     );
+    // Stage 6 collector CDC (migration 010) — ignore if migration not applied yet.
+    await client
+      .query(`DELETE FROM collector_cdc_event WHERE organization_id = $1`, [
+        INTEGRATION_ORG_A,
+      ])
+      .catch((err: unknown) => {
+        if ((err as { code?: string } | null)?.code !== "42P01") throw err;
+      });
     // Stage 4 reconciliation (migration 009) — children first.
     await client.query(
       `DELETE FROM reconciliation_exception_note WHERE organization_id = $1`,

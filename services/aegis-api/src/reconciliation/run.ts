@@ -15,6 +15,7 @@ import {
 } from "../execution/workflow-config.js";
 import type { EvidenceGrade } from "../sources/grade.js";
 import { gradeRank } from "../sources/provenance.js";
+import { reconcileCollectorEvents } from "./collector-match.js";
 import { upsertException, type ExceptionRow } from "./exceptions.js";
 import { getFeed, type FeedRow } from "./ingest.js";
 import { sealReconciliationReport } from "./report.js";
@@ -643,6 +644,20 @@ export async function runReconciliation(
         },
       });
       exceptions.push(exception);
+    }
+
+    // Stage 6: independent collector CDC ↔ app events (G3 / db_change_without_event).
+    const collector = await reconcileCollectorEvents(client, {
+      organization_id: input.organization_id,
+      run_id: runId,
+      period_start: periodStart,
+      period_end: periodEnd,
+      now,
+      signingKey: input.signingKey,
+    });
+    for (const ex of collector.exceptions) exceptions.push(ex);
+    for (const caseId of collector.matched) {
+      if (!matchedCaseIds.includes(caseId)) matchedCaseIds.push(caseId);
     }
 
     // Below required grade past deadline.

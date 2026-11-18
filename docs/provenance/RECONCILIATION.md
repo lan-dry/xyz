@@ -58,7 +58,7 @@ Export: `…/runs/:runId/report.json` and `…/runs/:runId/report.pdf`.
 | `sequence_gap` | A gap in the source event sequence |
 | `source_silent` | A source has been silent longer than expected |
 | `below_required_grade_past_deadline` | Evidence grade still below the required level past the deadline |
-| `db_change_without_event` | Stub for Stage 6 (raise manually) |
+| `db_change_without_event` | Ledger row changed with no matching application event (Stage 6 collector) |
 | `plausibility_flag` | Stub for Stage 7 (raise manually) |
 
 Exceptions are idempotent by fingerprint: a rerun updates `last_seen_at` and does not
@@ -75,6 +75,18 @@ stopped), Aegis calls `recordGradeChange` to **G2** with reason:
 `corroborated by <feed name> on <time>`
 
 Checks set: `execution_matched` and `reconciled`.
+
+## 4b. Collector CDC → G3 (Stage 6)
+
+Independent capture from `@salanor/aegis-collector-pg` (source `src_core_cdc`, kind
+`collector`) lands in `collector_cdc_event`. On each reconciliation run:
+
+- Collector change + sealed app receipt for the same `case_id` → `recordGradeChange` to
+  **G3** with `independently_captured` (reason cites the collector source and LSN).
+- Collector change with no matching app event → `db_change_without_event`.
+
+See [COLLECTOR.md](./COLLECTOR.md). Triggers are not an acceptable substitute for
+logical decoding when claiming G3.
 
 ## 5. Workflow assurance (pack)
 

@@ -51,7 +51,7 @@ export const EXCEPTION_CATALOG: Record<
     severity: "high",
   },
   db_change_without_event: {
-    title: "Database change without a corresponding event (Stage 6)",
+    title: "Ledger row changed with no matching application event",
     severity: "high",
   },
   plausibility_flag: {
