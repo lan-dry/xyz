@@ -45,6 +45,19 @@ export const CONSOLE_ROUTE_RULES: RouteRule[] = [
   { method: "POST", path: "/v1/console/sources/:sourceId/keys", anon: 401, allowRoles: ["admin"] },
   { method: "POST", path: "/v1/console/sources/:sourceId/keys/:keyId/revoke", anon: 401, allowRoles: ["admin"] },
   { method: "GET", path: "/v1/console/sources/:sourceId/history", anon: 401, allowRoles: ["admin"] },
+  // Stage 4 reconciliation + exceptions
+  { method: "GET", path: "/v1/console/exceptions", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"] },
+  { method: "GET", path: "/v1/console/exceptions/:exceptionId", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"] },
+  { method: "POST", path: "/v1/console/exceptions/:exceptionId/acknowledge", anon: 401, allowRoles: ["approver", "admin", "owner", "auditor"] },
+  { method: "POST", path: "/v1/console/exceptions/:exceptionId/resolve", anon: 401, allowRoles: ["approver", "admin", "owner", "auditor"] },
+  { method: "GET", path: "/v1/console/reconciliation/feeds", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"] },
+  { method: "POST", path: "/v1/console/reconciliation/feeds", anon: 401, allowRoles: ["admin", "owner"] },
+  { method: "POST", path: "/v1/console/reconciliation/feeds/:feedId/ingest", anon: 401, allowRoles: ["admin", "owner"] },
+  { method: "GET", path: "/v1/console/reconciliation/runs", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"] },
+  { method: "POST", path: "/v1/console/reconciliation/runs", anon: 401, allowRoles: ["admin", "owner"] },
+  { method: "GET", path: "/v1/console/reconciliation/runs/:runId", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"] },
+  { method: "GET", path: "/v1/console/reconciliation/runs/:runId/report.json", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"], receiptAccessLog: true },
+  { method: "GET", path: "/v1/console/reconciliation/runs/:runId/report.pdf", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"], receiptAccessLog: true },
 ];
 
 export const AEGIS_ROUTE_RULES: RouteRule[] = [
@@ -53,6 +66,7 @@ export const AEGIS_ROUTE_RULES: RouteRule[] = [
   { method: "POST", path: "/v1/aegis/approvals/request", anon: 401, allowRoles: ["ingest"] },
   { method: "POST", path: "/v1/aegis/bank/events/batch", anon: 401, allowRoles: ["ingest"] },
   { method: "POST", path: "/v1/aegis/source-events", anon: 401, allowRoles: ["ingest"] },
+  { method: "POST", path: "/v1/aegis/reconciliation/feeds/:feedId/ingest", anon: 401, allowRoles: ["ingest"] },
 ];
 
 export const ALL_ROUTE_RULES = [...CONSOLE_ROUTE_RULES, ...AEGIS_ROUTE_RULES];

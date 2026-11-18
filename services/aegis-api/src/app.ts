@@ -10,6 +10,7 @@ import {
 } from "./routes/approvals.js";
 import { postExecutionPermit } from "./routes/execution-permit.js";
 import { postExecutionsConfirm } from "./routes/executions-confirm.js";
+import { postReconciliationFeedIngest } from "./routes/reconciliation-ingest.js";
 import { consoleRoutes } from "./routes/console/index.js";
 import { postEvent } from "./routes/events.js";
 import { postBankEvent } from "./routes/bank-events.js";
@@ -122,6 +123,11 @@ export function createApp(): Hono {
   aegis.post("/execution/permit", postExecutionPermit);
   /** Stage 3: executor confirms decision token + actual params (single-use). */
   aegis.post("/executions/confirm", postExecutionsConfirm);
+  /** Stage 4: ledger / core banking feed ingest (JSONL, CSV, JSON). */
+  aegis.post(
+    "/reconciliation/feeds/:feedId/ingest",
+    postReconciliationFeedIngest,
+  );
   aegis.get("/events/:eventId/inclusion-proof", getEventInclusionProof);
   // One-shot capture must be registered before /workflows/runs/:traceId/*
   // so "capture" is never treated as a trace id.

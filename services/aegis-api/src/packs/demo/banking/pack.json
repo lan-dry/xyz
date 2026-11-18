@@ -176,7 +176,10 @@
       "execution_control": "enforce",
       "on_aegis_unavailable": "allow_and_flag",
       "action_type": "loan.disburse",
-      "token_ttl_sec": 3600
+      "token_ttl_sec": 3600,
+      "required_grade": "G2",
+      "on_missing": "exception",
+      "grade_deadline_hours": 24
     }
   ],
   "labels": {

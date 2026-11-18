@@ -55,6 +55,12 @@ export type PackWorkflow = {
   action_type?: string;
   /** Token lifetime in seconds; default 3600. */
   token_ttl_sec?: number;
+  /** Stage 4: minimum evidence grade (G1/G2/G3). */
+  required_grade?: "G1" | "G2" | "G3" | null;
+  /** When still below required_grade past the deadline. Default await. */
+  on_missing?: "await" | "exception";
+  /** Hours after case creation before flagging below_required_grade. Default 24. */
+  grade_deadline_hours?: number;
 };
 
 /** Optional display strings — configuration, never engine defaults. */

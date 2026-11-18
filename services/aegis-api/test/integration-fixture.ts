@@ -80,6 +80,27 @@ export async function applyIntegrationFixture(
       `DELETE FROM evidence_grade_change WHERE organization_id = $1`,
       [INTEGRATION_ORG_A],
     );
+    // Stage 4 reconciliation (migration 009) — children first.
+    await client.query(
+      `DELETE FROM reconciliation_exception_note WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(
+      `DELETE FROM reconciliation_exception WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(
+      `DELETE FROM reconciliation_feed_row WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(
+      `DELETE FROM reconciliation_run WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(
+      `DELETE FROM reconciliation_feed WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
     // Stage 3 decision tokens / exceptions (migration 008).
     await client.query(
       `DELETE FROM execution_exception WHERE organization_id = $1`,

@@ -19,6 +19,8 @@ export const DEFAULT_EXECUTABLE_PARAMS = [
 
 export type ExecutionControl = "observe" | "enforce";
 export type OnAegisUnavailable = "allow_and_flag" | "block";
+export type RequiredGrade = "G1" | "G2" | "G3";
+export type OnMissingGrade = "await" | "exception";
 
 export type WorkflowExecutionConfig = {
   executable_params: string[];
@@ -26,6 +28,12 @@ export type WorkflowExecutionConfig = {
   on_aegis_unavailable: OnAegisUnavailable;
   action_type: string;
   token_ttl_sec: number;
+  /** Stage 4: minimum evidence grade for this workflow (null = none). */
+  required_grade: RequiredGrade | null;
+  /** When below required_grade past deadline: await or raise exception. */
+  on_missing: OnMissingGrade;
+  /** Hours after case creation before below_required_grade_past_deadline. */
+  grade_deadline_hours: number;
 };
 
 export const DEFAULT_WORKFLOW_EXECUTION_CONFIG: WorkflowExecutionConfig = {
@@ -34,6 +42,9 @@ export const DEFAULT_WORKFLOW_EXECUTION_CONFIG: WorkflowExecutionConfig = {
   on_aegis_unavailable: "allow_and_flag",
   action_type: "loan.disburse",
   token_ttl_sec: 3600,
+  required_grade: null,
+  on_missing: "await",
+  grade_deadline_hours: 24,
 };
 
 export function normalizeExecutionConfig(
@@ -65,12 +76,31 @@ export function normalizeExecutionConfig(
     obj.token_ttl_sec > 0
       ? Math.floor(obj.token_ttl_sec)
       : 3600;
+  const required =
+    obj.required_grade === "G1" ||
+    obj.required_grade === "G2" ||
+    obj.required_grade === "G3"
+      ? obj.required_grade
+      : null;
+  const onMissing =
+    obj.on_missing === "exception" || obj.on_missing === "await"
+      ? obj.on_missing
+      : "await";
+  const deadline =
+    typeof obj.grade_deadline_hours === "number" &&
+    Number.isFinite(obj.grade_deadline_hours) &&
+    obj.grade_deadline_hours > 0
+      ? Math.floor(obj.grade_deadline_hours)
+      : 24;
   return {
     executable_params: params,
     execution_control: control,
     on_aegis_unavailable: unavailable,
     action_type: actionType,
     token_ttl_sec: ttl,
+    required_grade: required,
+    on_missing: onMissing,
+    grade_deadline_hours: deadline,
   };
 }
 
@@ -81,6 +111,9 @@ export function executionConfigFromPackWorkflow(wf: {
   on_aegis_unavailable?: string;
   action_type?: string;
   token_ttl_sec?: number;
+  required_grade?: string | null;
+  on_missing?: string;
+  grade_deadline_hours?: number;
 }): WorkflowExecutionConfig {
   return normalizeExecutionConfig(wf);
 }

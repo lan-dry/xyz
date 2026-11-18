@@ -55,6 +55,7 @@ export const AEGIS_NAV: ConsoleNavItem[] = [
   { href: "/aegis/sources", label: "Sources", icon: Radio, adminOnly: true },
   { href: "/aegis/workflows", label: t("nav.workflows", "Workflows"), icon: GitBranch },
   { href: "/aegis/incidents", label: "Incidents", icon: AlertTriangle },
+  { href: "/aegis/exceptions", label: "Exceptions", icon: AlertTriangle },
   { href: "/aegis/evidence", label: t("nav.evidence", "Evidence"), icon: FileCheck },
   { href: "/aegis/integrations", label: "Integrations", icon: Plug },
   { href: "/aegis/settings", label: t("nav.settings", "Settings"), icon: Settings },
@@ -76,6 +77,7 @@ export const BANK_DEMO_NAV: ConsoleNavItem[] = [
     external: true,
   },
   { href: "/aegis/logs", label: "Access log", icon: ScrollText },
+  { href: "/aegis/exceptions", label: "Exceptions", icon: AlertTriangle },
   { href: "/aegis/sources", label: "Sources", icon: Radio, adminOnly: true },
 ];
 
