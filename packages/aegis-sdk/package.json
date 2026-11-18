@@ -1,0 +1,31 @@
+{
+  "name": "@salanor/aegis-sdk",
+  "version": "0.1.0",
+  "description": "AEGIS-SRC1 source envelope signing and verification (not APS-1)",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^3.1.0",
+    "canonicalize": "^3.0.0"
+  },
+  "devDependencies": {
+    "@salanor/config": "workspace:*",
+    "@types/node": "^22.15.21",
+    "eslint": "^9.28.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.0",
+    "vitest": "^3.0.5"
+  }
+}

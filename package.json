@@ -52,6 +52,7 @@
     "pilot:publish-proofs": "pnpm --filter aegis-api witness:batch",
     "pilot:gate": "pnpm --filter @salanor/aegis build && pnpm --filter @salanor/aegis typecheck && pnpm --filter aegis-api typecheck && pnpm --filter @salanor/web-console typecheck && pnpm --filter @salanor/pilot-agent typecheck && pnpm --filter aegis-api test && pnpm --filter @salanor/demo-tools test",
     "sdk:conformance": "pnpm --filter @salanor/aegis build && node tools/conformance/sdk-signing.mjs && cd sdks/go && go test ./... && cd ../python && python -m pip install -q -e \".[dev]\" && python -m pytest -q",
+    "conformance:src1": "pnpm --filter @salanor/aegis-sdk build && node conformance/run.mjs",
     "sdk:conformance:ts-py": "pnpm --filter @salanor/aegis build && node tools/conformance/sdk-signing.mjs && cd sdks/python && python -m pip install -q -e \".[dev]\" && python -m pytest -q",
     "pilot:reset": "node tools/scripts/pilot-reset.mjs",
     "demo:seed:northwind": "pnpm --filter aegis-api demo:seed:northwind",

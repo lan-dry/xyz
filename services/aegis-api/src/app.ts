@@ -13,6 +13,7 @@ import { consoleRoutes } from "./routes/console/index.js";
 import { postEvent } from "./routes/events.js";
 import { postBankEvent } from "./routes/bank-events.js";
 import { postBankEventBatch } from "./routes/bank-batch.js";
+import { postSourceEvent } from "./routes/source-events.js";
 import { getEventInclusionProof } from "./routes/inclusion-proof.js";
 import { postPolicyEvaluate } from "./routes/policy-evaluate.js";
 import { gatewayRoutes } from "./routes/gateway.js";
@@ -90,6 +91,8 @@ export function createApp(): Hono {
   aegis.post("/bank/events", postBankEvent);
   /** Sector-neutral decision intake (same handler). */
   aegis.post("/governed/events", postBankEvent);
+  /** AEGIS-SRC1 signed envelope ingest (Connector / SDK). */
+  aegis.post("/source-events", postSourceEvent);
   /** Batch CSV/JSONL import — always record-only; dry_run defaults true. */
   aegis.post("/bank/events/batch", postBankEventBatch);
   aegis.post("/governed/events/batch", postBankEventBatch);

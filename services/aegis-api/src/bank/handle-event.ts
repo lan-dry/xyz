@@ -21,6 +21,10 @@ import type { RuleCombineMode } from "../policy/evaluate-rules.js";
 import { describeDecision, formatRoleLabel } from "./describe-decision.js";
 import { extractRequester } from "./requester.js";
 import { roleDisplayName } from "./rule-preview.js";
+import {
+  sourceProvenanceAttributes,
+  type VerifiedSourceEnvelope,
+} from "../sources/grade.js";
 
 /** UI/seed labelling only — never seal into the forensic receipt body. */
 function attributesForSeal(
@@ -38,6 +42,11 @@ export type HandleBankEventOptions = {
    * replaying the queued event now. The receipt is marked "decided without Aegis".
    */
   decidedWithoutAegis?: boolean;
+  /**
+   * The event arrived in a verified AEGIS-SRC1 envelope. The envelope, source id, key id and
+   * evidence grade G1 are sealed into the APS event and the forensic receipt attributes.
+   */
+  sourceEnvelope?: VerifiedSourceEnvelope;
 };
 
 export async function handleBankEvent(
@@ -68,6 +77,11 @@ export async function handleBankEvent(
 
   const fieldRules = await listFieldPolicies(client, organizationId);
   const fielded = applyFieldPolicy(event.attributes, fieldRules);
+  const sourceAttrs = options?.sourceEnvelope
+    ? sourceProvenanceAttributes(options.sourceEnvelope, {
+        eventContainsRedactedFields: fielded.redacted_paths.length > 0,
+      })
+    : {};
 
   const recordOnly =
     options?.forceRecordOnly === true ||
@@ -175,7 +189,7 @@ export async function handleBankEvent(
         product: event.product,
         event_type: event.event_type,
         tool_name: toolName,
-        attributes: attributesForSeal(fielded.stored),
+        attributes: { ...attributesForSeal(fielded.stored), ...sourceAttrs },
         matched_rules: matched,
         policy_id: policyId,
         policy_version: policyVersion,
@@ -252,6 +266,7 @@ export async function handleBankEvent(
   const requester = extractRequester(fielded.stored);
   const receiptAttributes: Record<string, unknown> = {
     ...attributesForSeal(fielded.stored),
+    ...sourceAttrs,
     ...(requiredRole
       ? {
           required_role: requiredRole,

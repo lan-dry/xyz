@@ -192,7 +192,9 @@ export function ConsoleShell({
 
         <div className={shell.sidebarScroll}>
           <nav className={shell.nav} aria-label={`${productTitle} navigation`}>
-            {navItems.map((item) => {
+            {navItems
+              .filter((item) => !item.adminOnly || user.role === "admin")
+              .map((item) => {
               const Icon = item.icon;
               const active = isNavActive(pathname, item.href);
               const badge =

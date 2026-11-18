@@ -8,8 +8,8 @@ import {
   listBankRoleLadder,
   listMembershipBankRoles,
   loadBankApprovalRoleContext,
-  type BankRole,
 } from "./repo.js";
+import type { BankRole } from "./authority-matrix.js";
 import { roleDisplayName } from "./rule-preview.js";
 import { formatRoleLabel } from "./describe-decision.js";
 

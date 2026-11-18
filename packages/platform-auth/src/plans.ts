@@ -801,6 +801,11 @@ export async function platformUpdateOrganization(
   if (patch.is_demo !== undefined) {
     fields.push(`is_demo = $${i++}`);
     values.push(patch.is_demo);
+    // Demo tenants only accept signed source envelopes (aegis-api migration 006).
+    // Turning demo off does not relax the setting; that is an explicit admin choice.
+    if (patch.is_demo === true) {
+      fields.push(`require_signed_events = true`);
+    }
   }
   if (patch.is_test !== undefined) {
     fields.push(`is_test = $${i++}`);

@@ -39,6 +39,12 @@ export const CONSOLE_ROUTE_RULES: RouteRule[] = [
   { method: "POST", path: "/v1/console/approvals/:id/escalate", anon: 401, allowRoles: ["approver", "admin", "owner"] },
   { method: "POST", path: "/v1/console/policies/:id/activate", anon: 401, allowRoles: ["admin", "owner"] },
   { method: "POST", path: "/v1/console/policies", anon: 401, allowRoles: ["admin", "owner"] },
+  // Source registry (Stage 1 provenance): admin only. "owner" is not accepted by these routes.
+  { method: "GET", path: "/v1/console/sources", anon: 401, allowRoles: ["admin"] },
+  { method: "POST", path: "/v1/console/sources", anon: 401, allowRoles: ["admin"] },
+  { method: "POST", path: "/v1/console/sources/:sourceId/keys", anon: 401, allowRoles: ["admin"] },
+  { method: "POST", path: "/v1/console/sources/:sourceId/keys/:keyId/revoke", anon: 401, allowRoles: ["admin"] },
+  { method: "GET", path: "/v1/console/sources/:sourceId/history", anon: 401, allowRoles: ["admin"] },
 ];
 
 export const AEGIS_ROUTE_RULES: RouteRule[] = [
@@ -46,6 +52,7 @@ export const AEGIS_ROUTE_RULES: RouteRule[] = [
   { method: "POST", path: "/v1/aegis/bank/events", anon: 401, allowRoles: ["ingest"] },
   { method: "POST", path: "/v1/aegis/approvals/request", anon: 401, allowRoles: ["ingest"] },
   { method: "POST", path: "/v1/aegis/bank/events/batch", anon: 401, allowRoles: ["ingest"] },
+  { method: "POST", path: "/v1/aegis/source-events", anon: 401, allowRoles: ["ingest"] },
 ];
 
 export const ALL_ROUTE_RULES = [...CONSOLE_ROUTE_RULES, ...AEGIS_ROUTE_RULES];

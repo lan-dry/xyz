@@ -1,8 +1,10 @@
 /**
  * Offline verification of a forensic receipt bundle.
- * Verifies receipt signatures, receipt chain (seq/prev_hash), and cited sealed events.
+ * Verifies receipt signatures, receipt chain (seq/prev_hash), cited sealed events,
+ * and AEGIS-SRC1 source envelopes when present (G0 legacy without envelope is OK).
  */
 
+import { verifyEnvelope } from "@salanor/aegis-sdk";
 import {
   computeReceiptHash,
   verifyForensicReceiptSignature,
@@ -24,6 +26,16 @@ export type SealedEventForVerify = {
   signature_valid?: boolean;
 };
 
+/** Source key validity window as exported in evidence bundles (ISO timestamps). */
+export type SourceRegistryEntry = {
+  key_id: string;
+  source_id: string;
+  public_key_b64: string;
+  valid_from: string;
+  valid_to: string | null;
+  status: string;
+};
+
 export type ForensicBundle = {
   receipts: SignedForensicReceipt[];
   sealed_events?: SealedEventForVerify[];
@@ -34,6 +46,10 @@ export type ForensicBundle = {
     sig_value_b64?: string;
   } | null;
   keys: KeySet;
+  /** AEGIS-SRC1 source keys referenced by receipts (key_id -> public_key_b64). */
+  source_keys?: KeySet;
+  /** Source key registry rows for temporal validity checks at envelope.ts. */
+  source_registry?: SourceRegistryEntry[];
   /**
    * Single-case extract of the org receipt chain. Other cases' receipts are
    * deliberately absent, so gaps between non-adjacent seq numbers are expected.
@@ -53,6 +69,105 @@ export type VerifyResult = {
   ok: boolean;
   findings: VerifyFinding[];
 };
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+/** Signed AEGIS-SRC1 envelope on the receipt (or nested under provenance). Missing = G0 OK. */
+export function extractSourceEnvelope(
+  receipt: SignedForensicReceipt,
+): Record<string, unknown> | null {
+  const attrs = receipt.attributes;
+  if (!isPlainObject(attrs)) return null;
+  const candidates = [attrs.source_envelope];
+  if (isPlainObject(attrs.provenance)) {
+    candidates.push(attrs.provenance.source_envelope);
+  }
+  for (const c of candidates) {
+    if (
+      isPlainObject(c) &&
+      typeof c.signature === "string" &&
+      typeof c.key_id === "string"
+    ) {
+      return c;
+    }
+  }
+  return null;
+}
+
+/**
+ * active/rotated OK when valid_from..valid_to covers ts; revoked always fails.
+ * Ingest uses ts >= valid_to as expired.
+ */
+export function sourceKeyValidAtTs(
+  entry: Pick<SourceRegistryEntry, "valid_from" | "valid_to" | "status">,
+  ts: string,
+): boolean {
+  if (entry.status === "revoked") return false;
+  if (entry.status !== "active" && entry.status !== "rotated") return false;
+  const t = Date.parse(ts);
+  const from = Date.parse(entry.valid_from);
+  if (Number.isNaN(t) || Number.isNaN(from) || t < from) return false;
+  if (entry.valid_to != null && entry.valid_to !== "") {
+    const to = Date.parse(entry.valid_to);
+    if (Number.isNaN(to) || t >= to) return false;
+  }
+  return true;
+}
+
+async function verifyReceiptSourceEnvelope(
+  receipt: SignedForensicReceipt,
+  bundle: ForensicBundle,
+  findings: VerifyFinding[],
+): Promise<void> {
+  const envelope = extractSourceEnvelope(receipt);
+  if (!envelope) return;
+
+  const keyId = String(envelope.key_id);
+  const registry = Array.isArray(bundle.source_registry)
+    ? bundle.source_registry
+    : undefined;
+  const registryEntry = registry?.find((e) => e.key_id === keyId);
+  const pub =
+    bundle.source_keys?.[keyId] ?? registryEntry?.public_key_b64 ?? undefined;
+
+  if (!pub) {
+    findings.push({
+      code: "source_key_missing",
+      message: `Source key ${keyId} not in bundle`,
+      record: receipt.receipt_id,
+    });
+    return;
+  }
+
+  if (registry && registryEntry) {
+    const ts = typeof envelope.ts === "string" ? envelope.ts : "";
+    if (!sourceKeyValidAtTs(registryEntry, ts)) {
+      findings.push({
+        code: "source_key_not_valid_at_ts",
+        message: `Source key ${keyId} was not valid at envelope.ts`,
+        record: receipt.receipt_id,
+      });
+    }
+  }
+
+  const verified = await verifyEnvelope(envelope, pub);
+  if (verified.ok) return;
+  if (verified.reason === "event_hash_mismatch") {
+    findings.push({
+      code: "source_event_hash_mismatch",
+      message: "Source envelope event_hash does not match event",
+      record: receipt.receipt_id,
+    });
+    return;
+  }
+  findings.push({
+    code: "source_signature_invalid",
+    message: "Source envelope signature does not verify",
+    record: receipt.receipt_id,
+  });
+}
 
 export async function verifyForensicBundle(
   bundle: ForensicBundle,
@@ -179,6 +294,8 @@ export async function verifyForensicBundle(
         record: r.receipt_id,
       });
     }
+
+    await verifyReceiptSourceEnvelope(r, bundle, findings);
 
     expectedPrev = r.receipt_hash;
   }

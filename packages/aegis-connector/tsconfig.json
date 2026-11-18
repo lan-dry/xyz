@@ -1,0 +1,11 @@
+{
+  "extends": "@salanor/config/typescript/base",
+  "compilerOptions": {
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@salanor/aegis-sdk": ["../aegis-sdk/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
+}

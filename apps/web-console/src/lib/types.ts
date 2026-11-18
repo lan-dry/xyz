@@ -232,3 +232,49 @@ export type CaseSummary = {
   demo_history?: boolean;
   created_at: string | null;
 };
+
+/** Signed-event source registry (GET /v1/console/sources). */
+export type SourceKeySummary = {
+  key_id: string;
+  source_id: string;
+  public_key_b64: string;
+  /** First 8 + last 8 characters of the public key. */
+  fingerprint: string;
+  status: "active" | "rotated" | "revoked";
+  valid_from: string | null;
+  valid_to: string | null;
+  created_by: string | null;
+  revoked_by: string | null;
+  reason: string | null;
+  created_at: string | null;
+};
+
+export type SourceSummary = {
+  source_id: string;
+  name: string;
+  kind: "application" | "executor" | "collector" | "third_party";
+  owner_contact: string | null;
+  status: "active" | "disabled";
+  last_seq: number;
+  last_event_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  active_key: SourceKeySummary | null;
+  keys: SourceKeySummary[];
+  open_gap_count: number;
+};
+
+export type SourceHistoryEvent = {
+  id: string;
+  action: "registered" | "key_added" | "key_rotated" | "key_revoked" | "source_disabled";
+  key_id: string | null;
+  actor: string | null;
+  detail: Record<string, unknown>;
+  created_at: string | null;
+};
+
+export type SourceHistory = {
+  source: SourceSummary;
+  events: SourceHistoryEvent[];
+  gaps: Array<{ from_seq: number; to_seq: number; detected_at: string | null }>;
+};

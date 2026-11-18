@@ -30,6 +30,7 @@
     "@noble/ed25519": "^2.2.3",
     "@open-policy-agent/opa-wasm": "^1.10.0",
     "@salanor/aegis": "workspace:*",
+    "@salanor/aegis-sdk": "workspace:*",
     "@salanor/db-url": "workspace:*",
     "@salanor/observability": "workspace:*",
     "@salanor/platform-auth": "workspace:*",

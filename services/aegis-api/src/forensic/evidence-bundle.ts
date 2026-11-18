@@ -47,9 +47,11 @@ import {
   type SignedForensicReceipt,
 } from "./receipt.js";
 import {
+  extractSourceEnvelope,
   verifyForensicBundle,
   type ForensicBundle,
   type SealedEventForVerify,
+  type SourceRegistryEntry,
   type VerifyFinding,
   type VerifyResult,
 } from "./verify-bundle.js";
@@ -211,6 +213,10 @@ export type EvidenceBundleInput = {
     SealedEventForVerify & { emitted_at?: Date | string | null }
   >;
   keys: Record<string, string>;
+  /** AEGIS-SRC1 source keys (key_id -> public_key_b64) for offline envelope verify. */
+  source_keys?: Record<string, string>;
+  /** Source key registry rows covering envelopes in this case. */
+  source_registry?: SourceRegistryEntry[];
   key_custody?: Record<string, EvidenceKeyCustody>;
   trusted_time?: EvidenceTrustedTime[] | null;
   approvals?: EvidenceApproval[];
@@ -476,6 +482,15 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     summarizeReceipt(r, { keys, sealed_events: sealed, approvals }),
   );
 
+  const source_keys =
+    input.source_keys && Object.keys(input.source_keys).length > 0
+      ? { ...input.source_keys }
+      : undefined;
+  const source_registry =
+    input.source_registry && input.source_registry.length > 0
+      ? input.source_registry
+      : undefined;
+
   return {
     bundle_type: EVIDENCE_BUNDLE_TYPE,
     schema_version: 1,
@@ -486,6 +501,8 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     receipts,
     sealed_events: sealed,
     keys,
+    ...(source_keys ? { source_keys } : {}),
+    ...(source_registry ? { source_registry } : {}),
     key_fingerprints,
     key_custody,
     trusted_time: input.trusted_time ?? null,
@@ -1051,6 +1068,82 @@ export function receiptFromRow(row: ReceiptRow): SignedForensicReceipt {
   };
 }
 
+/** Collect AEGIS-SRC1 key_ids referenced by receipt source envelopes. */
+export function sourceKeyIdsFromReceipts(
+  receipts: SignedForensicReceipt[],
+): string[] {
+  const ids = new Set<string>();
+  for (const r of receipts) {
+    const env = extractSourceEnvelope(r);
+    if (env && typeof env.key_id === "string" && env.key_id) {
+      ids.add(env.key_id);
+    }
+  }
+  return [...ids];
+}
+
+/**
+ * Load source_keys + source_registry for envelopes cited by the receipts.
+ * Resolves key_ids via source_key; expands to sibling keys of the same sources
+ * that appear in source_registry_event history for the org.
+ */
+async function loadSourceKeysForReceipts(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  receipts: SignedForensicReceipt[],
+): Promise<{
+  source_keys?: Record<string, string>;
+  source_registry?: SourceRegistryEntry[];
+}> {
+  const keyIds = sourceKeyIdsFromReceipts(receipts);
+  if (keyIds.length === 0) return {};
+  try {
+    const keys = await client.query<{
+      key_id: string;
+      source_id: string;
+      public_key_b64: string;
+      valid_from: Date;
+      valid_to: Date | null;
+      status: string;
+    }>(
+      `WITH referenced AS (
+         SELECT DISTINCT source_id
+         FROM source_key
+         WHERE organization_id = $1 AND key_id = ANY($2::text[])
+         UNION
+         SELECT DISTINCT source_id
+         FROM source_registry_event
+         WHERE organization_id = $1 AND key_id = ANY($2::text[])
+       )
+       SELECT sk.key_id, sk.source_id, sk.public_key_b64, sk.valid_from, sk.valid_to, sk.status
+       FROM source_key sk
+       JOIN referenced r ON r.source_id = sk.source_id
+       WHERE sk.organization_id = $1
+       ORDER BY sk.created_at ASC, sk.key_id`,
+      [organizationId, keyIds],
+    );
+
+    if (keys.rows.length === 0) return {};
+    const source_keys: Record<string, string> = {};
+    const source_registry: SourceRegistryEntry[] = [];
+    for (const row of keys.rows) {
+      source_keys[row.key_id] = row.public_key_b64;
+      source_registry.push({
+        key_id: row.key_id,
+        source_id: row.source_id,
+        public_key_b64: row.public_key_b64,
+        valid_from: row.valid_from.toISOString(),
+        valid_to: row.valid_to ? row.valid_to.toISOString() : null,
+        status: row.status,
+      });
+    }
+    return { source_keys, source_registry };
+  } catch {
+    // Older DB without source tables.
+    return {};
+  }
+}
+
 /**
  * Load everything for one trace (scoped to the org) and build the bundle.
  * Returns null when the trace has no signed receipt.
@@ -1297,6 +1390,12 @@ export async function loadEvidenceBundle(
     trusted_time = null;
   }
 
+  const { source_keys, source_registry } = await loadSourceKeysForReceipts(
+    client,
+    organizationId,
+    receipts,
+  );
+
   const bundle = buildEvidenceBundle({
     organization_id: organizationId,
     trace_id: traceId,
@@ -1315,6 +1414,8 @@ export async function loadEvidenceBundle(
         emitted_at: e.emitted_at,
       })),
     keys,
+    source_keys,
+    source_registry,
     key_custody,
     trusted_time,
     approvals,

@@ -27,6 +27,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @salanor/platform-auth build && \
     pnpm --filter @salanor/observability build && \
     pnpm --filter @salanor/aegis build && \
+    pnpm --filter @salanor/aegis-sdk build && \
     pnpm --filter @salanor/witness-merkle build
 
 RUN pnpm --filter aegis-api build && \

@@ -8,6 +8,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Plug,
+  Radio,
   ScrollText,
   Search,
   Settings,
@@ -26,6 +27,8 @@ export type ConsoleNavItem = {
   /** Dynamic badge key — shell fills Approvals from pending count. */
   badgeKey?: "approvals";
   external?: boolean;
+  /** Only shown to organisation admins. */
+  adminOnly?: boolean;
 };
 
 /**
@@ -49,6 +52,7 @@ export const AEGIS_NAV: ConsoleNavItem[] = [
   { href: "/aegis/logs", label: "Access log", icon: ScrollText },
   { href: "/aegis/agents", label: t("nav.agents", "Agents"), icon: Bot },
   { href: "/aegis/keys", label: "API keys", icon: KeyRound },
+  { href: "/aegis/sources", label: "Sources", icon: Radio, adminOnly: true },
   { href: "/aegis/workflows", label: t("nav.workflows", "Workflows"), icon: GitBranch },
   { href: "/aegis/incidents", label: "Incidents", icon: AlertTriangle },
   { href: "/aegis/evidence", label: t("nav.evidence", "Evidence"), icon: FileCheck },
@@ -72,6 +76,7 @@ export const BANK_DEMO_NAV: ConsoleNavItem[] = [
     external: true,
   },
   { href: "/aegis/logs", label: "Access log", icon: ScrollText },
+  { href: "/aegis/sources", label: "Sources", icon: Radio, adminOnly: true },
 ];
 
 export function isNavActive(pathname: string, href: string): boolean {

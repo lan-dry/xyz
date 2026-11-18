@@ -102,6 +102,19 @@ export async function applyIntegrationFixture(
   await client.query(`DELETE FROM workflow_run WHERE organization_id = $1`, [
     INTEGRATION_ORG_A,
   ]);
+  // Source registry (migration 006) has no ON DELETE CASCADE to organization.
+  for (const table of [
+    "source_envelope_idempotency",
+    "source_sequence_gap",
+    "source_nonce",
+    "source_registry_event",
+    "source_key",
+    "source",
+  ]) {
+    await client.query(`DELETE FROM ${table} WHERE organization_id = $1`, [
+      INTEGRATION_ORG_A,
+    ]);
+  }
   await client.query(
     `DELETE FROM organization
      WHERE organization_id = $1 OR slug = 'dev-org'`,

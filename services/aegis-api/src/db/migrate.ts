@@ -21,6 +21,7 @@ const MIGRATIONS = [
     version: "005_forensic_receipt_outcome_declined_released",
     file: "005_forensic_receipt_outcome_declined_released.sql",
   },
+  { version: "006_sources", file: "006_sources.sql" },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {
