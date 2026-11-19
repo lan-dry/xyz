@@ -4,4 +4,4 @@ $ py -3 tools/independent-verify/verify_bundle.py --bundle "docs/TEST_PACK/prove
 
 
 
-EXIT=0 ELAPSED_MS=325
+EXIT=0 ELAPSED_MS=259

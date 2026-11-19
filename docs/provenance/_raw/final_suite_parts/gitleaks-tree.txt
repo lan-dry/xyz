@@ -1,4 +1,4 @@
-$ "D:\PROJECTS\salanor\.tools\gitleaks\gitleaks.exe" detect --no-git --config=.gitleaks.toml --source=.
+$ "D:\PROJECTS\salanor\.tools\gitleaks\gitleaks.exe" detect --no-git --config=.gitleaks.toml --source="D:\PROJECTS\salanor\tmp\committed-tree-scan"
 
 
 
@@ -8,8 +8,8 @@ $ "D:\PROJECTS\salanor\.tools\gitleaks\gitleaks.exe" detect --no-git --config=.g
     ○ ░
     ░    gitleaks
 
-[90m9:38AM[0m [32mINF[0m scan completed in 18.9s
-[90m9:38AM[0m [32mINF[0m no leaks found
+[90m12:04PM[0m [32mINF[0m scan completed in 1.76s
+[90m12:04PM[0m [32mINF[0m no leaks found
 
 
-EXIT=0 ELAPSED_MS=19001
+EXIT=0 ELAPSED_MS=1846

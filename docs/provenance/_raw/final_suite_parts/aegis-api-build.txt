@@ -7,4 +7,4 @@ $ pnpm --filter aegis-api run build
 
 
 
-EXIT=0 ELAPSED_MS=10622
+EXIT=0 ELAPSED_MS=8393

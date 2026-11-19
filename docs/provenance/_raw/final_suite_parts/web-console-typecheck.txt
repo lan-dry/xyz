@@ -3,4 +3,4 @@ $ pnpm --filter @salanor/web-console exec tsc --noEmit -p tsconfig.json
 
 
 
-EXIT=0 ELAPSED_MS=4358
+EXIT=0 ELAPSED_MS=3201
