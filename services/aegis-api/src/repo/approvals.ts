@@ -501,6 +501,10 @@ export async function decideApproval(
     voterEmail?: string | null;
     /** Delegation relied on to satisfy the required role (recorded on the vote). */
     delegation?: Record<string, unknown> | null;
+    /** Per-approver binding sealed on this vote (two-person approvals bind each separately). */
+    binding?: Record<string, unknown> | null;
+    /** How the approved view hash was confirmed for this vote. */
+    view_confirmation?: string | null;
   },
 ): Promise<DecideApprovalResult | null> {
   await ensureApprovalMetadataColumn(client);
@@ -544,6 +548,10 @@ export async function decideApproval(
     reason: options?.reason ?? null,
     at: nowIso(),
     ...(options?.delegation ? { delegation: options.delegation } : {}),
+    ...(options?.binding ? { binding: options.binding } : {}),
+    ...(options?.view_confirmation
+      ? { view_confirmation: options.view_confirmation }
+      : {}),
   };
   const votes = [...priorVotes, vote];
   metadata.votes = votes;

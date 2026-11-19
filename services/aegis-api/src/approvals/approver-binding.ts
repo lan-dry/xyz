@@ -27,6 +27,7 @@ export type WebAuthnApproverAssertion = {
 /**
  * Authenticated identity bound into the signed approval outcome.
  * `webauthn_assertion` stays null until Stage 5 WebAuthn is finished (Partial).
+ * `step_up_mfa` is never treated as server-verified MFA — only a client claim.
  */
 export type ApproverBinding = {
   account_id: string;
@@ -35,9 +36,15 @@ export type ApproverBinding = {
   sso_subject: string | null;
   session_id: string;
   role_key: string | null;
-  step_up_mfa: boolean;
+  /** false, or `{ claimed_by_client: true }` when the browser asserted step-up. */
+  step_up_mfa: false | { claimed_by_client: true };
   webauthn_assertion: WebAuthnApproverAssertion | null;
 };
+
+/** How the approved view hash was confirmed for this vote / outcome. */
+export type ViewConfirmation =
+  | "confirmed_by_approver"
+  | "server-rendered, not confirmed by approver";
 
 /** Stable subset of the console request preview that enters the hash. */
 export function canonicalApprovedView(
@@ -66,11 +73,14 @@ export function assertApprovedViewFresh(
   currentHash: string,
   clientHash: string | null | undefined,
 ):
-  | { ok: true }
+  | { ok: true; viewConfirmation: ViewConfirmation }
   | { ok: false; code: "stale_approval_payload"; message: string } {
   if (clientHash == null || !String(clientHash).trim()) {
-    // Slack / legacy callers omit the hash; server seals the current view.
-    return { ok: true };
+    // Slack / legacy callers omit the hash; seal that the server rendered the view.
+    return {
+      ok: true,
+      viewConfirmation: "server-rendered, not confirmed by approver",
+    };
   }
   if (String(clientHash).trim() !== currentHash) {
     return {
@@ -80,7 +90,7 @@ export function assertApprovedViewFresh(
         "This approval view is out of date. The underlying request changed since you opened it — refresh and review again.",
     };
   }
-  return { ok: true };
+  return { ok: true, viewConfirmation: "confirmed_by_approver" };
 }
 
 export function buildApproverBinding(input: {
@@ -98,7 +108,8 @@ export function buildApproverBinding(input: {
     sso_subject: input.ssoSubject ?? null,
     session_id: input.sessionId,
     role_key: input.roleKey,
-    step_up_mfa: input.stepUpMfa === true,
+    step_up_mfa:
+      input.stepUpMfa === true ? { claimed_by_client: true } : false,
     // Partial: never accept an unverified client assertion as bound.
     webauthn_assertion: null,
   };

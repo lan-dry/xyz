@@ -498,11 +498,16 @@
           api("/api/redteam/run", { attack_id: a.id })
             .then(function (r) {
               var box = el("div");
+              var mode = r.simulated ? "Simulation" : "Live";
+              box.appendChild(el("p", {
+                class: r.simulated ? "err" : "meta",
+                text: "Mode: " + mode + (r.report_status ? " (report: " + r.report_status + ")" : "")
+              }));
               box.appendChild(el("p", { text: "What attacker gains: " + (r.attack && r.attack.attacker_gains) }));
               box.appendChild(el("p", { text: "Expected: " + (r.attack && r.attack.expected) }));
               box.appendChild(el("p", { text: "Outcome: " + (r.result || "") }));
               box.appendChild(steps(r.steps));
-              showResult("Red Team #" + a.id + " — " + a.title, box);
+              showResult("Red Team #" + a.id + " [" + mode + "] — " + a.title, box);
             })
             .catch(function (e) {
               showResult("Red Team #" + a.id + " failed", el("p", { class: "err", text: e.message }));
@@ -510,7 +515,13 @@
             .then(function () { btn.disabled = false; return loadSystems(); });
         });
         view.appendChild(el("article", { class: "card" }, [
-          el("div", {}, [el("span", { class: "chip", text: "#" + a.id })]),
+          el("div", {}, [
+            el("span", { class: "chip", text: "#" + a.id }),
+            el("span", {
+              class: "chip",
+              text: a.mode === "live" ? "Live preferred" : "May be Simulation"
+            })
+          ]),
           el("h3", { text: a.title }),
           el("p", { text: "What attacker gains: " + a.attacker_gains }),
           el("p", { class: "meta", text: "Expected outcome: " + a.expected }),
@@ -541,11 +552,16 @@
     api("/api/honest-limit", {})
       .then(function (r) {
         var box = el("div");
+        var mode = r.simulated ? "Simulation" : "Live";
+        box.appendChild(el("p", {
+          class: r.simulated ? "err" : "meta",
+          text: "Mode: " + mode
+        }));
         box.appendChild(el("p", { text: "What attacker gains: " + (r.attack && r.attack.attacker_gains) }));
         box.appendChild(el("p", { text: "Outcome: " + (r.result || "") }));
         box.appendChild(el("p", { class: "meta", text: (r.attack && r.attack.what_aegis_does_not_catch) || "" }));
         box.appendChild(steps(r.steps));
-        showResult("Honest limit", box);
+        showResult("Honest limit [" + mode + "]", box);
       })
       .catch(function (e) { showResult("Honest limit failed", el("p", { class: "err", text: e.message })); })
       .then(function () { honestBtn.disabled = false; });

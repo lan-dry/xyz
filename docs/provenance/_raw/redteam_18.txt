@@ -1,0 +1,58 @@
+﻿=== Red Team live run 2026-11-19T09:16:17.5433235+02:00 ===
+#1 [Live] Live ingest refused forged signature (HTTP 401).
+    - POST /v1/aegis/source-events with flipped signature byte â HTTP 401
+    - body.code=unknown_key
+#2 [Live] Live ingest rejected unknown/unregistered key (HTTP 401).
+    - Signed with unregistered key_id=key_unknown_1795072577762
+    - POST /source-events â HTTP 401 code=unknown_key
+#3 [Live] Live replay â HTTP 400 (expect conflict / seq_replay / idempotent 200).
+    - Signed LOS envelope seq=900780 key_id=k_los_2026_01_mwn5jeo7
+    - First POST /source-events â HTTP 400 code=malformed_bank_event
+    - Identical replay POST â HTTP 400 code=malformed_bank_event
+#4 [Live] Rejected when signing required (HTTP 400).
+    - POST /governed/events unsigned with ingest bearer only â HTTP 400
+    - code=malformed_bank_event
+#5 [Live] Confirm refused altered/forged execution (HTTP 409).
+    - Confirm called with forged token + amount 18,000,000 (approved would be 4,000,000).
+    - POST /executions/confirm â HTTP 409 code=bad_signature
+#6 [Live] Core refuses without token; forced bypass recorded for reconciliation.
+    - Ungated disburse â HTTP 403 (confirm_required).
+    - Forced DB write â txn txn_f8958f43114e (expect executed_without_receipt on reconcile).
+#7 [Live] Both confirms refused without a valid issued token (reuse path covered once a real token exists).
+    - First confirm â HTTP 409 code=bad_signature
+    - Second confirm (same token_id) â HTTP 409 code=bad_signature
+#8 [Live] Confirm refused (HTTP 409).
+    - Confirm against stopped/unknown case token â HTTP 409
+    - code=bad_signature
+#9 [Simulated] Verification fails; field named in findings.
+    - Would swap approver_email after seal and re-verify bundle.
+    - Simulation: Approver DB swap is covered by approver-binding.verify fixtures; no live DB mutation from Red Team panel
+#10 [Simulated] Blocked by separation of duties (fixture + console guard).
+    - Requester email equals approver; SoD on.
+    - Simulation: Separation of duties needs an authenticated console approval session
+#11 [Live] Direct ledger edit recorded; exception expected from collector match.
+    - Posted txn txn_a28002cfeac3 then edited amount â 999999.
+    - Collector / next reconcile should raise db_change_without_event (Stage 6).
+#12 [Live] Live nested fact attempt finished with error/refusal.
+    - Error: Connector queued (not delivered within sync_wait): HTTP 409: {"error":"envelope_rejected","code":"seq_replay","message":"This sequence number was already used (or is older than the latest accepted one) for this source."}
+#13 [Live] Reconciliation detects amount_mismatch / feed drift on next run.
+    - Edited feed row txn_5613e76da332 amount â 1.
+    - Exported D:\PROJECTS\salanor\tools\bank-simulator\.bank-simulator\ledger\feed-2026-11-19T07-16-41-010Z.jsonl (3 rows).
+#14 [Simulated] source_silent covered by reconciliation.test.ts
+    - Source last_seen older than expected_interval_sec.
+    - Simulation: No live reconciliation/run endpoint or auth for source_silent from panel
+#15 [Simulated] Policy-driven; bank not penalised for Aegis outage.
+    - Toggle Aegis unreachable / on_aegis_unavailable=allow_and_flag.
+    - Local token check may pass; case flagged until reconciled.
+    - Simulation: Aegis-unavailable policy is a local toggle + fixture; panel does not take Aegis offline
+#16 [Live] No sequence reuse; nothing lost from outbox.
+    - Queued mid-send then restarted Connector for src_los.
+    - last_seq 2 â 2; outbox kept 0.
+#17 [Simulated] Verification fails (hash / signature).
+    - Flip a byte in a sealed receipt / bundle JSON.
+    - Simulation: Public verify endpoint shape differs; tamper covered by provenance fixtures
+#18 [Simulated] Verifies as G0 legacy.
+    - Load a pre-Stage-2 bundle with no provenance block.
+    - Simulation: Legacy G0 bundle verify is fixture-only (no pre-change live bundle injection from panel)
+honest_limit [Live] Live honest-limit attempt finished with error.
+    - Error: Connector queued (not delivered within sync_wait): HTTP 409: {"error":"envelope_rejected","code":"seq_replay","message":"This sequence number was already used (or is older than the latest accepted one) for this source."}

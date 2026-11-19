@@ -1,5 +1,9 @@
 # Decision tokens and executor confirm (Stage 3)
 
+How the in-path **permit** relates to the **decision token**: see
+[PERMIT_AND_TOKEN.md](./PERMIT_AND_TOKEN.md) (one page). This document is the token/confirm
+operator detail.
+
 Aegis seals what a source system sends. That does not stop the **executing** system
 from paying different parameters than those that were authorised. Decision tokens close
 that gap: the gate issues a short-lived signed token that binds the executable fields, and

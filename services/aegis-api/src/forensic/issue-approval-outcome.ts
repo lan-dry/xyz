@@ -102,8 +102,21 @@ export async function issueApprovalOutcomeReceipt(
      * from eventPayload (same canonical preview the console renders).
      */
     approved_view_hash?: string | null;
+    /**
+     * How the approved view was confirmed. When the client omitted the hash,
+     * seal "server-rendered, not confirmed by approver".
+     */
+    view_confirmation?:
+      | "confirmed_by_approver"
+      | "server-rendered, not confirmed by approver"
+      | null;
     /** Authenticated identity bound into the sealed approval (Stage 5 / A1). */
     approver_binding?: ApproverBinding | null;
+    /**
+     * All per-approver bindings for multi-person approvals (each vote bound
+     * separately). When present, preferred over a single approver_binding.
+     */
+    approver_bindings?: ApproverBinding[] | null;
     /** Optional software key override for tests. */
     signingKey?: { key_id: string; private_key_b64: string };
   },
@@ -161,7 +174,16 @@ export async function issueApprovalOutcomeReceipt(
   const approvedViewHash =
     input.approved_view_hash?.trim() ||
     hashApprovedViewFromEventPayload(input.eventPayload ?? null);
-  const approverBinding = input.approver_binding ?? null;
+  const approverBindings =
+    input.approver_bindings && input.approver_bindings.length > 0
+      ? input.approver_bindings
+      : input.approver_binding
+        ? [input.approver_binding]
+        : [];
+  const approverBinding = approverBindings[approverBindings.length - 1] ?? null;
+  const viewConfirmation =
+    input.view_confirmation ??
+    "server-rendered, not confirmed by approver";
 
   const approvalRecord = {
     approval_id: input.approvalId,
@@ -172,7 +194,11 @@ export async function issueApprovalOutcomeReceipt(
     approver_role_label: roleLabel,
     approver_email: input.approver.email,
     approved_view_hash: approvedViewHash,
+    view_confirmation: viewConfirmation,
     ...(approverBinding ? { approver_binding: approverBinding } : {}),
+    ...(approverBindings.length > 1
+      ? { approver_bindings: approverBindings }
+      : {}),
     reason: input.reason ?? null,
     reason_code: input.reason_code ?? null,
     decided_at: input.decided_at,
@@ -302,7 +328,11 @@ export async function issueApprovalOutcomeReceipt(
       approver_role: roleKey,
       approver_role_label: roleLabel,
       approved_view_hash: approvedViewHash,
+      view_confirmation: viewConfirmation,
       ...(approverBinding ? { approver_binding: approverBinding } : {}),
+      ...(approverBindings.length > 1
+        ? { approver_bindings: approverBindings }
+        : {}),
       approval_reason: input.reason ?? null,
       requester: requester.label,
       requester_email: requester.email,

@@ -1,0 +1,181 @@
+=== bank G1→G2 @ 2026-11-19T07:18:13.713Z ===
+simulator=http://127.0.0.1:4000 api=http://127.0.0.1:8088
+health HTTP 200 {"status":"ok","service":"bank-simulator"}
+systems HTTP 200
+{
+  "systems": [
+    {
+      "id": "los",
+      "name": "Loan Origination System",
+      "source_id": "src_los",
+      "key_id": "k_los_2026_01_mwn5jeo7",
+      "kind": "application",
+      "role": "Originates loan applications; talks to Aegis through its Connector.",
+      "connected": false,
+      "connection": "http://127.0.0.1:8088",
+      "last_seq": 2,
+      "outbox_size": 2,
+      "mode": "aegis-connector",
+      "public_key_hint": "RzVWD0oRcq05…",
+      "key_path": "D:\\PROJECTS\\salanor\\.data\\connectors\\src_los\\private.key"
+    },
+    {
+      "id": "core",
+      "name": "Core Banking / Ledger",
+      "source_id": "src_core",
+      "key_id": "k_core_2026_01_mwn5jeqy",
+      "kind": "executor",
+      "role": "System of record. Disburses only after confirming a decision token.",
+      "connected": true,
+      "connection": "http://127.0.0.1:8088",
+      "last_seq": 0,
+      "outbox_size": 0,
+      "mode": "key_ready",
+      "public_key_hint": "cvw9MBqeO1Cn…",
+      "key_path": "D:\\PROJECTS\\salanor\\.data\\connectors\\src_core\\private.key"
+    },
+    {
+      "id": "pay",
+      "name": "Payment Gateway",
+      "source_id": "src_pay",
+      "key_id": "k_pay_2026_01_mwn5jesc",
+      "kind": "executor",
+      "role": "Outbound payments (SWIFT / mobile-money stub). Confirms before send.",
+      "connected": true,
+      "connection": "http://127.0.0.1:8088",
+      "last_seq": 0,
+      "outbox_size": 0,
+      "mode": "key_ready",
+      "public_key_hint": "agXdCkjBBSFc…",
+      "key_path": "D:\\PROJECTS\\salanor\\.data\\connectors\\src_pay\\private.key"
+    },
+    {
+      "id": "bureau",
+      "name": "Demo Credit Bureau",
+      "source_id": "src_bureau",
+      "key_id": "k_bureau_2026_01",
+      "kind": "third_party",
+      "role": "Independent third party. Signs credit-score responses.",
+      "connected": true,
+      "connection": "http://127.0.0.1:4100",
+      "last_seq": null,
+      "outbox_size": 0,
+      "mode": "external_http",
+      "public_key_hint": "see bureau /v1/keys"
+    }
+  ],
+  "core_ledger": {
+    "mode": "memory",
+    "database_configured": false,
+    "account_count": 1,
+    "transaction_count": 3
+  },
+  "bureau_url": "http://127.0.0.1:4100",
+  "connectors_dir": "D:\\PROJECTS\\salanor\\.data\\connectors"
+}
+
+Core skip-aegis (expect refuse) HTTP 403
+{
+  "ok": false,
+  "permitted": false,
+  "code": "permit_required",
+  "error": "Core ledger refuses ungated disbursement (skip_aegis attempted)",
+  "case_id": "G2-REFUSE-1795072693792"
+}
+
+story loan_within_limit HTTP 502
+{
+  "error": "Connector queued (not delivered within sync_wait): HTTP 409: {\"error\":\"envelope_rejected\",\"code\":\"seq_replay\",\"message\":\"This sequence number was already used (or is older than the latest accepted one) for this source.\"}",
+  "requests": [
+    {
+      "method": "POST",
+      "endpoint": "http://127.0.0.1:8088/v1/aegis/source-events",
+      "via": "aegis-connector",
+      "source_id": "src_los",
+      "key_id": "k_los_2026_01_mwn5jeo7",
+      "headers": {
+        "Authorization": "Bearer aegis_…****",
+        "Content-Type": "application/json"
+      },
+      "payload": {
+        "schema_version": 1,
+        "case_id": "SIM-C75DB0C342",
+        "idempotency_key": "1d7abbd8-a37f-4a1f-8fb2-7ca4274f0147",
+        "event_type": "loan_decision",
+        "product": "retail_loan",
+        "emitted_at": "2026-11-19T07:18:13.804Z",
+        "actor": {
+          "type": "system",
+          "id": "credit-decision"
+        },
+        "attributes": {
+          "requester_email": "officer@demo.test",
+          "requester_name": "Patience Ingabire",
+          "requester_role": "credit_officer",
+          "officer_id": "OFF-1042",
+          "system_account": "core-banking",
+          "amount": 1200000,
+          "currency": "RWF",
+          "applicant_name": "Uwase Aline",
+          "branch": "Kigali - Nyarugenge",
+          "loan_purpose": "School fees bridge loan"
+        },
+        "trace_id": "tr_sim_c75db0c342"
+      },
+      "response": {
+        "status": 202,
+        "body": {
+          "status": "queued",
+          "seq": 3,
+          "idempotency_key": "1d7abbd8-a37f-4a1f-8fb2-7ca4274f0147",
+          "event_hash": "27b41e1c234ae6f6864d3179107cf4df218a7baa06876a8fbb74f33bc35093f7",
+          "duplicate": false
+        }
+      }
+    }
+  ]
+}
+
+feed export HTTP 200
+{
+  "ok": true,
+  "format": "jsonl",
+  "path": "D:\\PROJECTS\\salanor\\tools\\bank-simulator\\.bank-simulator\\ledger\\feed-2026-11-19T07-18-21-857Z.jsonl",
+  "rows": 3,
+  "preview": [
+    "{\"txn_id\":\"txn_5613e76da332\",\"account_id\":\"ACCT-DEMO-001\",\"case_id\":\"RT13-1795072601009\",\"token_id\":null,\"amount\":1,\"currency\":\"RWF\",\"direction\":\"credit\",\"status\":\"posted\",\"meta\":{\"bypass\":true,\"note\":\"forced_db_write_without_token\",\"tampered\":true,\"at\":\"2026-11-19T07:16:41.009Z\"},\"created_at\":\"2026-11-19T07:16:41.009Z\"}",
+    "{\"txn_id\":\"txn_a28002cfeac3\",\"account_id\":\"ACCT-DEMO-001\",\"case_id\":\"RT11-1795072577972\",\"token_id\":null,\"amount\":999999,\"currency\":\"RWF\",\"direction\":\"credit\",\"status\":\"posted\",\"meta\":{\"bypass\":true,\"note\":\"forced_db_write_without_token\",\"tampered\":true,\"at\":\"2026-11-19T07:16:17.972Z\"},\"created_at\":\"2026-11-19T07:16:17.972Z\"}",
+    "{\"txn_id\":\"txn_f8958f43114e\",\"account_id\":\"ACCT-DEMO-001\",\"case_id\":\"RT6-BYPASS-1795072577933\",\"token_id\":null,\"amount\":1000,\"currency\":\"RWF\",\"direction\":\"credit\",\"status\":\"posted\",\"meta\":{\"bypass\":true,\"note\":\"forced_db_write_without_token\"},\"created_at\":\"2026-11-19T07:16:17.933Z\"}"
+  ]
+}
+
+Red Team #5 HTTP 200 simulated=false
+{
+  "ok": true,
+  "attack": {
+    "id": 5,
+    "title": "LOS asks for approval on 4,000,000 but core executes 18,000,000",
+    "attacker_gains": "Approve a small amount, then disburse a larger one.",
+    "expected": "Confirm refused; execution_mismatch sealed.",
+    "mode": "live",
+    "coverage": "both"
+  },
+  "ran_at": "2026-11-19T07:18:21.871Z",
+  "simulated": false,
+  "label": "Live",
+  "report_status": "Live",
+  "steps": [
+    "Confirm called with forged token + amount 18,000,000 (approved would be 4,000,000).",
+    "POST /executions/confirm → HTTP 409 code=bad_signature"
+  ],
+  "result": "Confirm refused altered/forged execution (HTTP 409).",
+  "evidence": {
+    "http_status": 409,
+    "body": {
+      "ok": false,
+      "code": "bad_signature",
+      "message": "unknown decision key_id key_missing"
+    },
+    "simulated": false
+  }
+}

@@ -2,55 +2,58 @@
 
 Branch `feature/provenance`. **Not committed** (per request). `spec/` untouched.
 
-Status: **Done, with the Partials listed below.**
+Status: **Partial** (live Red Team + separate Connectors advanced; several buttons remain Simulation).
 
 ## Verdict
 
-The bank simulator is extended into a multi-system staff UI (LOS / Core / Pay / Bureau)
-with a Red Team panel for attacks #1–18 plus an honest-limits demo. Automated
-`pnpm test:redteam` covers the catalog with fixture tests and optional live hits.
-Full multi-process `bank:up` with Docker Postgres is attempted; if Docker is unstable
-the stack continues with an in-memory ledger and is marked **Partial**.
+The bank simulator is a multi-system staff UI (LOS / Core / Pay / Bureau) with a Red Team
+panel for attacks #1–18. Buttons call the real Aegis API when configured; anything that
+cannot run live is labelled **Simulation** on screen and **Simulated** in the report
+(not Done). `pnpm demo:connectors` runs separate Connector processes on :8787–:8789 with
+registered keys. Core ledger stays **memory** when `BANK_CORE_DATABASE_URL` / Docker is
+unavailable.
 
 ## What Stage 8 delivers
 
 | # | Requirement | Where | Status |
 | --- | --- | --- | --- |
-| 1 | LOS (`src_los`) via Connector (simulated per-system keys) | `connectors-sim.mjs`, systems panel | **Done** (simulated Connector; not three separate Connector processes) |
-| 2 | Core Banking Postgres accounts+transactions; confirm before disburse; JSONL/CSV feed | `core-ledger.mjs`, `docker-compose.bank.yml` | **Done** when Docker healthy; **Partial** → memory ledger otherwise |
-| 3 | Payment Gateway stub (`src_pay`) | systems registry + connector sim | **Done** (identity + panel; stub executor) |
-| 4 | Credit Bureau stub | reuses `tools/demo-bureau` (`bank:up` starts it) | **Done** |
-| 5 | One Connector instance per system (or separate keys) | `SimulatedConnectors` | **Done** (simulated) |
-| 6 | Staff UI: connection, key id, last seq, outbox size | `page.html` systems panel, `GET /api/systems` | **Done** |
-| 7 | Red Team panel: attacker gains + outcome | `page.html`, `redteam-attacks.mjs`, `POST /api/redteam/run` | **Done** |
-| 8 | Stories: small G2; large approve+token+reconcile G2; CDC G3; stop; source silent | `stories.mjs` `target_grade` | **Done** (grades labelled; live G2/G3 still need API reconcile/collector) |
-| 9 | `pnpm bank:up` / `pnpm bank:down` | `bank-up.mjs`, `bank-down.mjs` | **Done** (Docker Partial if unstable) |
-| 10 | `pnpm test:redteam` + fixture coverage #1–18 + honest limits | `tools/redteam/run.mjs`, `test/redteam-suite.test.ts`, bank-simulator tests | **Done** |
-| 11 | This report | `docs/provenance/STAGE_8_REPORT.md` | **Done** |
+| 1 | LOS (`src_los`) via Connector | `real-connectors.mjs`, `demo:connectors` | **Done** (separate processes + in-process fallback) |
+| 2 | Core Banking Postgres; confirm before disburse; feed | `core-ledger.mjs` | **Partial** — memory ledger on this host |
+| 3 | Payment Gateway stub (`src_pay`) | systems registry | **Partial** — confirm-before-send stub |
+| 4 | Credit Bureau stub | `tools/demo-bureau` | **Done** |
+| 5 | One Connector instance per system | `demo:connectors` + RealConnectors | **Done** |
+| 6 | Staff UI: connection, key id, last seq, outbox | `page.html`, `GET /api/systems` | **Done** |
+| 7 | Red Team panel: Live vs Simulation | `redteam-live.mjs`, `page.html` | **Partial** — see matrix |
+| 8 | Stories incl. G2 | `stories.mjs` | **Partial** — live G2 needs clean seq + reconcile |
+| 9 | `pnpm bank:up` / `pnpm bank:down` | bank-up/down | **Partial** (Docker unstable) |
+| 10 | `pnpm test:redteam` | fixtures + live optional | **Done** (fixtures); live Partial |
+| 11 | This report | `STAGE_8_REPORT.md` | **Done** |
 
-## Attack Done / Partial matrix
+## Attack Live / Simulated matrix (panel, 2026-11-19)
 
-| # | Attack | Expected | Automated coverage | Status |
-| --- | --- | --- | --- | --- |
-| 1 | Forged signature | Rejected at ingest | `source-envelope.test.ts`, redteam `#1` verifyEnvelope | **Done** |
-| 2 | Revoked / unknown key | Rejected | `source-envelope.test.ts` | **Done** |
-| 3 | Replay | Rejected (seq/nonce) | `source-envelope.test.ts` | **Done** |
-| 4 | Ingest key only | Reject when required; else G0 asserted | `source-envelope` + redteam panel #4 | **Done** |
-| 5 | 4M approved / 18M execute | Confirm refused, mismatch | `decision-token.test.ts`, redteam `#5` | **Done** |
-| 6 | No token bypass | Core refuses; forced DB → `executed_without_receipt` | bank-simulator `#6` + reconciliation test | **Done** |
-| 7 | Token reuse | Refused | `decision-token` + redteam `#7` | **Done** |
-| 8 | Execute after stop | Refused | `decision-token` + redteam `#8` | **Done** |
-| 9 | Approver swapped | Verify fails | `approver-binding.test.ts` | **Done** |
-| 10 | Requester self-approve | SoD blocked | `approver-binding.test.ts` + redteam `#10` | **Done** |
-| 11 | Direct Postgres edit | `db_change_without_event` | `collector-cdc.test.ts` + simulator `#11` | **Done** (live CDC still Stage 6 Partial) |
-| 12 | LOS score ≠ bureau | `fact_mismatch` | `third-party-facts.test.ts` | **Done** |
-| 13 | Feed row edited | Reconcile detects | `reconciliation.test.ts` + simulator `#13` | **Done** |
-| 14 | Source silent | `source_silent` | `reconciliation.test.ts` | **Done** |
-| 15 | Aegis unavailable | Policy allow_and_flag / block | SDK + decision-token + simulator toggle | **Done** |
-| 16 | Connector crash mid-send | No dup / seq reuse / loss | `aegis-connector` durability + simulator `#16` | **Done** |
-| 17 | Tamper receipt/token/bundle | Verify fails | provenance / redteam `#17` | **Done** |
-| 18 | Old pre-change bundle | G0 legacy | `provenance.test.ts` + redteam `#18` | **Done** |
-| — | Honest limits | False signed value stays G1, labelled | redteam suite + `/api/honest-limit` | **Done** |
+Raw: `docs/provenance/_raw/redteam_18.txt`
+
+| # | Attack | Panel | Status |
+| --- | --- | --- | --- |
+| 1 | Forged signature | Live → HTTP 401 | **Live** |
+| 2 | Unknown key | Live → HTTP 401 | **Live** |
+| 3 | Replay | Live → HTTP 400 | **Live** |
+| 4 | Ingest key only | Live → HTTP 400 | **Live** |
+| 5 | 4M / 18M confirm | Live → confirm refused | **Live** (forged token path; full issued-token mismatch still fixture) |
+| 6 | No token bypass | Live core refuse + forced write | **Live** |
+| 7 | Token reuse | Live confirms refused | **Live** (needs issued token for true reuse) |
+| 8 | Execute after stop | Live confirm refused | **Live** |
+| 9 | Approver swapped | Simulation | **Simulated** |
+| 10 | Requester self-approve | Simulation | **Simulated** |
+| 11 | Direct ledger edit | Live | **Live** (CDC match Stage 6 Partial) |
+| 12 | LOS ≠ bureau score | Live attempt / fixture | **Partial** |
+| 13 | Feed row edited | Live export | **Live** |
+| 14 | Source silent | Simulation | **Simulated** |
+| 15 | Aegis unavailable | Simulation | **Simulated** |
+| 16 | Connector crash | Live outbox sim | **Live** |
+| 17 | Tamper receipt/bundle | Simulation | **Simulated** |
+| 18 | Old pre-change bundle | Simulation | **Simulated** |
+| — | Honest limit | Live preferred | **Partial** |
 
 ## Choices
 

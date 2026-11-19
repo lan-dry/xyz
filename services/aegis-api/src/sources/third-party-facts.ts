@@ -52,8 +52,55 @@ export type ThirdPartyFactResult = {
     key_id: string;
     display_line: string;
     event_hash: string;
+    subject_id?: string;
+    request_id?: string;
+    issued_at?: string;
   }>;
 };
+
+function subjectFromAttributes(attributes: Record<string, unknown>): string | null {
+  for (const key of ["customer_ref", "subject_id", "customer_id"]) {
+    const v = attributes[key];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+}
+
+function subjectFromEvent(event: Record<string, unknown>): string | null {
+  if (typeof event.subject_id === "string" && event.subject_id.trim()) {
+    return event.subject_id.trim();
+  }
+  if (typeof event.subject === "string" && event.subject.trim()) {
+    return event.subject.trim();
+  }
+  if (isRecord(event.fields) && typeof event.fields.subject_id === "string") {
+    return event.fields.subject_id.trim();
+  }
+  return null;
+}
+
+function requestIdFromEvent(event: Record<string, unknown>): string | null {
+  if (typeof event.request_id === "string" && event.request_id.trim()) {
+    return event.request_id.trim();
+  }
+  if (isRecord(event.fields) && typeof event.fields.request_id === "string") {
+    return event.fields.request_id.trim();
+  }
+  return null;
+}
+
+function requestIdFromAttributes(attributes: Record<string, unknown>): string | null {
+  for (const key of ["bureau_request_id", "request_id"]) {
+    const v = attributes[key];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+}
+
+function defaultFactMaxAgeSeconds(): number {
+  const raw = Number(process.env.THIRD_PARTY_FACT_MAX_AGE_SEC);
+  return Number.isFinite(raw) && raw > 0 ? raw : 3600;
+}
 
 const FIELD_LABELS: Record<string, string> = {
   credit_score: "Credit score",
@@ -146,9 +193,17 @@ export async function resolveThirdPartyFacts(
   db: pg.Pool | pg.PoolClient,
   organizationId: string,
   attributes: Record<string, unknown>,
-  options?: { now?: Date },
+  options?: {
+    now?: Date;
+    maxAgeSeconds?: number;
+    seenRequestIds?: Set<string>;
+  },
 ): Promise<ThirdPartyFactResult> {
   const now = options?.now ?? new Date();
+  const maxAgeSeconds = options?.maxAgeSeconds ?? defaultFactMaxAgeSeconds();
+  const seenRequestIds = options?.seenRequestIds ?? new Set<string>();
+  const caseSubject = subjectFromAttributes(attributes);
+  const expectedRequestId = requestIdFromAttributes(attributes);
   const result: ThirdPartyFactResult = {
     signed: [],
     overrides: {},
@@ -237,6 +292,77 @@ export async function resolveThirdPartyFacts(
       continue;
     }
 
+    const factSubject = subjectFromEvent(envelope.event);
+    if (!factSubject) {
+      result.rejected.push({
+        reason: "missing_subject",
+        source_id: envelope.source_id,
+        key_id: envelope.key_id,
+      });
+      continue;
+    }
+    if (!caseSubject || factSubject !== caseSubject) {
+      result.rejected.push({
+        reason: "subject_mismatch",
+        source_id: envelope.source_id,
+        key_id: envelope.key_id,
+      });
+      continue;
+    }
+
+    const issuedAtMs = Date.parse(envelope.ts);
+    if (!Number.isFinite(issuedAtMs)) {
+      result.rejected.push({
+        reason: "fact_bad_ts",
+        source_id: envelope.source_id,
+        key_id: envelope.key_id,
+      });
+      continue;
+    }
+    if (issuedAtMs > now.getTime() + 60_000) {
+      result.rejected.push({
+        reason: "fact_not_yet_valid",
+        source_id: envelope.source_id,
+        key_id: envelope.key_id,
+      });
+      continue;
+    }
+    if (issuedAtMs < now.getTime() - maxAgeSeconds * 1000) {
+      result.rejected.push({
+        reason: "fact_expired",
+        source_id: envelope.source_id,
+        key_id: envelope.key_id,
+      });
+      continue;
+    }
+
+    const requestId = requestIdFromEvent(envelope.event);
+    if (!requestId) {
+      result.rejected.push({
+        reason: "missing_request_id",
+        source_id: envelope.source_id,
+        key_id: envelope.key_id,
+      });
+      continue;
+    }
+    if (expectedRequestId && requestId !== expectedRequestId) {
+      result.rejected.push({
+        reason: "request_id_mismatch",
+        source_id: envelope.source_id,
+        key_id: envelope.key_id,
+      });
+      continue;
+    }
+    if (seenRequestIds.has(requestId)) {
+      result.rejected.push({
+        reason: "fact_replayed",
+        source_id: envelope.source_id,
+        key_id: envelope.key_id,
+      });
+      continue;
+    }
+    seenRequestIds.add(requestId);
+
     const fields = fieldsFromThirdPartyEvent(envelope.event);
     for (const [field, signedValue] of Object.entries(fields)) {
       const asserted = attributes[field];
@@ -265,6 +391,9 @@ export async function resolveThirdPartyFacts(
       result.sealed.push({
         ...row,
         event_hash: envelope.event_hash,
+        subject_id: factSubject,
+        request_id: requestId,
+        issued_at: envelope.ts,
       });
     }
   }

@@ -157,4 +157,4 @@ Docs: `docs/provenance/EXECUTOR.md`, this report
    confirm (by design). Enforce is opt-in per workflow / pack.
 5. **Connector confirm envelopes** use a high seq band and are signature-checked only (not
    sequence-accepted into the source registry), so they do not advance `last_seq`.
-6. **Pre-existing `trusted-time` test failure** from Stage 2 is still left alone.
+6. **Trusted-time wording** was a Stage 2 branch drift (`Timestamped by` vs `Trusted time:`), not a main failure; fixed on this branch (see Stage 1 close-out).

@@ -130,13 +130,24 @@ describeIfDb("third-party signed facts (Stage 7)", () => {
     await closePool();
   });
 
-  async function signBureauScore(score: number, seq = 1) {
+  async function signBureauScore(
+    score: number,
+    seq = 1,
+    o: {
+      subject_id?: string;
+      request_id?: string;
+      ts?: Date;
+    } = {},
+  ) {
     const unsigned = buildEnvelope({
       source_id: "src_demo_bureau",
       key_id: "k_bureau_demo_2026",
       seq,
+      ts: o.ts,
       event: {
         type: "credit_bureau.response",
+        subject_id: o.subject_id ?? "CUST-1001",
+        request_id: o.request_id ?? `req_${seq}`,
         fields: { credit_score: score },
       },
     });
@@ -148,6 +159,8 @@ describeIfDb("third-party signed facts (Stage 7)", () => {
     const envelope = await signBureauScore(612, 1);
     const resolved = await resolveThirdPartyFacts(pool, ORG, {
       credit_score: 612,
+      customer_ref: "CUST-1001",
+      request_id: "req_1",
       third_party_facts: [envelope],
     });
     expect(resolved.rejected).toEqual([]);
@@ -157,11 +170,62 @@ describeIfDb("third-party signed facts (Stage 7)", () => {
     expect(resolved.signed[0]?.display_line).toBe(
       "Credit score 612, signed by Demo Credit Bureau",
     );
+    expect(resolved.sealed[0]?.subject_id).toBe("CUST-1001");
+    expect(resolved.sealed[0]?.request_id).toBe("req_1");
+  });
+
+  it("rejects another customer's genuine bureau response (subject_mismatch)", async () => {
+    const pool = getPool();
+    const envelope = await signBureauScore(700, 10, {
+      subject_id: "CUST-OTHER",
+      request_id: "req_other",
+    });
+    const resolved = await resolveThirdPartyFacts(pool, ORG, {
+      customer_ref: "CUST-1001",
+      request_id: "req_other",
+      third_party_facts: [envelope],
+    });
+    expect(resolved.signed).toEqual([]);
+    expect(resolved.rejected[0]?.reason).toBe("subject_mismatch");
+  });
+
+  it("rejects an expired bureau fact (fact_expired)", async () => {
+    const pool = getPool();
+    const old = new Date(Date.now() - 3 * 3600 * 1000);
+    const envelope = await signBureauScore(612, 11, {
+      request_id: "req_expired",
+      ts: old,
+    });
+    const resolved = await resolveThirdPartyFacts(
+      pool,
+      ORG,
+      {
+        customer_ref: "CUST-1001",
+        request_id: "req_expired",
+        third_party_facts: [envelope],
+      },
+      { maxAgeSeconds: 3600 },
+    );
+    expect(resolved.signed).toEqual([]);
+    expect(resolved.rejected[0]?.reason).toBe("fact_expired");
+  });
+
+  it("rejects a replayed bureau request_id (fact_replayed)", async () => {
+    const pool = getPool();
+    const a = await signBureauScore(612, 12, { request_id: "req_replay" });
+    const b = await signBureauScore(615, 13, { request_id: "req_replay" });
+    const resolved = await resolveThirdPartyFacts(pool, ORG, {
+      customer_ref: "CUST-1001",
+      request_id: "req_replay",
+      third_party_facts: [a, b],
+    });
+    expect(resolved.signed.length).toBe(1);
+    expect(resolved.rejected.some((r) => r.reason === "fact_replayed")).toBe(true);
   });
 
   it("LOS score differs from signed bureau → fact_mismatch; signed value used", async () => {
     const pool = getPool();
-    const envelope = await signBureauScore(612, 2);
+    const envelope = await signBureauScore(612, 2, { request_id: "req_2" });
     const caseId = `LN-FACT-${randomUUID().slice(0, 8)}`;
     const decision = await handleBankEvent(
       pool,
@@ -177,6 +241,8 @@ describeIfDb("third-party signed facts (Stage 7)", () => {
           amount: 500_000,
           currency: "RWF",
           credit_score: 780,
+          customer_ref: "CUST-1001",
+          request_id: "req_2",
           third_party_facts: [envelope],
         },
       },

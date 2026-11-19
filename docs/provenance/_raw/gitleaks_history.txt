@@ -1,0 +1,12 @@
+﻿System.Management.Automation.RemoteException
+    Ôùï
+    ÔöéÔò▓
+    Ôöé Ôùï
+    Ôùï Ôûæ
+    Ôûæ    gitleaks
+System.Management.Automation.RemoteException
+[90m9:21AM[0m [1m[31mERR[0m[0m [git] E: unsupported filetype docs/~$ug-in-venture-discovery-brief.docx
+[90m9:21AM[0m [1m[31mERR[0m[0m [git] fatal: unable to read files to diff
+[90m9:21AM[0m [1m[31mERR[0m[0m failed to scan Git repository [36merror=[0m[31m"stderr is not empty"[0m
+[90m9:21AM[0m [32mINF[0m scan completed in 7.89s
+[90m9:21AM[0m [31mWRN[0m leaks found: 8

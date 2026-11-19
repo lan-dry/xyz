@@ -99,6 +99,9 @@ const simConnectors = new SimulatedConnectors(join(DATA_DIR, "connectors-sim"), 
 const realConnectors = new RealConnectors(DATA_DIR, {
   apiBase: ENV_CONFIG.apiBase,
   ingestKey: ENV_CONFIG.ingestKey,
+  // Keep seq/outbox under the simulator data dir so demo:connectors can own
+  // `.data/connectors/*/state` (separate Connector processes + registered keys).
+  localStateOnly: true,
 });
 /** Alias kept for redteam-attacks.mjs which expects `connectors`. */
 const connectors = simConnectors;
@@ -1146,9 +1149,15 @@ const server = createServer(async (req, res) => {
       }
       if (url.pathname === "/api/redteam/run") {
         const attackId = body.attack_id ?? body.id ?? body.attack;
+        const liveCfg = cfg();
+        realConnectors.cfg = {
+          apiBase: liveCfg.apiBase,
+          ingestKey: liveCfg.ingestKey,
+        };
         const out = await runAttack(attackId, {
           core: coreLedger,
           connectors,
+          realConnectors,
           postJson,
           cfg,
         });
@@ -1156,7 +1165,18 @@ const server = createServer(async (req, res) => {
         return sendJson(res, status, out);
       }
       if (url.pathname === "/api/honest-limit") {
-        const out = await runAttack("honest_limit", { core: coreLedger, connectors });
+        const liveCfg = cfg();
+        realConnectors.cfg = {
+          apiBase: liveCfg.apiBase,
+          ingestKey: liveCfg.ingestKey,
+        };
+        const out = await runAttack("honest_limit", {
+          core: coreLedger,
+          connectors,
+          realConnectors,
+          postJson,
+          cfg,
+        });
         return sendJson(res, 200, out);
       }
       if (url.pathname === "/api/feed/export") {

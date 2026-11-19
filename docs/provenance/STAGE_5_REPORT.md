@@ -108,4 +108,4 @@ Docs: this report
    accounts seal `sso_subject: null`.
 4. **Pre-Stage-5 outcome receipts** without `approved_view_hash` / `approver_binding` still
    verify; Stage 5 checks apply when those fields are present.
-5. **Pre-existing `trusted-time` test failure** from Stage 2 is still left alone.
+5. **Trusted-time wording** was a Stage 2 branch drift (`Timestamped by` vs `Trusted time:`), not a main failure; fixed on this branch (see Stage 1 close-out).

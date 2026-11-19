@@ -155,15 +155,12 @@ Case summary API (integration test, real HTTP route through `consoleRoutes`): a 
 `grade_at_seal: G0, current_grade: G0` before any change and `G0` then `G2` after `recordGradeChange`; a
 case sealed without a block reads `legacy: true` and "G0 (legacy)".
 
-### Pre-existing failure (not caused by Stage 2)
+### Trusted-time wording (corrected)
 
-```
- FAIL  test/trusted-time.test.ts > Verify shows trusted time (amber while pending, never green) > stamped: 'Trusted time: <authority> at <UTC>' and pass
-AssertionError: expected 'Timestamped by Sectigo at 2026-11-16 …' to be 'Trusted time: Sectigo at 2026-11-16 0…'
-```
-
-`HEAD` already has the label "Timestamped by …" in `evidence-bundle.ts` and `verify-messages.ts` while the
-test at `HEAD` expects "Trusted time: …". Stage 2 did not touch those lines. Left as it was.
+Earlier drafts of this report called the `Timestamped by` vs `Trusted time:` mismatch a
+“pre-existing failure.” That was wrong: on `main`, `trusted-time.test.ts` passes with
+`Trusted time: …`. Stage 2 briefly drifted the label to `Timestamped by …` on this branch;
+that drift is fixed (Stage 1 close-out). Do not treat it as a mainline defect.
 
 One existing test **was** updated on purpose: `test/bank-ready-pass2.test.ts` lists the verify checks in
 order and now expects the new `source_of_data` row (status `info`) at the end.
@@ -214,4 +211,4 @@ Docs: `docs/PROVENANCE.md` (new), `docs/DEMO.md` ("Must not claim"), this report
 7. **The web console changes are type-checked, not looked at in a browser.** No screenshots were taken.
 8. **Approval outcome receipts** mark `approver_bound` at case level (merged with the case's earlier
    receipts), not per approver.
-9. **Pre-existing `trusted-time` test failure** (above) is left alone.
+9. **Trusted-time wording** was a Stage 2 branch drift, not a main failure; fixed on this branch.

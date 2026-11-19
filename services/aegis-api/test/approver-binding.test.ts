@@ -347,9 +347,76 @@ describe("Stage 5 approver binding", () => {
 
     const fresh = assertApprovedViewFresh(updated, updated);
     expect(fresh.ok).toBe(true);
+    if (fresh.ok) {
+      expect(fresh.viewConfirmation).toBe("confirmed_by_approver");
+    }
+  });
 
-    // Omitted hash (Slack) is allowed; server seals the current view.
-    expect(assertApprovedViewFresh(updated, undefined).ok).toBe(true);
+  it("omitted view hash seals server-rendered, not confirmed by approver", () => {
+    const current = hashApprovedViewFromEventPayload(GATE_PAYLOAD);
+    const omitted = assertApprovedViewFresh(current, undefined);
+    expect(omitted.ok).toBe(true);
+    if (omitted.ok) {
+      expect(omitted.viewConfirmation).toBe(
+        "server-rendered, not confirmed by approver",
+      );
+    }
+    const blank = assertApprovedViewFresh(current, "   ");
+    expect(blank.ok).toBe(true);
+    if (blank.ok) {
+      expect(blank.viewConfirmation).toBe(
+        "server-rendered, not confirmed by approver",
+      );
+    }
+  });
+
+  it("step_up_mfa is stored only as claimed_by_client, never verified", () => {
+    const claimed = buildApproverBinding({
+      accountId: "a",
+      membershipId: "m",
+      sessionId: "s",
+      roleKey: "credit_manager",
+      stepUpMfa: true,
+    });
+    expect(claimed.step_up_mfa).toEqual({ claimed_by_client: true });
+    const none = buildApproverBinding({
+      accountId: "a",
+      membershipId: "m",
+      sessionId: "s",
+      roleKey: "credit_manager",
+      stepUpMfa: false,
+    });
+    expect(none.step_up_mfa).toBe(false);
+  });
+
+  it("binds each approver separately for two-person approvals", () => {
+    const first = buildApproverBinding({
+      accountId: "acct_jean",
+      membershipId: "mem_jean",
+      sessionId: "sess_jean",
+      roleKey: "credit_manager",
+      ssoSubject: "sso:jean",
+      stepUpMfa: false,
+    });
+    const second = buildApproverBinding({
+      accountId: "acct_aline",
+      membershipId: "mem_aline",
+      sessionId: "sess_aline",
+      roleKey: "head_of_credit",
+      ssoSubject: "sso:aline",
+      stepUpMfa: true,
+    });
+    expect(first.account_id).not.toBe(second.account_id);
+    expect(first.session_id).not.toBe(second.session_id);
+    expect(second.step_up_mfa).toEqual({ claimed_by_client: true });
+    const votes = [
+      { voter_user_id: first.membership_id, binding: first },
+      { voter_user_id: second.membership_id, binding: second },
+    ];
+    expect(votes.map((v) => v.binding.account_id)).toEqual([
+      "acct_jean",
+      "acct_aline",
+    ]);
   });
 
   it("requester equals approver refused when separation of duties is on", () => {

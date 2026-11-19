@@ -144,6 +144,10 @@ async function finalizeHumanApproval(
     /** Sealed into the outcome receipt (demo seed may pass a historical stamp). */
     decidedAt?: string;
     approvedViewHash?: string | null;
+    viewConfirmation?:
+      | "confirmed_by_approver"
+      | "server-rendered, not confirmed by approver"
+      | null;
     approverBinding?: ApproverBinding | null;
   },
 ) {
@@ -157,6 +161,10 @@ async function finalizeHumanApproval(
       reason: params.reason,
       voterEmail: params.email,
       delegation: params.delegation ?? null,
+      binding: params.approverBinding
+        ? (params.approverBinding as unknown as Record<string, unknown>)
+        : null,
+      view_confirmation: params.viewConfirmation ?? null,
     },
   );
   if (!decided) return null;
@@ -194,6 +202,16 @@ async function finalizeHumanApproval(
     const approvedViewHash =
       params.approvedViewHash?.trim() ||
       hashApprovedView(requestPreview(payload));
+    const viewConfirmation =
+      params.viewConfirmation ??
+      "server-rendered, not confirmed by approver";
+    const voteBindings = collectVoteBindings(rich?.metadata);
+    const approverBindings =
+      voteBindings.length > 0
+        ? voteBindings
+        : params.approverBinding
+          ? [params.approverBinding]
+          : [];
     const requester = extractRequester(payload);
     const persisted = await ingestHumanApprovalEvent(client, {
       organizationId: params.organizationId,
@@ -233,11 +251,29 @@ async function finalizeHumanApproval(
       eventPayload: payload,
       delegation: params.delegation ?? null,
       approved_view_hash: approvedViewHash,
+      view_confirmation: viewConfirmation,
       approver_binding: params.approverBinding ?? null,
+      approver_bindings: approverBindings,
     });
   }
 
   return decided;
+}
+
+function collectVoteBindings(
+  metadata: Record<string, unknown> | null | undefined,
+): ApproverBinding[] {
+  if (!metadata || !Array.isArray(metadata.votes)) return [];
+  const out: ApproverBinding[] = [];
+  for (const vote of metadata.votes) {
+    if (!vote || typeof vote !== "object" || Array.isArray(vote)) continue;
+    const binding = (vote as Record<string, unknown>).binding;
+    if (!binding || typeof binding !== "object" || Array.isArray(binding)) {
+      continue;
+    }
+    out.push(binding as ApproverBinding);
+  }
+  return out;
 }
 
 async function bindingForSession(
@@ -263,7 +299,13 @@ async function refuseIfStaleView(
   approvalId: string,
   clientHash: string | null | undefined,
 ): Promise<
-  | { ok: true; currentHash: string }
+  | {
+      ok: true;
+      currentHash: string;
+      viewConfirmation:
+        | "confirmed_by_approver"
+        | "server-rendered, not confirmed by approver";
+    }
   | { ok: false; code: string; message: string }
 > {
   const rich = await getApprovalRich(client, organizationId, approvalId);
@@ -274,7 +316,11 @@ async function refuseIfStaleView(
   const currentHash = hashApprovedView(requestPreview(payload));
   const fresh = assertApprovedViewFresh(currentHash, clientHash);
   if (!fresh.ok) return fresh;
-  return { ok: true, currentHash };
+  return {
+    ok: true,
+    currentHash,
+    viewConfirmation: fresh.viewConfirmation,
+  };
 }
 
 /**
@@ -499,6 +545,7 @@ approvalRoutes.post("/approvals/act", requireConsoleSession, async (c) => {
       decision: claims.decision,
       reason: body.reason?.trim(),
       approvedViewHash: viewCheck.ok ? viewCheck.currentHash : undefined,
+      viewConfirmation: viewCheck.ok ? viewCheck.viewConfirmation : undefined,
       approverBinding,
     });
     if (!decided) {
@@ -648,6 +695,7 @@ approvalRoutes.post(
         delegation,
         decidedAt,
         approvedViewHash: viewCheck.currentHash,
+        viewConfirmation: viewCheck.viewConfirmation,
         approverBinding,
       });
       if (!decided) {
@@ -785,6 +833,7 @@ approvalRoutes.post(
         reason: body.reason.trim(),
         decidedAt,
         approvedViewHash: viewCheck.currentHash,
+        viewConfirmation: viewCheck.viewConfirmation,
         approverBinding,
       });
       if (!decided) {

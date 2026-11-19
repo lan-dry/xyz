@@ -125,4 +125,4 @@ Docs: `docs/provenance/RECONCILIATION.md`, this report
 5. **Org-wide `receipt_without_execution`** can surface many historical approved cases if
    the period is wide and feeds are empty — operators should pick a tight period or run
    feed-scoped matching first.
-6. **Pre-existing `trusted-time` test failure** from Stage 2 is still left alone.
+6. **Trusted-time wording** was a Stage 2 branch drift (`Timestamped by` vs `Trusted time:`), not a main failure; fixed on this branch (see Stage 1 close-out).
