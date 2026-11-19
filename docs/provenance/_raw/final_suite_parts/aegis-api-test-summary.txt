@@ -1,1 +1,30 @@
+pnpm --filter aegis-api exec vitest run
+TEMP redirected to D:\PROJECTS\salanor\tmp\suite (C: was near full; earlier ENOSPC run discarded)
 
+Test Files  6 failed | 99 passed | 1 skipped (106)
+Tests       2 failed | 571 passed | 7 skipped (580)
+EXIT=1
+
+Failed Suites (fixture teardown / append_only after pass):
+- test/console.integration.test.ts > console API
+  (memberships foreign key / org cleanup)
+- test/escalate-approve-http.integration.test.ts > escalated approve HTTP
+  (append_only: forensic receipts cannot be deleted)
+- test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+  (append_only: sealed event rows cannot be deleted)
+- test/policy-create-rules.test.ts > policy create requires rules
+  (append_only: sealed event rows cannot be deleted)
+
+Failed Tests (assertions):
+- test/require-signed-events-setting.test.ts
+  > disabling creates pending; same admin cannot confirm; second admin confirms and seals
+  AssertionError: expected true to be false // Object.is equality
+  (confirmBody.require_signed_events / sealed expectations)
+
+- test/source-envelope.test.ts
+  > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting
+  AssertionError: expected [409, 401, 401] to deeply equal []
+  (seq_replay + unknown_key under parallel load)
+
+Also observed during run (did not alone fail files as sole cause):
+- proxy/policy paths: No Workflow Bridge signing key

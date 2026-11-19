@@ -1,37 +1,41 @@
-=== Final suite from committed tree (feature/provenance) ===
-Date: 2026-11-19
+Provenance final suite
+Date: 2026-11-19T07:46:29.093Z
+Branch: feature/provenance
+TEMP for vitest/builds: D:\PROJECTS\salanor\tmp\suite (C: FreeSpace was ~0 during first attempt)
 
-## Results
+Command | Result | Exit | Artifact
+--- | --- | --- | ---
+aegis-api vitest (full) | FAIL | 1 | final_suite_parts/aegis-api-test.txt
+aegis-api typecheck | PASS | 0 | final_suite_parts/aegis-api-typecheck.txt
+web-console typecheck | PASS | 0 | final_suite_parts/web-console-typecheck.txt
+aegis-api lint | PASS | 0 | final_suite_parts/aegis-api-lint.txt
+web-console lint | PASS | 0 | final_suite_parts/web-console-lint.txt
+aegis-api build | PASS | 0 | final_suite_parts/aegis-api-build.txt
+web-console build | PASS | 0 | final_suite_parts/web-console-build.txt
+conformance:src1 | PASS | 0 | final_suite_parts/conformance-src1.txt
+gitleaks detect --no-git | PASS | 0 | final_suite_parts/gitleaks-tree.txt
+aegis-verify g1 bundle | PASS | 0 | final_suite_parts/aegis-verify.txt
+python verify_bundle g1 | PASS | 0 | final_suite_parts/python-verify.txt
+demo:runbook-walk | FAIL | 1 | final_suite_parts/demo-runbook-walk.txt
 
-| Step | Exit | Notes |
-| --- | --- | --- |
-| aegis-api vitest (full) | 1 | 572 passed / 6 failed / 2 skipped (102 files pass, 3 fail). Failures: source-envelope (seq/parallel/fixture wipe), policy.integration exit, tenant-wipe deadlock. Re-run under disk pressure on C:; Partial. |
-| aegis-api targeted (approver/facts/012/redteam/token/provenance) | 0 | 60/60 passed |
-| conformance:src1 | 0 | TS + Python vectors OK |
-| typecheck aegis-api | 0 | |
-| typecheck web-console | 0 | |
-| lint aegis-api | 0 | 1 warning fixed in migration-012 test |
-| lint web-console | 0 | |
-| build aegis-sdk | 0 | |
-| build aegis-api | 0 | |
-| build web-console | 0 | after cleaning corrupted `.next` |
-| gitleaks --no-git (tree) | 0 | no leaks after allowlist for local `.env` / simulator state / `_raw` |
-| gitleaks history | 0* | no leaks reported; scan still errors on historical Word lockfile `~$ug-in-venture-discovery-brief.docx` |
-| aegis-verify fixture bundle | 0 | OK 1 receipt |
-| python verify_bundle | 0 | OK signature/key-at-ts/seq |
-| demo:runbook-walk | 1 | Personas/rules dual-publish OK; bank stories failed `timestamp_skew` (host clock vs Aegis). §12 Red Team fixed (`x-simulator` + simUrl TDZ); re-check Live #5/#11 OK — see `lying-segment.txt`. Partial. |
+OVERALL: FAIL â€” aegis-api vitest (full) (exit 1); demo:runbook-walk (exit 1)
 
-## Secrets
+Notes:
+- Stage 6 remains Partial (native Postgres wal_level=logical not available); see STAGE_6_REPORT.md.
+- Bundle verify OK for docs/TEST_PACK/provenance/bundles/g1-exported-bundle.json (TS + Python).
+- aegis-api vitest: 2 assertion failures (require-signed-events-setting, source-envelope parallel); 4 suites failed on append_only teardown. See aegis-api-test-summary.txt.
+- demo:runbook-walk: console sign-in checks failed (stayed on /login) after full vitest; bank stories also reject with timestamp_skew. Services probed up (:3000/:8088/:4000).
+- gitleaks: no leaks found with current .gitleaks.toml allowlists (_raw, TEST_PACK, key_id regexes).
 
-- `.env` / `.env_deploy` gitignored; not in current tree index.
-- Historical `.env_deploy` once tracked (Sep 2026) — rotate those values; not allowlisted as live secrets.
-- Hosted key delivery: `docs/provenance/HOSTED_SIGNING_KEYS.md`
-
-## Stage 6
-
-Remains **Partial** — no native `wal_level=logical` Postgres available on this host.
-
-Raw parts: `docs/provenance/_raw/final_suite_parts/`
-
-Lying §12 re-check: docs/provenance/_raw/final_suite_parts/lying-segment.txt
-
+EXIT_aegis-api-test=1
+EXIT_aegis-api-typecheck=0
+EXIT_web-console-typecheck=0
+EXIT_aegis-api-lint=0
+EXIT_web-console-lint=0
+EXIT_aegis-api-build=0
+EXIT_web-console-build=0
+EXIT_conformance-src1=0
+EXIT_gitleaks-tree=0
+EXIT_aegis-verify=0
+EXIT_python-verify=0
+EXIT_demo-runbook-walk=1
