@@ -7,6 +7,7 @@ import tseslint from "typescript-eslint";
  */
 export const nodeGlobals = {
   AbortController: "readonly",
+  AbortSignal: "readonly",
   Buffer: "readonly",
   Response: "readonly",
   URL: "readonly",
@@ -18,6 +19,7 @@ export const nodeGlobals = {
   console: "readonly",
   fetch: "readonly",
   module: "writable",
+  performance: "readonly",
   process: "readonly",
   require: "readonly",
   setInterval: "readonly",

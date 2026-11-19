@@ -7,11 +7,10 @@
  *
  * Velocity timings (when --live and B runs): printed as measured ms only — no claims.
  */
-import { createHash, randomUUID } from "node:crypto";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { STORIES, getStory } from "./stories.mjs";
+import { getStory } from "./stories.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const LIVE = process.argv.includes("--live");

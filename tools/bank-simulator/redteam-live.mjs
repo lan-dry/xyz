@@ -163,22 +163,6 @@ async function postConfirm(deps, body) {
   return deps.postJson("/v1/aegis/executions/confirm", body, {}, {});
 }
 
-async function fetchLastSeq(deps, sourceId) {
-  return deps.postJson
-    ? deps.cfg &&
-      (await fetch(
-        `${deps.cfg().apiBase}/v1/aegis/sources/${encodeURIComponent(sourceId)}/last-seq`,
-        {
-          headers: { Authorization: `Bearer ${deps.cfg().ingestKey}` },
-          signal: AbortSignal.timeout(10_000),
-        },
-      ).then(async (r) => ({
-        status: r.status,
-        data: await r.json().catch(() => ({})),
-      })))
-    : null;
-}
-
 const BUREAU_SOURCE = "src_bureau";
 const BUREAU_KEY_ID = "k_bureau_2026_01";
 

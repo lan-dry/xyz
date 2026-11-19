@@ -19,7 +19,8 @@ RUN pnpm install --frozen-lockfile
 
 RUN pnpm --filter @salanor/platform-auth build && \
     pnpm --filter @salanor/observability build && \
-    pnpm --filter @salanor/aegis build
+    pnpm --filter @salanor/aegis build && \
+    pnpm --filter @salanor/aegis-sdk build
 
 ARG WITNESS_BUILD=0
 RUN if [ "$WITNESS_BUILD" = "1" ]; then pnpm --filter @salanor/witness-merkle build; fi

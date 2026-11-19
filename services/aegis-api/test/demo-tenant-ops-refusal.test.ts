@@ -11,7 +11,7 @@ const url =
 
 describe.skipIf(!url)("demo tenant Ops DB refusal", () => {
   const pool = new pg.Pool({ connectionString: url });
-  let customerSlug = `cust-refusal-${Date.now().toString(36)}`;
+  const customerSlug = `cust-refusal-${Date.now().toString(36)}`;
   let orgId: string | null = null;
   let ready = false;
 
