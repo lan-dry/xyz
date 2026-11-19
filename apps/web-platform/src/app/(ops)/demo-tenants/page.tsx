@@ -295,7 +295,7 @@ export default function DemoTenantsPage() {
               onChange={(e) => persistTenantJson(e.target.value)}
               rows={12}
               spellCheck={false}
-              placeholder='Paste contents of .demo-tenant-emails.prod.json here'
+              placeholder='Paste tenant JSON (personas + optional ingest_key). Same shape as .demo-tenant-emails.prod.json.'
               style={{
                 fontFamily: "ui-monospace, monospace",
                 fontSize: 12,

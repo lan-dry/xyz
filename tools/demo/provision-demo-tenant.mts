@@ -375,12 +375,12 @@ async function main(): Promise<void> {
   await ensureAgents(admin);
 
   step(4, "Ingest key");
-  // Prefer DEMO_BANK_INGEST_KEY; fall back to AEGIS_INGEST_KEY so Ops Populate +
-  // seed-history (same parent env) share one secret after wipe. Random mint only
-  // when neither is set (CLI operators who copy the one-time print).
+  // Prefer env, then tenant JSON ingest_key. Random mint only when none is set
+  // (CLI operators who copy the one-time print).
   const stableSecret =
     process.env.DEMO_BANK_INGEST_KEY?.trim() ||
-    process.env.AEGIS_INGEST_KEY?.trim();
+    process.env.AEGIS_INGEST_KEY?.trim() ||
+    file.ingest_key?.trim();
   if (stableSecret) {
     await ensureStableIngestKey(file, organizationId, stableSecret);
   } else {
@@ -389,10 +389,10 @@ async function main(): Promise<void> {
 
   step(5, "Signed sources (Connector keys)");
   // Private keys under .data/connectors/ (gitignored). Public keys registered with Aegis.
-  // Configs omit the ingest bearer unless DEMO_BANK_INGEST_KEY is set; use AEGIS_INGEST_BEARER
+  // Configs omit the ingest bearer unless a stable key is set; use AEGIS_INGEST_BEARER
   // when starting Connectors (`pnpm demo:connectors` / bank:up).
   const connectors = await ensureDemoConnectorSources(admin, file, {
-    ingestKey: stableSecret || process.env.AEGIS_INGEST_KEY?.trim(),
+    ingestKey: stableSecret,
     log,
   });
   log(

@@ -106,6 +106,21 @@ function ingestKey(): string {
   let key = process.env.AEGIS_INGEST_KEY?.trim() || process.env.DEMO_BANK_INGEST_KEY?.trim();
   if (!key) {
     try {
+      const tenantPath =
+        process.env.DEMO_TENANT_FILE?.trim() ||
+        resolve(repoRoot(), ".demo-tenant-emails.local.json");
+      if (existsSync(tenantPath)) {
+        const parsed = JSON.parse(readFileSync(tenantPath, "utf8")) as {
+          ingest_key?: string;
+        };
+        key = parsed.ingest_key?.trim();
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  if (!key) {
+    try {
       const stackPath = resolve(repoRoot(), ".demo-tenant-local-stack.local.json");
       if (existsSync(stackPath)) {
         const parsed = JSON.parse(readFileSync(stackPath, "utf8")) as {
@@ -119,7 +134,7 @@ function ingestKey(): string {
   }
   if (!key) {
     fail(
-      "AEGIS_INGEST_KEY (or DEMO_BANK_INGEST_KEY) is not set. Use the stable DEMO_BANK_INGEST_KEY you gave\n  pilot:provision-demo-tenant, or the key it printed once (re-run it with --new-ingest-key for a fresh one).",
+      "AEGIS_INGEST_KEY (or DEMO_BANK_INGEST_KEY / tenant ingest_key) is not set. Use the stable DEMO_BANK_INGEST_KEY you gave\n  pilot:provision-demo-tenant, or the key it printed once (re-run it with --new-ingest-key for a fresh one).",
     );
   }
   return key;

@@ -44,6 +44,11 @@ export type TenantFile = {
   /** Console origin, used only to print case links. */
   console_origin?: string;
   organization?: { name?: string; slug?: string };
+  /**
+   * Optional stable Demo Bank ingest secret (>= 32 chars, no whitespace).
+   * Used by Ops Populate / seed-history when DEMO_BANK_INGEST_KEY is unset.
+   */
+  ingest_key?: string;
   personas: Record<PersonaKey, Persona>;
 };
 
@@ -97,6 +102,13 @@ export function loadTenantFile(): TenantFile {
   }
   if (!file.personas.admin.password) {
     fail(`${TENANT_FILE_NAME}: personas.admin.password is required (min 10 characters).`);
+  }
+  if (file.ingest_key !== undefined) {
+    const key = file.ingest_key.trim();
+    if (key.length < 32 || /\s/.test(key)) {
+      fail(`${TENANT_FILE_NAME}: ingest_key must be at least 32 characters with no whitespace.`);
+    }
+    file.ingest_key = key;
   }
   const emails = PERSONA_KEYS.map((k) => file.personas[k].email.trim().toLowerCase());
   if (new Set(emails).size !== emails.length) {

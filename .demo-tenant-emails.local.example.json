@@ -1,9 +1,10 @@
 {
-  "_readme": "Copy to .demo-tenant-emails.local.json (gitignored) and replace every placeholder. Never commit real addresses or passwords. PLATFORM_BOOTSTRAP_SECRET comes from your environment, not this file.",
+  "_readme": "Copy to .demo-tenant-emails.local.json (gitignored) and replace every placeholder. Never commit real addresses or passwords. PLATFORM_BOOTSTRAP_SECRET comes from your environment, not this file. Optional ingest_key (>= 32 chars) is the Demo Bank event secret for Populate / seed / bank-sim.",
   "api_base": "https://api.example.invalid",
   "id_base": "https://id.example.invalid",
   "console_origin": "https://app.example.invalid",
   "organization": { "name": "Demo Bank", "slug": "demo-bank" },
+  "ingest_key": "__SET_STABLE_INGEST_KEY_MIN_32_CHARS__",
   "personas": {
     "admin":      { "email": "admin@example.invalid",      "display_name": "Theogene Rugamba",      "password": "__SET_LOCAL_PASSWORD__" },
     "officer":    { "email": "officer@example.invalid",    "display_name": "Patience Ingabire",     "password": "__SET_LOCAL_PASSWORD__" },

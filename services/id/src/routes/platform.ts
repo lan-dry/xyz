@@ -330,18 +330,18 @@ function resolveDemoIngestKey(): string | undefined {
 
 /**
  * Ops Populate must always have an ingest secret for provision + seed-history.
- * Prefer DEMO_BANK_INGEST_KEY on salanor-id; otherwise mint one for this request
- * (same pattern as demo:fresh). Set a stable key on Railway so bank-sim matches.
+ * Prefer tenant JSON `ingest_key`, then DEMO_BANK_INGEST_KEY on salanor-id,
+ * else mint one for this request (same pattern as demo:fresh).
  */
-function demoPopulateIngestKey(): { key: string; minted: boolean } {
-  const existing = resolveDemoIngestKey();
-  if (existing) {
-    if (existing.length < 32 || /\s/.test(existing)) {
+function demoPopulateIngestKey(fromTenant?: string): { key: string; minted: boolean } {
+  const candidate = fromTenant?.trim() || resolveDemoIngestKey();
+  if (candidate) {
+    if (candidate.length < 32 || /\s/.test(candidate)) {
       throw new Error(
-        "DEMO_BANK_INGEST_KEY / AEGIS_INGEST_KEY must be at least 32 characters with no whitespace",
+        "ingest_key / DEMO_BANK_INGEST_KEY must be at least 32 characters with no whitespace",
       );
     }
-    return { key: existing, minted: false };
+    return { key: candidate, minted: false };
   }
   return { key: `aegis_${randomBytes(24).toString("hex")}`, minted: true };
 }
@@ -365,7 +365,58 @@ function demoPopulateCliEnv(
   };
 }
 
-type TenantFileHandle = { path: string; cleanup: () => void };
+type ParsedDemoTenant = {
+  api_base?: string;
+  id_base?: string;
+  ingest_key?: string;
+  personas?: Record<
+    string,
+    { email?: string; display_name?: string; password?: string } | undefined
+  >;
+};
+
+type TenantFileHandle = {
+  path: string;
+  cleanup: () => void;
+  adminEmail: string;
+  adminDisplayName: string;
+  adminPassword: string;
+  personaEmails: string[];
+  ingestKey?: string;
+};
+
+function parseDemoTenantRaw(raw: string): Omit<TenantFileHandle, "path" | "cleanup"> {
+  let parsed: ParsedDemoTenant;
+  try {
+    parsed = JSON.parse(raw) as ParsedDemoTenant;
+  } catch {
+    throw new Error("tenant_json is not valid JSON");
+  }
+  if (!parsed.api_base?.trim() || !parsed.id_base?.trim()) {
+    throw new Error("tenant_json needs api_base and id_base");
+  }
+  const admin = parsed.personas?.admin;
+  if (!admin?.email?.trim() || !admin.password) {
+    throw new Error("tenant_json needs personas.admin.email and personas.admin.password");
+  }
+  if (admin.password.length < 10) {
+    throw new Error("personas.admin.password must be at least 10 characters");
+  }
+  const ingestKey = parsed.ingest_key?.trim() || undefined;
+  if (ingestKey && (ingestKey.length < 32 || /\s/.test(ingestKey))) {
+    throw new Error("tenant_json ingest_key must be at least 32 characters with no whitespace");
+  }
+  const personaEmails = Object.values(parsed.personas ?? {})
+    .map((p) => p?.email?.trim().toLowerCase())
+    .filter((e): e is string => Boolean(e));
+  return {
+    adminEmail: admin.email.trim().toLowerCase(),
+    adminDisplayName: admin.display_name?.trim() || "Demo Admin",
+    adminPassword: admin.password,
+    personaEmails,
+    ingestKey,
+  };
+}
 
 /**
  * Resolve tenant emails JSON for demo CLIs.
@@ -377,6 +428,7 @@ function materializeDemoTenantFile(input?: unknown): TenantFileHandle {
   const fromEnvJson = process.env.DEMO_TENANT_JSON?.trim();
 
   let raw: string | undefined;
+  let existingPath: string | undefined;
   if (typeof input === "string" && input.trim()) {
     raw = input.trim();
   } else if (input && typeof input === "object") {
@@ -384,7 +436,8 @@ function materializeDemoTenantFile(input?: unknown): TenantFileHandle {
   } else if (fromEnvJson) {
     raw = fromEnvJson;
   } else if (fromEnvFile && existsSync(fromEnvFile)) {
-    return { path: fromEnvFile, cleanup: () => undefined };
+    raw = readFileSync(fromEnvFile, "utf8");
+    existingPath = fromEnvFile;
   }
 
   if (!raw) {
@@ -394,21 +447,9 @@ function materializeDemoTenantFile(input?: unknown): TenantFileHandle {
     );
   }
 
-  let parsed: {
-    api_base?: string;
-    id_base?: string;
-    personas?: { admin?: { email?: string; password?: string } };
-  };
-  try {
-    parsed = JSON.parse(raw) as typeof parsed;
-  } catch {
-    throw new Error("tenant_json is not valid JSON");
-  }
-  if (!parsed.api_base?.trim() || !parsed.id_base?.trim()) {
-    throw new Error("tenant_json needs api_base and id_base");
-  }
-  if (!parsed.personas?.admin?.email?.trim() || !parsed.personas?.admin?.password) {
-    throw new Error("tenant_json needs personas.admin.email and personas.admin.password");
+  const meta = parseDemoTenantRaw(raw);
+  if (existingPath) {
+    return { path: existingPath, cleanup: () => undefined, ...meta };
   }
 
   const dir = mkdtempSync(joinPath(tmpdir(), "demo-tenant-"));
@@ -423,7 +464,30 @@ function materializeDemoTenantFile(input?: unknown): TenantFileHandle {
         /* ignore */
       }
     },
+    ...meta,
   };
+}
+
+/** Drop Ops staff from a demo org when they are not one of the pasted personas. */
+async function detachNonPersonaStaff(
+  client: pg.PoolClient,
+  organizationId: string,
+  staffEmail: string | undefined,
+  personaEmails: string[],
+): Promise<void> {
+  const email = staffEmail?.trim().toLowerCase();
+  if (!email) return;
+  if (personaEmails.includes(email)) return;
+  await client.query(
+    `UPDATE membership m
+     SET status = 'suspended'
+     FROM account a
+     WHERE m.account_id = a.account_id
+       AND m.organization_id = $1
+       AND m.status = 'active'
+       AND lower(a.email) = $2`,
+    [organizationId, email],
+  );
 }
 
 async function executeOwnerWipe(slug: string, actor: string): Promise<Record<string, unknown>> {
@@ -557,7 +621,7 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
           `Refusing populate: "${slug}" exists and is not a demo/test tenant`,
         );
       }
-      // Idempotent: reuse shell org (e.g. earlier Ops create with 1 member) and
+      // Idempotent: reuse shell org (e.g. earlier Ops create) and
       // ensure wipe flags stay set — provision CLI fills personas/pack.
       await client.query(
         `UPDATE organization
@@ -567,18 +631,30 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
         [row.organization_id],
       );
       organizationId = row.organization_id;
+      // Owner is personas.admin from the paste, not Ops staff.
+      await platformEnsureOrganizationMember(client, {
+        organizationId,
+        email: tenantHandle.adminEmail,
+        role: "admin",
+        displayName: tenantHandle.adminDisplayName,
+        passwordHash: hashPassword(tenantHandle.adminPassword),
+      });
+      await detachNonPersonaStaff(
+        client,
+        organizationId,
+        access.staff?.email,
+        tenantHandle.personaEmails,
+      );
     } else {
-      const adminEmail =
-        access.staff?.email ??
-        process.env.PLATFORM_DEMO_ADMIN_EMAIL?.trim() ??
-        "admin@demo-bank.local";
       // Both flags true = wipeable in platform_wipe_tenant (safety rail only).
+      // Seed with personas.admin — never attach the Ops superadmin.
       const provisioned = await provisionOrganization(client, {
         name,
         slug,
         plan: "enterprise",
-        adminEmail,
-        adminDisplayName: "Demo Admin",
+        adminEmail: tenantHandle.adminEmail,
+        adminDisplayName: tenantHandle.adminDisplayName,
+        adminPasswordHash: hashPassword(tenantHandle.adminPassword),
         isDemo: true,
         isTest: true,
       });
@@ -601,7 +677,7 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
   }
 
   try {
-    const ingest = demoPopulateIngestKey();
+    const ingest = demoPopulateIngestKey(tenantHandle.ingestKey);
     const cliEnv = demoPopulateCliEnv(slug, name, tenantHandle.path, ingest.key);
     const stack = await runDemoCli(
       "tools/demo/provision-demo-tenant.mts",
@@ -646,7 +722,7 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
       ...(ingest.minted
         ? {
             hint:
-              "Minted a one-off DEMO_BANK_INGEST_KEY for this run. Set a stable DEMO_BANK_INGEST_KEY on salanor-id (and bank-sim) so live bank matches after refresh.",
+              "Minted a one-off ingest key for this run. Add ingest_key to the tenant JSON (or DEMO_BANK_INGEST_KEY on salanor-id / bank-sim) for a stable key across refreshes.",
           }
         : {}),
       ...(ok
@@ -833,16 +909,13 @@ platformRoutes.post("/demo-tenants/reset", async (c) => {
     let organizationId: string;
     try {
       await client.query("BEGIN");
-      const adminEmail =
-        access.staff?.email ??
-        process.env.PLATFORM_DEMO_ADMIN_EMAIL?.trim() ??
-        "admin@demo-bank.local";
       const provisioned = await provisionOrganization(client, {
         name,
         slug,
         plan: "enterprise",
-        adminEmail,
-        adminDisplayName: "Demo Admin",
+        adminEmail: tenantHandle.adminEmail,
+        adminDisplayName: tenantHandle.adminDisplayName,
+        adminPasswordHash: hashPassword(tenantHandle.adminPassword),
         isDemo: true,
         isTest: true,
       });
@@ -855,7 +928,7 @@ platformRoutes.post("/demo-tenants/reset", async (c) => {
       client.release();
     }
 
-    const ingest = demoPopulateIngestKey();
+    const ingest = demoPopulateIngestKey(tenantHandle.ingestKey);
     const cliEnv = demoPopulateCliEnv(slug, name, tenantHandle.path, ingest.key);
     const stack = await runDemoCli(
       "tools/demo/provision-demo-tenant.mts",
