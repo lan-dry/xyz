@@ -11,6 +11,7 @@ paths = [
   '''conformance[/\\]vectors\.json''',
   '''sdks[/\\]conformance[/\\]vectors[/\\]aegis-src1-v1\.json''',
   '''docs[/\\]TEST_PACK[/\\]provenance[/\\]bundles[/\\]g1-exported-bundle\.json''',
+  '''docs[/\\]TEST_PACK[/\\]scenarios-ag[/\\]''',
   '''tools[/\\]independent-verify[/\\]fixtures[/\\]g1-exported-bundle\.json''',
   '''tools[/\\]independent-verify[/\\]write-g1-fixture\.mjs''',
   '''services[/\\]aegis-api[/\\]scripts[/\\]write-g1-bundle-fixture\.mts''',
