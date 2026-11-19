@@ -63,13 +63,15 @@ results.push(
   run("web-console-lint", "pnpm --filter @salanor/web-console exec eslint ."),
 );
 
-// 4) builds (practical: aegis-api tsc build; try web-console next build)
+// 4) builds — stop :3000 before next build so .next is not corrupted mid-write
 results.push(run("aegis-api-build", "pnpm --filter aegis-api run build"));
-results.push({
-  ...run("web-console-build", "pnpm --filter @salanor/web-console run build", {
-    timeout: 600_000,
-  }),
-});
+results.push(
+  run(
+    "web-console-build",
+    'powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 3000 -State Listen -EA SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -EA SilentlyContinue }; Start-Sleep 2; if (Test-Path apps/web-console/.next) { Remove-Item -Recurse -Force apps/web-console/.next }; pnpm --filter @salanor/web-console run build"',
+    { timeout: 600_000 },
+  ),
+);
 
 // 5) conformance
 results.push(run("conformance-src1", "pnpm conformance:src1"));
@@ -113,13 +115,15 @@ results.push(
 results.push(
   run(
     "python-verify",
-    'py -3 tools/independent-verify/verify_bundle.py "docs/TEST_PACK/provenance/bundles/g1-exported-bundle.json"',
+    'py -3 tools/independent-verify/verify_bundle.py --bundle "docs/TEST_PACK/provenance/bundles/g1-exported-bundle.json"',
   ),
 );
 
-// 8) demo runbook walk (services expected up)
+// 8) demo runbook walk — start production console from the suite build, then walk
 results.push(
-  run("demo-runbook-walk", "pnpm demo:runbook-walk", { timeout: 900_000 }),
+  run("demo-runbook-walk", "node docs/provenance/_raw/_bounce_web_and_runbook.mjs", {
+    timeout: 900_000,
+  }),
 );
 
 function verdict(r) {

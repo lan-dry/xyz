@@ -9,7 +9,7 @@ Branch `feature/provenance`. **No merge to main.** Freeze after Round 3 (no new 
 3. **Flake loop** — `source-envelope` + `require-signed-events` (+ 50-parallel) × 25: **25/25 PASS**. Raw: `docs/provenance/_raw/flake_loop_25.txt`.
 4. **demo:fresh** rewrites `.demo-tenant-local-stack.local.json` (ingest + personas + org marker). **demo:runbook-walk** PASS on fresh tenant. G1→G2: `bank-g1-g2.mjs` PASS; screenshots `docs/TEST_PACK/provenance/case-g1-source-signed.png`, `case-g2-after-reconcile.png`. Runbook raw: `docs/provenance/_raw/runbook_walk_round3.txt`.
 5. **gitleaks** — exact path allowlists (no directory free-pass for fixtures). Full-history findings: **7** remaining, all `.env_deploy` (rotate; not allowlisted). Redacted: `docs/provenance/_raw/gitleaks_full_history_redacted.txt`.
-6. **Final suite** — re-run from committed tree; see `docs/provenance/_raw/final_suite.txt`.
+6. **Final suite** — re-run from committed tree; see `docs/provenance/_raw/final_suite.txt`. Suite archives HEAD for gitleaks, stops :3000 before `next build`, then bounces the console before `demo:runbook-walk`.
 
 ## Honesty notes
 
