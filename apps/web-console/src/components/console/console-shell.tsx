@@ -14,7 +14,6 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 
 import { isNavActive, navForProfile, type ConsoleNavItem } from "@/lib/console-nav";
-import { useOrgProfile } from "@/hooks/use-org-profile";
 import { isBankDemoProfile } from "@/lib/ui-profile";
 import {
   applyConsoleTheme,
@@ -151,9 +150,6 @@ export function ConsoleShell({
 
   const productTitle = product === "aegis" ? "Aegis" : "Insurance";
   const bankDemo = isBankDemoProfile() && product === "aegis";
-  // A hosted demo tenant (organization.is_demo) shows a quiet tag in the org display
-  // instead of the loud strip, and no misleading Production/Sandbox switch.
-  const { isDemo: demoOrg } = useOrgProfile();
 
   return (
     <div
@@ -192,7 +188,9 @@ export function ConsoleShell({
 
         <div className={shell.sidebarScroll}>
           <nav className={shell.nav} aria-label={`${productTitle} navigation`}>
-            {navItems.map((item) => {
+            {navItems
+              .filter((item) => !item.adminOnly || user.role === "admin")
+              .map((item) => {
               const Icon = item.icon;
               const active = isNavActive(pathname, item.href);
               const badge =
@@ -241,20 +239,16 @@ export function ConsoleShell({
           </nav>
         </div>
 
-        {bankDemo || VISIBLE_PLATFORM_PRODUCTS.length <= 1 ? null : <div className={shell.productBlock}>
-          {!collapsed ? <p className={shell.productLabel}>Products</p> : null}
-          {VISIBLE_PLATFORM_PRODUCTS.map((p) => {
-            const active =
-              !p.external &&
-              (pathname === p.href || pathname.startsWith(`${p.href}/`));
-            const label = (
-              <>
-                {p.name}
-                {p.status !== "active" && p.status !== "hidden" ? " · preview" : ""}
-              </>
-            );
-            if (p.external) {
-              return (
+        {/* Only show a product switcher when more than one product is active.
+            Insurance stays status=hidden until connected - never render a dead preview. */}
+        {bankDemo || VISIBLE_PLATFORM_PRODUCTS.length <= 1 ? null : (
+          <div className={shell.productBlock}>
+            {!collapsed ? <p className={shell.productLabel}>Products</p> : null}
+            {VISIBLE_PLATFORM_PRODUCTS.map((p) => {
+              const active =
+                !p.external &&
+                (pathname === p.href || pathname.startsWith(`${p.href}/`));
+              return p.external ? (
                 <a
                   key={p.slug}
                   href={p.href}
@@ -263,29 +257,28 @@ export function ConsoleShell({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  {label}
+                  {p.name}
                 </a>
+              ) : (
+                <Link
+                  key={p.slug}
+                  href={p.href}
+                  className={`${shell.productLink} ${active ? shell.productLinkActive : ""}`}
+                  title={collapsed ? p.name : undefined}
+                >
+                  {p.name}
+                </Link>
               );
-            }
-            return (
-              <Link
-                key={p.slug}
-                href={p.href}
-                className={`${shell.productLink} ${active ? shell.productLinkActive : ""}`}
-                title={collapsed ? p.name : undefined}
-              >
-                {label}
-              </Link>
-            );
-          })}
-        </div>}
+            })}
+          </div>
+        )}
       </aside>
 
       <div className={shell.main}>
         <header className={shell.topBar}>
           <div className={shell.topBarLeft}>
             <OrgDisplay organization={organization} organizations={organizations} />
-            {product === "aegis" && !bankDemo && !demoOrg ? (
+            {product === "aegis" && !bankDemo ? (
               <label className={shell.envSwitcher}>
                 <span className={shell.envLabel}>Env</span>
                 <select
@@ -339,11 +332,6 @@ export function ConsoleShell({
             </button>
           </div>
         </header>
-        {bankDemo && !demoOrg ? (
-          <div className={shell.demoStrip} role="status" data-demo-strip>
-            Demo environment, synthetic data
-          </div>
-        ) : null}
         {impersonation ? (
           <div className={shell.impersonationBanner} role="status">
             <div>

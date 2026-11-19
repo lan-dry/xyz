@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   description: "Aegis operator console: traces, approvals, policies, compliance exports",
 };
 
+/** Cookie-auth console: never emit a cacheable static HTML shell. */
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: Readonly<{

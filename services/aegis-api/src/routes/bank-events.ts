@@ -10,6 +10,20 @@ import { resolveIngestKey } from "../auth/ingest-key.js";
 import { handleBankEvent } from "../bank/handle-event.js";
 import { BankValidationError, parseBankEvent } from "../bank/validate.js";
 import { getPool } from "../db/pool.js";
+import { organizationRequiresSignedEvents } from "../sources/registry.js";
+import { ingestSignedEnvelope, isEnvelopeBody } from "./source-events.js";
+
+/** 400 body for unsigned events sent to an organisation that requires signed events. */
+export function signedEventsRequiredBody() {
+  return {
+    error: "signed_events_required",
+    code: "signed_events_required",
+    message:
+      "This organisation only accepts signed events. Send them through the Aegis Connector " +
+      "or the @salanor/aegis-sdk (sendEvent), which wrap each event in a signed envelope " +
+      "from a registered source key, or post a signed envelope to /v1/aegis/source-events.",
+  } as const;
+}
 
 function bearerToken(authorization: string | undefined): string | null {
   if (!authorization?.startsWith("Bearer ")) return null;
@@ -45,6 +59,11 @@ export async function postBankEvent(c: Context): Promise<Response> {
       },
       400,
     );
+  }
+
+  // Signed AEGIS-SRC1 envelope: same handler as POST /v1/aegis/source-events.
+  if (isEnvelopeBody(body)) {
+    return ingestSignedEnvelope(c, token, body);
   }
 
   let event;
@@ -83,6 +102,10 @@ export async function postBankEvent(c: Context): Promise<Response> {
       return c.json({ error: "Invalid API key" }, 401);
     }
 
+    if (await organizationRequiresSignedEvents(client, auth.organizationId)) {
+      return c.json(signedEventsRequiredBody(), 400);
+    }
+
     await client.query("BEGIN");
     try {
       // A bank system replaying events it decided under its own fallback while Aegis was
@@ -90,6 +113,7 @@ export async function postBankEvent(c: Context): Promise<Response> {
       // receipt more conservative ("decided without Aegis"); it can never relax a rule.
       const decision = await handleBankEvent(client, auth.organizationId, event, {
         decidedWithoutAegis: event.attributes.decided_without_aegis === true,
+        ingestKeyId: auth.keyId,
       });
       await client.query("COMMIT");
       return c.json(decision, 200);

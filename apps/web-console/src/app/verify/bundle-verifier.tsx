@@ -22,6 +22,10 @@ export type BundleResult = {
   receipts?: number;
   case_id?: string | null;
   witness?: "included" | "pending" | "none";
+  /** "Record intact: signed and unchanged since <time>" (about the record). */
+  record_line?: string | null;
+  /** "Source of the data: G1. Signed by X ..." (about where the data came from). */
+  source_line?: string | null;
 };
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -105,10 +109,15 @@ export function BundleResultView({
     <div aria-live="polite">
       {hideVerdict ? null : (
         <div className={passed ? styles.bundleVerdictPass : styles.bundleVerdictFail}>
-          {passed ? "Verified. " : "Verification failed. "}
-          {result.message}
+          {passed
+            ? (result.record_line ?? `Record intact. ${result.message}`)
+            : `Record check failed. ${result.message}`}
         </div>
       )}
+      {/* A second, separate answer: where the data came from. Never green. */}
+      {result.source_line ? (
+        <div className={styles.sourceLine}>{result.source_line}</div>
+      ) : null}
       {result.checks.length > 0 ? (
         <ul className={styles.checks}>
           {orderChecks(result.checks).map((c) => (
@@ -393,8 +402,8 @@ export function DemoBundleTry() {
                       {failed
                         ? row.key === "tampered"
                           ? TAMPER_PLAIN
-                          : "Verification failed."
-                        : "Valid. Every check passed."}
+                          : "Record check failed."
+                        : "Record intact. Every record check passed."}
                     </div>
                     <BundleResultView result={row.result} hideVerdict />
                   </>

@@ -68,9 +68,9 @@ export default async function OpsContentBlogPage() {
                         : post.status}
                     </td>
                     <td>{post.authorName}</td>
-                    <td>{s?.views ?? "—"}</td>
-                    <td>{s?.listenStarts ?? "—"}</td>
-                    <td>{s?.shareClicks ?? "—"}</td>
+                    <td>{s?.views ?? "-"}</td>
+                    <td>{s?.listenStarts ?? "-"}</td>
+                    <td>{s?.shareClicks ?? "-"}</td>
                     <td>
                       <Link href={`/content/blog/${encodeURIComponent(post.slug)}`} className={ui.tableLink}>
                         Edit

@@ -16,7 +16,7 @@ import {
   formatRuleLabel,
   type DescribeDecisionInput,
 } from "./describe-decision";
-import type { CaseApprover } from "./types";
+import type { CaseApprover, CaseProvenance } from "./types";
 import { formatConsoleTime, formatRwf } from "./format-display";
 
 export type CaseEventLike = {
@@ -33,7 +33,17 @@ export type CaseFourAnswers = {
   whatHappened: { title: string; detail: string };
   who: { title: string; detail: string };
   whyAllowed: { title: string; detail: string };
-  canTrust: { title: string; detail: string; verifiedHint: string };
+  /**
+   * Two separate answers, never one green "verified":
+   * the record (signed, unchanged) and the source of the data (grade and plain wording).
+   */
+  trust: {
+    title: string;
+    recordLine: string;
+    sourceLine: string;
+    /** False when a step failed its chain check. */
+    recordIntact: boolean;
+  };
 };
 
 export type CaseStory = {
@@ -64,7 +74,7 @@ export type CaseStory = {
   approvalAt: string | null;
   evaluationContext: Record<string, unknown> | null;
   amountUsd: number | null;
-  /** e.g. `EUR 8,000` — currency from the event/pack, never invented. */
+  /** e.g. `EUR 8,000` - currency from the event/pack, never invented. */
   amountDisplay: string | null;
   reference: string | null;
   /** Plain sentence for bank cases (describeDecision); null for non-bank cases. */
@@ -145,7 +155,7 @@ function readSentence(fields: string[]): string {
   return `Read ${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}.`;
 }
 
-const GENERIC_FLAG = "Suspicious behaviour flagged — review required";
+const GENERIC_FLAG = "Suspicious behaviour flagged - review required";
 
 function endSentence(text: string): string {
   const trimmed = text.trim();
@@ -222,6 +232,76 @@ function displayValue(field: string, value: unknown, currency: string | null): s
   return null;
 }
 
+/** Preferred order for the short "What data was seen" list. */
+export const DATA_SEEN_PRIMARY_ORDER = [
+  "amount",
+  "currency",
+  "product",
+  "segment",
+  "customer_id",
+  "aegis.customer_key",
+  "applicant_name",
+  "loan_purpose",
+  "branch",
+  "channel",
+  "requester_name",
+  "requester_email",
+  "requester_role",
+  "officer_id",
+  "beneficiary_account",
+  "beneficiary_country",
+  "new_beneficiary",
+  "aegis.segment_limit_name",
+  "aegis.projected_daily_amount",
+  "aegis.segment_daily_limit_rwf",
+  "aegis.segment_daily_count_limit",
+  "aegis.exceeds_segment_daily_amount",
+  "aegis.exceeds_segment_daily_count",
+  "aegis.counts_only_activity_reported_to_aegis",
+] as const;
+
+export const DATA_SEEN_PRIMARY_LIMIT = 12;
+
+/** Envelope / seal plumbing: not "business data the case saw". */
+export function isTechnicalDataSeenField(field: string): boolean {
+  const f = field.toLowerCase().replace(/\s+/g, "_");
+  if (f.startsWith("source_envelope")) return true;
+  if (f === "source_id" || f === "source_key_id") return true;
+  if (f.startsWith("provenance")) return true;
+  if (f === "evidence_grade" || f.includes("checks_source_signed")) return true;
+  if (f.startsWith("checks_") || f.startsWith("checks.")) return true;
+  if (f.startsWith("require_signed")) return true;
+  if (f.includes("event_redacted")) return true;
+  if (f.includes("signature") || f.includes("idempotency")) return true;
+  if (f.includes("nonce") || f.includes("event_hash")) return true;
+  if (f === "aegis.velocity" || f.startsWith("aegis.velocity.")) return true;
+  if (f === "system_account") return true;
+  return false;
+}
+
+/**
+ * Short list for the case card + remaining business fields for "Show all".
+ * Technical envelope fields are dropped (they live under Technical details).
+ */
+export function partitionDataSeen(fields: DataSeenField[]): {
+  primary: DataSeenField[];
+  more: DataSeenField[];
+} {
+  const business = fields.filter((f) => !isTechnicalDataSeenField(f.field));
+  const rank = new Map<string, number>(
+    DATA_SEEN_PRIMARY_ORDER.map((k, i) => [k, i]),
+  );
+  const ordered = [...business].sort((a, b) => {
+    const ra = rank.has(a.field) ? rank.get(a.field)! : 1000;
+    const rb = rank.has(b.field) ? rank.get(b.field)! : 1000;
+    if (ra !== rb) return ra - rb;
+    return a.label.localeCompare(b.label);
+  });
+  const primary = ordered.slice(0, DATA_SEEN_PRIMARY_LIMIT);
+  const more = ordered.slice(DATA_SEEN_PRIMARY_LIMIT);
+  return { primary, more };
+}
+
 /**
  * Fields the case saw, with how field policy treated each. Built from the stored
  * attributes (masked values start with `*`, hashed with `sha256:`), then any
@@ -237,30 +317,51 @@ function collectDataSeen(
   const currency = attributes && typeof attributes.currency === "string" ? attributes.currency : null;
 
   function add(field: string, value: unknown) {
+    if (isTechnicalDataSeenField(field)) return;
     if (seen.has(field)) return;
+    // Prefer bare keys over aegis.* duplicates (e.g. product vs aegis.product).
+    if (field.startsWith("aegis.")) {
+      const bare = field.slice("aegis.".length);
+      if (seen.has(bare)) return;
+    } else if (seen.has(`aegis.${field}`)) {
+      // Drop the aegis.* copy if we later add the bare key; handled by order of walk.
+    }
+    if (value == null || value === "") return;
+    if (isRecord(value) || Array.isArray(value)) return;
     seen.add(field);
     const treatment = treatmentOf(value);
+    const displayed =
+      treatment === "hashed" || treatment === "name_only"
+        ? null
+        : displayValue(field, value, currency);
+    // Keep masked rows (Reveal); drop empty stored rows with nothing to show.
+    if (treatment === "stored" && displayed == null) return;
     out.push({
       field,
-      label: humanLabel(field),
+      label: humanLabel(field.startsWith("aegis.") ? field.slice("aegis.".length) : field),
       treatment,
-      // Masked values keep the masked form (****1234); hashed/name_only hide the value.
-      value:
-        treatment === "hashed" || treatment === "name_only"
-          ? null
-          : displayValue(field, value, currency),
+      value: displayed,
     });
   }
 
   function walk(prefix: string, obj: Record<string, unknown>, depth: number) {
     for (const [k, v] of Object.entries(obj)) {
       const path = prefix ? `${prefix}.${k}` : k;
+      if (isTechnicalDataSeenField(path)) continue;
       if (isRecord(v) && depth < 2) walk(path, v, depth + 1);
       else add(path, v);
     }
   }
 
-  if (attributes) walk("", attributes, 0);
+  // Bare business keys first so they win over aegis.* duplicates.
+  if (attributes) {
+    for (const [k, v] of Object.entries(attributes)) {
+      if (k === "aegis") continue;
+      if (isRecord(v) && !Array.isArray(v)) walk(k, v, 1);
+      else add(k, v);
+    }
+    if (isRecord(attributes.aegis)) walk("aegis", attributes.aegis, 0);
+  }
   if (evaluationContext) {
     for (const [k, v] of Object.entries(evaluationContext)) {
       if (k === "fields_accessed" || v == null || v === "") continue;
@@ -269,7 +370,7 @@ function collectDataSeen(
     }
   }
   for (const f of touched) {
-    if (seen.has(f)) continue;
+    if (isTechnicalDataSeenField(f) || seen.has(f)) continue;
     seen.add(f);
     out.push({ field: f, label: humanLabel(f), treatment: "name_only", value: null });
   }
@@ -552,6 +653,8 @@ export function buildCaseStory(
     deniedEvents?: number;
     startedAt?: string;
     summary?: CaseSummaryMeta | null;
+    /** Where the data came from (case summary API). */
+    provenance?: CaseProvenance | null;
   },
 ): CaseStory {
   const c = collectFromEvents(events);
@@ -663,8 +766,8 @@ export function buildCaseStory(
     bankDecision = describeDecision(input);
     if (bankOutcome === "allow" && !str(bp.would_have)) {
       const allowLabel = formatRuleLabel(decidedBy, "allow");
-      noApprovalNeeded = `No approval needed: allowed automatically${
-        allowLabel ? ` by rule ${allowLabel}` : " by policy"
+      noApprovalNeeded = `Approver: not needed${
+        allowLabel ? ` - allowed automatically by rule ${allowLabel}` : " - allowed automatically by policy"
       }.`;
     }
   }
@@ -687,7 +790,7 @@ export function buildCaseStory(
   } else if (c.anomalyFlagged && !c.denied) {
     outcome = {
       kind: "failed",
-      label: "Flagged — needs attention",
+      label: "Flagged - needs attention",
       chip: "Flagged",
     };
   }
@@ -749,11 +852,11 @@ export function buildCaseStory(
     ? bankDecision
     : c.subject
     ? waitingForPerson
-      ? `${c.subject} — needs approval`
+      ? `${c.subject} - needs approval`
       : c.denied
-        ? `${c.subject} — stopped`
+        ? `${c.subject} - stopped`
         : flagLine
-          ? `${c.subject} — flagged`
+          ? `${c.subject} - flagged`
           : c.subject
     : flagLine
       ? flagLine
@@ -777,15 +880,10 @@ export function buildCaseStory(
       ? `Based on ${contextBits.join(", ")}.`
       : "";
 
+  // Do not repeat the page title (headline / bankDecision) in "Why was it allowed".
   let whyDetail: string;
-  if (bankDecision && !flagLine) {
-    whyDetail = [
-      bankDecision,
-      c.approver && c.approvalDecision === "approved" && !/Approved by/.test(bankDecision)
-        ? `Approved by ${approverShown}.`
-        : null,
-      waitingForPerson && !c.approver ? "No decision yet." : null,
-    ]
+  if (noApprovalNeeded) {
+    whyDetail = [noApprovalNeeded, contextLine.trim() || null]
       .filter(Boolean)
       .join(" ");
   } else if (c.denied) {
@@ -805,8 +903,10 @@ export function buildCaseStory(
       .join(" ");
   } else if (flagLine) {
     whyDetail = endSentence(c.ruleReason ?? "Recorded for review.");
+  } else if (c.ruleReason) {
+    whyDetail = endSentence(c.ruleReason);
   } else {
-    whyDetail = endSentence(c.ruleReason ?? "A rule allowed this.");
+    whyDetail = "A rule allowed this.";
   }
 
   const whatDetail = [
@@ -825,29 +925,61 @@ export function buildCaseStory(
     },
     who: {
       title: "Who did it, and for whom?",
-      detail: [
-        `Agent: ${meta.agentName?.trim() || meta.agentId}.`,
-        c.reference ? `Reference: ${c.reference}.` : null,
-        c.ticketId && c.orderId && c.ticketId !== c.orderId
-          ? `Order: ${c.orderId}.`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(" "),
+      detail: (() => {
+        const srcName =
+          meta.provenance?.source?.source_name?.trim() ||
+          meta.provenance?.source?.source_id?.trim() ||
+          null;
+        const attrs = bankAttributes;
+        const customer =
+          (attrs && (str(attrs.customer_ref) || str(attrs.customer_id) || str(attrs.customer_name))) ||
+          c.subject ||
+          null;
+        const beneficiary =
+          (attrs &&
+            (str(attrs.beneficiary_account) ||
+              str(attrs.beneficiary) ||
+              str(attrs.beneficiary_name))) ||
+          null;
+        const forWhom = customer
+          ? `For customer ${customer}.`
+          : beneficiary
+            ? `For beneficiary ${beneficiary}.`
+            : c.reference
+              ? `Reference: ${c.reference}.`
+              : null;
+        return [
+          srcName
+            ? `Signed by source system ${srcName}.`
+            : `Agent: ${meta.agentName?.trim() || meta.agentId}.`,
+          forWhom,
+          !forWhom && c.ticketId && c.orderId && c.ticketId !== c.orderId
+            ? `Order: ${c.orderId}.`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" ");
+      })(),
     },
     whyAllowed: {
       title: "Why was it allowed, and who approved?",
       detail: whyDetail,
     },
-    canTrust: {
-      title: "Can the record be trusted?",
-      detail: events.every((e) => e.chain_valid !== false)
-        ? "Verified. Each step is signed and the record is append-only."
-        : "Each step is signed and the record is append-only. Changing a field after the fact breaks verification.",
-      verifiedHint: events.every((e) => e.chain_valid !== false)
-        ? "The signature chain is intact."
-        : "Open Technical details to check the seal.",
-    },
+    trust: (() => {
+      const recordIntact = events.every((e) => e.chain_valid !== false);
+      const prov = meta.provenance ?? null;
+      return {
+        title: "Record and source",
+        recordIntact,
+        recordLine: recordIntact
+          ? (prov?.record_line ??
+            "Record intact: signed and unchanged since it was sealed")
+          : "Record check failed: a step does not match its signature. Open Technical details.",
+        sourceLine:
+          prov?.source_line ??
+          "Source of the data: not labelled for this case. Aegis does not check that the data is accurate.",
+      };
+    })(),
   };
 
   const bankWhat = bp
@@ -925,13 +1057,13 @@ export function listSentenceFromTrace(t: {
   const title = t.preview_subject?.trim() || null;
   if (title) {
     if (flagLine && needsPerson) {
-      sentence = `${title} — needs approval`;
+      sentence = `${title} - needs approval`;
     } else if (flagLine) {
-      sentence = `${title} — flagged`;
+      sentence = `${title} - flagged`;
     } else if (needsPerson) {
-      sentence = `${title} — needs approval`;
+      sentence = `${title} - needs approval`;
     } else if (t.denied_events > 0) {
-      sentence = `${title} — stopped`;
+      sentence = `${title} - stopped`;
     } else {
       sentence = title;
     }
@@ -941,7 +1073,7 @@ export function listSentenceFromTrace(t: {
     sentence = flagLine;
   } else if (needsPerson) {
     sentence = seen
-      ? `${seen.replace(/\.$/, "")} — needs approval`
+      ? `${seen.replace(/\.$/, "")} - needs approval`
       : "Needs approval before this can continue";
   } else if (t.denied_events > 0) {
     sentence = seen ? `Stopped. ${seen}` : "Stopped by a rule";
@@ -1010,7 +1142,7 @@ export function stepTitlePlain(
     }
     const reason = str(p?.reason);
     if (reason) return reason;
-    // Never a bare "Rule check: Allowed": say which rule decided — never a raw policy id.
+    // Never a bare "Rule check: Allowed": say which rule decided - never a raw policy id.
     const decidedRule =
       str(p?.decided_by_rule_id) ??
       (isRecord(p?.decision_basis) ? str(p!.decision_basis.decided_by_rule_id) : null);

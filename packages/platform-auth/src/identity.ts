@@ -804,8 +804,11 @@ export async function provisionOrganization(
   }
   if (input.isDemo) {
     try {
+      // Demo tenants only accept signed source envelopes (aegis-api migration 006).
       await client.query(
-        `UPDATE organization SET is_demo = true, region = 'eu-west' WHERE organization_id = $1`,
+        `UPDATE organization
+         SET is_demo = true, require_signed_events = true, region = 'eu-west'
+         WHERE organization_id = $1`,
         [organizationId],
       );
     } catch (err) {
@@ -813,6 +816,11 @@ export async function provisionOrganization(
       if (/is_demo/i.test(message) && /does not exist/i.test(message)) {
         throw new Error(
           "organization.is_demo is missing — greenfield reset required (DROP SCHEMA public CASCADE, then migrate 001_baseline)",
+        );
+      }
+      if (/require_signed_events/i.test(message) && /does not exist/i.test(message)) {
+        throw new Error(
+          "organization.require_signed_events is missing — run aegis-api migration 006_sources (pnpm --filter aegis-api db:migrate)",
         );
       }
       throw err;

@@ -1,0 +1,22 @@
+# Overlay: enable wal_level=logical for Stage 6 collector testing.
+#
+#   docker compose -f deploy/docker/docker-compose.postgres-demo.yml \
+#     -f deploy/docker/docker-compose.postgres-demo.logical.yml up -d
+#
+# Changing wal_level requires a Postgres restart. An existing data volume that
+# was initialized at wal_level=replica will pick this up on restart. Then:
+#
+#   pnpm --filter @salanor/aegis-collector-pg exec node dist/cli.js check
+#
+# Do NOT treat triggers as a substitute for logical decoding / G3.
+
+services:
+  aegis-pg-demo:
+    command:
+      - postgres
+      - -c
+      - wal_level=logical
+      - -c
+      - max_replication_slots=10
+      - -c
+      - max_wal_senders=10

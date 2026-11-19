@@ -3,7 +3,7 @@
   "name": "Demo banking pack (illustrative retail lending)",
   "demo_only": true,
   "sector": "banking",
-  "version": 3,
+  "version": 4,
   "combine": "all_matching",
   "currencies": [
     "RWF"
@@ -25,6 +25,11 @@
       "level": 25
     },
     {
+      "role_key": "fraud_analyst",
+      "display_name": "Fraud Analyst",
+      "level": 28
+    },
+    {
       "role_key": "dpo",
       "display_name": "Data Protection Officer",
       "level": 30
@@ -33,6 +38,32 @@
       "role_key": "head_of_compliance",
       "display_name": "Head of Compliance",
       "level": 40
+    }
+  ],
+  "segment_product_limits": [
+    {
+      "segment": "retail_standard",
+      "product": "payment_transfer",
+      "label": "Retail Standard",
+      "window_hours": 24,
+      "max_amount": 8000000,
+      "max_count": 10
+    },
+    {
+      "segment": "retail_standard",
+      "product": "retail_loan",
+      "label": "Retail Standard",
+      "window_hours": 24,
+      "max_amount": 25000000,
+      "max_count": 5
+    },
+    {
+      "segment": "private_banking",
+      "product": "payment_transfer",
+      "label": "Private Banking",
+      "window_hours": 24,
+      "max_amount": 50000000,
+      "max_count": 40
     }
   ],
   "authority_matrix": [
@@ -71,6 +102,30 @@
       "outcome": "hold",
       "rule_code": "AUTH-RL-HIGH",
       "active": true
+    },
+    {
+      "matrix_id": "demo_banking_xfer_low",
+      "product": "payment_transfer",
+      "amount_min": 0,
+      "amount_max": 5000000,
+      "currency": "RWF",
+      "risk_tier": null,
+      "required_role": null,
+      "outcome": "allow",
+      "rule_code": "AUTH-XFER-1",
+      "active": true
+    },
+    {
+      "matrix_id": "demo_banking_xfer_mid",
+      "product": "payment_transfer",
+      "amount_min": 5000000,
+      "amount_max": 20000000,
+      "currency": "RWF",
+      "risk_tier": null,
+      "required_role": "credit_manager",
+      "outcome": "hold",
+      "rule_code": "AUTH-XFER-2",
+      "active": true
     }
   ],
   "field_policies": [
@@ -93,15 +148,75 @@
       "priority": 10
     },
     {
+      "rule_id": "VEL-SEG-DAY",
+      "tool_pattern": "governed.action",
+      "decision": "allow_with_obligation",
+      "priority": 70,
+      "conditions": {
+        "expr": {
+          "or": [
+            { "eq": ["aegis.exceeds_segment_daily_amount", true] },
+            { "eq": ["aegis.exceeds_segment_daily_count", true] }
+          ]
+        }
+      },
+      "obligations": {
+        "kind": "human_approval",
+        "required_role": "credit_manager",
+        "required_fields": ["reason_code", "comment"]
+      }
+    },
+    {
+      "rule_id": "BEN-NEW-OFF",
+      "tool_pattern": "governed.action",
+      "decision": "allow_with_obligation",
+      "priority": 65,
+      "conditions": {
+        "expr": {
+          "and": [
+            { "eq": ["aegis.new_beneficiary", true] },
+            { "gte": ["amount", 5000000] },
+            { "eq": ["aegis.time_of_day", "off_hours"] }
+          ]
+        }
+      },
+      "obligations": {
+        "kind": "human_approval",
+        "required_role": "credit_manager",
+        "required_fields": ["reason_code", "comment"]
+      }
+    },
+    {
+      "rule_id": "FRD-SCORE-RET",
+      "tool_pattern": "governed.action",
+      "decision": "deny",
+      "priority": 95,
+      "conditions": {
+        "hard_stop": true,
+        "expr": {
+          "and": [
+            { "eq": ["aegis.segment", "retail_standard"] },
+            { "gte": ["model.score", 0.9] }
+          ]
+        }
+      },
+      "obligations": {
+        "kind": "human_approval",
+        "required_role": "fraud_analyst",
+        "release_requires_role": "fraud_analyst",
+        "required_fields": ["reason_code", "comment"]
+      }
+    },
+    {
       "rule_id": "LN-07",
       "tool_pattern": "governed.action",
       "decision": "allow_with_obligation",
       "priority": 50,
       "conditions": {
         "expr": {
-          "gt": [
-            "model.score",
-            0.7
+          "and": [
+            { "gt": ["model.score", 0.7] },
+            { "lt": ["model.score", 0.9] }
           ]
         }
       },
@@ -166,7 +281,39 @@
       "name": "Retail loan decision",
       "product": "retail_loan",
       "record_only": false,
-      "on_unreachable": "hold"
+      "on_unreachable": "hold",
+      "executable_params": [
+        "amount",
+        "currency",
+        "beneficiary_account",
+        "product"
+      ],
+      "execution_control": "enforce",
+      "on_aegis_unavailable": "allow_and_flag",
+      "action_type": "loan.disburse",
+      "token_ttl_sec": 3600,
+      "required_grade": "G2",
+      "on_missing": "exception",
+      "grade_deadline_hours": 24
+    },
+    {
+      "name": "Payment transfer",
+      "product": "payment_transfer",
+      "record_only": false,
+      "on_unreachable": "hold",
+      "executable_params": [
+        "amount",
+        "currency",
+        "beneficiary_account",
+        "product"
+      ],
+      "execution_control": "enforce",
+      "on_aegis_unavailable": "allow_and_flag",
+      "action_type": "payment.transfer",
+      "token_ttl_sec": 3600,
+      "required_grade": "G2",
+      "on_missing": "exception",
+      "grade_deadline_hours": 24
     }
   ],
   "labels": {
@@ -174,6 +321,11 @@
       "AUTH-RL-1": "Within officer limit",
       "AUTH-RL-2": "Above officer limit",
       "AUTH-RL-HIGH": "Above manager band",
+      "AUTH-XFER-1": "Within transfer officer limit",
+      "AUTH-XFER-2": "Above transfer officer limit",
+      "VEL-SEG-DAY": "Segment daily limit (Aegis-reported)",
+      "BEN-NEW-OFF": "New beneficiary off-hours",
+      "FRD-SCORE-RET": "Retail fraud score hard stop",
       "LN-07": "High model score requires Credit Manager",
       "PAY-03": "Payment callback verification",
       "SANC-01": "Sanctions / PEP hard stop"
@@ -182,15 +334,18 @@
       "credit_officer": "Credit Officer",
       "credit_manager": "Credit Manager",
       "compliance_officer": "Compliance Officer",
+      "fraud_analyst": "Fraud Analyst",
       "head_of_compliance": "Head of Compliance",
       "dpo": "DPO"
     },
     "product_labels": {
-      "retail_loan": "Loan disbursement"
+      "retail_loan": "Loan disbursement",
+      "payment_transfer": "Payment transfer"
     },
     "event_type_labels": {
       "loan_decision": "Loan disbursement",
-      "loan_disbursement": "Loan disbursement"
+      "loan_disbursement": "Loan disbursement",
+      "payment_transfer": "Payment transfer"
     }
   }
 }

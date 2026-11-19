@@ -822,7 +822,7 @@ CREATE TABLE public.forensic_receipt (
     sig_value_b64 text NOT NULL,
     issued_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT forensic_receipt_mode_check CHECK ((mode = ANY (ARRAY['enforce'::text, 'record_only'::text]))),
-    CONSTRAINT forensic_receipt_outcome_check CHECK ((outcome = ANY (ARRAY['allow'::text, 'hold'::text, 'stop'::text, 'expired'::text, 'approved'::text])))
+    CONSTRAINT forensic_receipt_outcome_check CHECK ((outcome = ANY (ARRAY['allow'::text, 'hold'::text, 'stop'::text, 'expired'::text, 'approved'::text, 'declined'::text, 'released'::text])))
 );
 
 --

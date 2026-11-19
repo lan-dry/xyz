@@ -1,0 +1,37 @@
+# Stage 8 bank-core Postgres (accounts + transactions). Prefer wal_level=logical
+# so a collector can be attached later. Apps run as Node processes, not here.
+#
+#   docker compose -f tools/bank-simulator/docker-compose.bank.yml up -d
+#   BANK_CORE_DATABASE_URL=postgresql://salanor:salanor@127.0.0.1:5436/bank_core
+
+services:
+  bank-core-pg:
+    image: postgres:16-alpine
+    container_name: salanor-bank-core-pg
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_USER: salanor
+      POSTGRES_PASSWORD: salanor
+      POSTGRES_DB: bank_core
+    command:
+      - postgres
+      - -c
+      - wal_level=logical
+      - -c
+      - max_replication_slots=10
+      - -c
+      - max_wal_senders=10
+    volumes:
+      - bank_core_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salanor -d bank_core"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  bank_core_pg_data:
+    name: salanor_bank_core_pg_data

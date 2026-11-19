@@ -6,7 +6,6 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { ErrorAlert, ui } from "@/components/console/console-ui";
-import { useOrgProfile } from "@/hooks/use-org-profile";
 import { consoleApi } from "@/lib/api";
 import { formatConsoleDate } from "@/lib/format-display";
 import { idApi } from "@/lib/id-api";
@@ -129,8 +128,6 @@ function BillingSettingsInner() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [banner, setBanner] = useState<string | null>(null);
-  const { isDemo } = useOrgProfile();
-
   const meQuery = useQuery({
     queryKey: ["id", "me"],
     queryFn: () => idApi<MeResponse>("/auth/me"),
@@ -212,19 +209,11 @@ function BillingSettingsInner() {
       <section className={settings.settingCard}>
         <h2>Plan and billing</h2>
         <p>
-          {isDemo ? (
-            <>
-              This is a demo organisation. Plan meters are shown for realism;
-              there is no invoice for synthetic demo traffic. Production tenants
-              use the same Plan and billing screen with real usage.
-            </>
-          ) : (
-            <>
-              Free covers evaluation. Paid plans are billed monthly for production
-              volume. See{" "}
-              <a href={`${MARKETING_URL}/pricing`}>full plan comparison</a>.
-            </>
-          )}
+          <>
+            Free covers evaluation. Paid plans are billed monthly for production
+            volume. See{" "}
+            <a href={`${MARKETING_URL}/pricing`}>full plan comparison</a>.
+          </>
         </p>
         {banner ? (
           <p

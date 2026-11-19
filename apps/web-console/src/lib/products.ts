@@ -14,14 +14,14 @@ export const PLATFORM_PRODUCTS = [
     description: "Risk metrics and reinsurance bridge (preview, not GA)",
     href: "/insurance",
     external: false,
-    /** Hidden in nav until insurance-api is connected — do not show an empty preview. */
+    /** Hidden in nav until insurance-api is connected - do not show an empty preview. */
     status: "hidden" as const,
   },
 ] as const;
 
 export type ProductSlug = (typeof PLATFORM_PRODUCTS)[number]["slug"];
 
-/** Products shown in the console / platform switcher. */
+/** Products shown in the console / platform switcher (active only). */
 export const VISIBLE_PLATFORM_PRODUCTS = PLATFORM_PRODUCTS.filter(
-  (p) => p.status !== "hidden",
+  (p) => p.status === "active",
 );

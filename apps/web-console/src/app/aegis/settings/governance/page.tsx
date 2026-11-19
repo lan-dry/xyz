@@ -324,7 +324,7 @@ export default function GovernanceSettingsPage() {
                 <p className={settings.settingsRowHint}>
                   When a hold needs a human, email active members who can act: org
                   owners, admins, approvers, and bank-role holders (resolved from
-                  membership — not a hardcoded address list). Requires Resend on the
+                  membership - not a hardcoded address list). Requires Resend on the
                   Aegis API host. Toggle only; recipients stay role-based.
                 </p>
               </div>

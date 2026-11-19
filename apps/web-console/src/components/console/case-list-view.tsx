@@ -329,7 +329,7 @@ export function CaseListView({ variant }: { variant: CaseListVariant }) {
           description={
             hasFilters
               ? "Try clearing filters or switch environment."
-              : "Once an agent runs a governed action, you will see plain-language cards here — what happened, whether it was allowed, and a link to the receipt."
+              : "Once an agent runs a governed action, you will see plain-language cards here: what happened, whether it was allowed, and a link to the receipt."
           }
           action={
             hasFilters ? undefined : (

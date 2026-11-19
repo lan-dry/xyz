@@ -1,58 +1,142 @@
 {
-  "_readme": "Synthetic Demo Bank history seeded by `pnpm pilot:seed-history` / `pnpm demo:fresh`. All names, amounts and branches are invented. Real people's emails and passwords never go in this file: they live only in the uncommitted .demo-tenant-emails.local.json. Point DEMO_HISTORY_FILE at another JSON file with the same shape to change the story. `decide.by` is a persona key from that local file (manager, head, ...). Case ids and idempotency keys are derived from `n`, so a re-run never duplicates a case.",
-  "version": 1,
+  "_readme": "Synthetic Demo Bank history seeded by `pnpm pilot:seed-history` / `pnpm demo:fresh`. All names, amounts and branches are invented. Real people's emails and passwords never go in this file: they live only in the uncommitted .demo-tenant-emails.local.json. Point DEMO_HISTORY_FILE at another JSON file with the same shape to change the story. `decide.by` is a persona key from that local file (manager, head, ...). Case ids and idempotency keys are derived from `n` + event_type (LN-RW-2026-##### / PAY-RW-2026-#####). Expanded to ~60 days of mixed transfers/loans (v3).",
+  "version": 3,
   "stories": [
     {
       "n": "01",
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 1200000, "currency": "RWF", "applicant_name": "Uwase Aline", "branch": "Kigali - Nyarugenge", "loan_purpose": "School fees bridge loan" }
+      "attributes": {
+        "amount": 1200000,
+        "currency": "RWF",
+        "applicant_name": "Uwase Aline",
+        "branch": "Kigali - Nyarugenge",
+        "loan_purpose": "School fees bridge loan",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
     },
     {
       "n": "02",
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 850000, "currency": "RWF", "applicant_name": "Habimana Jean Claude", "branch": "Huye", "loan_purpose": "Motorcycle taxi licence" }
+      "attributes": {
+        "amount": 850000,
+        "currency": "RWF",
+        "applicant_name": "Habimana Jean Claude",
+        "branch": "Huye",
+        "loan_purpose": "Motorcycle taxi licence",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-HY-0088",
+        "requester_email": "officer@demo-bank.local"
+      }
     },
     {
       "n": "03",
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 3400000, "currency": "RWF", "applicant_name": "Mukeshimana Joselyne", "branch": "Musanze", "loan_purpose": "Tailoring workshop" }
+      "attributes": {
+        "amount": 3400000,
+        "currency": "RWF",
+        "applicant_name": "Mukeshimana Joselyne",
+        "branch": "Musanze",
+        "loan_purpose": "Tailoring workshop",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-MS-0211",
+        "requester_email": "officer@demo-bank.local"
+      }
     },
     {
       "n": "04",
       "event_type": "data_access",
       "product": "customer_data",
       "agent": "customer-data",
-      "attributes": { "amount": 1000000, "currency": "RWF", "national_id": "1199880045123456", "purpose": "kyc_refresh", "applicant_name": "Ishimwe Grace" }
+      "attributes": {
+        "amount": 1000000,
+        "currency": "RWF",
+        "national_id": "1199880045123456",
+        "purpose": "kyc_refresh",
+        "applicant_name": "Ishimwe Grace",
+        "requester_name": "Diane Uwizeye",
+        "requester_role": "compliance_officer",
+        "requester_officer_id": "CMP-KG-0007",
+        "requester_email": "compliance@demo-bank.local"
+      }
     },
     {
       "n": "05",
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 18000000, "currency": "RWF", "applicant_name": "Mukamana Divine", "branch": "Rubavu", "loan_purpose": "Dairy cooperative equipment" },
-      "decide": { "by": "manager", "decision": "approve", "reason": "Cooperative accounts reviewed, repayment plan fits cash flow.", "reason_code": "within_policy" }
+      "attributes": {
+        "amount": 18000000,
+        "currency": "RWF",
+        "applicant_name": "Mukamana Divine",
+        "branch": "Rubavu",
+        "loan_purpose": "Dairy cooperative equipment",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-RB-0033",
+        "requester_email": "officer@demo-bank.local"
+      },
+      "decide": {
+        "by": "manager",
+        "decision": "approve",
+        "reason": "Cooperative accounts reviewed, repayment plan fits cash flow.",
+        "reason_code": "within_policy"
+      }
     },
     {
       "n": "06",
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 9500000, "currency": "RWF", "applicant_name": "Nkurunziza Alexis", "branch": "Rwamagana", "loan_purpose": "Poultry house expansion" },
-      "decide": { "by": "manager", "decision": "approve", "reason": "Collateral verified on site.", "reason_code": "within_policy" }
+      "attributes": {
+        "amount": 9500000,
+        "currency": "RWF",
+        "applicant_name": "Nkurunziza Alexis",
+        "branch": "Rwamagana",
+        "loan_purpose": "Poultry house expansion",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-RW-0155",
+        "requester_email": "officer@demo-bank.local"
+      },
+      "decide": {
+        "by": "manager",
+        "decision": "approve",
+        "reason": "Collateral verified on site.",
+        "reason_code": "within_policy"
+      }
     },
     {
       "n": "07",
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 28000000, "currency": "RWF", "applicant_name": "Kamanzi Emmanuel", "branch": "Rwamagana", "loan_purpose": "Commercial property fit-out" },
-      "decide": { "by": "manager", "decision": "decline", "reason": "Collateral does not cover the exposure." }
+      "attributes": {
+        "amount": 28000000,
+        "currency": "RWF",
+        "applicant_name": "Kamanzi Emmanuel",
+        "branch": "Rwamagana",
+        "loan_purpose": "Commercial property fit-out",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-RW-0156",
+        "requester_email": "officer@demo-bank.local"
+      },
+      "decide": {
+        "by": "manager",
+        "decision": "decline",
+        "reason": "Collateral does not cover the exposure."
+      }
     },
     {
       "n": "08",
@@ -65,9 +149,23 @@
         "applicant_name": "Niyonsenga Eric",
         "branch": "Kigali - Gasabo",
         "loan_purpose": "Minibus (public transport) purchase",
-        "model": { "id": "risk-v2", "version": "2.1", "score": 0.82, "recommendation": "decline" }
+        "model": {
+          "id": "risk-v2",
+          "version": "2.1",
+          "score": 0.82,
+          "recommendation": "decline"
+        },
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-GS-0091",
+        "requester_email": "officer@demo-bank.local"
       },
-      "decide": { "by": "head", "decision": "approve", "reason": "Model override reviewed: stable licensed route income.", "reason_code": "model_override_reviewed" }
+      "decide": {
+        "by": "head",
+        "decision": "approve",
+        "reason": "Model override reviewed: stable licensed route income.",
+        "reason_code": "model_override_reviewed"
+      }
     },
     {
       "n": "09",
@@ -80,9 +178,20 @@
         "applicant_name": "Nsengiyumva Patrick",
         "branch": "Kigali - Kicukiro",
         "loan_purpose": "Disbursement to settlement account",
-        "payment": { "callback_verified": false, "beneficiary_bank": "Synthetic Bank Kigali" }
+        "payment": {
+          "callback_verified": false,
+          "beneficiary_bank": "Synthetic Bank Kigali"
+        },
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KC-0044",
+        "requester_email": "officer@demo-bank.local"
       },
-      "decide": { "by": "manager", "decision": "decline", "reason": "Beneficiary bank callback not verified." }
+      "decide": {
+        "by": "manager",
+        "decision": "decline",
+        "reason": "Beneficiary bank callback not verified."
+      }
     },
     {
       "n": "10",
@@ -95,7 +204,15 @@
         "applicant_name": "Test Subject (screening hit)",
         "branch": "Kigali - Nyarugenge",
         "loan_purpose": "Personal loan",
-        "screening": { "sanctions_hit": false, "pep_hit": true, "list": "PEP watchlist (synthetic)" }
+        "screening": {
+          "sanctions_hit": false,
+          "pep_hit": true,
+          "list": "PEP watchlist (synthetic)"
+        },
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0143",
+        "requester_email": "officer@demo-bank.local"
       }
     },
     {
@@ -103,8 +220,1104 @@
       "event_type": "loan_decision",
       "product": "retail_loan",
       "agent": "credit-decision",
-      "attributes": { "amount": 15000000, "currency": "RWF", "applicant_name": "Mutesi Chantal", "branch": "Huye", "loan_purpose": "Agro-processing equipment" },
-      "decide": { "by": "manager", "decision": "approve", "reason": "Cash-flow forecast reviewed.", "reason_code": "within_policy" }
+      "attributes": {
+        "amount": 15000000,
+        "currency": "RWF",
+        "applicant_name": "Mutesi Chantal",
+        "branch": "Huye",
+        "loan_purpose": "Agro-processing equipment",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-HY-0089",
+        "requester_email": "officer@demo-bank.local"
+      },
+      "decide": {
+        "by": "manager",
+        "decision": "approve",
+        "reason": "Cash-flow forecast reviewed.",
+        "reason_code": "within_policy"
+      }
+    },
+    {
+      "n": "12",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 350000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1000",
+        "segment": "retail_standard",
+        "channel": "mobile",
+        "beneficiary_account": "BEN-RW-2000",
+        "beneficiary_country": "KE",
+        "applicant_name": "Uwase Aline",
+        "branch": "Kigali - Nyarugenge",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "13",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1007",
+        "segment": "retail_standard",
+        "channel": "branch",
+        "beneficiary_account": "BEN-RW-2001",
+        "beneficiary_country": "RW",
+        "applicant_name": "Habimana Jean Claude",
+        "branch": "Kigali - Gasabo",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "14",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 1200000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1014",
+        "segment": "retail_standard",
+        "channel": "agent",
+        "beneficiary_account": "BEN-RW-2002",
+        "beneficiary_country": "RW",
+        "applicant_name": "Mukeshimana Joselyne",
+        "branch": "Kigali - Kicukiro",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "15",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 2400000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1021",
+        "segment": "private_banking",
+        "channel": "ussd",
+        "beneficiary_account": "BEN-RW-2003",
+        "beneficiary_country": "RW",
+        "applicant_name": "Ishimwe Grace",
+        "branch": "Huye",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "16",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 3100000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1028",
+        "segment": "retail_standard",
+        "channel": "web",
+        "beneficiary_account": "BEN-RW-2004",
+        "beneficiary_country": "RW",
+        "applicant_name": "Mukamana Divine",
+        "branch": "Musanze",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "17",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 4800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1035",
+        "segment": "retail_standard",
+        "channel": "mobile",
+        "beneficiary_account": "BEN-RW-2005",
+        "beneficiary_country": "RW",
+        "applicant_name": "Niyonsenga Eric",
+        "branch": "Rubavu",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "18",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 1500000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1042",
+        "segment": "retail_standard",
+        "channel": "branch",
+        "beneficiary_account": "BEN-RW-2006",
+        "beneficiary_country": "RW",
+        "applicant_name": "Kamanzi Emmanuel",
+        "branch": "Rwamagana",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "19",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 900000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1049",
+        "segment": "private_banking",
+        "channel": "agent",
+        "beneficiary_account": "BEN-RW-2007",
+        "beneficiary_country": "RW",
+        "applicant_name": "Mutesi Chantal",
+        "branch": "Nyagatare",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "20",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 350000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1056",
+        "segment": "retail_standard",
+        "channel": "ussd",
+        "beneficiary_account": "BEN-RW-2008",
+        "beneficiary_country": "RW",
+        "applicant_name": "Bizimana Theoneste",
+        "branch": "Kigali - Nyarugenge",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "21",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1063",
+        "segment": "retail_standard",
+        "channel": "web",
+        "beneficiary_account": "BEN-RW-2009",
+        "beneficiary_country": "RW",
+        "applicant_name": "Nsengiyumva Paul",
+        "branch": "Kigali - Gasabo",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "22",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 1200000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1070",
+        "segment": "retail_standard",
+        "channel": "mobile",
+        "beneficiary_account": "BEN-RW-2010",
+        "beneficiary_country": "RW",
+        "applicant_name": "Ingabire Solange",
+        "branch": "Kigali - Kicukiro",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "23",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 2400000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1077",
+        "segment": "private_banking",
+        "channel": "branch",
+        "beneficiary_account": "BEN-RW-2011",
+        "beneficiary_country": "KE",
+        "applicant_name": "Uwimana Claudine",
+        "branch": "Huye",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "24",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 18000000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1004",
+        "segment": "retail_standard",
+        "channel": "agent",
+        "beneficiary_account": "BEN-RW-2012",
+        "beneficiary_country": "RW",
+        "applicant_name": "Kayitesi Alice",
+        "branch": "Musanze",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      },
+      "decide": {
+        "by": "manager",
+        "decision": "approve",
+        "reason": "Collateral verified at branch",
+        "reason_code": "collateral_ok"
+      }
+    },
+    {
+      "n": "25",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 4800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1011",
+        "segment": "retail_standard",
+        "channel": "ussd",
+        "beneficiary_account": "BEN-RW-2013",
+        "beneficiary_country": "RW",
+        "applicant_name": "Nkurunziza Patrick",
+        "branch": "Rubavu",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "26",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 1500000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1018",
+        "segment": "retail_standard",
+        "channel": "web",
+        "beneficiary_account": "BEN-RW-2014",
+        "beneficiary_country": "RW",
+        "applicant_name": "Gatete Sandrine",
+        "branch": "Rwamagana",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "27",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 900000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1025",
+        "segment": "private_banking",
+        "channel": "mobile",
+        "beneficiary_account": "BEN-RW-2015",
+        "beneficiary_country": "RW",
+        "applicant_name": "Mugisha Fabrice",
+        "branch": "Nyagatare",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "28",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 350000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1032",
+        "segment": "retail_standard",
+        "channel": "branch",
+        "beneficiary_account": "BEN-RW-2016",
+        "beneficiary_country": "RW",
+        "applicant_name": "Uwera Liliane",
+        "branch": "Kigali - Nyarugenge",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "29",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1039",
+        "segment": "retail_standard",
+        "channel": "agent",
+        "beneficiary_account": "BEN-RW-2017",
+        "beneficiary_country": "RW",
+        "applicant_name": "Hakizimana David",
+        "branch": "Kigali - Gasabo",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "30",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 1200000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1046",
+        "segment": "retail_standard",
+        "channel": "ussd",
+        "beneficiary_account": "BEN-RW-2018",
+        "beneficiary_country": "RW",
+        "applicant_name": "Nyiraneza Hope",
+        "branch": "Kigali - Kicukiro",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "31",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 2400000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1053",
+        "segment": "private_banking",
+        "channel": "web",
+        "beneficiary_account": "BEN-RW-2019",
+        "beneficiary_country": "RW",
+        "applicant_name": "Rukundo Kevin",
+        "branch": "Huye",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "32",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 3100000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1060",
+        "segment": "retail_standard",
+        "channel": "mobile",
+        "beneficiary_account": "BEN-RW-2020",
+        "beneficiary_country": "RW",
+        "applicant_name": "Uwase Aline",
+        "branch": "Musanze",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local",
+        "model": {
+          "id": "fraud-v3",
+          "version": "3.2",
+          "score": 0.94,
+          "recommendation": "block"
+        },
+        "product": "payment_transfer"
+      },
+      "decide": {
+        "by": "fraud",
+        "decision": "release",
+        "reason": "Customer confirmed via call-back; score asserted by source only",
+        "reason_code": "fraud_override"
+      }
+    },
+    {
+      "n": "33",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 4800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1067",
+        "segment": "retail_standard",
+        "channel": "branch",
+        "beneficiary_account": "BEN-RW-2021",
+        "beneficiary_country": "RW",
+        "applicant_name": "Habimana Jean Claude",
+        "branch": "Rubavu",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "34",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 1500000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1074",
+        "segment": "retail_standard",
+        "channel": "agent",
+        "beneficiary_account": "BEN-RW-2022",
+        "beneficiary_country": "KE",
+        "applicant_name": "Mukeshimana Joselyne",
+        "branch": "Rwamagana",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "35",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 900000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1001",
+        "segment": "private_banking",
+        "channel": "ussd",
+        "beneficiary_account": "BEN-RW-2023",
+        "beneficiary_country": "RW",
+        "applicant_name": "Ishimwe Grace",
+        "branch": "Nyagatare",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "36",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 350000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1008",
+        "segment": "retail_standard",
+        "channel": "web",
+        "beneficiary_account": "BEN-RW-2024",
+        "beneficiary_country": "RW",
+        "applicant_name": "Mukamana Divine",
+        "branch": "Kigali - Nyarugenge",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "37",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1015",
+        "segment": "retail_standard",
+        "channel": "mobile",
+        "beneficiary_account": "BEN-RW-2025",
+        "beneficiary_country": "RW",
+        "applicant_name": "Niyonsenga Eric",
+        "branch": "Kigali - Gasabo",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "38",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 1200000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1022",
+        "segment": "retail_standard",
+        "channel": "branch",
+        "beneficiary_account": "BEN-RW-2026",
+        "beneficiary_country": "RW",
+        "applicant_name": "Kamanzi Emmanuel",
+        "branch": "Kigali - Kicukiro",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "39",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 2400000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1029",
+        "segment": "private_banking",
+        "channel": "agent",
+        "beneficiary_account": "BEN-RW-2027",
+        "beneficiary_country": "RW",
+        "applicant_name": "Mutesi Chantal",
+        "branch": "Huye",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "40",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 6200000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1036",
+        "segment": "retail_standard",
+        "channel": "ussd",
+        "beneficiary_account": "BEN-NEW-OFFHRS-001",
+        "beneficiary_country": "RW",
+        "applicant_name": "Bizimana Theoneste",
+        "branch": "Musanze",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      },
+      "decide": {
+        "by": "manager",
+        "decision": "approve",
+        "reason": "Known supplier; off-hours exception",
+        "reason_code": "known_payee"
+      }
+    },
+    {
+      "n": "41",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 4800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1043",
+        "segment": "retail_standard",
+        "channel": "web",
+        "beneficiary_account": "BEN-RW-2029",
+        "beneficiary_country": "RW",
+        "applicant_name": "Nsengiyumva Paul",
+        "branch": "Rubavu",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "42",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 1500000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1050",
+        "segment": "retail_standard",
+        "channel": "mobile",
+        "beneficiary_account": "BEN-RW-2030",
+        "beneficiary_country": "RW",
+        "applicant_name": "Ingabire Solange",
+        "branch": "Rwamagana",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "43",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 900000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1057",
+        "segment": "private_banking",
+        "channel": "branch",
+        "beneficiary_account": "BEN-RW-2031",
+        "beneficiary_country": "RW",
+        "applicant_name": "Uwimana Claudine",
+        "branch": "Nyagatare",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "44",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 350000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1064",
+        "segment": "retail_standard",
+        "channel": "agent",
+        "beneficiary_account": "BEN-RW-2032",
+        "beneficiary_country": "RW",
+        "applicant_name": "Kayitesi Alice",
+        "branch": "Kigali - Nyarugenge",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "45",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1071",
+        "segment": "retail_standard",
+        "channel": "ussd",
+        "beneficiary_account": "BEN-RW-2033",
+        "beneficiary_country": "KE",
+        "applicant_name": "Nkurunziza Patrick",
+        "branch": "Kigali - Gasabo",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "46",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 1200000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1078",
+        "segment": "retail_standard",
+        "channel": "web",
+        "beneficiary_account": "BEN-RW-2034",
+        "beneficiary_country": "RW",
+        "applicant_name": "Gatete Sandrine",
+        "branch": "Kigali - Kicukiro",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "47",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 2400000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1005",
+        "segment": "private_banking",
+        "channel": "mobile",
+        "beneficiary_account": "BEN-RW-2035",
+        "beneficiary_country": "RW",
+        "applicant_name": "Mugisha Fabrice",
+        "branch": "Huye",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "48",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 3100000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1012",
+        "segment": "retail_standard",
+        "channel": "branch",
+        "beneficiary_account": "BEN-RW-2036",
+        "beneficiary_country": "RW",
+        "applicant_name": "Uwera Liliane",
+        "branch": "Musanze",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "49",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 4800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1019",
+        "segment": "retail_standard",
+        "channel": "agent",
+        "beneficiary_account": "BEN-RW-2037",
+        "beneficiary_country": "RW",
+        "applicant_name": "Hakizimana David",
+        "branch": "Rubavu",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "50",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 1500000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1026",
+        "segment": "retail_standard",
+        "channel": "ussd",
+        "beneficiary_account": "BEN-RW-2038",
+        "beneficiary_country": "RW",
+        "applicant_name": "Nyiraneza Hope",
+        "branch": "Rwamagana",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "51",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 900000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1033",
+        "segment": "private_banking",
+        "channel": "web",
+        "beneficiary_account": "BEN-RW-2039",
+        "beneficiary_country": "RW",
+        "applicant_name": "Rukundo Kevin",
+        "branch": "Nyagatare",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "52",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 350000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1040",
+        "segment": "retail_standard",
+        "channel": "mobile",
+        "beneficiary_account": "BEN-RW-2000",
+        "beneficiary_country": "RW",
+        "applicant_name": "Uwase Aline",
+        "branch": "Kigali - Nyarugenge",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "53",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1047",
+        "segment": "retail_standard",
+        "channel": "branch",
+        "beneficiary_account": "BEN-RW-2001",
+        "beneficiary_country": "RW",
+        "applicant_name": "Habimana Jean Claude",
+        "branch": "Kigali - Gasabo",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "54",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 1200000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1054",
+        "segment": "retail_standard",
+        "channel": "agent",
+        "beneficiary_account": "BEN-RW-2002",
+        "beneficiary_country": "RW",
+        "applicant_name": "Mukeshimana Joselyne",
+        "branch": "Kigali - Kicukiro",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "55",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 2400000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1061",
+        "segment": "private_banking",
+        "channel": "ussd",
+        "beneficiary_account": "BEN-RW-2003",
+        "beneficiary_country": "RW",
+        "applicant_name": "Ishimwe Grace",
+        "branch": "Huye",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "56",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 3100000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1068",
+        "segment": "retail_standard",
+        "channel": "web",
+        "beneficiary_account": "BEN-RW-2004",
+        "beneficiary_country": "KE",
+        "applicant_name": "Mukamana Divine",
+        "branch": "Musanze",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "57",
+      "event_type": "loan_decision",
+      "product": "retail_loan",
+      "agent": "credit-decision",
+      "attributes": {
+        "amount": 4800000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1075",
+        "segment": "retail_standard",
+        "channel": "mobile",
+        "beneficiary_account": "BEN-RW-2005",
+        "beneficiary_country": "RW",
+        "applicant_name": "Niyonsenga Eric",
+        "branch": "Rubavu",
+        "loan_purpose": "Working capital",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "58",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 1500000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1002",
+        "segment": "retail_standard",
+        "channel": "branch",
+        "beneficiary_account": "BEN-RW-2006",
+        "beneficiary_country": "RW",
+        "applicant_name": "Kamanzi Emmanuel",
+        "branch": "Rwamagana",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
+    },
+    {
+      "n": "59",
+      "event_type": "payment_transfer",
+      "product": "payment_transfer",
+      "agent": "payments-gateway",
+      "attributes": {
+        "amount": 900000,
+        "currency": "RWF",
+        "customer_id": "CUST-RW-1009",
+        "segment": "private_banking",
+        "channel": "agent",
+        "beneficiary_account": "BEN-RW-2007",
+        "beneficiary_country": "RW",
+        "applicant_name": "Mutesi Chantal",
+        "branch": "Nyagatare",
+        "loan_purpose": "Supplier settlement",
+        "requester_name": "Patience Ingabire",
+        "requester_role": "credit_officer",
+        "requester_officer_id": "OFF-KG-0142",
+        "requester_email": "officer@demo-bank.local"
+      }
     }
   ]
 }

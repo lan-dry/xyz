@@ -1,0 +1,14 @@
+{
+  "name": "@salanor/demo-bureau",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal Demo Credit Bureau stub: signs credit-score responses (AEGIS-SRC1) for Stage 7.",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/sign.test.mjs"
+  },
+  "dependencies": {
+    "@salanor/aegis-sdk": "workspace:*"
+  }
+}

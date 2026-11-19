@@ -1,0 +1,10 @@
+$ pnpm --filter aegis-api run build
+
+
+> aegis-api@0.0.0 build D:\PROJECTS\salanor\services\aegis-api
+> tsc -p tsconfig.build.json
+
+
+
+
+EXIT=0 ELAPSED_MS=8393

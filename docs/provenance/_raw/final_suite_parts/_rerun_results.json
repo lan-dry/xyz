@@ -1,0 +1,22 @@
+[
+  {
+    "name": "aegis-verify",
+    "exit": 0,
+    "elapsed": 1740
+  },
+  {
+    "name": "python-verify",
+    "exit": 0,
+    "elapsed": 325
+  },
+  {
+    "name": "web-console-build",
+    "exit": 0,
+    "elapsed": 47911
+  },
+  {
+    "name": "demo-runbook-walk",
+    "exit": 1,
+    "elapsed": 117756
+  }
+]

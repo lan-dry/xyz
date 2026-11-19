@@ -1,5 +1,5 @@
 /**
- * Plain-language outcomes for risk officers (Claude §11.2–11.3).
+ * Plain-language outcomes for risk officers (Claude section 11.2-11.3).
  * Technical APS values stay available in Technical details.
  */
 
@@ -67,7 +67,7 @@ export function outcomeFromTraceStatus(
   if (opts?.anomaly && (opts.deniedEvents ?? 0) === 0 && s !== "failed") {
     return {
       kind: "failed",
-      label: "Flagged — needs attention",
+      label: "Flagged - needs attention",
       chip: "Flagged",
     };
   }

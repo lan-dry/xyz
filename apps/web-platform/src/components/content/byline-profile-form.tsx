@@ -23,7 +23,7 @@ export function BylineProfileForm({ accountEmail, profile, action }: Props) {
       <p style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem", color: "var(--console-fg-muted)" }}>
         Account: {accountEmail}. This is <strong>your</strong> public author card on{" "}
         <code className="mono">/blog</code> and <code className="mono">/research</code>. Nothing is filled in
-        until you save — we only suggest your display name in the name field.
+        until you save. We only suggest your display name in the name field.
       </p>
 
       <input name="name" defaultValue={profile.name} placeholder="Full name" className={ui.input} required />
@@ -48,7 +48,7 @@ export function BylineProfileForm({ accountEmail, profile, action }: Props) {
         label="Profile photo"
         value={photoUrl}
         onChange={setPhotoUrl}
-        placeholder="Upload below — stored on marketing CDN path"
+        placeholder="Upload below (stored on marketing CDN path)"
       />
 
       <fieldset style={{ border: "none", padding: 0, margin: 0, display: "grid", gap: "0.5rem" }}>

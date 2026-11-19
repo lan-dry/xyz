@@ -1,0 +1,2241 @@
+# Flake loop summary
+# Date: 2026-11-19T08:24:30.268Z
+# Command: pnpm --filter aegis-api exec vitest run test/source-envelope.test.ts test/require-signed-events-setting.test.ts
+# Result: 25/25 PASS, 0/25 FAIL
+# Failed runs: none
+# Per-run: 1:PASS(17593ms) 2:PASS(16430ms) 3:PASS(13895ms) 4:PASS(13697ms) 5:PASS(14751ms) 6:PASS(18565ms) 7:PASS(15142ms) 8:PASS(13453ms) 9:PASS(13425ms) 10:PASS(14235ms) 11:PASS(13966ms) 12:PASS(13445ms) 13:PASS(15510ms) 14:PASS(15554ms) 15:PASS(14081ms) 16:PASS(14162ms) 17:PASS(14525ms) 18:PASS(15284ms) 19:PASS(13901ms) 20:PASS(14525ms) 21:PASS(14102ms) 22:PASS(14511ms) 23:PASS(13899ms) 24:PASS(14814ms) 25:PASS(14568ms)
+
+===== RUN 1/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 9567ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  440ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  5175ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 932ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:18:23
+   Duration  15.96s (transform 1.47s, setup 193ms, collect 4.69s, tests 10.50s, environment 0ms, prepare 205ms)
+
+
+>>> RESULT RUN 1: PASS exit=0 (17593ms)
+
+===== RUN 2/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 8640ms
+   ✓ source registry + signed envelope ingest (Stage 1) > same seq again → 409 seq_replay; lower seq → 409 seq_replay  415ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  476ms
+   ✓ source registry + signed envelope ingest (Stage 1) > console Sources API (admin only) > register → list → rotate → revoke → history  306ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  3676ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 836ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:18:41
+   Duration  14.63s (transform 1.33s, setup 163ms, collect 4.44s, tests 9.48s, environment 0ms, prepare 200ms)
+
+
+>>> RESULT RUN 2: PASS exit=0 (16430ms)
+
+===== RUN 3/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 7029ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  326ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  3276ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 747ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:18:57
+   Duration  12.15s (transform 1.19s, setup 146ms, collect 3.71s, tests 7.78s, environment 0ms, prepare 187ms)
+
+
+>>> RESULT RUN 3: PASS exit=0 (13895ms)
+
+===== RUN 4/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 6973ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  325ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  3121ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 765ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:19:11
+   Duration  12.10s (transform 1.17s, setup 154ms, collect 3.69s, tests 7.74s, environment 0ms, prepare 191ms)
+
+
+>>> RESULT RUN 4: PASS exit=0 (13697ms)
+
+===== RUN 5/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 7074ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  324ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2913ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 879ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:19:25
+   Duration  12.89s (transform 1.33s, setup 154ms, collect 4.17s, tests 7.95s, environment 0ms, prepare 198ms)
+
+
+>>> RESULT RUN 5: PASS exit=0 (14751ms)
+
+===== RUN 6/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 10780ms
+   ✓ source registry + signed envelope ingest (Stage 1) > rotation: new key works, old key is refused (key_inactive)  521ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  526ms
+   ✓ source registry + signed envelope ingest (Stage 1) > adjacent sequence numbers record no gap  694ms
+   ✓ source registry + signed envelope ingest (Stage 1) > unsigned events: accepted by default, rejected when the org requires signed events  462ms
+   ✓ source registry + signed envelope ingest (Stage 1) > console Sources API (admin only) > register → list → rotate → revoke → history  554ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  3767ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 900ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:19:39
+   Duration  16.81s (transform 1.32s, setup 158ms, collect 4.39s, tests 11.68s, environment 0ms, prepare 192ms)
+
+
+>>> RESULT RUN 6: PASS exit=0 (18565ms)
+
+===== RUN 7/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 7521ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  353ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  3323ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 868ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:19:58
+   Duration  13.32s (transform 1.34s, setup 152ms, collect 4.19s, tests 8.39s, environment 0ms, prepare 206ms)
+
+
+>>> RESULT RUN 7: PASS exit=0 (15142ms)
+
+===== RUN 8/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 6513ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  311ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2735ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 874ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:20:13
+   Duration  11.83s (transform 1.24s, setup 144ms, collect 3.78s, tests 7.39s, environment 0ms, prepare 192ms)
+
+
+>>> RESULT RUN 8: PASS exit=0 (13453ms)
+
+===== RUN 9/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 6612ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  325ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2809ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 769ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:20:27
+   Duration  11.89s (transform 1.24s, setup 148ms, collect 3.83s, tests 7.38s, environment 0ms, prepare 190ms)
+
+
+>>> RESULT RUN 9: PASS exit=0 (13425ms)
+
+===== RUN 10/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 7469ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  372ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  3629ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 783ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:20:40
+   Duration  12.67s (transform 1.18s, setup 152ms, collect 3.70s, tests 8.25s, environment 0ms, prepare 209ms)
+
+
+>>> RESULT RUN 10: PASS exit=0 (14235ms)
+
+===== RUN 11/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 6701ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  330ms
+   ✓ source registry + signed envelope ingest (Stage 1) > console Sources API (admin only) > register → list → rotate → revoke → history  325ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2762ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 777ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:20:54
+   Duration  12.42s (transform 1.30s, setup 161ms, collect 4.23s, tests 7.48s, environment 0ms, prepare 197ms)
+
+
+>>> RESULT RUN 11: PASS exit=0 (13966ms)
+
+===== RUN 12/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 6655ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2855ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 739ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:21:08
+   Duration  11.84s (transform 1.15s, setup 166ms, collect 3.73s, tests 7.39s, environment 0ms, prepare 193ms)
+
+
+>>> RESULT RUN 12: PASS exit=0 (13445ms)
+
+===== RUN 13/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (44 tests) 8360ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  321ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  3858ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 820ms
+
+ Test Files  2 passed (2)
+      Tests  47 passed (47)
+   Start at  10:21:22
+   Duration  13.97s (transform 1.42s, setup 150ms, collect 4.10s, tests 9.18s, environment 0ms, prepare 196ms)
+
+
+>>> RESULT RUN 13: PASS exit=0 (15510ms)
+
+===== RUN 14/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 7511ms
+   ✓ source registry + signed envelope ingest (Stage 1) > same seq again → 409 seq_replay; lower seq → 409 seq_replay  370ms
+   ✓ source registry + signed envelope ingest (Stage 1) > GET /sources/:sourceId/last-seq returns last accepted seq for Connector sync  360ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  311ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2784ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 790ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:21:37
+   Duration  13.80s (transform 1.71s, setup 167ms, collect 4.76s, tests 8.30s, environment 0ms, prepare 215ms)
+
+
+>>> RESULT RUN 14: PASS exit=0 (15554ms)
+
+===== RUN 15/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 6907ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  315ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2915ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 817ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:21:53
+   Duration  12.42s (transform 1.29s, setup 151ms, collect 3.99s, tests 7.72s, environment 0ms, prepare 200ms)
+
+
+>>> RESULT RUN 15: PASS exit=0 (14081ms)
+
+===== RUN 16/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 6793ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  337ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2868ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 833ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:22:07
+   Duration  12.38s (transform 1.33s, setup 144ms, collect 4.08s, tests 7.63s, environment 0ms, prepare 179ms)
+
+
+>>> RESULT RUN 16: PASS exit=0 (14162ms)
+
+===== RUN 17/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 6960ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  369ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2818ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 1014ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:22:21
+   Duration  12.96s (transform 1.26s, setup 140ms, collect 4.34s, tests 7.97s, environment 0ms, prepare 184ms)
+
+
+>>> RESULT RUN 17: PASS exit=0 (14525ms)
+
+===== RUN 18/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 7465ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  315ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  3485ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 739ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:22:36
+   Duration  13.40s (transform 1.50s, setup 171ms, collect 4.38s, tests 8.20s, environment 1ms, prepare 249ms)
+
+
+>>> RESULT RUN 18: PASS exit=0 (15284ms)
+
+===== RUN 19/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 7107ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  301ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2982ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 711ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:22:51
+   Duration  12.32s (transform 1.20s, setup 146ms, collect 3.80s, tests 7.82s, environment 0ms, prepare 191ms)
+
+
+>>> RESULT RUN 19: PASS exit=0 (13901ms)
+
+===== RUN 20/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 7069ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  327ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2980ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 800ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:23:05
+   Duration  12.97s (transform 1.49s, setup 156ms, collect 4.42s, tests 7.87s, environment 0ms, prepare 203ms)
+
+
+>>> RESULT RUN 20: PASS exit=0 (14525ms)
+
+===== RUN 21/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 6996ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  320ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2864ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 755ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:23:19
+   Duration  12.41s (transform 1.20s, setup 155ms, collect 3.96s, tests 7.75s, environment 0ms, prepare 194ms)
+
+
+>>> RESULT RUN 21: PASS exit=0 (14102ms)
+
+===== RUN 22/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 7320ms
+   ✓ source registry + signed envelope ingest (Stage 1) > same seq again → 409 seq_replay; lower seq → 409 seq_replay  300ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  342ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  3178ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 755ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:23:33
+   Duration  12.90s (transform 1.33s, setup 164ms, collect 4.11s, tests 8.07s, environment 1ms, prepare 210ms)
+
+
+>>> RESULT RUN 22: PASS exit=0 (14511ms)
+
+===== RUN 23/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 7008ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  317ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  2966ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 759ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:23:48
+   Duration  12.30s (transform 1.26s, setup 143ms, collect 3.90s, tests 7.77s, environment 0ms, prepare 183ms)
+
+
+>>> RESULT RUN 23: PASS exit=0 (13899ms)
+
+===== RUN 24/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 8037ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  309ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  4061ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 780ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:24:02
+   Duration  13.26s (transform 1.17s, setup 153ms, collect 3.75s, tests 8.82s, environment 0ms, prepare 204ms)
+
+
+>>> RESULT RUN 24: PASS exit=0 (14814ms)
+
+===== RUN 25/25 =====
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/source-envelope.test.ts (45 tests) 7425ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  344ms
+   ✓ source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting  3020ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/require-signed-events-setting.test.ts (3 tests) 786ms
+
+ Test Files  2 passed (2)
+      Tests  48 passed (48)
+   Start at  10:24:17
+   Duration  12.94s (transform 1.22s, setup 164ms, collect 4.01s, tests 8.21s, environment 0ms, prepare 195ms)
+
+
+>>> RESULT RUN 25: PASS exit=0 (14568ms)
+

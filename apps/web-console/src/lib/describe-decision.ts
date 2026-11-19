@@ -32,14 +32,14 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   policy_publish: "Policy publish",
   generic: "Governed action",
   governed_action: "Governed action",
-  // Demo banking pack event types (illustrative — prefer pack.labels.event_type_labels).
+  // Demo banking pack event types (illustrative - prefer pack.labels.event_type_labels).
   loan_decision: "Loan disbursement",
   loan_disbursement: "Loan disbursement",
 };
 
 /**
  * Demo-pack rule titles only (banking seed). Prefer `pack.labels.rule_titles`.
- * Not engine defaults — missing codes fall through to the raw rule id.
+ * Not engine defaults - missing codes fall through to the raw rule id.
  */
 export const RULE_TITLES: Record<string, string> = {
   "AUTH-RL-1": "Within officer limit",
@@ -48,6 +48,11 @@ export const RULE_TITLES: Record<string, string> = {
   "AUTH-RL": "Within officer limit",
   "AUTH-RL-HIGH": "Above manager band",
   "LN-07": "High model score requires Credit Manager",
+  "VEL-SEG-DAY": "Segment daily limit (Aegis-reported)",
+  "BEN-NEW-OFF": "New beneficiary off-hours",
+  "FRD-SCORE-RET": "Retail fraud score hard stop",
+  "AUTH-XFER-1": "Within transfer officer limit",
+  "AUTH-XFER-2": "Above transfer officer limit",
   "PAY-03": "Payment callback verification",
   "SANC-01": "Sanctions / PEP hard stop",
   "CLM-01": "Within claims handler limit",
@@ -137,7 +142,7 @@ function formatAmount(amount: number | null | undefined, currency?: string | nul
   if (amount == null || !Number.isFinite(amount)) return null;
   const formatted = Math.round(amount).toLocaleString("en-GB");
   const cur = currency?.trim() ? currency.trim().toUpperCase() : "";
-  // No default currency — missing currency means show the number alone.
+  // No default currency - missing currency means show the number alone.
   return cur ? `${cur} ${formatted}` : formatted;
 }
 
@@ -269,8 +274,9 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
     const heldRole =
       receipt.required_role_label ??
       (receipt.required_role ? formatRoleLabel(receipt.required_role) : null);
+    const article = heldRole && /^[aeiou]/i.test(heldRole) ? "an" : "a";
     const held = rule
-      ? ` It was held because rule ${rule} requires ${heldRole ? `a ${heldRole}` : "human approval"}.`
+      ? ` It was held because rule ${rule} requires ${heldRole ? `${article} ${heldRole}` : "human approval"}.`
       : "";
     return (
       `${subject} was declined by ${who ?? "an authorised approver"}${when}${reason}.${held} ${pol}`
@@ -294,6 +300,10 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
   }
 
   if (outcome === "hold") {
+    const basis = receipt.decision_basis?.explanation?.trim();
+    if (basis && /^(Held:|Stopped:)/i.test(basis)) {
+      return `${basis} ${pol}`.trim();
+    }
     const role =
       receipt.required_role_label ??
       formatRoleLabel(receipt.required_role) ??
@@ -306,6 +316,10 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
   }
 
   if (outcome === "stop") {
+    const basis = receipt.decision_basis?.explanation?.trim();
+    if (basis && /^(Held:|Stopped:)/i.test(basis)) {
+      return `${basis} ${pol}`.trim();
+    }
     return (
       `${subject} was stopped` +
       (rule ? ` by rule ${rule}` : " by policy") +
@@ -314,15 +328,14 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
   }
 
   if (outcome === "released" || outcome === "approved") {
+    const needRole =
+      receipt.required_role_label ??
+      formatRoleLabel(receipt.required_role) ??
+      "authorised approver";
+    const article = /^[aeiou]/i.test(needRole) ? "an" : "a";
     return (
       `${subject} was held` +
-      (rule
-        ? ` because rule ${rule} requires a ${
-            receipt.required_role_label ??
-            formatRoleLabel(receipt.required_role) ??
-            "authorised approver"
-          }`
-        : "") +
+      (rule ? ` because rule ${rule} requires ${article} ${needRole}` : "") +
       `. Approved by ${who ?? "an authorised approver"}${when}${
         reasonText ? ` with the reason: ${reasonText}` : ""
       }. ${pol}`

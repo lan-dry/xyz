@@ -57,6 +57,11 @@ describe("console route auth matrix — 401 without session", () => {
       .replace(":eventId", "evt_x")
       .replace(":traceId", "tr_x")
       .replace(":reportId", "sealed_receipts")
+      .replace(":sourceId", "src_x")
+      .replace(":keyId", "key_x")
+      .replace(":exceptionId", "rex_x")
+      .replace(":feedId", "feed_x")
+      .replace(":runId", "rr_x")
       .replace(":id", "apr_x");
     it(`${route.method} ${route.path} → ${route.anon} without cookie`, async () => {
       const res = await app.request(path, {
@@ -77,10 +82,11 @@ describe("aegis ingest routes — 401 without bearer", () => {
 
   for (const route of AEGIS_ROUTE_RULES) {
     it(`${route.method} ${route.path} → ${route.anon} without Authorization`, async () => {
+      const withBody = ["POST", "PUT", "PATCH"].includes(route.method);
       const res = await app.request(route.path, {
         method: route.method,
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
+        headers: withBody ? { "Content-Type": "application/json" } : undefined,
+        body: withBody ? "{}" : undefined,
       });
       expect([route.anon, 401, 403]).toContain(res.status);
     });

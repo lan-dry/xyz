@@ -120,6 +120,27 @@ Known gap: the approvals screen sends only a reason, so approvals that also need
 
 ---
 
+## 12. Lying to Aegis (~8 minutes)
+
+Forensic / risk audience. Goal: show that a lie is **attributable** and often **blockable**,
+and say out loud what still stays at G1. Never say the data was "verified" as true.
+
+Standing: simulator Connected; admin + manager sessions ready; optional Red Team panel
+(`pnpm bank:up` or simulator Stage 8 UI). Grades: say them only when the case panel shows them.
+
+| Beat | ~time | What you do | What you say / point at |
+| --- | --- | --- | --- |
+| 1 | 2 min | Simulator: **Loan RWF 18,000,000**. Manager approves. Confirm / execute with matching params. Run reconcile (or show a case already matched). Open the case. | Held → approved → executed → matched. **Grade** and the **five-fact checklist**. "Record intact" vs "source of the data" are two lines. |
+| 2 | 1.5 min | Try to execute a **different amount** than the token (Red Team #5, or confirm with altered params). | Refused. Incident / `execution_mismatch` sealed. Money must not move. |
+| 3 | 1.5 min | Insider **changes the ledger directly** (Red Team #11 / collector path). Open **Exceptions**. | `db_change_without_event` (or equivalent). "The application never sent an event." Live CDC is Partial if Docker logical decoding is not up — say so. |
+| 4 | 1.5 min | Download the evidence bundle from beat 1. Drop it on **Verify**. Optionally `pnpm aegis-verify` and `tools/independent-verify` on the envelope. | Seal / chain / source signature checks. Tamper one character → fails. |
+| 5 | 1.5 min | Honest limit: send or show a **consistently false but source-signed** value (Red Team honest-limit / `#` panel). | Stays **G1**, labelled as the source's claim. To raise it: reconcile (G2) or independent capture (G3). Aegis does not check content accuracy. |
+
+If beat 3 cannot run live, open Exceptions on a prior `db_change_without_event` fixture and
+mark the beat Partial — do not fake G3.
+
+---
+
 ## Operator prep (before the room)
 
 ```text

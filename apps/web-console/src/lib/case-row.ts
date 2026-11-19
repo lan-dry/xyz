@@ -140,7 +140,7 @@ export function approversLabel(s: CaseSummary | undefined): string {
     );
     return [...new Set(parts)].join(", ");
   }
-  if (s.outcome === "allow") return "None needed";
+  if (s.outcome === "allow") return "Approver: not needed";
   if (s.outcome === "stop") return "None";
   if (s.outcome === "hold") {
     return s.required_role

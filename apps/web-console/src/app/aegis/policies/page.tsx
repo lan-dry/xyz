@@ -133,7 +133,7 @@ const POLICY_TEMPLATES: Array<{
     label: "Refund by customer tier",
     blurb: "Ask a person for Standard-tier refunds above $200. Uses customer context, not a flat global cap.",
     form: {
-      name: "Refund — Standard tier hold",
+      name: "Refund - Standard tier hold",
       toolPattern: "stripe.paymentIntents.create",
       decision: "allow_with_obligation",
       ruleType: "max_per_tx",
@@ -303,7 +303,7 @@ function bankRuleSummary(rule: PolicyRule): string {
 export default function PoliciesPage() {
   const queryClient = useQueryClient();
   // Bank Rules surface (authority matrix, v3/v4 versions, diff) is the default
-  // Aegis Rules page — including production-style Demo Bank without bank_demo.
+  // Aegis Rules page - including production-style Demo Bank without bank_demo.
   // bank_demo only changes projector wording / CREATE confirm.
   const bankDemo = isBankDemoProfile();
   const bank = true;
@@ -1109,7 +1109,7 @@ export default function PoliciesPage() {
               <>
                 Start from a ready-made template (payment, refund, or data access), review the
                 draft, then <strong>Activate</strong>. Rules can use customer context such as
-                tier — not only a flat amount.
+                tier - not only a flat amount.
               </>
             )
           }

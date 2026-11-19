@@ -67,7 +67,7 @@ export default async function OpsContentResearchPage() {
                   <td style={{ fontWeight: 500 }}>{post.title}</td>
                   <td style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>{post.slug}</td>
                   <td>{post.status}</td>
-                  <td>{post.publishedAt?.toISOString().slice(0, 10) ?? "—"}</td>
+                  <td>{post.publishedAt?.toISOString().slice(0, 10) ?? "-"}</td>
                   <td>
                     <Link href={`/content/research/${post.id}`} className={ui.tableLink}>
                       {canWrite ? "Edit" : "View"}

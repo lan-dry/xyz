@@ -1,0 +1,48 @@
+{
+  "name": "@salanor/aegis-collector-pg",
+  "version": "0.1.0",
+  "description": "Independent Postgres CDC collector (pgoutput logical decoding) — AEGIS-SRC1 source kind collector",
+  "type": "module",
+  "bin": {
+    "aegis-collector-pg": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "start": "node dist/cli.js start"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "dependsOn": [
+          "^build"
+        ]
+      }
+    }
+  },
+  "dependencies": {
+    "@salanor/aegis-sdk": "workspace:*",
+    "pg": "^8.16.0",
+    "pg-logical-replication": "2.6.0"
+  },
+  "devDependencies": {
+    "@salanor/config": "workspace:*",
+    "@types/node": "^22.15.21",
+    "@types/pg": "^8.15.2",
+    "eslint": "^9.28.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.33.0",
+    "vitest": "^3.0.5"
+  }
+}

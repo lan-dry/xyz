@@ -1,0 +1,6 @@
+$ pnpm --filter aegis-api exec eslint .
+
+
+
+
+EXIT=0 ELAPSED_MS=6633

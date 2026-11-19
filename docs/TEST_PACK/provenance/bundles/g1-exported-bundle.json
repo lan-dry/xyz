@@ -1,0 +1,81 @@
+{
+  "format": "aegis-evidence-bundle",
+  "receipts": [
+    {
+      "schema_version": 1,
+      "receipt_id": "rcpt_0f1da6a1648f4e11",
+      "organization_id": "00000000-0000-0000-0000-000000000001",
+      "seq": 1,
+      "prev_hash": null,
+      "case_id": "case-fixture-1",
+      "decision_id": "dec-fixture-1",
+      "outcome": "allow",
+      "mode": "enforce",
+      "matched_rules": [],
+      "sealed_events": [
+        {
+          "event_id": "evt_1",
+          "event_hash": "sha256:abc",
+          "sequence_num": 1
+        }
+      ],
+      "attributes": {
+        "source_envelope": {
+          "aegis_envelope": "1",
+          "source_id": "src_los",
+          "key_id": "src1_fixture_key_01",
+          "seq": 1,
+          "ts": "2026-06-01T12:00:00.000Z",
+          "nonce": "rEw5_t-G-ntcyPsktfdmng",
+          "idempotency_key": "ef776916-35a4-491d-8dee-41af5e096fae",
+          "event": {
+            "event_type": "loan.disbursement.requested",
+            "amount": "1500.00",
+            "currency": "RWF",
+            "idempotency_key": "ef776916-35a4-491d-8dee-41af5e096fae"
+          },
+          "event_hash": "0e815ead7d3724e87cf50da038ebce909e1292ba36c174a7ffaf738a4bd3fb77",
+          "signature": "52ptqXw82tsyhV98YW-ou0SeR20bQni_TgBr98s_oFy57sX6rTejOvVOeksPvMABPhBjFVJReYdzHufW64QdDA"
+        },
+        "source_id": "src_los",
+        "source_key_id": "src1_fixture_key_01",
+        "evidence_grade": "G1",
+        "checks": {
+          "source_signed": true
+        },
+        "provenance": {
+          "authentication": "source_signature",
+          "grade": "G1"
+        }
+      },
+      "issued_at": "2026-11-19T06:43:23.286Z",
+      "key_id": "key_receipt_fixture",
+      "receipt_hash": "sha256:7efabe2400436ef04d35d8b6d5a0c31c6b5504275d2bc7a78227f5b819e62198",
+      "sig_alg": "ed25519",
+      "sig_value_b64": "IBWByR5d2XerCuOkGl7VFYoTBc1KeFroPLyU7GRsvY/Imj4E7AARnbAk//nSWeCvNSF8qVVQ7lRDGHsjAFjjBw=="
+    }
+  ],
+  "sealed_events": [
+    {
+      "event_id": "evt_1",
+      "event_hash": "sha256:abc",
+      "sequence_num": 1
+    }
+  ],
+  "keys": {
+    "key_receipt_fixture": "JG3SgNUosVQibkyJbdm/wGIXQv4xy/BuNy8VqyLveZ0="
+  },
+  "source_keys": {
+    "src1_fixture_key_01": "2jTF0540PXtoTDLRwRvytZnIuqDJJzqeyZGO+pD8dg8="
+  },
+  "source_registry": [
+    {
+      "key_id": "src1_fixture_key_01",
+      "source_id": "src_los",
+      "public_key_b64": "2jTF0540PXtoTDLRwRvytZnIuqDJJzqeyZGO+pD8dg8=",
+      "valid_from": "2026-01-01T00:00:00.000Z",
+      "valid_to": null,
+      "status": "active"
+    }
+  ]
+}

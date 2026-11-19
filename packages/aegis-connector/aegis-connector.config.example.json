@@ -1,0 +1,12 @@
+{
+  "source_id": "src_los",
+  "key_id": "k_los_2026_01",
+  "private_key_path": "./keys/src_los.key",
+  "aegis_url": "https://aegis.example.com",
+  "ingest_path": "/v1/aegis/source-events",
+  "state_dir": "./.aegis-connector",
+  "listen": { "host": "127.0.0.1", "port": 8787 },
+  "sync_wait_ms": 2000,
+  "request_timeout_ms": 10000,
+  "retry": { "initial_ms": 500, "max_ms": 30000, "factor": 2, "jitter": 0.2 }
+}

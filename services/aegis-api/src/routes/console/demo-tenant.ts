@@ -30,8 +30,12 @@ export const demoTenantRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
 demoTenantRoutes.get("/organization/profile", requireConsoleSession, async (c) => {
   const session = c.get("consoleSession");
-  const org = await getPool().query<{ name: string; slug: string }>(
-    `SELECT name, slug FROM organization WHERE organization_id = $1`,
+  const org = await getPool().query<{
+    name: string;
+    slug: string;
+    require_signed_events: boolean;
+  }>(
+    `SELECT name, slug, require_signed_events FROM organization WHERE organization_id = $1`,
     [session.organizationId],
   );
   if (!org.rows[0]) return c.json({ error: "Not found" }, 404);
@@ -41,6 +45,7 @@ demoTenantRoutes.get("/organization/profile", requireConsoleSession, async (c) =
       name: org.rows[0].name,
       slug: org.rows[0].slug,
       is_demo: await isOrganizationDemo(getPool(), session.organizationId),
+      require_signed_events: org.rows[0].require_signed_events === true,
     },
   });
 });

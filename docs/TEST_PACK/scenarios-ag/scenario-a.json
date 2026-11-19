@@ -1,0 +1,173 @@
+{
+  "letter": "A",
+  "story_id": "scenario_a",
+  "ms": 236,
+  "status": 200,
+  "data": {
+    "ok": true,
+    "story_id": "scenario_a",
+    "expected": "allow",
+    "expect_detail": "Payment transfer RWF 1,200,000 for retail_standard stays under the Retail Standard daily limit. Allowed automatically (counts only activity reported to Aegis).",
+    "resolver": null,
+    "case_id": "SIM-2ABCE95FFB",
+    "trace_id": "tr_sim_2abce95ffb",
+    "outcome": "allow",
+    "console_url": "http://localhost:3000/aegis/traces/tr_sim_2abce95ffb",
+    "plain_summary": "Payment release of RWF 1,200,000 was allowed automatically under rule r_a17ca822aedb. No human approval was needed. Policy v5.",
+    "matched_rules": [
+      {
+        "rule_id": "r_a17ca822aedb",
+        "policy_id": "pol_21740b84c1f900ce",
+        "decision": "allow"
+      },
+      {
+        "rule_id": "AUTH-XFER-1",
+        "policy_id": "pol_21740b84c1f900ce",
+        "decision": "allow"
+      }
+    ],
+    "approval_id": null,
+    "sealed": true,
+    "action": {
+      "amount": 1200000,
+      "currency": "RWF"
+    },
+    "target_grade": "G2",
+    "can_disburse": true,
+    "decision_token": {
+      "v": 1,
+      "token_id": "dtk_9f81f421e6034f52",
+      "tenant": "d8a7fa6f-8b10-4271-9fd0-f783939090b9",
+      "case_id": "SIM-2ABCE95FFB",
+      "decision_id": "dec_1551635e41b547d4",
+      "action_type": "payment.transfer",
+      "params_hash": "ac1c80390882a2e35660d332e9fd32246f1b13df6bba4b6044a3849f6807b115",
+      "issued_at": "2026-11-19T13:11:31.700Z",
+      "expires_at": "2026-11-19T14:11:31.700Z",
+      "nonce": "TjX0l8iAmUV23h54muuhNQ",
+      "key_id": "receipt_local_2026",
+      "signature": "ykShbf2OwNN0gvzwN42gGHk0JBDLu0V-K1N7UQgjjHilv9Pd7zKTDovqbggl-Xc7tpKYYrk-rLreJbfuyyKoBA"
+    },
+    "evidence_grade": "G1",
+    "customer_id": "CUST-RW-SCEN-A-a038aa",
+    "steps": [
+      "LOS Connector → signed source-events (G1).",
+      "Governed intake: allow (source-signed)",
+      "Auto-allowed: core ledger may disburse after Aegis execution/permit.",
+      "Target evidence grade for this story: G2."
+    ],
+    "requests": [
+      {
+        "method": "POST",
+        "endpoint": "http://127.0.0.1:8088/v1/aegis/source-events",
+        "via": "aegis-connector",
+        "source_id": "src_los",
+        "key_id": "k_los_2026_01_mwn5jeo7",
+        "headers": {
+          "Authorization": "Bearer aegis_…****",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "schema_version": 1,
+          "case_id": "SIM-2ABCE95FFB",
+          "idempotency_key": "30bf2c6a-343d-4d19-bddd-958037e09a9b",
+          "event_type": "payment_transfer",
+          "product": "payment_transfer",
+          "emitted_at": "2026-11-19T13:11:31.530Z",
+          "actor": {
+            "type": "system",
+            "id": "payments-gateway"
+          },
+          "attributes": {
+            "requester_email": "officer@demo.test",
+            "requester_name": "Patience Ingabire",
+            "requester_role": "credit_officer",
+            "officer_id": "OFF-1042",
+            "system_account": "core-banking",
+            "amount": 1200000,
+            "currency": "RWF",
+            "customer_id": "CUST-RW-SCEN-A-a038aa",
+            "segment": "retail_standard",
+            "channel": "mobile",
+            "beneficiary_account": "BEN-RW-KNOWN-A",
+            "beneficiary_country": "RW",
+            "applicant_name": "Jeanette Mukamana",
+            "branch": "Kigali - Nyarugenge",
+            "product": "payment_transfer"
+          },
+          "trace_id": "tr_sim_2abce95ffb"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "case_id": "SIM-2ABCE95FFB",
+            "decision_id": "dec_1551635e41b547d4",
+            "receipt_id": "rcpt_a3dd78c108294be4",
+            "outcome": "allow",
+            "mode": "enforce",
+            "matched_rules": [
+              {
+                "rule_id": "r_a17ca822aedb",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow"
+              },
+              {
+                "rule_id": "AUTH-XFER-1",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow"
+              }
+            ],
+            "decision_basis": {
+              "outcome": "allow",
+              "decided_by_rule_id": "r_a17ca822aedb",
+              "explanation": "Allowed under rule r_a17ca822aedb. No human approval was needed.",
+              "matched": [
+                {
+                  "rule_id": "r_a17ca822aedb",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow",
+                  "effect": "allow"
+                },
+                {
+                  "rule_id": "AUTH-XFER-1",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow",
+                  "effect": "allow"
+                }
+              ]
+            },
+            "plain_summary": "Payment release of RWF 1,200,000 was allowed automatically under rule r_a17ca822aedb. No human approval was needed. Policy v5.",
+            "policy": {
+              "policy_id": "pol_21740b84c1f900ce",
+              "version": 5,
+              "content_hash": "58dd0b14e27b3941906d6e9af036d6b750a459a148f3cf6b5f222f13d1968ca2"
+            },
+            "approval": null,
+            "event_id": "evt_61ab08f21ef84a22b438d3b0",
+            "event_hash": "377f0b69787468814fc35c875d9f2beb43a42ba1e9737264c15cf21bd0ff51a5",
+            "sequence_num": 56,
+            "decision_token": {
+              "v": 1,
+              "token_id": "dtk_9f81f421e6034f52",
+              "tenant": "d8a7fa6f-8b10-4271-9fd0-f783939090b9",
+              "case_id": "SIM-2ABCE95FFB",
+              "decision_id": "dec_1551635e41b547d4",
+              "action_type": "payment.transfer",
+              "params_hash": "ac1c80390882a2e35660d332e9fd32246f1b13df6bba4b6044a3849f6807b115",
+              "issued_at": "2026-11-19T13:11:31.700Z",
+              "expires_at": "2026-11-19T14:11:31.700Z",
+              "nonce": "TjX0l8iAmUV23h54muuhNQ",
+              "key_id": "receipt_local_2026",
+              "signature": "ykShbf2OwNN0gvzwN42gGHk0JBDLu0V-K1N7UQgjjHilv9Pd7zKTDovqbggl-Xc7tpKYYrk-rLreJbfuyyKoBA"
+            },
+            "flags": {
+              "evidence_status": "ok"
+            },
+            "source_signed": true,
+            "evidence_grade": "G1"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -8,6 +8,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Plug,
+  Radio,
   ScrollText,
   Search,
   Settings,
@@ -23,14 +24,16 @@ export type ConsoleNavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** Dynamic badge key — shell fills Approvals from pending count. */
+  /** Dynamic badge key - shell fills Approvals from pending count. */
   badgeKey?: "approvals";
   external?: boolean;
+  /** Only shown to organisation admins. */
+  adminOnly?: boolean;
 };
 
 /**
  * Default (production-style) nav. Includes Rules, Cases (with search), Reports,
- * Access log and Delegations. In-console simulator removed — use standalone bank-simulator.
+ * Access log and Delegations. In-console simulator removed - use standalone bank-simulator.
  */
 export const AEGIS_NAV: ConsoleNavItem[] = [
   { href: "/aegis", label: t("nav.overview", "Overview"), icon: LayoutDashboard },
@@ -49,8 +52,10 @@ export const AEGIS_NAV: ConsoleNavItem[] = [
   { href: "/aegis/logs", label: "Access log", icon: ScrollText },
   { href: "/aegis/agents", label: t("nav.agents", "Agents"), icon: Bot },
   { href: "/aegis/keys", label: "API keys", icon: KeyRound },
+  { href: "/aegis/sources", label: "Sources", icon: Radio, adminOnly: true },
   { href: "/aegis/workflows", label: t("nav.workflows", "Workflows"), icon: GitBranch },
   { href: "/aegis/incidents", label: "Incidents", icon: AlertTriangle },
+  { href: "/aegis/exceptions", label: "Exceptions", icon: AlertTriangle },
   { href: "/aegis/evidence", label: t("nav.evidence", "Evidence"), icon: FileCheck },
   { href: "/aegis/integrations", label: "Integrations", icon: Plug },
   { href: "/aegis/settings", label: t("nav.settings", "Settings"), icon: Settings },
@@ -72,6 +77,8 @@ export const BANK_DEMO_NAV: ConsoleNavItem[] = [
     external: true,
   },
   { href: "/aegis/logs", label: "Access log", icon: ScrollText },
+  { href: "/aegis/exceptions", label: "Exceptions", icon: AlertTriangle },
+  { href: "/aegis/sources", label: "Sources", icon: Radio, adminOnly: true },
 ];
 
 export function isNavActive(pathname: string, href: string): boolean {

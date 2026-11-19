@@ -6,6 +6,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import * as ed from "@noble/ed25519";
 import { nowIso } from "../time/clock.js";
+import type { ProvenanceBlock } from "../sources/provenance.js";
 
 function canonicalize(value: unknown): string {
   return JSON.stringify(sortValue(value));
@@ -73,6 +74,12 @@ export type ForensicReceiptBody = {
   approvals?: Array<Record<string, unknown>>;
   timeline?: Array<Record<string, unknown>>;
   attributes?: Record<string, unknown>;
+  /**
+   * Stage 2 honest labelling: where the data came from and how much is vouched for. Inside the
+   * signed payload, so editing it breaks verification. Absent on receipts sealed before Stage 2
+   * (those read as grade G0 "legacy").
+   */
+  provenance?: ProvenanceBlock;
   flags?: {
     /** Historical only — new receipts never set this (demo clock removed). */
     demo_clock?: boolean;
@@ -216,6 +223,7 @@ export function buildReceiptBody(input: {
   approvals?: ForensicReceiptBody["approvals"];
   timeline?: ForensicReceiptBody["timeline"];
   attributes?: Record<string, unknown>;
+  provenance?: ProvenanceBlock;
   flags?: ForensicReceiptBody["flags"];
   key_id: string;
   issued_at?: string;
@@ -242,6 +250,7 @@ export function buildReceiptBody(input: {
     approvals: input.approvals,
     timeline: input.timeline,
     attributes: input.attributes,
+    ...(input.provenance ? { provenance: input.provenance } : {}),
     flags: input.flags,
     issued_at: input.issued_at ?? nowIso(),
     key_id: input.key_id,

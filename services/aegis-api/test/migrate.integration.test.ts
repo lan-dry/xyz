@@ -44,5 +44,31 @@ describeIfDb("migrations (destructive; AEGIS_ALLOW_DESTRUCTIVE_MIGRATE_TEST=1)",
       ) AS exists`,
     );
     expect(result.rows[0]?.exists).toBe(true);
+
+    // Stage 1 (006_sources): upgrade path must leave source registry + setting control in place.
+    const stage1 = await getPool().query<{
+      source: boolean;
+      source_key: boolean;
+      setting_change: boolean;
+      require_col: boolean;
+      migration: boolean;
+    }>(
+      `SELECT
+         EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'source') AS source,
+         EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'source_key') AS source_key,
+         EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'organization_setting_change') AS setting_change,
+         EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_name = 'organization' AND column_name = 'require_signed_events'
+         ) AS require_col,
+         EXISTS (SELECT 1 FROM schema_migration WHERE version = '006_sources') AS migration`,
+    );
+    expect(stage1.rows[0]).toMatchObject({
+      source: true,
+      source_key: true,
+      setting_change: true,
+      require_col: true,
+      migration: true,
+    });
   });
 });

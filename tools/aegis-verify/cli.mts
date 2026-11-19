@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHash, createHmac } from "node:crypto";
 import * as ed from "@noble/ed25519";
+import { verifyEnvelope } from "@salanor/aegis-sdk";
 import {
   checkpointSigningMessage,
   verifyMerkleProof,
@@ -49,6 +50,15 @@ type WitnessEntry = {
   } | null;
 };
 
+type SourceRegistryEntry = {
+  key_id: string;
+  source_id: string;
+  public_key_b64: string;
+  valid_from: string;
+  valid_to: string | null;
+  status: string;
+};
+
 type Bundle = {
   receipts: SignedReceipt[];
   sealed_events?: Array<{
@@ -58,8 +68,52 @@ type Bundle = {
   }>;
   checkpoint?: { seq: number; head_hash: string; key_id: string } | null;
   keys?: Record<string, string>;
+  /** AEGIS-SRC1 source keys from the evidence bundle (passed through automatically). */
+  source_keys?: Record<string, string>;
+  source_registry?: SourceRegistryEntry[];
   witness?: WitnessEntry[] | null;
 };
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+function extractSourceEnvelope(
+  receipt: SignedReceipt,
+): Record<string, unknown> | null {
+  const attrs = receipt.attributes;
+  if (!isPlainObject(attrs)) return null;
+  const candidates = [attrs.source_envelope];
+  if (isPlainObject(attrs.provenance)) {
+    candidates.push(attrs.provenance.source_envelope);
+  }
+  for (const c of candidates) {
+    if (
+      isPlainObject(c) &&
+      typeof c.signature === "string" &&
+      typeof c.key_id === "string"
+    ) {
+      return c;
+    }
+  }
+  return null;
+}
+
+function sourceKeyValidAtTs(
+  entry: Pick<SourceRegistryEntry, "valid_from" | "valid_to" | "status">,
+  ts: string,
+): boolean {
+  if (entry.status === "revoked") return false;
+  if (entry.status !== "active" && entry.status !== "rotated") return false;
+  const t = Date.parse(ts);
+  const from = Date.parse(entry.valid_from);
+  if (Number.isNaN(t) || Number.isNaN(from) || t < from) return false;
+  if (entry.valid_to != null && entry.valid_to !== "") {
+    const to = Date.parse(entry.valid_to);
+    if (Number.isNaN(to) || t >= to) return false;
+  }
+  return true;
+}
 
 const SIG_FIELDS = new Set(["sig_alg", "sig_value_b64", "receipt_hash"]);
 
@@ -187,6 +241,54 @@ async function main() {
     if (r.flags?.demo_clock) {
       console.warn(`WARN demo_clock=true on ${r.receipt_id}`);
     }
+
+    // AEGIS-SRC1 source envelope (when present); source_keys come from the bundle JSON.
+    const sourceEnvelope = extractSourceEnvelope(r);
+    if (sourceEnvelope) {
+      const sourceKeyId = String(sourceEnvelope.key_id);
+      const registry = Array.isArray(bundle.source_registry)
+        ? bundle.source_registry
+        : undefined;
+      const registryEntry = registry?.find((e) => e.key_id === sourceKeyId);
+      const sourcePub =
+        bundle.source_keys?.[sourceKeyId] ??
+        registryEntry?.public_key_b64 ??
+        undefined;
+      if (!sourcePub) {
+        findings.push({
+          code: "source_key_missing",
+          message: `Source key ${sourceKeyId} not in bundle`,
+          record: r.receipt_id,
+        });
+      } else {
+        if (registry && registryEntry) {
+          const ts =
+            typeof sourceEnvelope.ts === "string" ? sourceEnvelope.ts : "";
+          if (!sourceKeyValidAtTs(registryEntry, ts)) {
+            findings.push({
+              code: "source_key_not_valid_at_ts",
+              message: `Source key ${sourceKeyId} was not valid at envelope.ts`,
+              record: r.receipt_id,
+            });
+          }
+        }
+        const verified = await verifyEnvelope(sourceEnvelope, sourcePub);
+        if (!verified.ok) {
+          findings.push({
+            code:
+              verified.reason === "event_hash_mismatch"
+                ? "source_event_hash_mismatch"
+                : "source_signature_invalid",
+            message:
+              verified.reason === "event_hash_mismatch"
+                ? "Source envelope event_hash does not match event"
+                : "Source envelope signature does not verify",
+            record: r.receipt_id,
+          });
+        }
+      }
+    }
+
     expectedPrev = r.receipt_hash;
   }
 

@@ -122,12 +122,12 @@ export default async function OpsContentNewsletterPage() {
                     <td>
                       {c.status === "scheduled" && c.scheduled_at
                         ? c.scheduled_at.toISOString().slice(0, 16)
-                        : c.sent_at?.toISOString().slice(0, 16) ?? "—"}
+                        : c.sent_at?.toISOString().slice(0, 16) ?? "-"}
                     </td>
                     <td style={{ fontSize: "0.8125rem" }}>
                       {c.status === "sent" || c.status === "failed"
                         ? `${c.success_count}/${c.recipient_count} ok`
-                        : "—"}
+                        : "-"}
                     </td>
                     {canWrite ? (
                       <td>

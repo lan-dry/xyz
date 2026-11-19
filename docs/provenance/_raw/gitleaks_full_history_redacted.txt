@@ -1,0 +1,18 @@
+# Gitleaks full-history (values redacted)
+# Date: 2026-11-19T09:00:32.042Z
+# Findings: 7
+
+Note: .env_deploy historical secrets are listed for rotation; fixtures are allowlisted by exact path.
+
+## By file
+7	.env_deploy
+
+## By file + commit
+.env_deploy @ 8d0b72698f42
+  - generic-api-key value=aegi…[REDACTED]…7b76
+  - generic-api-key value=key_…[REDACTED]…7eb5
+  - generic-api-key value=4a9e…[REDACTED]…9f8e
+  - generic-api-key value=Ov23…[REDACTED]…ehbZ
+  - generic-api-key value=c2c7…[REDACTED]…0eba
+  - generic-api-key value=3QCO…[REDACTED]…Cfjc
+  - generic-api-key value=re_T…[REDACTED]…ccqQ

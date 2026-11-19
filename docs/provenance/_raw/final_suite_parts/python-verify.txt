@@ -1,0 +1,7 @@
+$ py -3 tools/independent-verify/verify_bundle.py --bundle "docs/TEST_PACK/provenance/bundles/g1-exported-bundle.json"
+
+[python-bundle] OK (signature, key-at-ts, sequence continuity)
+
+
+
+EXIT=0 ELAPSED_MS=259

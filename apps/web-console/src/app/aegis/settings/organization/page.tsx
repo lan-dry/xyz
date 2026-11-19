@@ -231,6 +231,16 @@ export default function OrganizationSettingsPage() {
                   {org.organization_id}
                 </dd>
               </div>
+              <div>
+                <dt className={ui.muted} style={{ fontSize: "0.75rem" }}>
+                  Receipt signing keys
+                </dt>
+                <dd style={{ margin: "0.25rem 0 0", fontSize: "0.875rem" }}>
+                  Production deployments can use a customer-held key in AWS KMS, GCP
+                  KMS or an HSM. The private key never leaves the customer&apos;s key
+                  store.
+                </dd>
+              </div>
             </dl>
           ) : null}
           {isAdmin && onboardingDone ? (

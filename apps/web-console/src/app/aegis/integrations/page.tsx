@@ -57,7 +57,7 @@ const WIZARDS: Array<{
     steps: [
       "Create or pick an agent, then click Enable Workflow Bridge (Salanor signs server-side).",
       "Install n8n-nodes-salanor-aegis (or HTTP → POST /v1/aegis/policy/evaluate then /workflow-bridge/record).",
-      "Run the sample workflow. Approvals / Live feed show a Verified receipt.",
+      "Run the sample workflow. Approvals / Live feed show a signed receipt.",
     ],
     ctaHref: "/aegis/agents",
     ctaLabel: "Enable bridge on agent",
@@ -65,7 +65,7 @@ const WIZARDS: Array<{
 ];
 
 export default function IntegrationsPage() {
-  const [active, setActive] = useState<WizardId>(null);
+  const [active, setActive] = useState<WizardId>("slack");
   const wizard = WIZARDS.find((w) => w.id === active) ?? null;
 
   return (

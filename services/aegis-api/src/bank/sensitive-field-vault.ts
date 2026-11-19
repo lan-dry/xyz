@@ -35,7 +35,11 @@ export async function storeMaskedFieldClears(
     const clearValue =
       typeof clear === "string" ? clear : JSON.stringify(clear);
     if (!clearValue) continue;
+    // SAVEPOINT so a missing/mismatched vault schema cannot abort the outer
+    // governed-intake transaction (that used to break APS seal with 25P02).
+    const sp = "sp_sensitive_field_vault";
     try {
+      await client.query(`SAVEPOINT ${sp}`);
       await client.query(
         `INSERT INTO sensitive_field_vault (
            organization_id, case_id, trace_id, event_id, field_path, clear_value
@@ -49,10 +53,19 @@ export async function storeMaskedFieldClears(
           clearValue,
         ],
       );
+      await client.query(`RELEASE SAVEPOINT ${sp}`);
     } catch (err) {
+      try {
+        await client.query(`ROLLBACK TO SAVEPOINT ${sp}`);
+      } catch {
+        /* outer txn may already be dead */
+      }
       const message = err instanceof Error ? err.message : String(err);
       // Pre-migration 003: skip quietly so ingest still works.
-      if (/sensitive_field_vault/i.test(message) && /does not exist/i.test(message)) {
+      // Only swallow a missing *relation* — a missing column must surface.
+      if (
+        /relation ["']?sensitive_field_vault["']? does not exist/i.test(message)
+      ) {
         return;
       }
       throw err;

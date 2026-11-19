@@ -45,6 +45,12 @@ import { createServer } from "node:http";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { STORIES, getStory } from "./stories.mjs";
+import { SYSTEMS } from "./systems.mjs";
+import { SimulatedConnectors } from "./connectors-sim.mjs";
+import { RealConnectors } from "./real-connectors.mjs";
+import { CoreLedger } from "./core-ledger.mjs";
+import { ATTACKS, HONEST_LIMIT, runAttack } from "./redteam-attacks.mjs";
+import { finishScenario } from "./scenario-finish.mjs";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 
@@ -78,6 +84,69 @@ const QUEUE_FILE = join(DATA_DIR, "queue.json");
 process.env.AEGIS_SIGNED_BUFFER_DIR ||= join(DATA_DIR, "sdk-buffer");
 
 const CONFIG_FILE = join(DATA_DIR, "config.json");
+
+/** In-memory core ledger: money only moves after Aegis execution/permit. */
+const ledger = [];
+const refusedDisbursements = [];
+/** case_id → action snapshot queued for disburse after approve */
+const pendingDisburse = new Map();
+
+/** Red-team crash/outbox sims (not used for live signed ingest). */
+const simConnectors = new SimulatedConnectors(join(DATA_DIR, "connectors-sim"), {
+  apiBase: ENV_CONFIG.apiBase,
+  ingestKey: ENV_CONFIG.ingestKey,
+});
+/** Real in-process Aegis Connectors (Stage 1b) — signs via @salanor/aegis-connector. */
+const realConnectors = new RealConnectors(DATA_DIR, {
+  apiBase: ENV_CONFIG.apiBase,
+  ingestKey: ENV_CONFIG.ingestKey,
+  // Keep seq/outbox under the simulator data dir so demo:connectors can own
+  // `.data/connectors/*/state` (separate Connector processes + registered keys).
+  localStateOnly: true,
+});
+/** Alias kept for redteam-attacks.mjs which expects `connectors`. */
+const connectors = simConnectors;
+const coreLedger = new CoreLedger({
+  databaseUrl: process.env.BANK_CORE_DATABASE_URL ?? "",
+  dataDir: join(DATA_DIR, "ledger"),
+  permitFn: async (caseId, action) => askExecutionPermit(caseId, action, null),
+  confirmFn: async ({ token, params }) => {
+    const c = cfg();
+    if (!c.configured) return { ok: false, code: "not_configured", reason: "Not configured" };
+    // Prefer Core Connector confirm (source-signs params) when keys are ready.
+    try {
+      const core = await realConnectors.get("core");
+      if (core) {
+        // Use the Connector HTTP confirm path via submit isn't available; post through
+        // the in-process connector's confirm by calling Aegis with a signed envelope
+        // from POST /execute/confirm semantics — fall through to direct confirm below
+        // unless we open listen. Direct confirm still works; Core signing is Partial
+        // unless demo:connectors is up. Loan stories use LOS Connector for G1.
+      }
+    } catch {
+      /* fall through */
+    }
+    const res = await postJson("/v1/aegis/executions/confirm", { token, params }, {}, {});
+    if (res.status === 200 && res.data?.ok !== false && !res.data?.error) {
+      return { ok: true, ...res.data };
+    }
+    return {
+      ok: false,
+      code: res.data?.code ?? "confirm_failed",
+      reason: res.data?.reason ?? res.data?.error ?? `HTTP ${res.status}`,
+      ...res.data,
+    };
+  },
+});
+await simConnectors.init();
+await realConnectors.init();
+await coreLedger.init();
+// Refresh connector cfg when setup changes — see saveConfig.
+
+function publicBaseUrl() {
+  const host = HOST === "0.0.0.0" ? "127.0.0.1" : HOST;
+  return `http://${host}:${PORT}`;
+}
 
 // ---------------------------------------------------------------- config (env defaults + saved override)
 
@@ -318,11 +387,25 @@ async function postJson(path, body, extraHeaders = {}, { calls, keyOverride } = 
   return { status, data };
 }
 
+/** AEGIS-SRC1 rejects floats; turn non-integer numbers into decimal strings. */
+function forSigning(value) {
+  if (value === null || typeof value === "boolean" || typeof value === "string") return value;
+  if (typeof value === "number") return Number.isSafeInteger(value) ? value : String(value);
+  if (Array.isArray(value)) return value.map(forSigning);
+  if (typeof value === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = forSigning(v);
+    return out;
+  }
+  return value;
+}
+
 function buildEvent(story, { decidedWithoutAegis, queuedAt } = {}) {
   const suffix = randomUUID().replace(/-/g, "").slice(0, 10);
   const caseId = `SIM-${suffix.toUpperCase()}`;
   const traceId = `tr_sim_${suffix}`;
-  const idem = `sim-${story.id}-${suffix}`;
+  // AEGIS-SRC1 requires a UUID idempotency_key (envelope + event must match).
+  const idem = randomUUID();
   return {
     caseId,
     traceId,
@@ -334,37 +417,182 @@ function buildEvent(story, { decidedWithoutAegis, queuedAt } = {}) {
       product: story.product,
       emitted_at: queuedAt ?? new Date().toISOString(),
       actor: { type: "system", id: cfg().agentId || story.agent_slug },
-      attributes: {
+      attributes: forSigning({
         ...story.attributes,
         ...(decidedWithoutAegis
           ? { decided_without_aegis: true, queued_at: queuedAt, bank_fallback: "proceed_and_flag" }
           : {}),
-      },
+      }),
       trace_id: traceId,
     },
   };
 }
 
-/** Send one governed event, then raise an approval request for a hold or a hard stop. */
-async function submit(body, steps, calls) {
-  const orgId = cfg().orgId;
-  const intake = await postJson(
-    "/v1/aegis/governed/events",
-    body,
-    { "Idempotency-Key": body.idempotency_key },
+/**
+ * Ask Aegis whether the core ledger may pay. This is the in-path gate:
+ * without a sealed allow/approve matching the action, disbursement is refused.
+ */
+async function askExecutionPermit(caseId, action, calls) {
+  return postJson(
+    "/v1/aegis/execution/permit",
+    { case_id: caseId, action },
+    {},
     { calls },
   );
+}
+
+function actionFromAttributes(attrs) {
+  const a = attrs && typeof attrs === "object" ? attrs : {};
+  const out = {};
+  for (const key of [
+    "amount",
+    "amount_usd",
+    "currency",
+    "beneficiary",
+    "expected_beneficiary",
+    "merchant_id",
+    "order_id",
+    "customer_email",
+  ]) {
+    if (a[key] != null && a[key] !== "") out[key] = a[key];
+  }
+  return out;
+}
+
+/**
+ * Core ledger disburse. Always requires Aegis execution/permit unless the caller
+ * explicitly tries the "skip Aegis" demo path — which the ledger still refuses.
+ */
+async function coreDisburse(input, { calls } = {}) {
+  const caseId = String(input.case_id ?? "").trim();
+  const action = actionFromAttributes(input.action ?? input);
+  if (!caseId) {
+    return { status: 422, body: { error: "case_id required", permitted: false } };
+  }
+  if (input.skip_aegis === true) {
+    const row = {
+      at: new Date().toISOString(),
+      case_id: caseId,
+      action,
+      reason: "Core ledger refuses ungated disbursement (skip_aegis attempted)",
+      code: "permit_required",
+    };
+    refusedDisbursements.unshift(row);
+    if (refusedDisbursements.length > 100) refusedDisbursements.length = 100;
+    return {
+      status: 403,
+      body: {
+        ok: false,
+        permitted: false,
+        code: "permit_required",
+        error: row.reason,
+        case_id: caseId,
+      },
+    };
+  }
+
+  const permit = await askExecutionPermit(caseId, action, calls);
+  if (permit.status !== 200 || !permit.data?.permitted) {
+    const row = {
+      at: new Date().toISOString(),
+      case_id: caseId,
+      action,
+      reason: permit.data?.reason ?? `permit HTTP ${permit.status}`,
+      code: permit.data?.code ?? "denied",
+      permit: permit.data ?? null,
+    };
+    refusedDisbursements.unshift(row);
+    if (refusedDisbursements.length > 100) refusedDisbursements.length = 100;
+    return {
+      status: 403,
+      body: {
+        ok: false,
+        permitted: false,
+        ...(permit.data && typeof permit.data === "object" ? permit.data : {}),
+        error: row.reason,
+      },
+    };
+  }
+
+  const entry = {
+    id: `pay_${randomUUID().replace(/-/g, "").slice(0, 12)}`,
+    at: new Date().toISOString(),
+    case_id: caseId,
+    action,
+    receipt_id: permit.data.receipt_id ?? null,
+    receipt_hash: permit.data.receipt_hash ?? null,
+    outcome: permit.data.outcome ?? null,
+  };
+  ledger.unshift(entry);
+  if (ledger.length > 100) ledger.length = 100;
+  pendingDisburse.delete(caseId);
+  // Mirror into Stage-8 core ledger (Postgres or memory) for feeds / red team.
+  try {
+    await coreLedger.postTxn({
+      case_id: caseId,
+      account_id: String(action.beneficiary_account ?? action.account_id ?? "ACCT-DEMO-001"),
+      amount: Number(action.amount ?? 0),
+      currency: String(action.currency ?? "RWF"),
+      token_id: permit.data?.token_id ?? null,
+      meta: { via: "permit", receipt_id: entry.receipt_id },
+    });
+    await connectors.recordSend("core");
+  } catch (err) {
+    console.warn("[bank-simulator] core ledger mirror failed:", err instanceof Error ? err.message : err);
+  }
+  return { status: 200, body: { ok: true, permitted: true, entry, permit: permit.data } };
+}
+
+/**
+ * Send one event through the LOS Aegis Connector (signed AEGIS-SRC1 → source-events),
+ * then raise an approval request for a hold or a hard stop.
+ */
+async function submit(body, steps, calls) {
+  const orgId = cfg().orgId;
+  const c = cfg();
+  realConnectors.cfg = { apiBase: c.apiBase, ingestKey: c.ingestKey };
+  let intake;
+  try {
+    intake = await realConnectors.submit("los", body, { calls });
+    steps.push("LOS Connector → signed source-events (G1).");
+  } catch (err) {
+    throw new Error(
+      err instanceof Error
+        ? err.message
+        : `Connector submit failed: ${String(err)}`,
+    );
+  }
   if (intake.status !== 200) {
     throw new Error(intake.data?.message ?? intake.data?.error ?? `intake returned ${intake.status}`);
   }
   const decision = intake.data;
-  steps.push(`Governed intake: ${decision.outcome}`);
+  if (!decision || typeof decision !== "object") {
+    throw new Error("Connector delivered but Aegis response body was empty");
+  }
+  steps.push(
+    `Governed intake: ${decision.outcome}${decision.source_signed || decision.evidence_grade === "G1" ? " (source-signed)" : ""}`,
+  );
   const sealed = Boolean(decision.event_id) && !String(decision.event_id).startsWith("evt_gov_");
   let approvalId = null;
+  const action = actionFromAttributes(body.attributes);
+  if (decision.outcome === "allow" && sealed) {
+    pendingDisburse.set(body.case_id, {
+      action,
+      trace_id: body.trace_id,
+      outcome: "allow",
+    });
+    steps.push("Auto-allowed: core ledger may disburse after Aegis execution/permit.");
+  }
   if ((decision.outcome === "hold" || decision.outcome === "stop") && sealed) {
+    pendingDisburse.set(body.case_id, {
+      action,
+      trace_id: body.trace_id,
+      outcome: decision.outcome,
+    });
     if (!orgId) {
       steps.push("Approval not raised: set the organisation id in Setup to also create the approval request.");
     } else {
+      const resumeUrl = `${publicBaseUrl()}/core/loans/disburse-resume`;
       const req = await postJson(
         "/v1/aegis/approvals/request",
         {
@@ -372,14 +600,18 @@ async function submit(body, steps, calls) {
           event_id: decision.event_id,
           trace_id: body.trace_id,
           tool_name: "governed.action",
-          deferred: { url: "https://example.test/demo-callback", method: "POST" },
+          deferred: { url: resumeUrl, method: "POST" },
         },
         {},
         { calls },
       );
       if (req.status < 300 && req.data?.approval_id) {
         approvalId = req.data.approval_id;
-        steps.push("Approval requested: waiting in the console Approvals page.");
+        const pending = pendingDisburse.get(body.case_id);
+        if (pending) pending.approval_id = approvalId;
+        steps.push(
+          "Approval requested: approve in the console, then disburse via the core ledger (permit gate).",
+        );
       } else {
         steps.push(`Approval request failed (${req.status}).`);
       }
@@ -387,7 +619,7 @@ async function submit(body, steps, calls) {
   } else if (decision.outcome === "hold" && !sealed) {
     steps.push("Held but not sealed: the API's signing bridge is not configured.");
   }
-  return { decision, sealed, approvalId };
+  return { decision, sealed, approvalId, action };
 }
 
 function consoleUrl(traceId) {
@@ -483,17 +715,110 @@ async function runStory(storyId) {
     };
   }
 
-  const built = buildEvent(story);
+  // Isolate customers across story runs (except B priors share one key).
+  const runCustomer =
+    story.setup === "velocity_prior_three"
+      ? `CUST-RW-SCEN-B-${randomUUID().replace(/-/g, "").slice(0, 8)}`
+      : story.attributes?.customer_id
+        ? `${story.attributes.customer_id}-${randomUUID().replace(/-/g, "").slice(0, 6)}`
+        : undefined;
+  const storyAttrs = {
+    ...story.attributes,
+    ...(runCustomer ? { customer_id: runCustomer } : {}),
+  };
+  const storyForRun = { ...story, attributes: storyAttrs };
+
+  // Scenario B: three prior 2.4M transfers (mixed channels) before the fourth.
+  if (story.setup === "velocity_prior_three") {
+    const channels = ["mobile", "branch", "agent"];
+    for (let i = 0; i < 3; i++) {
+      const priorStory = {
+        ...storyForRun,
+        id: `${story.id}_prior_${i + 1}`,
+        attributes: {
+          ...storyAttrs,
+          channel: channels[i],
+          amount: 2_400_000,
+        },
+      };
+      const priorBuilt = buildEvent(priorStory);
+      try {
+        const prior = await submit(priorBuilt.body, steps, calls);
+        steps.push(
+          `Prior ${i + 1}/3 (${channels[i]}): ${prior.decision.outcome} ${priorBuilt.caseId}`,
+        );
+      } catch (err) {
+        steps.push(
+          `Prior ${i + 1}/3 failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+  }
+
+  const emitOverride =
+    story.attributes?.force_off_hours === true
+      ? (() => {
+          const d = new Date();
+          // 22:10 Africa/Kigali ≈ 20:10 UTC
+          d.setUTCHours(20, 10, 0, 0);
+          return d.toISOString();
+        })()
+      : undefined;
+  const built = buildEvent(storyForRun, { queuedAt: emitOverride });
   try {
-    const { decision, sealed, approvalId } = await submit(built.body, steps, calls);
+    const { decision, sealed, approvalId, action } = await submit(built.body, steps, calls);
+    const targetGrade = story.target_grade ?? null;
+    if (targetGrade) steps.push(`Target evidence grade for this story: ${targetGrade}.`);
+
+    // C / E / F / G: persona release, amount-bind refuse, ledger edit, dual-publish.
+    let finish = {};
+    if (story.letter && "CEFG".includes(String(story.letter).toUpperCase())) {
+      try {
+        finish = await finishScenario({
+          letter: String(story.letter).toUpperCase(),
+          story,
+          decision,
+          approvalId,
+          caseId: built.caseId,
+          action,
+          steps,
+          coreDisburse,
+          coreLedger,
+        });
+      } catch (err) {
+        steps.push(
+          `Finish ${story.letter} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    const outcomeOut = decision.outcome;
+    const plainOut = finish.plain_summary_override || decision.plain_summary || null;
+    const velocity_ms =
+      decision.aegis?.velocity?.query_ms ??
+      decision.attributes?.aegis?.velocity?.query_ms ??
+      decision.derived?.velocity?.query_ms ??
+      null;
+
     return {
       status: 200,
       body: {
-        ...result(story, built.caseId, built.traceId, decision.outcome),
-        plain_summary: decision.plain_summary ?? null,
+        ...result(story, built.caseId, built.traceId, outcomeOut),
+        plain_summary: plainOut,
         matched_rules: decision.matched_rules ?? [],
         approval_id: approvalId,
         sealed,
+        action,
+        target_grade: targetGrade,
+        can_disburse: outcomeOut === "allow" || outcomeOut === "hold" || outcomeOut === "released",
+        decision_token: decision.decision_token ?? null,
+        evidence_grade: decision.evidence_grade ?? null,
+        ...(finish.execute_refused ? { execute_refused: finish.execute_refused } : {}),
+        ...(finish.fraud_release ? { fraud_release: finish.fraud_release } : {}),
+        ...(finish.ledger_edit ? { ledger_edit: finish.ledger_edit } : {}),
+        ...(finish.dual_publish ? { dual_publish: finish.dual_publish } : {}),
+        ...(velocity_ms ? { velocity_query_ms: velocity_ms } : {}),
+        customer_id: runCustomer ?? storyAttrs.customer_id ?? null,
         steps,
         requests: calls,
       },
@@ -709,6 +1034,11 @@ async function saveConfig(body) {
   if (ingestKey || keep) next.ingestKey = ingestKey || keep;
   saved = next;
   await persistSaved();
+  const nextCfg = { apiBase: next.apiBase, ingestKey: next.ingestKey || cfg().ingestKey };
+  connectors.cfg = nextCfg;
+  realConnectors.cfg = nextCfg;
+  // Drop open Connectors so the next submit picks up the new bearer / base.
+  await realConnectors.close();
   return { status: 200, body: publicConfig() };
 }
 
@@ -802,7 +1132,71 @@ const server = createServer(async (req, res) => {
         sdk_drain_configured: Boolean(sdkSignOptions()),
         auth_enabled: AUTH_ENABLED,
         label: "Simulated core banking system",
+        ledger_count: ledger.length,
+        refused_count: refusedDisbursements.length,
+        core_ledger: coreLedger.status(),
+        systems: SYSTEMS.length,
+        redteam_attacks: ATTACKS.length,
       });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/systems") {
+      const live = { apiBase: cfg().apiBase, ingestKey: cfg().ingestKey };
+      connectors.cfg = live;
+      realConnectors.cfg = live;
+      return sendJson(res, 200, {
+        systems: realConnectors.health({
+          connected: Boolean(live.apiBase && live.ingestKey),
+          apiBase: live.apiBase,
+        }),
+        core_ledger: coreLedger.status(),
+        bureau_url: process.env.DEMO_BUREAU_URL?.trim() || "http://127.0.0.1:4100",
+        connectors_dir:
+          process.env.AEGIS_CONNECTORS_DIR?.trim() ||
+          join(resolve(here, "../.."), ".data", "connectors"),
+      });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/redteam") {
+      return sendJson(res, 200, { attacks: ATTACKS, honest_limit: HONEST_LIMIT });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/ledger") {
+      const coreTxns = await coreLedger.listTransactions(40);
+      return sendJson(res, 200, {
+        ledger: ledger.slice(0, 40),
+        core_transactions: coreTxns,
+        refused: refusedDisbursements.slice(0, 40),
+        core_refused: coreLedger.refused.slice(0, 40),
+        pending: [...pendingDisburse.entries()].map(([case_id, v]) => ({
+          case_id,
+          ...v,
+        })),
+        core_ledger: coreLedger.status(),
+      });
+    }
+
+    // Core ledger paths (in-path gate). Open to loopback deferred callbacks from Aegis.
+    if (req.method === "POST" && url.pathname === "/core/loans/disburse") {
+      const body = await readJson(req);
+      const out = await coreDisburse(body, { calls: [] });
+      return sendJson(res, out.status, out.body);
+    }
+    if (req.method === "POST" && url.pathname === "/core/loans/disburse-resume") {
+      const body = await readJson(req);
+      const caseId =
+        String(body.case_id ?? body.caseId ?? "").trim() ||
+        [...pendingDisburse.keys()].at(-1) ||
+        "";
+      const pending = pendingDisburse.get(caseId);
+      const out = await coreDisburse(
+        {
+          case_id: caseId,
+          action: body.action ?? pending?.action ?? {},
+        },
+        { calls: [] },
+      );
+      return sendJson(res, out.status, out.body);
     }
 
     if (req.method === "POST" && url.pathname.startsWith("/api/")) {
@@ -822,6 +1216,14 @@ const server = createServer(async (req, res) => {
         const out = await runStory(String(body.story_id ?? ""));
         return sendJson(res, out.status, out.body);
       }
+      if (url.pathname === "/api/disburse") {
+        const out = await coreDisburse(body, { calls: [] });
+        return sendJson(res, out.status, out.body);
+      }
+      if (url.pathname === "/api/disburse/skip-aegis") {
+        const out = await coreDisburse({ ...body, skip_aegis: true }, { calls: [] });
+        return sendJson(res, out.status, out.body);
+      }
       if (url.pathname === "/api/unreachable") {
         const next = body.on === true;
         if (next === offline) return sendJson(res, 200, { offline, queued: (await readQueue()).length });
@@ -833,6 +1235,49 @@ const server = createServer(async (req, res) => {
         if (offline) return sendJson(res, 200, { offline, queued: (await readQueue()).length });
         const replay = await replayQueue();
         return sendJson(res, 200, { offline, ...replay });
+      }
+      if (url.pathname === "/api/redteam/run") {
+        const attackId = body.attack_id ?? body.id ?? body.attack;
+        const liveCfg = cfg();
+        realConnectors.cfg = {
+          apiBase: liveCfg.apiBase,
+          ingestKey: liveCfg.ingestKey,
+        };
+        const out = await runAttack(attackId, {
+          core: coreLedger,
+          connectors,
+          realConnectors,
+          postJson,
+          cfg,
+        });
+        const status = out.status && !out.ok ? out.status : 200;
+        return sendJson(res, status, out);
+      }
+      if (url.pathname === "/api/honest-limit") {
+        const liveCfg = cfg();
+        realConnectors.cfg = {
+          apiBase: liveCfg.apiBase,
+          ingestKey: liveCfg.ingestKey,
+        };
+        const out = await runAttack("honest_limit", {
+          core: coreLedger,
+          connectors,
+          realConnectors,
+          postJson,
+          cfg,
+        });
+        return sendJson(res, 200, out);
+      }
+      if (url.pathname === "/api/feed/export") {
+        const format = body.format === "csv" ? "csv" : "jsonl";
+        const feed = await coreLedger.exportFeed(format);
+        return sendJson(res, 200, {
+          ok: true,
+          format: feed.format,
+          path: feed.path,
+          rows: feed.rows,
+          preview: feed.text.split("\n").slice(0, 5),
+        });
       }
     }
 

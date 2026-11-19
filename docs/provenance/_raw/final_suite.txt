@@ -1,0 +1,35 @@
+Provenance final suite
+Date: 2026-11-19T10:05:55.078Z
+Branch: feature/provenance
+TEMP redirected to: D:\PROJECTS\salanor\tmp\suite (C: was near full)
+
+Command | Result | Exit | Elapsed_ms | Artifact
+--- | --- | --- | --- | ---
+aegis-api-test | PASS | 0 | 97862 | final_suite_parts/aegis-api-test.txt
+aegis-api-typecheck | PASS | 0 | 7384 | final_suite_parts/aegis-api-typecheck.txt
+web-console-typecheck | PASS | 0 | 3201 | final_suite_parts/web-console-typecheck.txt
+aegis-api-lint | PASS | 0 | 6633 | final_suite_parts/aegis-api-lint.txt
+web-console-lint | PASS | 0 | 4471 | final_suite_parts/web-console-lint.txt
+aegis-api-build | PASS | 0 | 8393 | final_suite_parts/aegis-api-build.txt
+web-console-build | PASS | 0 | 58528 | final_suite_parts/web-console-build.txt
+conformance-src1 | PASS | 0 | 4354 | final_suite_parts/conformance-src1.txt
+gitleaks-tree | PASS | 0 | 1846 | final_suite_parts/gitleaks-tree.txt
+aegis-verify | PASS | 0 | 1281 | final_suite_parts/aegis-verify.txt
+python-verify | PASS | 0 | 259 | final_suite_parts/python-verify.txt
+demo-runbook-walk | PASS | 0 | 57434 | final_suite_parts/demo-runbook-walk.txt
+
+OVERALL: PASS
+
+=== concatenated exit markers ===
+EXIT_aegis-api-test=0 ELAPSED_MS=97862
+EXIT_aegis-api-typecheck=0 ELAPSED_MS=7384
+EXIT_web-console-typecheck=0 ELAPSED_MS=3201
+EXIT_aegis-api-lint=0 ELAPSED_MS=6633
+EXIT_web-console-lint=0 ELAPSED_MS=4471
+EXIT_aegis-api-build=0 ELAPSED_MS=8393
+EXIT_web-console-build=0 ELAPSED_MS=58528
+EXIT_conformance-src1=0 ELAPSED_MS=4354
+EXIT_gitleaks-tree=0 ELAPSED_MS=1846
+EXIT_aegis-verify=0 ELAPSED_MS=1281
+EXIT_python-verify=0 ELAPSED_MS=259
+EXIT_demo-runbook-walk=0 ELAPSED_MS=57434

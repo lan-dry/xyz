@@ -54,6 +54,14 @@ export default function ForEngineersPage() {
           agent sequence. Tampering with one event breaks the chain that follows.
         </p>
 
+        <h2>What Aegis proves and what it does not</h2>
+        <p>
+          A sealed receipt proves timing and integrity of the record, not content
+          accuracy. Source signatures (G1), reconcile / execution match (G2), and
+          independent capture (G3) raise how the data was vouched for. They do not
+          mean Aegis checked that an amount or customer fact is true.
+        </p>
+
         <h2>Customer-held keys (sometimes called BYOK)</h2>
         <p>
           You register public keys with Aegis and sign in your agent runtime or

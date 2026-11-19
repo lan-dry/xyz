@@ -622,7 +622,7 @@ pnpm pilot:seed-history
 ```
 
 **What success looks like:** provision prints `Done. Organisation id: …` and (if no key existed) a boxed
-`INGEST KEY (shown once, …)`. Seed prints eleven `DB-HIST-…` lines and `Done: 11 cases.`
+`INGEST KEY (shown once, …)`. Seed prints eleven `LN-RW-2026-…` / `PAY-RW-…` / `CD-RW-…` lines and `Done: 11 cases.`
 
 **Variables (names only)** for this laptop path:
 

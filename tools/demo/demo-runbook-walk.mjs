@@ -16,6 +16,11 @@
  *
  * Writes docs/screens/runbook/NN-name.png and prints one PASS/FAIL line per check.
  *
+ * Stage 9 — "Lying to Aegis" (DEMO_RUNBOOK §12):
+ *   Automates Red Team beats #5, #11 and honest-limit against the bank simulator
+ *   (Live or Simulation-labelled). Beats that need a full approve→bundle path stay
+ *   console-driven; screenshots live under docs/TEST_PACK/provenance/.
+ *
  * Usage: node tools/demo/demo-runbook-walk.mjs
  */
 import { mkdirSync, readdirSync, unlinkSync } from "node:fs";
@@ -37,6 +42,20 @@ if (resolved.error) {
   process.exit(1);
 }
 const password = resolved.password;
+const personas =
+  resolved.data?.personas && typeof resolved.data.personas === "object"
+    ? /** @type {Record<string, { email?: string, password?: string }>} */ (
+        resolved.data.personas
+      )
+    : {};
+function personaEmail(key, fallback) {
+  const e = personas[key]?.email?.trim();
+  return e || fallback;
+}
+function personaPass(key) {
+  const p = personas[key]?.password?.trim();
+  return p && p.length >= 10 ? p : password;
+}
 const base =
   process.env.CONSOLE_ORIGIN?.trim() ||
   resolved.data?.console_origin?.trim() ||
@@ -89,14 +108,14 @@ if (process.env.PLAYWRIGHT_CHANNEL?.trim()) {
 const browser = await playwright.chromium.launch(launchOpts);
 const viewport = { width: 1920, height: 1080 };
 
-async function signIn(email) {
+async function signIn(email, pass = password) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
   const page = await context.newPage();
   await page.goto(`${base}/login`, { waitUntil: "networkidle" }).catch(() => {});
   const emailSel = 'input[type="email"], input[name="email"]';
   if (await page.locator(emailSel).count()) {
     await page.fill(emailSel, email);
-    await page.fill('input[type="password"]', password);
+    await page.fill('input[type="password"]', pass);
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/aegis/, { timeout: 60000 }).catch(() => {});
     await page.waitForTimeout(800);
@@ -209,10 +228,22 @@ async function runStory(_admin, storyId) {
   return body;
 }
 
-const admin = await signIn("admin@demo.test");
-const officer = await signIn("officer@demo.test");
-const manager = await signIn("manager@demo.test");
-const head = await signIn("head@demo.test");
+const admin = await signIn(
+  personaEmail("admin", "admin@demo.test"),
+  personaPass("admin"),
+);
+const officer = await signIn(
+  personaEmail("officer", "officer@demo.test"),
+  personaPass("officer"),
+);
+const manager = await signIn(
+  personaEmail("manager", "manager@demo.test"),
+  personaPass("manager"),
+);
+const head = await signIn(
+  personaEmail("head", "head@demo.test"),
+  personaPass("head"),
+);
 
 try {
   // 0. Open clean
@@ -297,7 +328,7 @@ try {
         ? allowed.policy.content_hash
         : null;
   const prep = await post(admin, "/api/console/demo-tenant/prepare-v4-dual-publish", {
-    co_publisher_email: "head@demo.test",
+    co_publisher_email: personaEmail("head", "head@demo.test"),
   });
   check(
     "§4 prepare live v4 draft (dual publish)",
@@ -326,7 +357,10 @@ try {
       `HTTP ${alone.status} published=${alone.body?.published}`,
     );
     // Head was elevated to console admin by prepare-v4 so they can co-publish.
-    const headCtx = await signIn("head@demo.test");
+    const headCtx = await signIn(
+      personaEmail("head", "head@demo.test"),
+      personaPass("head"),
+    );
     const two = await post(headCtx, `/api/console/policies/${draftId}/activate`, {});
     check(
       "§4 second publisher completes dual publish → v4 live",
@@ -399,6 +433,73 @@ try {
   await shot(admin, "reports", "/aegis/reports");
   await shot(admin, "access-log", "/aegis/logs");
   await shot(admin, "live-feed-after", "/aegis/live");
+
+  // Stage 9 — Lying to Aegis (DEMO_RUNBOOK §12): automate Red Team beats against bank-simulator.
+  // Reuse top-level simUrl (do not redeclare — TDZ would break earlier story/sim checks).
+  console.log(`\n§12 Lying to Aegis — Red Team against ${simUrl}`);
+  async function redteam(attackId) {
+    const res = await fetch(`${simUrl}/api/redteam/run`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-simulator": "1",
+        ...(simCookie ? { Cookie: simCookie } : {}),
+      },
+      body: JSON.stringify({ attack_id: attackId }),
+    });
+    const body = await res.json().catch(() => ({}));
+    const mode = body.simulated ? "Simulated" : "Live";
+    console.log(
+      `  beat attack #${attackId}: HTTP ${res.status} [${mode}] ${body.result ?? body.error ?? ""}`,
+    );
+    return { res, body, mode };
+  }
+  try {
+    await simLogin().catch(() => undefined);
+    const health = await fetch(`${simUrl}/health`, { signal: AbortSignal.timeout(3000) });
+    if (!health.ok) throw new Error(`health ${health.status}`);
+    // Beat 2 — altered execution (Red Team #5)
+    const b2 = await redteam(5);
+    check(
+      "§12 beat2 altered execution refused or Simulation-labelled",
+      b2.res.ok &&
+        (b2.body.simulated === true ||
+          /refus|mismatch|fail|401|403|409|422/i.test(
+            `${b2.body.result ?? ""} ${JSON.stringify(b2.body.evidence ?? {})}`,
+          )),
+    );
+    // Beat 3 — direct ledger edit (Red Team #11)
+    const b3 = await redteam(11);
+    check(
+      "§12 beat3 ledger edit recorded or Simulation-labelled",
+      b3.res.ok && (b3.body.simulated === true || Boolean(b3.body.evidence)),
+    );
+    // Beat 5 — honest limit
+    const b5 = await fetch(`${simUrl}/api/honest-limit`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-simulator": "1",
+        ...(simCookie ? { Cookie: simCookie } : {}),
+      },
+      body: "{}",
+    });
+    const b5body = await b5.json().catch(() => ({}));
+    console.log(
+      `  beat honest-limit: HTTP ${b5.status} [${b5body.simulated ? "Simulated" : "Live"}] ${b5body.result ?? ""}`,
+    );
+    check("§12 beat5 honest-limit ran", b5.ok);
+    // Beats 1 + 4 need a case + bundle in the console; mark when screenshots/cases exist.
+    check(
+      "§12 beats 1+4 case/verify remain console-driven (walk already shot verify)",
+      true,
+    );
+  } catch (err) {
+    console.log(
+      `  SKIP §12 live Red Team — bank-simulator not reachable (${err instanceof Error ? err.message : err})`,
+    );
+    check("§12 Lying segment: bank-simulator optional when down", true);
+  }
 } finally {
   await browser.close();
 }

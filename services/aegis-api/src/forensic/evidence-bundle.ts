@@ -24,6 +24,7 @@ import { getInclusionProofByEvent } from "../repo/witness.js";
 import { checkpointSigningMessage } from "../witness/sign-checkpoint.js";
 import { getReceiptKmsSigner } from "../crypto/kms-ed25519.js";
 import {
+  CUSTODY_PRODUCTION_NOTE,
   custodyLabel,
   receiptKeyIdFromEnv,
   type KeyCustody,
@@ -46,9 +47,11 @@ import {
   type SignedForensicReceipt,
 } from "./receipt.js";
 import {
+  extractSourceEnvelope,
   verifyForensicBundle,
   type ForensicBundle,
   type SealedEventForVerify,
+  type SourceRegistryEntry,
   type VerifyFinding,
   type VerifyResult,
 } from "./verify-bundle.js";
@@ -64,6 +67,19 @@ import {
   witnessStateFromBundle,
 } from "./verify-messages.js";
 import { renderOnePagePdf, type PdfLine } from "./minimal-pdf.js";
+import {
+  buildCaseProvenance,
+  GRADE_CHANGE_OUTCOME,
+  summarizeReceiptProvenance,
+  type CaseProvenanceView,
+  type ReceiptProvenanceSummary,
+} from "../sources/provenance.js";
+import {
+  collectCommitmentsFromReceipts,
+  verifySuppliedDocuments,
+  type SuppliedDocument,
+} from "../sources/input-commitments.js";
+import { hashApprovedViewFromEventPayload } from "../approvals/approver-binding.js";
 
 export const EVIDENCE_BUNDLE_TYPE = "aegis_evidence_bundle";
 
@@ -114,8 +130,13 @@ export type EvidenceApproval = {
   requested_at_utc: string | null;
   decided_at_utc: string | null;
   required_role: string | null;
+  /** Stage 5: mirror of sealed approved_view_hash for soft-section checks. */
+  approved_view_hash?: string | null;
   votes: Array<{
     voter_email: string | null;
+    voter_user_id?: string | null;
+    voter_account_id?: string | null;
+    session_id?: string | null;
     decision: string;
     reason: string | null;
     at_utc: string | null;
@@ -178,6 +199,11 @@ export type EvidenceReceiptSummary = {
   decision_basis: SignedForensicReceipt["decision_basis"] | null;
   plain_summary: string;
   who_approved: string;
+  /**
+   * Where this receipt's data came from, read from its signed provenance block.
+   * Absent on bundles exported before Stage 2.
+   */
+  provenance?: ReceiptProvenanceSummary;
 };
 
 export type EvidenceBundle = ForensicBundle & {
@@ -196,6 +222,29 @@ export type EvidenceBundle = ForensicBundle & {
   evidence: EvidenceReceiptSummary[];
   approvals: EvidenceApproval[];
   witness: EvidenceWitness[] | null;
+  /**
+   * Stage 2 honest labelling: grade at seal, current grade (from sealed grade-change receipts),
+   * the five checks, and plain wording. Derived from the signed receipts above; the verifier
+   * recomputes it and flags any difference. Absent on bundles exported before Stage 2.
+   */
+  provenance?: CaseProvenanceView | null;
+  /**
+   * Stage 3: Aegis decision public keys (same custody as receipt keys; domain AEGIS-TOKEN1).
+   * key_id -> public_key_b64. Present when the case has decision tokens or keys were supplied.
+   */
+  decision_keys?: Record<string, string>;
+  /** Stage 3: signed decision tokens issued for this case. */
+  decision_tokens?: Array<Record<string, unknown>>;
+  /**
+   * Stage 7: SHA-256 commitments to source documents, bound from sealed receipt attributes.
+   * The verifier accepts supplied documents and checks them against these hashes.
+   */
+  input_commitments?: Array<{
+    name: string;
+    sha256: string;
+    media_type?: string | null;
+    size_bytes?: number | null;
+  }>;
   how_to_verify: string;
   /** Result when the server exported this file; informational only. */
   export_check?: { ok: boolean; findings: string[] };
@@ -210,6 +259,10 @@ export type EvidenceBundleInput = {
     SealedEventForVerify & { emitted_at?: Date | string | null }
   >;
   keys: Record<string, string>;
+  /** AEGIS-SRC1 source keys (key_id -> public_key_b64) for offline envelope verify. */
+  source_keys?: Record<string, string>;
+  /** Source key registry rows covering envelopes in this case. */
+  source_registry?: SourceRegistryEntry[];
   key_custody?: Record<string, EvidenceKeyCustody>;
   trusted_time?: EvidenceTrustedTime[] | null;
   approvals?: EvidenceApproval[];
@@ -221,11 +274,68 @@ export type EvidenceBundleInput = {
    * every missing/swapped receipt must be detected.
    */
   subset?: boolean;
+  /** Stage 3 decision public keys (key_id -> public_key_b64). */
+  decision_keys?: Record<string, string>;
+  /** Stage 3 decision tokens for this case. */
+  decision_tokens?: Array<Record<string, unknown>>;
 };
 
 export function publicKeyFingerprint(publicKeyB64: string): string {
   const raw = Buffer.from(publicKeyB64, "base64");
   return `sha256:${createHash("sha256").update(raw).digest("hex")}`;
+}
+
+/**
+ * Stage 5: copy sealed approver_binding / approved_view_hash into the soft
+ * approvals section so a post-export edit of the soft section fails verify.
+ */
+function enrichApprovalsFromSealed(
+  soft: EvidenceApproval[],
+  receipts: SignedForensicReceipt[],
+): EvidenceApproval[] {
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const r of receipts) {
+    const first = Array.isArray(r.approvals) ? r.approvals[0] : null;
+    if (!first || typeof first !== "object") continue;
+    const s = first as Record<string, unknown>;
+    if (typeof s.approval_id === "string") byId.set(s.approval_id, s);
+  }
+  return soft.map((a) => {
+    const sealed = byId.get(a.approval_id);
+    if (!sealed) return a;
+    const binding =
+      sealed.approver_binding && typeof sealed.approver_binding === "object"
+        ? (sealed.approver_binding as Record<string, unknown>)
+        : null;
+    const votes = a.votes.map((v, i) => {
+      if (i !== 0) return v;
+      return {
+        ...v,
+        voter_user_id:
+          v.voter_user_id ??
+          (typeof sealed.approver_user_id === "string"
+            ? sealed.approver_user_id
+            : typeof binding?.membership_id === "string"
+              ? binding.membership_id
+              : null),
+        voter_account_id:
+          v.voter_account_id ??
+          (typeof binding?.account_id === "string" ? binding.account_id : null),
+        session_id:
+          v.session_id ??
+          (typeof binding?.session_id === "string" ? binding.session_id : null),
+      };
+    });
+    return {
+      ...a,
+      approved_view_hash:
+        a.approved_view_hash ??
+        (typeof sealed.approved_view_hash === "string"
+          ? sealed.approved_view_hash
+          : null),
+      votes,
+    };
+  });
 }
 
 function iso(value: Date | string | null | undefined): string | null {
@@ -353,6 +463,10 @@ export function summarizeReceipt(
     Array.isArray(receipt.approvals) && receipt.approvals[0]
       ? (receipt.approvals[0] as Record<string, unknown>)
       : null;
+  const attrs =
+    receipt.attributes && typeof receipt.attributes === "object"
+      ? (receipt.attributes as Record<string, unknown>)
+      : {};
   const plain =
     receipt.plain_summary ??
     describeDecision({
@@ -372,20 +486,20 @@ export function summarizeReceipt(
           ? sealedApproval.approver_display_name
           : null,
       approver_role:
-        typeof sealedApproval?.approver_role_label === "string"
-          ? sealedApproval.approver_role_label
-          : typeof sealedApproval?.approver_role === "string"
-            ? sealedApproval.approver_role
-            : null,
+        typeof sealedApproval?.approver_role === "string"
+          ? sealedApproval.approver_role
+          : null,
       approved_at:
         typeof sealedApproval?.decided_at === "string"
           ? sealedApproval.decided_at
           : null,
       approval_reason:
         typeof sealedApproval?.reason === "string" ? sealedApproval.reason : null,
+      required_role:
+        typeof attrs.required_role === "string" ? attrs.required_role : null,
       required_role_label:
-        typeof sealedApproval?.approver_role_label === "string"
-          ? sealedApproval.approver_role_label
+        typeof attrs.required_role_label === "string"
+          ? attrs.required_role_label
           : null,
     });
   return {
@@ -412,7 +526,25 @@ export function summarizeReceipt(
     decision_basis: receipt.decision_basis ?? null,
     plain_summary: plain,
     who_approved: whoApproved(receipt, opts.approvals),
+    provenance: summarizeReceiptProvenance(receipt),
   };
+}
+
+/** Stable JSON (sorted keys) for comparing derived sections with their recomputation. */
+function stableJson(value: unknown): string {
+  const sort = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(sort);
+    if (v !== null && typeof v === "object") {
+      const o = v as Record<string, unknown>;
+      return Object.fromEntries(
+        Object.keys(o)
+          .sort()
+          .map((k) => [k, sort(o[k])]),
+      );
+    }
+    return v;
+  };
+  return JSON.stringify(sort(value));
 }
 
 /** Pure builder: all inputs already loaded. Unit-testable without a database. */
@@ -428,6 +560,7 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     sig_alg: e.sig_alg,
     sig_value_b64: e.sig_value_b64,
     emitted_at_utc: iso(e.emitted_at ?? null),
+    ...(e.payload !== undefined ? { payload: e.payload } : {}),
   }));
   // Every cited event must be present or the verifier reports it missing.
   // Provisional citations (evt_gov_*) have no stored event: echo the signed ref.
@@ -466,10 +599,31 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     if (signed) key_custody[id] = { custody: signed, label: custodyLabel(signed) };
   }
 
-  const approvals = input.approvals ?? [];
+  const approvals = enrichApprovalsFromSealed(
+    input.approvals ?? [],
+    receipts,
+  );
   const evidence = receipts.map((r) =>
     summarizeReceipt(r, { keys, sealed_events: sealed, approvals }),
   );
+
+  const source_keys =
+    input.source_keys && Object.keys(input.source_keys).length > 0
+      ? { ...input.source_keys }
+      : undefined;
+  const source_registry =
+    input.source_registry && input.source_registry.length > 0
+      ? input.source_registry
+      : undefined;
+  const decision_keys =
+    input.decision_keys && Object.keys(input.decision_keys).length > 0
+      ? { ...input.decision_keys }
+      : undefined;
+  const decision_tokens =
+    input.decision_tokens && input.decision_tokens.length > 0
+      ? input.decision_tokens
+      : undefined;
+  const input_commitments = collectCommitmentsFromReceipts(receipts);
 
   return {
     bundle_type: EVIDENCE_BUNDLE_TYPE,
@@ -481,6 +635,11 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     receipts,
     sealed_events: sealed,
     keys,
+    ...(source_keys ? { source_keys } : {}),
+    ...(source_registry ? { source_registry } : {}),
+    ...(decision_keys ? { decision_keys } : {}),
+    ...(decision_tokens ? { decision_tokens } : {}),
+    ...(input_commitments.length > 0 ? { input_commitments } : {}),
     key_fingerprints,
     key_custody,
     trusted_time: input.trusted_time ?? null,
@@ -489,6 +648,7 @@ export function buildEvidenceBundle(input: EvidenceBundleInput): EvidenceBundle 
     evidence,
     approvals,
     witness: input.witness ?? null,
+    provenance: buildCaseProvenance(receipts),
     how_to_verify: HOW_TO_VERIFY,
   };
 }
@@ -509,6 +669,15 @@ export type BundleFileVerification = {
   case_id: string | null;
   trace_id: string | null;
   witness: "included" | "pending" | "none";
+  /**
+   * Two separate answers (never one green "verified"):
+   * record_line  — is the record intact (signed, unchanged)?
+   * source_line  — where did the data come from, and how much is vouched for?
+   */
+  record_line: string | null;
+  source_line: string | null;
+  /** Provenance recomputed from the signed receipts in the file (not copied from the file's summary). */
+  provenance: CaseProvenanceView | null;
 };
 
 function notABundle(message: string): BundleFileVerification {
@@ -522,6 +691,9 @@ function notABundle(message: string): BundleFileVerification {
     case_id: null,
     trace_id: null,
     witness: "none",
+    record_line: null,
+    source_line: null,
+    provenance: null,
   };
 }
 
@@ -606,7 +778,11 @@ export function readTrustedTime(bundle: {
  */
 export async function verifyBundleFile(
   raw: unknown,
-  opts: { trustedKeys?: Record<string, string> } = {},
+  opts: {
+    trustedKeys?: Record<string, string>;
+    /** Stage 7: optional documents to check against bundle.input_commitments. */
+    suppliedDocuments?: SuppliedDocument[];
+  } = {},
 ): Promise<BundleFileVerification> {
   if (!isRecord(raw) || !Array.isArray(raw.receipts)) {
     return notABundle(
@@ -682,6 +858,17 @@ export async function verifyBundleFile(
             record: r.receipt_id,
           });
         }
+      }
+      // Stage 2: the unsigned provenance summary must match the signed provenance block.
+      if (
+        ev.provenance !== undefined &&
+        stableJson(ev.provenance) !== stableJson(summarizeReceiptProvenance(r))
+      ) {
+        findings.push({
+          code: "summary_mismatch",
+          message: "Source label in the summary does not match the signed receipt",
+          record: r.receipt_id,
+        });
       }
       // Soft who_approved / plain_summary must match the signed body when present.
       if (
@@ -795,7 +982,126 @@ export async function verifyBundleFile(
               record: outcome.receipt_id,
             });
           }
+          // Stage 5: soft identity fields must match the sealed approver_binding.
+          const binding =
+            s.approver_binding && typeof s.approver_binding === "object"
+              ? (s.approver_binding as Record<string, unknown>)
+              : null;
+          if (
+            softVote?.voter_account_id &&
+            typeof binding?.account_id === "string" &&
+            softVote.voter_account_id !== binding.account_id
+          ) {
+            findings.push({
+              code: "approval_binding_mismatch",
+              message:
+                "Unsigned approver account id does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
+          if (
+            softVote?.voter_user_id &&
+            typeof binding?.membership_id === "string" &&
+            softVote.voter_user_id !== binding.membership_id &&
+            softVote.voter_user_id !== s.approver_user_id
+          ) {
+            findings.push({
+              code: "approval_binding_mismatch",
+              message:
+                "Unsigned approver membership id does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
+          if (
+            softVote?.session_id &&
+            typeof binding?.session_id === "string" &&
+            softVote.session_id !== binding.session_id
+          ) {
+            findings.push({
+              code: "approval_binding_mismatch",
+              message:
+                "Unsigned approver session id does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
+          if (
+            soft.approved_view_hash &&
+            typeof s.approved_view_hash === "string" &&
+            soft.approved_view_hash !== s.approved_view_hash
+          ) {
+            findings.push({
+              code: "approval_view_hash_mismatch",
+              message:
+                "Unsigned approval view hash does not match the signed outcome receipt",
+              record: outcome.receipt_id,
+            });
+          }
         }
+      }
+
+      // Stage 5: approved_view_hash must equal the hash of the gate event's request preview.
+      if (typeof s.approved_view_hash === "string") {
+        const gateId =
+          (Array.isArray(prior.sealed_events) &&
+            prior.sealed_events[0]?.event_id) ||
+          null;
+        const gateEvent = gateId
+          ? (bundle.sealed_events ?? []).find((e) => e.event_id === gateId)
+          : null;
+        if (gateEvent?.payload && typeof gateEvent.payload === "object") {
+          const expected = hashApprovedViewFromEventPayload(
+            gateEvent.payload as Record<string, unknown>,
+          );
+          if (expected !== s.approved_view_hash) {
+            findings.push({
+              code: "approval_view_hash_mismatch",
+              message:
+                "The approved view hash does not match the gate event the approver decided on",
+              record: outcome.receipt_id,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Stage 2: the case-level provenance in the file (grades, checks, wording) is derived from the
+  // signed receipts. Recompute it; a file that edits the displayed grade no longer matches.
+  const provenance = buildCaseProvenance(bundle.receipts);
+  if (
+    bundle.provenance !== undefined &&
+    stableJson(bundle.provenance) !== stableJson(provenance)
+  ) {
+    findings.push({
+      code: "summary_mismatch",
+      message: "Source and grade in the summary do not match the signed receipts",
+    });
+  }
+
+  // Stage 7: input commitments bound from sealed receipts; optional document check.
+  const boundCommitments = collectCommitmentsFromReceipts(bundle.receipts);
+  if (
+    bundle.input_commitments !== undefined &&
+    stableJson(bundle.input_commitments) !== stableJson(boundCommitments)
+  ) {
+    findings.push({
+      code: "summary_mismatch",
+      message: "Input commitments in the summary do not match the signed receipts",
+    });
+  }
+  if (opts.suppliedDocuments && opts.suppliedDocuments.length > 0) {
+    const docCheck = verifySuppliedDocuments(
+      boundCommitments.length > 0
+        ? boundCommitments
+        : (bundle.input_commitments ?? []),
+      opts.suppliedDocuments,
+    );
+    for (const c of docCheck.checks) {
+      if (!c.ok) {
+        findings.push({
+          code: "input_commitment_mismatch",
+          message: c.message,
+        });
       }
     }
   }
@@ -903,11 +1209,28 @@ export async function verifyBundleFile(
       ? bundle.witness.find((x) => x?.anchoring_type)?.anchoring_type ?? null
       : null,
   });
+  if (provenance) {
+    // Reported separately from the record checks: this is about the data's origin, not the seal.
+    checks.push({
+      id: "source_of_data",
+      label: provenance.source_line,
+      status: "info",
+      detail: provenance.headline,
+    });
+  }
   return {
     ok,
     message: ok
       ? "The record is intact and signed by a recognised key."
-      : "Verification failed. This record cannot be relied on.",
+      : "Record check failed. This record cannot be relied on.",
+    record_line: ok
+      ? provenance?.record_line ??
+        `Record intact: signed and unchanged since ${formatUtc(
+          bundle.receipts[0]?.issued_at,
+        )}`
+      : "Record check failed: it was changed after signing, or is incomplete.",
+    source_line: provenance?.source_line ?? null,
+    provenance,
     checks,
     findings: findings.map((f) => ({
       code: f.code,
@@ -1044,6 +1367,82 @@ export function receiptFromRow(row: ReceiptRow): SignedForensicReceipt {
     sig_alg: row.sig_alg as "ed25519",
     sig_value_b64: row.sig_value_b64,
   };
+}
+
+/** Collect AEGIS-SRC1 key_ids referenced by receipt source envelopes. */
+export function sourceKeyIdsFromReceipts(
+  receipts: SignedForensicReceipt[],
+): string[] {
+  const ids = new Set<string>();
+  for (const r of receipts) {
+    const env = extractSourceEnvelope(r);
+    if (env && typeof env.key_id === "string" && env.key_id) {
+      ids.add(env.key_id);
+    }
+  }
+  return [...ids];
+}
+
+/**
+ * Load source_keys + source_registry for envelopes cited by the receipts.
+ * Resolves key_ids via source_key; expands to sibling keys of the same sources
+ * that appear in source_registry_event history for the org.
+ */
+async function loadSourceKeysForReceipts(
+  client: pg.Pool | pg.PoolClient,
+  organizationId: string,
+  receipts: SignedForensicReceipt[],
+): Promise<{
+  source_keys?: Record<string, string>;
+  source_registry?: SourceRegistryEntry[];
+}> {
+  const keyIds = sourceKeyIdsFromReceipts(receipts);
+  if (keyIds.length === 0) return {};
+  try {
+    const keys = await client.query<{
+      key_id: string;
+      source_id: string;
+      public_key_b64: string;
+      valid_from: Date;
+      valid_to: Date | null;
+      status: string;
+    }>(
+      `WITH referenced AS (
+         SELECT DISTINCT source_id
+         FROM source_key
+         WHERE organization_id = $1 AND key_id = ANY($2::text[])
+         UNION
+         SELECT DISTINCT source_id
+         FROM source_registry_event
+         WHERE organization_id = $1 AND key_id = ANY($2::text[])
+       )
+       SELECT sk.key_id, sk.source_id, sk.public_key_b64, sk.valid_from, sk.valid_to, sk.status
+       FROM source_key sk
+       JOIN referenced r ON r.source_id = sk.source_id
+       WHERE sk.organization_id = $1
+       ORDER BY sk.created_at ASC, sk.key_id`,
+      [organizationId, keyIds],
+    );
+
+    if (keys.rows.length === 0) return {};
+    const source_keys: Record<string, string> = {};
+    const source_registry: SourceRegistryEntry[] = [];
+    for (const row of keys.rows) {
+      source_keys[row.key_id] = row.public_key_b64;
+      source_registry.push({
+        key_id: row.key_id,
+        source_id: row.source_id,
+        public_key_b64: row.public_key_b64,
+        valid_from: row.valid_from.toISOString(),
+        valid_to: row.valid_to ? row.valid_to.toISOString() : null,
+        status: row.status,
+      });
+    }
+    return { source_keys, source_registry };
+  } catch {
+    // Older DB without source tables.
+    return {};
+  }
 }
 
 /**
@@ -1292,10 +1691,42 @@ export async function loadEvidenceBundle(
     trusted_time = null;
   }
 
+  const { source_keys, source_registry } = await loadSourceKeysForReceipts(
+    client,
+    organizationId,
+    receipts,
+  );
+
+  const caseIdForTokens = receipts[0]?.case_id ?? [...caseIds][0] ?? null;
+  let decision_tokens: Array<Record<string, unknown>> | undefined;
+  let decision_keys: Record<string, string> | undefined;
+  if (caseIdForTokens) {
+    try {
+      const tokenRows = await client.query<{
+        token_body: Record<string, unknown>;
+        key_id: string;
+      }>(
+        `SELECT token_body, key_id FROM decision_token
+         WHERE organization_id = $1 AND case_id = $2
+         ORDER BY issued_at ASC`,
+        [organizationId, caseIdForTokens],
+      );
+      if (tokenRows.rows.length > 0) {
+        decision_tokens = tokenRows.rows.map((r) => r.token_body);
+        decision_keys = { ...keys };
+        for (const r of tokenRows.rows) {
+          if (keys[r.key_id]) decision_keys[r.key_id] = keys[r.key_id]!;
+        }
+      }
+    } catch {
+      /* migration 008 not applied yet */
+    }
+  }
+
   const bundle = buildEvidenceBundle({
     organization_id: organizationId,
     trace_id: traceId,
-    case_id: receipts[0]?.case_id ?? [...caseIds][0] ?? null,
+    case_id: caseIdForTokens,
     receipts,
     sealed_events: events.rows
       .filter((e) => cited.has(e.event_id))
@@ -1308,8 +1739,13 @@ export async function loadEvidenceBundle(
         sig_alg: e.sig_alg ?? undefined,
         sig_value_b64: e.sig_value_b64 ?? undefined,
         emitted_at: e.emitted_at,
+        payload: e.payload,
       })),
     keys,
+    source_keys,
+    source_registry,
+    decision_keys,
+    decision_tokens,
     key_custody,
     trusted_time,
     approvals,
@@ -1354,8 +1790,17 @@ export function trustedTimeText(
 export async function renderEvidencePdf(bundle: EvidenceBundle): Promise<Buffer> {
   const verification = await verifyForensicBundle(bundle);
   const checks = buildVerifyChecks(verification, witnessStateFromBundle(bundle));
-  const primary = bundle.evidence[bundle.evidence.length - 1];
-  const receipt = bundle.receipts[bundle.receipts.length - 1];
+  // The page describes the decision, not a later grade-change receipt.
+  const decisionEvidence = bundle.evidence.filter(
+    (e) => e.outcome !== GRADE_CHANGE_OUTCOME,
+  );
+  const primary =
+    decisionEvidence[decisionEvidence.length - 1] ??
+    bundle.evidence[bundle.evidence.length - 1];
+  const receipt =
+    bundle.receipts.find((r) => r.receipt_id === primary?.receipt_id) ??
+    bundle.receipts[bundle.receipts.length - 1];
+  const provenance = buildCaseProvenance(bundle.receipts);
   const lines: PdfLine[] = [];
   lines.push({ text: "Aegis evidence record", bold: true, size: 18 });
   lines.push({
@@ -1372,6 +1817,21 @@ export async function renderEvidencePdf(bundle: EvidenceBundle): Promise<Buffer>
   lines.push({ text: primary.plain_summary });
 
   const { amount, currency } = attrAmount(receipt.attributes);
+  const pdfAttrs =
+    receipt.attributes && typeof receipt.attributes === "object"
+      ? (receipt.attributes as Record<string, unknown>)
+      : {};
+  const requesterLine =
+    (typeof pdfAttrs.requester === "string" && pdfAttrs.requester.trim()) ||
+    (typeof pdfAttrs.requester_name === "string"
+      ? formatApprover(
+          pdfAttrs.requester_name,
+          typeof pdfAttrs.requester_role === "string"
+            ? pdfAttrs.requester_role
+            : null,
+        )
+      : null) ||
+    (pdfAttrs.requester_missing === true ? "Not recorded" : null);
   lines.push({ text: "Facts", bold: true, size: 12, gapBefore: 10 });
   const facts: Array<[string, string]> = [
     ["Case", bundle.case_id ?? bundle.trace_id],
@@ -1398,16 +1858,37 @@ export async function renderEvidencePdf(bundle: EvidenceBundle): Promise<Buffer>
           (primary.policy.content_hash ? ` (${primary.policy.content_hash})` : "")
         : "n/a",
     ],
+    ...(requesterLine ? ([["Requested by", requesterLine]] as Array<[string, string]>) : []),
     ["Who approved", primary.who_approved],
     ["Recorded at", formatUtc(primary.issued_at_utc)],
     ["Mode", receipt.mode === "record_only" ? "Record only (not blocking)" : "Enforced"],
   ];
   for (const [k, v] of facts) lines.push({ text: `${k}: ${v}` });
 
-  if (primary.decision_basis?.explanation) {
-    lines.push({ text: "Why", bold: true, size: 12, gapBefore: 10 });
-    lines.push({ text: primary.decision_basis.explanation });
+  // Stage 2: where the data came from. Never implies the data is accurate.
+  if (provenance) {
+    lines.push({ text: "Where this data came from", bold: true, size: 12, gapBefore: 10 });
+    lines.push({ text: provenance.headline, size: 9 });
+    lines.push({
+      text:
+        "Five facts: " +
+        provenance.checklist
+          .map((item) => `${item.label}: ${item.met ? "yes" : "no"}`)
+          .join("; "),
+      size: 8,
+    });
+    for (const change of provenance.grade_changes) {
+      lines.push({
+        text:
+          `Grade rose ${change.from_grade} to ${change.to_grade} at ${formatUtc(change.at)}` +
+          `${change.feed_name ? ` (${change.feed_name})` : ""}: ${change.reason}`,
+        size: 8,
+      });
+    }
+    lines.push({ text: provenance.limitations, size: 8 });
   }
+
+  // Plain summary is the auditor-facing sentence; skip engine decision_basis text.
 
   lines.push({ text: "Seal", bold: true, size: 12, gapBefore: 10 });
   lines.push({ text: `Receipt number: ${primary.seq}` });
@@ -1422,10 +1903,23 @@ export async function renderEvidencePdf(bundle: EvidenceBundle): Promise<Buffer>
   lines.push({ text: `Signature: ${primary.sig_value_b64}`, size: 8 });
   const custody =
     receipt.flags?.key_custody ?? bundle.key_custody?.[primary.key_id]?.custody;
-  if (custody) lines.push({ text: custodyLabel(custody), size: 8 });
+  if (custody) {
+    lines.push({ text: custodyLabel(custody), size: 8 });
+    if (custody === "software" || custody === "software_interim") {
+      lines.push({ text: CUSTODY_PRODUCTION_NOTE, size: 8 });
+    }
+  }
   lines.push({ text: trustedTimeText(bundle, receipt.receipt_id), size: 8 });
 
   lines.push({ text: "Checked when this page was made", bold: true, size: 12, gapBefore: 10 });
+  lines.push({
+    text: verification.ok
+      ? (provenance?.record_line ??
+        `Record intact: signed and unchanged since ${formatUtc(receipt.issued_at)}`)
+      : "Record check failed: it was changed after signing, or is incomplete.",
+    size: 9,
+  });
+  if (provenance) lines.push({ text: provenance.source_line, size: 9 });
   for (const c of checks) {
     const mark =
       c.status === "pass" ? "PASS" : c.status === "fail" ? "FAIL" : c.status === "info" ? "NOTE" : "PENDING";

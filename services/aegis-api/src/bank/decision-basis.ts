@@ -51,6 +51,8 @@ export function buildDecisionBasis(input: {
   decided_rule_id?: string | null;
   reason?: string;
   matrix_rule_id?: string | null;
+  /** Business plain English (e.g. velocity / fraud) preferred for hold/stop. */
+  plain_explanation?: string | null;
 }): DecisionBasis {
   const matched: DecisionBasisRule[] = input.matched_rules.map((m) => {
     const obl = input.rule_obligations?.[m.rule_id];
@@ -83,20 +85,29 @@ export function buildDecisionBasis(input: {
     null;
 
   let explanation: string;
+  const plain =
+    typeof input.plain_explanation === "string" &&
+    input.plain_explanation.trim()
+      ? input.plain_explanation.trim()
+      : null;
   if (input.outcome === "stop") {
     const stop = matched.find((m) => m.effect === "stop");
-    explanation = stop
-      ? `Stopped by rule ${stop.rule_id}.`
-      : input.reason ?? "Stopped by policy.";
+    explanation =
+      plain ??
+      (stop
+        ? `Stopped by rule ${stop.rule_id}.`
+        : input.reason ?? "Stopped by policy.");
   } else if (input.outcome === "hold") {
     const hold = holdRules[0];
-    explanation = hold
-      ? `Held because rule ${hold.rule_id} requires human approval${
-          allowRules.length
-            ? `; ${allowRules.map((a) => a.rule_id).join(", ")} alone would allow`
-            : ""
-        }.`
-      : input.reason ?? "Held for human approval.";
+    explanation =
+      plain ??
+      (hold
+        ? `Held because rule ${hold.rule_id} requires human approval${
+            allowRules.length
+              ? `; ${allowRules.map((a) => a.rule_id).join(", ")} alone would allow`
+              : ""
+          }.`
+        : input.reason ?? "Held for human approval.");
   } else {
     // allow
     if (recordedOnly.length > 0 && holdRules.length === 0) {

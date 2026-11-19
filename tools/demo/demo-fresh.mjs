@@ -25,7 +25,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -152,10 +152,102 @@ if (dryRun) {
 }
 
 runTool("1/3 wipe Demo Bank", "wipe-tenant", ["--slug", SLUG, "--confirm", SLUG, "--allow-missing"]);
-runTool("2/3 re-provision Demo Bank", "provision-demo-tenant");
+
+// Connector private keys are kept across wipe; seed-history clears outbox/delivered state.
+
+// --force-pack: workflow_id is a global PK; always re-bind banking pack +
+// executable_params to this fresh org (avoids empty tokens after wipe).
+runTool("2/3 re-provision Demo Bank", "provision-demo-tenant", ["--force-pack"]);
 runTool("3/3 re-seed history", "seed-history", [], {
   AEGIS_INGEST_KEY: process.env.DEMO_BANK_INGEST_KEY,
 });
+
+/** Always rewrite the loopback tenant file so ingest key + personas match this run. */
+function rewriteLocalStackTenant() {
+  const emailsPath = resolve(
+    process.env.DEMO_TENANT_FILE?.trim() || join(root, ".demo-tenant-emails.local.json"),
+  );
+  let emails = {};
+  if (existsSync(emailsPath)) {
+    let raw = readFileSync(emailsPath, "utf8");
+    if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
+    emails = JSON.parse(raw);
+  }
+  const apiBase =
+    process.env.AEGIS_API_BASE?.trim() ||
+    process.env.AEGIS_API_URL?.trim() ||
+    "http://127.0.0.1:8088";
+  const idBase =
+    process.env.AEGIS_ID_BASE?.trim() ||
+    process.env.ID_BASE_URL?.trim() ||
+    "http://127.0.0.1:8091";
+  const consoleOrigin =
+    process.env.AEGIS_CONSOLE_ORIGIN?.trim() ||
+    process.env.CONSOLE_ORIGIN?.trim() ||
+    "http://127.0.0.1:3000";
+  const personas = emails.personas && typeof emails.personas === "object"
+    ? emails.personas
+    : {
+        admin: {
+          email: "admin@demo.test",
+          display_name: "Theogene Rugamba",
+          password: process.env.DEMO_ADMIN_PASSWORD || "DemoPass123!",
+        },
+        officer: {
+          email: "officer@demo.test",
+          display_name: "Patience Ingabire",
+          password: process.env.DEMO_ADMIN_PASSWORD || "DemoPass123!",
+        },
+        manager: {
+          email: "manager@demo.test",
+          display_name: "Jean Mutabazi",
+          password: process.env.DEMO_ADMIN_PASSWORD || "DemoPass123!",
+        },
+        head: {
+          email: "head@demo.test",
+          display_name: "Olivier Kayitesi",
+          password: process.env.DEMO_ADMIN_PASSWORD || "DemoPass123!",
+        },
+      };
+  // Prefer org id written by this run's provision (never a stale AEGIS_ORGANIZATION_ID
+  // from .env pointing at a wiped organisation).
+  let orgMarker = null;
+  const markerPath = join(root, ".demo-tenant-org.local.json");
+  if (existsSync(markerPath)) {
+    try {
+      orgMarker = JSON.parse(readFileSync(markerPath, "utf8"));
+    } catch {
+      orgMarker = null;
+    }
+  }
+  const orgId =
+    (orgMarker && orgMarker.organization_id) ||
+    emails.organization_id ||
+    emails.organization?.id ||
+    null;
+  const out = {
+    api_base: apiBase.replace(/\/+$/, ""),
+    id_base: idBase.replace(/\/+$/, ""),
+    console_origin: consoleOrigin.replace(/\/+$/, ""),
+    organization: { name: "Demo Bank", slug: SLUG },
+    ...(orgId ? { organization_id: orgId } : {}),
+    personas,
+    ingest_key: stableKey,
+    rewritten_at: new Date().toISOString(),
+    rewritten_by: "demo:fresh",
+  };
+  const path = join(root, ".demo-tenant-local-stack.local.json");
+  writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`, { mode: 0o600 });
+  try {
+    chmodSync(path, 0o600);
+  } catch {
+    /* windows */
+  }
+  console.log(`\n  Rewrote ${path} (ingest_key + personas for this run).`);
+  return path;
+}
+
+rewriteLocalStackTenant();
 
 if (generatedKey) {
   console.log(
@@ -174,5 +266,5 @@ if (generatedKey) {
 console.log(
   `\ndemo:fresh complete. Demo Bank has a new organisation id (see step 2 output); ${
     generatedKey ? "a new ingest key was printed above." : "the ingest key is unchanged."
-  }\nIf the bank simulator pins AEGIS_ORGANIZATION_ID, update it to the new id.\n`,
+  }\nLocal stack tenant file rewritten. Point bank-simulator at its ingest_key / org id.\n`,
 );

@@ -30,12 +30,14 @@ import {
   fail,
   findOrganizationId,
   loadTenantFile,
+  orgDemoFlags,
   orgName,
   orgSlug,
   platformCall,
   type PersonaKey,
   type TenantFile,
 } from "./demo-tenant-lib.mts";
+import { ensureDemoConnectorSources } from "./connector-sources.mts";
 
 const args = new Set(process.argv.slice(2));
 
@@ -48,13 +50,12 @@ const AGENTS = [
 
 const INGEST_KEY_NAME = "demo-bank-simulator";
 
-const isSmokeSlug = (slug: string) => /smoke/i.test(slug);
-
 const log = (msg: string) => console.log(`  ${msg}`);
 const step = (n: number, title: string) => console.log(`\n[${n}] ${title}`);
 
 async function ensureOrganization(file: TenantFile): Promise<string> {
   const slug = orgSlug(file);
+  const flags = orgDemoFlags(slug);
   const existing = await findOrganizationId(file, slug);
   if (existing) {
     // Idempotent: make sure the flag is set (quiet tag, no plan badge, no Production/Sandbox)
@@ -62,13 +63,26 @@ async function ensureOrganization(file: TenantFile): Promise<string> {
     await platformCall(file, `/organizations/${existing}`, {
       method: "PATCH",
       body: {
-        is_demo: true,
+        is_demo: flags.is_demo,
+        is_test: flags.is_test,
         plan: "enterprise",
-        // A smoke-test tenant is also disposable (wipeable): slug must contain "smoke".
-        ...(isSmokeSlug(slug) ? { is_test: true } : {}),
       },
     });
-    log(`Organisation "${slug}" already exists (is_demo + enterprise seats confirmed).`);
+    // Existing Demo Bank orgs may predate the local admin account — attach before login,
+    // otherwise login falls through to another membership (e.g. Northwind) and setup 403s.
+    const admin = file.personas.admin;
+    await platformCall(file, `/organizations/${existing}/members`, {
+      method: "PUT",
+      body: {
+        email: admin.email.trim(),
+        role: "admin",
+        display_name: admin.display_name.trim(),
+        password: admin.password,
+      },
+    });
+    log(
+      `Organisation "${slug}" already exists (is_demo=${flags.is_demo}, is_test=${flags.is_test}).`,
+    );
     return existing;
   }
   const admin = file.personas.admin;
@@ -82,12 +96,14 @@ async function ensureOrganization(file: TenantFile): Promise<string> {
       admin_password: admin.password,
       // A demo tenant is not on a commercial plan, but needs room for 8 members.
       plan: "enterprise",
-      is_demo: true,
-      ...(isSmokeSlug(slug) ? { is_test: true } : {}),
+      is_demo: flags.is_demo,
+      is_test: flags.is_test,
     },
   });
   // The default agent's one-time private key is deliberately not printed or stored.
-  log(`Created organisation "${slug}" (is_demo${isSmokeSlug(slug) ? ", is_test" : ""}).`);
+  log(
+    `Created organisation "${slug}" (is_demo=${flags.is_demo}, is_test=${flags.is_test}).`,
+  );
   return created.data.organization_id;
 }
 
@@ -335,35 +351,95 @@ async function main(): Promise<void> {
   );
   log("Signed in as the organisation admin.");
 
+  // Explicit: Demo Bank always requires signed source events (Stage 1).
+  // Enabling is single-admin and seals a setting_change receipt when the flag flips.
+  {
+    const flag = await admin.call<{
+      require_signed_events: boolean;
+      unchanged?: boolean;
+      sealed?: boolean;
+    }>("/organization/require-signed-events", {
+      method: "POST",
+      body: { enabled: true },
+    });
+    if (flag.data.unchanged) {
+      log("require_signed_events already true.");
+    } else {
+      log(
+        `require_signed_events set to true${flag.data.sealed ? " (sealed)" : ""}.`,
+      );
+    }
+  }
+
   step(3, "Agents and signing bridge");
   await ensureAgents(admin);
 
   step(4, "Ingest key");
-  const stableSecret = process.env.DEMO_BANK_INGEST_KEY?.trim();
+  // Prefer DEMO_BANK_INGEST_KEY; fall back to AEGIS_INGEST_KEY so Ops Populate +
+  // seed-history (same parent env) share one secret after wipe. Random mint only
+  // when neither is set (CLI operators who copy the one-time print).
+  const stableSecret =
+    process.env.DEMO_BANK_INGEST_KEY?.trim() ||
+    process.env.AEGIS_INGEST_KEY?.trim();
   if (stableSecret) {
     await ensureStableIngestKey(file, organizationId, stableSecret);
   } else {
     await ensureIngestKey(admin);
   }
 
-  step(5, "Banking pack and escalation");
+  step(5, "Signed sources (Connector keys)");
+  // Private keys under .data/connectors/ (gitignored). Public keys registered with Aegis.
+  // Configs omit the ingest bearer unless DEMO_BANK_INGEST_KEY is set; use AEGIS_INGEST_BEARER
+  // when starting Connectors (`pnpm demo:connectors` / bank:up).
+  const connectors = await ensureDemoConnectorSources(admin, file, {
+    ingestKey: stableSecret || process.env.AEGIS_INGEST_KEY?.trim(),
+    log,
+  });
+  log(
+    `Connector data dir: ${connectors.root}  (start with: pnpm demo:connectors  or  pnpm bank:up)`,
+  );
+
+  step(6, "Banking pack and escalation");
   await ensurePack(admin);
 
   if (args.has("--skip-invites")) {
     console.log("\nSkipped invitations (--skip-invites).");
   } else {
-    step(6, "Personas (memberships / invitations)");
+    step(7, "Personas (memberships / invitations)");
     const status = await inviteEveryone(file, organizationId, admin);
     for (const key of PERSONA_KEYS) log(`${key.padEnd(10)} ${status[key]}`);
 
-    step(7, "Bank roles");
+    step(8, "Bank roles");
     await syncBankRoles(admin, file);
+  }
+
+  // Marker for demo:fresh rewrite — never trust a stale AEGIS_ORGANIZATION_ID after wipe.
+  try {
+    const { writeFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    writeFileSync(
+      resolve(process.cwd(), ".demo-tenant-org.local.json"),
+      `${JSON.stringify(
+        {
+          organization_id: organizationId,
+          slug: file.organization?.slug || "demo-bank",
+          written_at: new Date().toISOString(),
+          written_by: "provision-demo-tenant",
+        },
+        null,
+        2,
+      )}\n`,
+      { mode: 0o600 },
+    );
+  } catch {
+    /* non-fatal */
   }
 
   console.log(
     `\nDone. Organisation id: ${organizationId}${
       file.console_origin ? `\nConsole: ${file.console_origin}/aegis` : ""
-    }\nNext: pnpm pilot:seed-history   (needs AEGIS_INGEST_KEY from step 4, or DEMO_BANK_INGEST_KEY)\n`,
+    }\nNext: pnpm pilot:seed-history   (needs AEGIS_INGEST_KEY from step 4, or DEMO_BANK_INGEST_KEY)\n` +
+      `Connectors: pnpm demo:connectors   (LOS :8787; keys in ${connectors.root})\n`,
   );
 }
 

@@ -1,0 +1,18 @@
+$ pnpm conformance:src1
+
+
+> salanor@0.0.0 conformance:src1 D:\PROJECTS\salanor
+> pnpm --filter @salanor/aegis-sdk build && node conformance/run.mjs
+
+
+> @salanor/aegis-sdk@0.1.0 build D:\PROJECTS\salanor\packages\aegis-sdk
+> tsc -p tsconfig.build.json
+
+vectors.json and sdks/conformance/vectors/aegis-src1-v1.json are up to date
+[typescript] 15 positive + 12 negative vectors OK
+[python] 15 positive + 12 negative vectors OK
+conformance: all legs passed
+
+
+
+EXIT=0 ELAPSED_MS=4354

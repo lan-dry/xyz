@@ -1,0 +1,154 @@
+{
+  "letter": "G",
+  "story_id": "scenario_g",
+  "ms": 497,
+  "status": 200,
+  "data": {
+    "ok": true,
+    "story_id": "scenario_g",
+    "expected": "dual_published",
+    "expect_detail": "Policy / segment limit change with dual_publish_required: first approver pending, second co-approves; rule history shows both.",
+    "resolver": "Second approver (dual publish)",
+    "case_id": "SIM-1F87BE8273",
+    "trace_id": "tr_sim_1f87be8273",
+    "outcome": "dual_published",
+    "console_url": "http://localhost:3000/aegis/traces/tr_sim_1f87be8273",
+    "plain_summary": "Limit / pack change required dual publish: first publisher pending, second co-approver live; rule history shows both.",
+    "matched_rules": [
+      {
+        "rule_id": "r_a17ca822aedb",
+        "policy_id": "pol_21740b84c1f900ce",
+        "decision": "allow"
+      },
+      {
+        "rule_id": "AUTH-RL-1",
+        "policy_id": "pol_21740b84c1f900ce",
+        "decision": "allow"
+      }
+    ],
+    "approval_id": null,
+    "sealed": true,
+    "action": {
+      "amount": 1000000,
+      "currency": "RWF"
+    },
+    "target_grade": "G1",
+    "can_disburse": false,
+    "decision_token": null,
+    "evidence_grade": "G1",
+    "dual_publish": {
+      "prepare_status": 201,
+      "draft_id": "pol_dfa1ea619a7e9a01",
+      "dual_required": true,
+      "published": true,
+      "second_status": 200
+    },
+    "customer_id": "CUST-RW-SCEN-G-41a8bb",
+    "steps": [
+      "LOS Connector → signed source-events (G1).",
+      "Governed intake: allow (source-signed)",
+      "Auto-allowed: core ledger may disburse after Aegis execution/permit.",
+      "Target evidence grade for this story: G1.",
+      "Prepared dual-publish draft v6",
+      "First publisher alone → pending second approver (expected)",
+      "Second approver completed dual publish → live"
+    ],
+    "requests": [
+      {
+        "method": "POST",
+        "endpoint": "http://127.0.0.1:8088/v1/aegis/source-events",
+        "via": "aegis-connector",
+        "source_id": "src_los",
+        "key_id": "k_los_2026_01_mwn5jeo7",
+        "headers": {
+          "Authorization": "Bearer aegis_…****",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "schema_version": 1,
+          "case_id": "SIM-1F87BE8273",
+          "idempotency_key": "a5607a7e-93ad-4918-913f-d5e5320d924a",
+          "event_type": "policy_publish",
+          "product": "retail_loan",
+          "emitted_at": "2026-11-19T13:11:35.550Z",
+          "actor": {
+            "type": "system",
+            "id": "credit-decision"
+          },
+          "attributes": {
+            "requester_email": "manager@demo.test",
+            "requester_name": "Jean Mutabazi",
+            "requester_role": "credit_manager",
+            "officer_id": "MGR-2201",
+            "system_account": "core-banking",
+            "amount": 1000000,
+            "currency": "RWF",
+            "customer_id": "CUST-RW-SCEN-G-41a8bb",
+            "segment": "retail_standard",
+            "applicant_name": "Policy Change Demo",
+            "branch": "Kigali - Nyarugenge",
+            "loan_purpose": "Limit change dual-publish",
+            "product": "retail_loan"
+          },
+          "trace_id": "tr_sim_1f87be8273"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "case_id": "SIM-1F87BE8273",
+            "decision_id": "dec_0e0d3bd97c544dc3",
+            "receipt_id": "rcpt_08eaffdb9ace44f6",
+            "outcome": "dual_published",
+            "mode": "enforce",
+            "matched_rules": [
+              {
+                "rule_id": "r_a17ca822aedb",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow"
+              },
+              {
+                "rule_id": "AUTH-RL-1",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow"
+              }
+            ],
+            "decision_basis": {
+              "outcome": "allow",
+              "decided_by_rule_id": "r_a17ca822aedb",
+              "explanation": "Allowed under rule r_a17ca822aedb. No human approval was needed.",
+              "matched": [
+                {
+                  "rule_id": "r_a17ca822aedb",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow",
+                  "effect": "allow"
+                },
+                {
+                  "rule_id": "AUTH-RL-1",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow",
+                  "effect": "allow"
+                }
+              ]
+            },
+            "plain_summary": "Policy publish of RWF 1,000,000 was allowed automatically under rule r_a17ca822aedb. No human approval was needed. Policy v5.",
+            "policy": {
+              "policy_id": "pol_21740b84c1f900ce",
+              "version": 5,
+              "content_hash": "58dd0b14e27b3941906d6e9af036d6b750a459a148f3cf6b5f222f13d1968ca2"
+            },
+            "approval": null,
+            "event_id": "evt_07d7455a60454fd0bf3e24c7",
+            "event_hash": "462125e59bcfc14d90952678bf19b360f8dec9762fadec9de5def561082e6872",
+            "sequence_num": 66,
+            "flags": {
+              "evidence_status": "ok"
+            },
+            "source_signed": true,
+            "evidence_grade": "G1"
+          }
+        }
+      }
+    ]
+  }
+}

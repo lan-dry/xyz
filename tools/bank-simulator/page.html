@@ -16,8 +16,6 @@
   main { max-width:1100px; margin:0 auto; padding:1.25rem 1.5rem 3rem; display:grid; gap:1.25rem; }
   .bar { display:flex; flex-wrap:wrap; gap:1rem; align-items:center; background:var(--card);
          border:1px solid var(--line); border-radius:8px; padding:.75rem 1rem; }
-  .bar.offline { border-color:var(--warn); background:#fff8e6; }
-  .switch { display:flex; gap:.5rem; align-items:center; font-weight:600; cursor:pointer; }
   .meta { color:var(--muted); font-size:.85rem; }
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:1rem; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:1rem;
@@ -48,11 +46,8 @@
   .status { padding:.45rem 1.5rem; font-size:.9rem; font-weight:600; border-bottom:1px solid var(--line);
             background:#eaf6ee; color:var(--ok); }
   .status.off { background:#fdecea; color:var(--bad); }
-  details.setup { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.75rem 1rem; }
-  details.setup summary { cursor:pointer; font-weight:600; }
-  #setupForm { display:grid; gap:.6rem; margin-top:.75rem; max-width:560px; }
-  #setupForm label { font-size:.8rem; color:var(--muted); display:grid; gap:.2rem; }
-  #setupForm input { font:inherit; padding:.45rem .6rem; border:1px solid var(--line); border-radius:6px; width:100%; }
+  .banner { background:#eef4ff; border-bottom:1px solid var(--line); padding:.35rem 1.5rem;
+            font-size:.8rem; color:var(--muted); }
   .sent { margin-top:.75rem; border-top:1px solid var(--line); padding-top:.75rem; }
   .sent h3 { margin:0 0 .4rem; font-size:.9rem; }
   .sent .call { border:1px solid var(--line); border-radius:6px; padding:.5rem .7rem; margin:.4rem 0; background:#fbfcfd; }
@@ -62,8 +57,6 @@
   .sent .lbl { font-size:.75rem; color:var(--muted); margin-top:.4rem; }
   .sent .st { font-weight:700; }
   .sent .st.bad { color:var(--bad); } .sent .st.good { color:var(--ok); }
-  .banner { background:#eef4ff; border-bottom:1px solid var(--line); padding:.35rem 1.5rem;
-            font-size:.8rem; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -84,31 +77,18 @@
   <p class="err" id="loginError" role="alert"></p>
 </form>
 <main id="app">
-  <details class="setup" id="setup">
-    <summary>Setup: API base, ingest key, organisation, agent</summary>
-    <p class="meta">Overrides the server's environment values. The ingest key is stored on this server only and is never shown again; leave it blank to keep the saved key.</p>
-    <form id="setupForm" autocomplete="off">
-      <label>API base<input id="cfgApiBase" type="url" placeholder="https://api.salanor.com" required></label>
-      <label>Ingest key <span id="keyHint"></span><input id="cfgKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="paste to set or replace"></label>
-      <label>Organisation id<input id="cfgOrg" type="text" required></label>
-      <label>Agent id<input id="cfgAgent" type="text" required></label>
-      <div class="row">
-        <button type="submit" id="cfgSave">Save</button>
-        <button type="button" class="secondary" id="cfgReset">Use environment defaults</button>
-      </div>
-      <p class="meta" id="cfgMsg" role="status"></p>
-    </form>
-  </details>
-
-  <section class="bar" id="bar">
-    <label class="switch"><input type="checkbox" id="offline"> Aegis unreachable</label>
-    <span class="meta" id="offlineHint">Link to Aegis is up.</span>
-    <span class="meta" id="queueInfo"></span>
+  <section class="bar" id="healthLights">
+    <span class="meta"><strong>Health</strong></span>
+    <span class="chip" id="hlApi">API …</span>
+    <span class="chip" id="hlSim">Simulator …</span>
+    <span class="meta">Use <code>demo-start.cmd</code> / <code>demo-stop.cmd</code> in this folder.</span>
   </section>
 
   <section id="result" class="hidden" aria-live="polite"></section>
 
   <section>
+    <h2 style="margin:0 0 .75rem;font-size:1rem">Scenarios A–G</h2>
+    <p class="meta" style="margin:0 0 1rem">Realistic governance stories through Connectors. Red Team / wipe / demo data: Platform Ops → Demo tenants (including redteam-lab).</p>
     <div class="grid" id="stories"></div>
   </section>
 </main>
@@ -117,8 +97,6 @@
 (function () {
   var storiesEl = document.getElementById("stories");
   var resultEl = document.getElementById("result");
-  var offlineEl = document.getElementById("offline");
-  var barEl = document.getElementById("bar");
   var state = {};
 
   function el(tag, attrs, children) {
@@ -158,10 +136,15 @@
   function start() {
     loginEl.hidden = true;
     appEl.hidden = false;
-    Promise.all([api("/api/stories"), refreshState(), loadConfig()])
+    Promise.all([api("/api/stories"), refreshState()])
       .then(function (res) {
         logoutEl.hidden = !state.auth_enabled;
         renderStories(res[0].stories);
+        var apiOk = !!(res[1] && res[1].configured !== false);
+        var hlApi = document.getElementById("hlApi");
+        var hlSim = document.getElementById("hlSim");
+        if (hlApi) { hlApi.textContent = apiOk ? "API up" : "API check"; hlApi.className = "chip " + (apiOk ? "allow" : "hold"); }
+        if (hlSim) { hlSim.textContent = "Simulator up"; hlSim.className = "chip allow"; }
       })
       .catch(function (e) { if (e.message !== "Login required") storiesEl.textContent = "Could not load: " + e.message; });
   }
@@ -199,59 +182,14 @@
   }
 
   function renderState() {
-    offlineEl.checked = !!state.offline;
-    barEl.className = "bar" + (state.offline ? " offline" : "");
-    document.getElementById("offlineHint").textContent = state.offline
-      ? "Simulated outage: the bank proceeds under its own fallback and queues each event."
-      : "Link to Aegis is up.";
-    var q = [];
-    if (state.queued) q.push(state.queued + " queued for replay");
-    if (state.sdk_buffered) q.push(state.sdk_buffered + " in the SDK buffer");
-    document.getElementById("queueInfo").textContent = q.join(" \u00b7 ");
     document.getElementById("target").textContent = state.api_base ? "Aegis API: " + state.api_base : "";
     var st = document.getElementById("statusLine");
     st.textContent = state.status_line || "";
     st.className = "status" + (state.configured ? "" : " off");
   }
 
-  var cfgEl = {
-    apiBase: document.getElementById("cfgApiBase"), key: document.getElementById("cfgKey"),
-    org: document.getElementById("cfgOrg"), agent: document.getElementById("cfgAgent"),
-    msg: document.getElementById("cfgMsg"), hint: document.getElementById("keyHint")
-  };
-
-  // Fill the form from the server. The key is never returned, only whether one is present.
-  function applyConfig(c) {
-    cfgEl.apiBase.value = c.apiBase || "";
-    cfgEl.org.value = c.orgId || "";
-    cfgEl.agent.value = c.agentId || "";
-    cfgEl.key.value = "";
-    cfgEl.hint.textContent = c.keyPresent ? "(saved: " + c.keyHint + ")" : "(not set)";
-    if (!c.configured) document.getElementById("setup").open = true;
-  }
-
-  function loadConfig() { return api("/api/config").then(applyConfig); }
-
-  document.getElementById("setupForm").addEventListener("submit", function (ev) {
-    ev.preventDefault();
-    cfgEl.msg.textContent = "Saving\u2026";
-    api("/api/config", {
-      apiBase: cfgEl.apiBase.value, ingestKey: cfgEl.key.value,
-      orgId: cfgEl.org.value, agentId: cfgEl.agent.value
-    }).then(function (c) {
-      applyConfig(c); cfgEl.msg.textContent = "Saved. The key stays on the server."; return refreshState();
-    }).catch(function (e) { cfgEl.msg.textContent = e.message; cfgEl.key.value = ""; });
-  });
-
-  document.getElementById("cfgReset").addEventListener("click", function () {
-    api("/api/config/reset", {}).then(function (c) {
-      applyConfig(c); cfgEl.msg.textContent = "Saved override removed."; return refreshState();
-    }).catch(function (e) { cfgEl.msg.textContent = e.message; });
-  });
-
   function pretty(v) { try { return JSON.stringify(v, null, 2); } catch (e) { return String(v); } }
 
-  // "What was sent": endpoint, payload, response status and body. The key is masked by the server.
   function renderSent(requests) {
     if (!requests || !requests.length) return null;
     var wrap = el("div", { class: "sent" }, [el("h3", { text: "What was sent" })]);
@@ -327,6 +265,9 @@
 
   function renderStories(list) {
     storiesEl.textContent = "";
+    list = (list || []).filter(function (s) {
+      return s.letter && "ABCDEFG".indexOf(String(s.letter).toUpperCase()) >= 0;
+    });
     list.forEach(function (s) {
       var btn = el("button", { text: s.wrong_key ? "Send with a wrong key" : "Send this case" });
       btn.addEventListener("click", function () { send(s, btn); });
@@ -337,6 +278,7 @@
         el("p", { class: "attrs", text: preview(s.attributes || {}) }),
         el("p", { text: s.expect_detail })
       ];
+      if (s.target_grade) children.push(el("p", { class: "attrs", text: "Target grade: " + s.target_grade }));
       if (s.resolver) children.push(el("p", { class: "attrs", text: "Resolved by: " + s.resolver }));
       var row = el("div", { class: "row" }, [btn]);
       if (s.console_hint) {
@@ -346,31 +288,6 @@
       storiesEl.appendChild(el("article", { class: "card" }, children));
     });
   }
-
-  offlineEl.addEventListener("change", function () {
-    var on = offlineEl.checked;
-    offlineEl.disabled = true;
-    api("/api/unreachable", { on: on })
-      .then(function (r) {
-        if (!on && r.replayed) {
-          var box = el("div");
-          box.appendChild(el("p", { text: r.replayed.length + " event(s) replayed and sealed, marked decided without Aegis." }));
-          box.appendChild(steps(r.steps));
-          r.replayed.forEach(function (c) {
-            box.appendChild(el("p", {}, [
-              el("span", { text: c.case_id + " \u00b7 " + c.outcome + " \u00b7 " }),
-              el("a", { href: c.console_url, target: "_blank", rel: "noreferrer noopener", text: "open case" })
-            ]));
-          });
-          var sentReplay = renderSent(r.requests);
-          if (sentReplay) box.appendChild(sentReplay);
-          showResult("Link restored", box);
-        }
-        return refreshState();
-      })
-      .catch(function (e) { showResult("Could not change the link state", el("p", { class: "err", text: e.message })); })
-      .then(function () { offlineEl.disabled = false; return refreshState(); });
-  });
 
   start();
 })();

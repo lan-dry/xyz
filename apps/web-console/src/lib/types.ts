@@ -227,8 +227,110 @@ export type CaseSummary = {
   requester_email?: string | null;
   requester_officer_id?: string | null;
   seal: CaseSealStatus;
+  /** Where the data came from (Stage 2 honest labelling). Null when the case has no sealed receipt. */
+  provenance?: CaseProvenance | null;
   demo_filler: boolean;
-  /** Synthetic back-dated history from the demo seed. */
+  /** Synthetic history from the demo seed (intake times staggered across prior weeks). */
   demo_history?: boolean;
   created_at: string | null;
+};
+
+export type EvidenceGradeId = "G0" | "G1" | "G2" | "G3";
+
+export type FieldAssertionKind =
+  | "asserted_by_source"
+  | "derived_by_aegis"
+  | "corroborated"
+  | "independently_captured"
+  | "signed_by_third_party";
+
+/**
+ * Mirrors aegis-api CaseProvenanceView. The grade says how the data was vouched for; it never
+ * says the data is accurate. `record_line` is only shown when the record check passed.
+ */
+export type CaseProvenance = {
+  legacy: boolean;
+  source: {
+    source_id: string;
+    source_name: string;
+    key_id: string | null;
+    authentication: "bearer_key" | "source_signature" | "mtls";
+  } | null;
+  grade_at_seal: EvidenceGradeId;
+  current_grade: EvidenceGradeId;
+  grade_changes: Array<{
+    receipt_id: string;
+    at: string;
+    from_grade: EvidenceGradeId;
+    to_grade: EvidenceGradeId;
+    reason: string;
+    feed_name: string | null;
+  }>;
+  checklist: Array<{ id: string; label: string; met: boolean }>;
+  field_assertions: Record<string, FieldAssertionKind>;
+  /** Stage 7: e.g. "Credit score 612, signed by Demo Credit Bureau". */
+  signed_facts?: Array<{
+    field: string;
+    value: unknown;
+    source_id: string;
+    source_name: string;
+    key_id: string;
+    display_line: string;
+  }>;
+  /** Stage 7: non-blocking plausibility flags. */
+  plausibility_flags?: Array<{ kind: string; title: string }>;
+  limitations: string;
+  recorded_at: string | null;
+  headline: string;
+  record_line: string;
+  source_line: string;
+  source_line_short: string;
+  /** ISO time when a later CDC observation contradicted a sealed G3. */
+  contradicted_at?: string | null;
+};
+
+/** Signed-event source registry (GET /v1/console/sources). */
+export type SourceKeySummary = {
+  key_id: string;
+  source_id: string;
+  public_key_b64: string;
+  /** First 8 + last 8 characters of the public key. */
+  fingerprint: string;
+  status: "active" | "rotated" | "revoked";
+  valid_from: string | null;
+  valid_to: string | null;
+  created_by: string | null;
+  revoked_by: string | null;
+  reason: string | null;
+  created_at: string | null;
+};
+
+export type SourceSummary = {
+  source_id: string;
+  name: string;
+  kind: "application" | "executor" | "collector" | "third_party";
+  owner_contact: string | null;
+  status: "active" | "disabled";
+  last_seq: number;
+  last_event_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  active_key: SourceKeySummary | null;
+  keys: SourceKeySummary[];
+  open_gap_count: number;
+};
+
+export type SourceHistoryEvent = {
+  id: string;
+  action: "registered" | "key_added" | "key_rotated" | "key_revoked" | "source_disabled";
+  key_id: string | null;
+  actor: string | null;
+  detail: Record<string, unknown>;
+  created_at: string | null;
+};
+
+export type SourceHistory = {
+  source: SourceSummary;
+  events: SourceHistoryEvent[];
+  gaps: Array<{ from_seq: number; to_seq: number; detected_at: string | null }>;
 };

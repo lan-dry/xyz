@@ -1,30 +1,41 @@
-# False positives + test fixtures only.
-# Historical .env_deploy secrets are NOT allowlisted — rotate them
-# (.cursor-test-compare/remove-demo-mode/gitleaks-classification.txt).
-# CI uses --no-git (current tree). Note: gitleaks v8.21 still honors the
-# legacy singular [allowlist] block when extending the default config.
+# Exact path allowlists for known fixtures + pattern allowlists where needed.
+# No directory free-pass for test/ or _raw/. Historical .env_deploy secrets are NOT allowlisted — rotate them.
 title = "salanor"
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "False positives and test fixtures"
+description = "Known fixtures (exact paths) and build noise"
 paths = [
-  '''kms-ed25519\.ts''',
-  '''key-provider\.ts''',
-  '''\.env\.example''',
-  '''\.example\.json''',
-  '''AEGIS_GOVERNANCE_BRIDGE_MVP\.md''',
-  '''upgrade-migrate-check\.mts''',
-  '''live-scenarios-extended\.ts''',
-  '''\.test\.ts''',
-  '''/test/''',
-  '''node_modules''',
-  '''\.next''',
-  '''\.nx''',
-  '''/dist/''',
-  '''\.cursor-test-compare''',
+  '''conformance[/\\]vectors\.json''',
+  '''sdks[/\\]conformance[/\\]vectors[/\\]aegis-src1-v1\.json''',
+  '''docs[/\\]TEST_PACK[/\\]provenance[/\\]bundles[/\\]g1-exported-bundle\.json''',
+  '''tools[/\\]independent-verify[/\\]fixtures[/\\]g1-exported-bundle\.json''',
+  '''tools[/\\]independent-verify[/\\]write-g1-fixture\.mjs''',
+  '''services[/\\]aegis-api[/\\]scripts[/\\]write-g1-bundle-fixture\.mts''',
+  '''services[/\\]insurance-api[/\\]test[/\\]platform\.integration\.test\.ts''',
+  '''\.demo-tenant-emails\.local\.example\.json''',
+  '''(^|[/\\])\.env\.example$''',
+  '''apps[/\\]pilot-agent[/\\]\.env\.example''',
+  '''examples[/\\].+[/\\]\.env\.example''',
+  '''docs[/\\]AEGIS_GOVERNANCE_BRIDGE_MVP\.md''',
+  '''docs[/\\]provenance[/\\]SIGNING\.md''',
+  '''docs[/\\]provenance[/\\]_raw_bank_''',
+  '''tools[/\\]scripts[/\\]upgrade-migrate-check\.mts''',
+  '''services[/\\]aegis-api[/\\]src[/\\]demo[/\\]live-scenarios-extended\.ts''',
+  '''services[/\\]aegis-api[/\\]src[/\\]crypto[/\\]kms-ed25519\.ts''',
+  '''services[/\\]aegis-api[/\\]src[/\\]crypto[/\\]key-provider\.ts''',
+  '''packages[/\\].+[/\\]kms-ed25519\.ts''',
+  '''packages[/\\].+[/\\]key-provider\.ts''',
+  '''tools[/\\]demo[/\\]connector-sources\.mts''',
+  '''tools[/\\]bank-simulator[/\\]redteam-live\.mjs''',
+  '''docs[/\\]provenance[/\\]INTEGRATION\.md''',
+  '''(^|[/\\])node_modules([/\\]|$)''',
+  '''(^|[/\\])\.next([/\\]|$)''',
+  '''(^|[/\\])\.nx([/\\]|$)''',
+  '''(^|[/\\])dist([/\\]|$)''',
+  '''\.tools[/\\]gitleaks[/\\]''',
 ]
 regexes = [
   '''__SET_LOCAL_PASSWORD__''',
@@ -35,4 +46,6 @@ regexes = [
   '''AEGIS_SIGNING_PRIVATE_KEY''',
   '''quality-gate-encryption-key''',
   '''pilot-gate-encryption-key''',
+  '''k_(los|core|pay|bureau|los_redteam)_[a-z0-9_]+''',
+  '''REPLACE_WITH_[A-Z0-9_]+''',
 ]

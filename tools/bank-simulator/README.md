@@ -1,10 +1,28 @@
-# Bank simulator (`tools/bank-simulator`) - "Simulated core banking system"
+# Bank simulator (`tools/bank-simulator`) — multi-system bank (Stage 8)
 
-A standalone page that plays a bank's core system against a **hosted tenant** (Demo Bank, or the
-smoke-test tenant). Each story button sends a real event to the governed intake
-(`POST /v1/aegis/governed/events`) and, for holds and hard stops, raises the approval request
-through the real endpoint (`POST /v1/aegis/approvals/request`). Every case links to the console.
-The page is labelled **Simulated core banking system** and says it is synthetic.
+Standalone multi-system bank test environment against a **hosted or local tenant**
+(Demo Bank / smoke-test). Systems: **LOS** (`src_los`), **Core Banking / Ledger**
+(`src_core`), **Payment Gateway** (`src_pay`), **Credit Bureau** (`src_bureau` via
+`tools/demo-bureau`). Each system has its own key id and Connector state.
+
+**Stage 1b:** story buttons send through an in-process **Aegis Connector**
+(`@salanor/aegis-connector`) that signs AEGIS-SRC1 envelopes to
+`POST /v1/aegis/source-events` (works with `require_signed_events=true`). Private
+keys live under `.data/connectors/` (gitignored; written by
+`pnpm pilot:provision-demo-tenant` / `demo:fresh`). Staff UI shows systems panels;
+**Red Team** panel runs attacks #1–18.
+
+Core disbursement asks Aegis permit / decision-token confirm before money moves;
+the ledger exports JSONL/CSV feeds for reconciliation.
+
+```powershell
+pnpm bank:up          # Postgres (Docker, wal_level=logical) + bureau :4100 + simulator :4000
+pnpm bank:down
+pnpm demo:connectors  # optional: standalone Connector HTTP processes (:8787 LOS, :8788 core, :8789 pay)
+pnpm test:redteam     # fixture suite + live panel when bank:up is running
+```
+
+If Docker is unstable, `bank:up` continues with an in-memory ledger and reports **Partial**.
 
 **Same code locally (`http://127.0.0.1:4000`) and deployed (`https://bank-demo.salanor.com`).**
 Deployment runbook: `docs/DEPLOY_PRODUCTION.md` (section "Bank simulator").

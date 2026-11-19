@@ -1,0 +1,97 @@
+$ powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 3000 -State Listen -EA SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -EA SilentlyContinue }; Start-Sleep 2; if (Test-Path apps/web-console/.next) { Remove-Item -Recurse -Force apps/web-console/.next }; pnpm --filter @salanor/web-console run build"
+
+
+> @salanor/web-console@0.0.0 build D:\PROJECTS\salanor\apps\web-console
+> node ../../scripts/check-no-bare-verified.mjs && next build
+
+Wording check passed: 197 files scanned, no standalone "verified" next to data.
+   ▲ Next.js 15.5.18
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 20.7s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/4) ...
+   Generating static pages (1/4) 
+   Generating static pages (2/4) 
+   Generating static pages (3/4) 
+ ✓ Generating static pages (4/4)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ƒ /                                    1.48 kB         116 kB
+├ ƒ /_not-found                            996 B         104 kB
+├ ƒ /aegis                               5.54 kB         135 kB
+├ ƒ /aegis/agents                        5.16 kB         127 kB
+├ ƒ /aegis/approvals                     13.3 kB         136 kB
+├ ƒ /aegis/approvals/act                 4.51 kB         118 kB
+├ ƒ /aegis/coverage                      3.46 kB         123 kB
+├ ƒ /aegis/delegations                   4.86 kB         127 kB
+├ ƒ /aegis/events/[eventId]               7.9 kB         140 kB
+├ ƒ /aegis/evidence                        159 B         103 kB
+├ ƒ /aegis/exceptions                    6.11 kB         125 kB
+├ ƒ /aegis/exports                       7.43 kB         129 kB
+├ ƒ /aegis/get-started                   5.86 kB         125 kB
+├ ƒ /aegis/incidents                     3.59 kB         123 kB
+├ ƒ /aegis/incidents/[incidentId]        5.62 kB         125 kB
+├ ƒ /aegis/integrations                  2.98 kB         113 kB
+├ ƒ /aegis/keys                          5.44 kB         127 kB
+├ ƒ /aegis/live                            280 B         136 kB
+├ ƒ /aegis/login                           460 B         103 kB
+├ ƒ /aegis/logs                          6.48 kB         126 kB
+├ ƒ /aegis/members                         159 B         103 kB
+├ ƒ /aegis/platform                        159 B         103 kB
+├ ƒ /aegis/policies                      10.2 kB         136 kB
+├ ƒ /aegis/reports                       4.03 kB         123 kB
+├ ƒ /aegis/search                        3.72 kB         123 kB
+├ ƒ /aegis/settings                        159 B         103 kB
+├ ƒ /aegis/settings/auditors             5.35 kB         125 kB
+├ ƒ /aegis/settings/billing              8.04 kB         127 kB
+├ ƒ /aegis/settings/governance           7.17 kB         126 kB
+├ ƒ /aegis/settings/integrations         7.08 kB         126 kB
+├ ƒ /aegis/settings/keys                   159 B         103 kB
+├ ƒ /aegis/settings/members              5.03 kB         127 kB
+├ ƒ /aegis/settings/organization         6.48 kB         126 kB
+├ ƒ /aegis/settings/policies               159 B         103 kB
+├ ƒ /aegis/settings/profile              5.39 kB         125 kB
+├ ƒ /aegis/settings/provision              159 B         103 kB
+├ ƒ /aegis/settings/security             7.29 kB         126 kB
+├ ƒ /aegis/sources                       5.53 kB         127 kB
+├ ƒ /aegis/traces                          281 B         136 kB
+├ ƒ /aegis/traces/[traceId]              12.8 kB         142 kB
+├ ƒ /aegis/traces/[traceId]/replay       3.62 kB         133 kB
+├ ƒ /aegis/verify                        1.47 kB         112 kB
+├ ƒ /aegis/workflows                     3.05 kB         125 kB
+├ ƒ /aegis/workflows/[workflowId]        5.16 kB         124 kB
+├ ƒ /api/id/auth/handoff                   159 B         103 kB
+├ ƒ /auditor/[token]                     2.55 kB         122 kB
+├ ƒ /create-organization                 2.95 kB         120 kB
+├ ƒ /forgot-password                     2.27 kB         114 kB
+├ ○ /icon.png                                0 B            0 B
+├ ƒ /insurance                             159 B         103 kB
+├ ƒ /invite                              7.18 kB         127 kB
+├ ƒ /login                               4.84 kB         125 kB
+├ ƒ /onboarding                          3.24 kB         120 kB
+├ ƒ /r/[token]                             172 B         115 kB
+├ ƒ /reset-password                      3.83 kB         115 kB
+├ ƒ /share/[token]                         172 B         115 kB
+├ ƒ /signup                              4.01 kB         124 kB
+├ ƒ /verify                              6.52 kB         118 kB
+├ ƒ /verify-email                         2.2 kB         113 kB
+└ ƒ /verify-email-sent                   2.29 kB         114 kB
++ First Load JS shared by all             103 kB
+  ├ chunks/881e8ab4-83ee3fa4057d8d11.js  54.2 kB
+  ├ chunks/9131-8d306e2dd3622a38.js      46.3 kB
+  └ other shared chunks (total)          1.98 kB
+
+
+ƒ Middleware                             32.1 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+
+
+EXIT=0 ELAPSED_MS=58528

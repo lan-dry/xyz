@@ -26,7 +26,15 @@ function isUsableBackendUrl(url: string): boolean {
   }
 }
 
+const deploymentId =
+  process.env.VERCEL_DEPLOYMENT_ID?.trim() ||
+  process.env.VERCEL_GIT_COMMIT_SHA?.trim() ||
+  undefined;
+
 const nextConfig: NextConfig = {
+  // Soft-nav hard-reloads when the server deploy id changes, so a tab that
+  // opened before a deploy cannot keep driving an old client shell forever.
+  ...(deploymentId ? { deploymentId } : {}),
   // `AEGIS_UI_PROFILE=bank_demo` works as well as NEXT_PUBLIC_AEGIS_UI_PROFILE.
   env: {
     NEXT_PUBLIC_AEGIS_UI_PROFILE:

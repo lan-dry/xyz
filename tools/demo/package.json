@@ -30,6 +30,8 @@
   },
   "dependencies": {
     "@salanor/aegis": "workspace:*",
+    "@salanor/aegis-connector": "workspace:*",
+    "@salanor/aegis-sdk": "workspace:*",
     "@salanor/db-url": "workspace:*",
     "pg": "^8.16.0"
   },

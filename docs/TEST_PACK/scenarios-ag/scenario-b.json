@@ -1,0 +1,505 @@
+{
+  "letter": "B",
+  "story_id": "scenario_b",
+  "ms": 445,
+  "status": 200,
+  "data": {
+    "ok": true,
+    "story_id": "scenario_b",
+    "expected": "hold",
+    "expect_detail": "Held: 4th transfer today; day's total RWF 9.6M exceeds the Retail Standard daily limit of RWF 8M (counts only activity reported to Aegis).",
+    "resolver": "Credit Manager",
+    "case_id": "SIM-594330613C",
+    "trace_id": "tr_sim_594330613c",
+    "outcome": "hold",
+    "console_url": "http://localhost:3000/aegis/traces/tr_sim_594330613c",
+    "plain_summary": "Held: 4th transfer today; day's total RWF 9,600,000 exceeds the Retail Standard daily limit of RWF 8,000,000 (counts only activity reported to Aegis) Policy v5.",
+    "matched_rules": [
+      {
+        "rule_id": "r_cde5c17c4332",
+        "policy_id": "pol_21740b84c1f900ce",
+        "decision": "allow_with_obligation"
+      }
+    ],
+    "approval_id": "apr_973ac55b14ba4fda",
+    "sealed": true,
+    "action": {
+      "amount": 2400000,
+      "currency": "RWF"
+    },
+    "target_grade": "G2",
+    "can_disburse": true,
+    "decision_token": null,
+    "evidence_grade": "G1",
+    "customer_id": "CUST-RW-SCEN-B-b03f35ea",
+    "steps": [
+      "LOS Connector → signed source-events (G1).",
+      "Governed intake: allow (source-signed)",
+      "Auto-allowed: core ledger may disburse after Aegis execution/permit.",
+      "Prior 1/3 (mobile): allow SIM-E103E2DE9C",
+      "LOS Connector → signed source-events (G1).",
+      "Governed intake: allow (source-signed)",
+      "Auto-allowed: core ledger may disburse after Aegis execution/permit.",
+      "Prior 2/3 (branch): allow SIM-5BA6D64F6F",
+      "LOS Connector → signed source-events (G1).",
+      "Governed intake: allow (source-signed)",
+      "Auto-allowed: core ledger may disburse after Aegis execution/permit.",
+      "Prior 3/3 (agent): allow SIM-81055D83C9",
+      "LOS Connector → signed source-events (G1).",
+      "Governed intake: hold (source-signed)",
+      "Approval requested: approve in the console, then disburse via the core ledger (permit gate).",
+      "Target evidence grade for this story: G2."
+    ],
+    "requests": [
+      {
+        "method": "POST",
+        "endpoint": "http://127.0.0.1:8088/v1/aegis/source-events",
+        "via": "aegis-connector",
+        "source_id": "src_los",
+        "key_id": "k_los_2026_01_mwn5jeo7",
+        "headers": {
+          "Authorization": "Bearer aegis_…****",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "schema_version": 1,
+          "case_id": "SIM-E103E2DE9C",
+          "idempotency_key": "e9479bcb-a5bd-4162-bf89-4095e4edd9dc",
+          "event_type": "payment_transfer",
+          "product": "payment_transfer",
+          "emitted_at": "2026-11-19T13:11:31.729Z",
+          "actor": {
+            "type": "system",
+            "id": "payments-gateway"
+          },
+          "attributes": {
+            "requester_email": "officer@demo.test",
+            "requester_name": "Patience Ingabire",
+            "requester_role": "credit_officer",
+            "officer_id": "OFF-1042",
+            "system_account": "core-banking",
+            "amount": 2400000,
+            "currency": "RWF",
+            "customer_id": "CUST-RW-SCEN-B-b03f35ea",
+            "segment": "retail_standard",
+            "channel": "mobile",
+            "beneficiary_account": "BEN-RW-SPLIT-B",
+            "beneficiary_country": "RW",
+            "applicant_name": "Patrick Nkurunziza",
+            "branch": "Kigali - Gasabo",
+            "product": "payment_transfer"
+          },
+          "trace_id": "tr_sim_e103e2de9c"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "case_id": "SIM-E103E2DE9C",
+            "decision_id": "dec_b676284c474044b5",
+            "receipt_id": "rcpt_7a4c658158754fa1",
+            "outcome": "allow",
+            "mode": "enforce",
+            "matched_rules": [
+              {
+                "rule_id": "r_a17ca822aedb",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow"
+              },
+              {
+                "rule_id": "AUTH-XFER-1",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow"
+              }
+            ],
+            "decision_basis": {
+              "outcome": "allow",
+              "decided_by_rule_id": "r_a17ca822aedb",
+              "explanation": "Allowed under rule r_a17ca822aedb. No human approval was needed.",
+              "matched": [
+                {
+                  "rule_id": "r_a17ca822aedb",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow",
+                  "effect": "allow"
+                },
+                {
+                  "rule_id": "AUTH-XFER-1",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow",
+                  "effect": "allow"
+                }
+              ]
+            },
+            "plain_summary": "Payment release of RWF 2,400,000 was allowed automatically under rule r_a17ca822aedb. No human approval was needed. Policy v5.",
+            "policy": {
+              "policy_id": "pol_21740b84c1f900ce",
+              "version": 5,
+              "content_hash": "58dd0b14e27b3941906d6e9af036d6b750a459a148f3cf6b5f222f13d1968ca2"
+            },
+            "approval": null,
+            "event_id": "evt_9eacb1f3bb1541e4a26697d5",
+            "event_hash": "0ac61a3c37f2e03be1d63c66f007d4aecb6a4e0396891ec4d030ce4cd8bf44a3",
+            "sequence_num": 57,
+            "decision_token": {
+              "v": 1,
+              "token_id": "dtk_9913a4abfd684a43",
+              "tenant": "d8a7fa6f-8b10-4271-9fd0-f783939090b9",
+              "case_id": "SIM-E103E2DE9C",
+              "decision_id": "dec_b676284c474044b5",
+              "action_type": "payment.transfer",
+              "params_hash": "369fcad092c8fa0ccb668f4ee80d7ca1035b2b4722bd56fb8dd739f5bd88ad27",
+              "issued_at": "2026-11-19T13:11:31.822Z",
+              "expires_at": "2026-11-19T14:11:31.822Z",
+              "nonce": "sx_tJvdQ-onmaUejTyP7Tw",
+              "key_id": "receipt_local_2026",
+              "signature": "fsuDkDKLIvYML0iZ6oZE3XHftnadpGvC_m0eTTrZQpNeuv5jzWY6G9p6useMtfgTPZ_mfvknC7K1Niv8DfilCQ"
+            },
+            "flags": {
+              "evidence_status": "ok"
+            },
+            "source_signed": true,
+            "evidence_grade": "G1"
+          }
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "http://127.0.0.1:8088/v1/aegis/source-events",
+        "via": "aegis-connector",
+        "source_id": "src_los",
+        "key_id": "k_los_2026_01_mwn5jeo7",
+        "headers": {
+          "Authorization": "Bearer aegis_…****",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "schema_version": 1,
+          "case_id": "SIM-5BA6D64F6F",
+          "idempotency_key": "81b673ba-6f18-4b64-9b88-286ae9bff560",
+          "event_type": "payment_transfer",
+          "product": "payment_transfer",
+          "emitted_at": "2026-11-19T13:11:31.837Z",
+          "actor": {
+            "type": "system",
+            "id": "payments-gateway"
+          },
+          "attributes": {
+            "requester_email": "officer@demo.test",
+            "requester_name": "Patience Ingabire",
+            "requester_role": "credit_officer",
+            "officer_id": "OFF-1042",
+            "system_account": "core-banking",
+            "amount": 2400000,
+            "currency": "RWF",
+            "customer_id": "CUST-RW-SCEN-B-b03f35ea",
+            "segment": "retail_standard",
+            "channel": "branch",
+            "beneficiary_account": "BEN-RW-SPLIT-B",
+            "beneficiary_country": "RW",
+            "applicant_name": "Patrick Nkurunziza",
+            "branch": "Kigali - Gasabo",
+            "product": "payment_transfer"
+          },
+          "trace_id": "tr_sim_5ba6d64f6f"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "case_id": "SIM-5BA6D64F6F",
+            "decision_id": "dec_8d42e14476ac429d",
+            "receipt_id": "rcpt_31be783f13f4465c",
+            "outcome": "allow",
+            "mode": "enforce",
+            "matched_rules": [
+              {
+                "rule_id": "r_a17ca822aedb",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow"
+              },
+              {
+                "rule_id": "AUTH-XFER-1",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow"
+              }
+            ],
+            "decision_basis": {
+              "outcome": "allow",
+              "decided_by_rule_id": "r_a17ca822aedb",
+              "explanation": "Allowed under rule r_a17ca822aedb. No human approval was needed.",
+              "matched": [
+                {
+                  "rule_id": "r_a17ca822aedb",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow",
+                  "effect": "allow"
+                },
+                {
+                  "rule_id": "AUTH-XFER-1",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow",
+                  "effect": "allow"
+                }
+              ]
+            },
+            "plain_summary": "Payment release of RWF 2,400,000 was allowed automatically under rule r_a17ca822aedb. No human approval was needed. Policy v5.",
+            "policy": {
+              "policy_id": "pol_21740b84c1f900ce",
+              "version": 5,
+              "content_hash": "58dd0b14e27b3941906d6e9af036d6b750a459a148f3cf6b5f222f13d1968ca2"
+            },
+            "approval": null,
+            "event_id": "evt_d46ed2dbdbae4e9099138b1b",
+            "event_hash": "9f5b2c626727713d134d6453fbd7afde415c66910b55a8e449156049fd0e6b5d",
+            "sequence_num": 58,
+            "decision_token": {
+              "v": 1,
+              "token_id": "dtk_a81efcf162b04729",
+              "tenant": "d8a7fa6f-8b10-4271-9fd0-f783939090b9",
+              "case_id": "SIM-5BA6D64F6F",
+              "decision_id": "dec_8d42e14476ac429d",
+              "action_type": "payment.transfer",
+              "params_hash": "369fcad092c8fa0ccb668f4ee80d7ca1035b2b4722bd56fb8dd739f5bd88ad27",
+              "issued_at": "2026-11-19T13:11:31.925Z",
+              "expires_at": "2026-11-19T14:11:31.925Z",
+              "nonce": "CPdEr_jzbYDKnB_2tsYzjg",
+              "key_id": "receipt_local_2026",
+              "signature": "Ve3qCW0HTclOU2suD51KiK6Co9yWNTlQVM6njJOL16WltY5rGAXgHP8UR9ncYT1KqgQO5EmdXrwHJmjgY1OBCw"
+            },
+            "flags": {
+              "evidence_status": "ok"
+            },
+            "source_signed": true,
+            "evidence_grade": "G1"
+          }
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "http://127.0.0.1:8088/v1/aegis/source-events",
+        "via": "aegis-connector",
+        "source_id": "src_los",
+        "key_id": "k_los_2026_01_mwn5jeo7",
+        "headers": {
+          "Authorization": "Bearer aegis_…****",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "schema_version": 1,
+          "case_id": "SIM-81055D83C9",
+          "idempotency_key": "b5f36085-810d-4322-b62b-cedd1eae51a2",
+          "event_type": "payment_transfer",
+          "product": "payment_transfer",
+          "emitted_at": "2026-11-19T13:11:31.936Z",
+          "actor": {
+            "type": "system",
+            "id": "payments-gateway"
+          },
+          "attributes": {
+            "requester_email": "officer@demo.test",
+            "requester_name": "Patience Ingabire",
+            "requester_role": "credit_officer",
+            "officer_id": "OFF-1042",
+            "system_account": "core-banking",
+            "amount": 2400000,
+            "currency": "RWF",
+            "customer_id": "CUST-RW-SCEN-B-b03f35ea",
+            "segment": "retail_standard",
+            "channel": "agent",
+            "beneficiary_account": "BEN-RW-SPLIT-B",
+            "beneficiary_country": "RW",
+            "applicant_name": "Patrick Nkurunziza",
+            "branch": "Kigali - Gasabo",
+            "product": "payment_transfer"
+          },
+          "trace_id": "tr_sim_81055d83c9"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "case_id": "SIM-81055D83C9",
+            "decision_id": "dec_9ba441716c1d4429",
+            "receipt_id": "rcpt_a8437f063a2f4e1f",
+            "outcome": "allow",
+            "mode": "enforce",
+            "matched_rules": [
+              {
+                "rule_id": "r_a17ca822aedb",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow"
+              },
+              {
+                "rule_id": "AUTH-XFER-1",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow"
+              }
+            ],
+            "decision_basis": {
+              "outcome": "allow",
+              "decided_by_rule_id": "r_a17ca822aedb",
+              "explanation": "Allowed under rule r_a17ca822aedb. No human approval was needed.",
+              "matched": [
+                {
+                  "rule_id": "r_a17ca822aedb",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow",
+                  "effect": "allow"
+                },
+                {
+                  "rule_id": "AUTH-XFER-1",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow",
+                  "effect": "allow"
+                }
+              ]
+            },
+            "plain_summary": "Payment release of RWF 2,400,000 was allowed automatically under rule r_a17ca822aedb. No human approval was needed. Policy v5.",
+            "policy": {
+              "policy_id": "pol_21740b84c1f900ce",
+              "version": 5,
+              "content_hash": "58dd0b14e27b3941906d6e9af036d6b750a459a148f3cf6b5f222f13d1968ca2"
+            },
+            "approval": null,
+            "event_id": "evt_e49491e99d4642058e9aa09e",
+            "event_hash": "ac7f24c41ddb56c3e337f15af79bf9ba0b0055f2c405c64fa123255d38b51feb",
+            "sequence_num": 59,
+            "decision_token": {
+              "v": 1,
+              "token_id": "dtk_afb0218dadeb4bdf",
+              "tenant": "d8a7fa6f-8b10-4271-9fd0-f783939090b9",
+              "case_id": "SIM-81055D83C9",
+              "decision_id": "dec_9ba441716c1d4429",
+              "action_type": "payment.transfer",
+              "params_hash": "369fcad092c8fa0ccb668f4ee80d7ca1035b2b4722bd56fb8dd739f5bd88ad27",
+              "issued_at": "2026-11-19T13:11:32.023Z",
+              "expires_at": "2026-11-19T14:11:32.023Z",
+              "nonce": "n0n86oyLMP6dlcqMEtfTuA",
+              "key_id": "receipt_local_2026",
+              "signature": "vbefiSNPtVsTsdSQ9vfJq_EdpGMXHPgpBglWbSxeIar5zJburX84WrF4Gtn3XOSn_ytx3cygLZ0TtJSireqeAg"
+            },
+            "flags": {
+              "evidence_status": "ok"
+            },
+            "source_signed": true,
+            "evidence_grade": "G1"
+          }
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "http://127.0.0.1:8088/v1/aegis/source-events",
+        "via": "aegis-connector",
+        "source_id": "src_los",
+        "key_id": "k_los_2026_01_mwn5jeo7",
+        "headers": {
+          "Authorization": "Bearer aegis_…****",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "schema_version": 1,
+          "case_id": "SIM-594330613C",
+          "idempotency_key": "d8846852-0700-4045-b1ea-11f432a12258",
+          "event_type": "payment_transfer",
+          "product": "payment_transfer",
+          "emitted_at": "2026-11-19T13:11:32.043Z",
+          "actor": {
+            "type": "system",
+            "id": "payments-gateway"
+          },
+          "attributes": {
+            "requester_email": "officer@demo.test",
+            "requester_name": "Patience Ingabire",
+            "requester_role": "credit_officer",
+            "officer_id": "OFF-1042",
+            "system_account": "core-banking",
+            "amount": 2400000,
+            "currency": "RWF",
+            "customer_id": "CUST-RW-SCEN-B-b03f35ea",
+            "segment": "retail_standard",
+            "channel": "ussd",
+            "beneficiary_account": "BEN-RW-SPLIT-B",
+            "beneficiary_country": "RW",
+            "applicant_name": "Patrick Nkurunziza",
+            "branch": "Kigali - Gasabo",
+            "product": "payment_transfer"
+          },
+          "trace_id": "tr_sim_594330613c"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "case_id": "SIM-594330613C",
+            "decision_id": "dec_7bd779d278ec4192",
+            "receipt_id": "rcpt_a6cd7dc6453c45ef",
+            "outcome": "hold",
+            "mode": "enforce",
+            "matched_rules": [
+              {
+                "rule_id": "r_cde5c17c4332",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow_with_obligation"
+              }
+            ],
+            "decision_basis": {
+              "outcome": "hold",
+              "decided_by_rule_id": "r_cde5c17c4332",
+              "explanation": "Held: 4th transfer today; day's total RWF 9,600,000 exceeds the Retail Standard daily limit of RWF 8,000,000 (counts only activity reported to Aegis)",
+              "matched": [
+                {
+                  "rule_id": "r_cde5c17c4332",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow_with_obligation",
+                  "effect": "hold",
+                  "note": "requires human approval"
+                }
+              ]
+            },
+            "plain_summary": "Held: 4th transfer today; day's total RWF 9,600,000 exceeds the Retail Standard daily limit of RWF 8,000,000 (counts only activity reported to Aegis) Policy v5.",
+            "policy": {
+              "policy_id": "pol_21740b84c1f900ce",
+              "version": 5,
+              "content_hash": "58dd0b14e27b3941906d6e9af036d6b750a459a148f3cf6b5f222f13d1968ca2"
+            },
+            "approval": {
+              "required_roles": [
+                "credit_manager"
+              ],
+              "approval_id": null
+            },
+            "event_id": "evt_66cc9722c3e14553985ed9b0",
+            "event_hash": "72c3eabd3a8a0817bbc4ac85776ca52948e2fdc021e38fc39cc7e85d9dad5bb1",
+            "sequence_num": 60,
+            "flags": {
+              "evidence_status": "ok"
+            },
+            "source_signed": true,
+            "evidence_grade": "G1"
+          }
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "http://127.0.0.1:8088/v1/aegis/approvals/request",
+        "headers": {
+          "Authorization": "Bearer aegis_…****",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "organization_id": "d8a7fa6f-8b10-4271-9fd0-f783939090b9",
+          "event_id": "evt_66cc9722c3e14553985ed9b0",
+          "trace_id": "tr_sim_594330613c",
+          "tool_name": "governed.action",
+          "deferred": {
+            "url": "http://127.0.0.1:4000/core/loans/disburse-resume",
+            "method": "POST"
+          }
+        },
+        "response": {
+          "status": 201,
+          "body": {
+            "approval_id": "apr_973ac55b14ba4fda"
+          }
+        }
+      }
+    ]
+  }
+}

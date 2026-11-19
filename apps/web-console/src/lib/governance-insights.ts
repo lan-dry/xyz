@@ -220,7 +220,7 @@ export function buildGovernanceInsights(
   } else if (stats.pii_fields.length > 0) {
     headline = `Recent cases touched ${stats.pii_fields.length} sensitive data type(s)`;
   } else {
-    headline = "Recent cases look quiet — nothing unusual to flag";
+    headline = "Recent cases look quiet - nothing unusual to flag";
   }
 
   return { headline, insights: insights.slice(0, 8), stats };

@@ -75,6 +75,64 @@ export async function applyIntegrationFixture(
     await client.query(`DELETE FROM event WHERE organization_id = $1`, [
       INTEGRATION_ORG_A,
     ]);
+    // Stage 2 grade-change index (migration 007) is append-only like the receipts.
+    await client.query(
+      `DELETE FROM evidence_grade_change WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    // Stage 6 collector CDC (migration 010) — ignore if migration not applied yet.
+    await client
+      .query(`DELETE FROM collector_cdc_event WHERE organization_id = $1`, [
+        INTEGRATION_ORG_A,
+      ])
+      .catch((err: unknown) => {
+        if ((err as { code?: string } | null)?.code !== "42P01") throw err;
+      });
+    // Stage 7 optional input copies (migration 011).
+    await client
+      .query(`DELETE FROM input_commitment_copy WHERE organization_id = $1`, [
+        INTEGRATION_ORG_A,
+      ])
+      .catch((err: unknown) => {
+        if ((err as { code?: string } | null)?.code !== "42P01") throw err;
+      });
+    // Stage 1 setting-change rows (organization_setting_change).
+    await client
+      .query(`DELETE FROM organization_setting_change WHERE organization_id = $1`, [
+        INTEGRATION_ORG_A,
+      ])
+      .catch((err: unknown) => {
+        if ((err as { code?: string } | null)?.code !== "42P01") throw err;
+      });
+    // Stage 4 reconciliation (migration 009) — children first.
+    await client.query(
+      `DELETE FROM reconciliation_exception_note WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(
+      `DELETE FROM reconciliation_exception WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(
+      `DELETE FROM reconciliation_feed_row WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(
+      `DELETE FROM reconciliation_run WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(
+      `DELETE FROM reconciliation_feed WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    // Stage 3 decision tokens / exceptions (migration 008).
+    await client.query(
+      `DELETE FROM execution_exception WHERE organization_id = $1`,
+      [INTEGRATION_ORG_A],
+    );
+    await client.query(`DELETE FROM decision_token WHERE organization_id = $1`, [
+      INTEGRATION_ORG_A,
+    ]);
     await client.query(`DELETE FROM forensic_receipt WHERE organization_id = $1`, [
       INTEGRATION_ORG_A,
     ]);
@@ -102,6 +160,19 @@ export async function applyIntegrationFixture(
   await client.query(`DELETE FROM workflow_run WHERE organization_id = $1`, [
     INTEGRATION_ORG_A,
   ]);
+  // Source registry (migration 006) has no ON DELETE CASCADE to organization.
+  for (const table of [
+    "source_envelope_idempotency",
+    "source_sequence_gap",
+    "source_nonce",
+    "source_registry_event",
+    "source_key",
+    "source",
+  ]) {
+    await client.query(`DELETE FROM ${table} WHERE organization_id = $1`, [
+      INTEGRATION_ORG_A,
+    ]);
+  }
   await client.query(
     `DELETE FROM organization
      WHERE organization_id = $1 OR slug = 'dev-org'`,

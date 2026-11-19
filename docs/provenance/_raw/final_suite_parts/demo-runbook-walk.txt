@@ -1,0 +1,75 @@
+$ node docs/provenance/_raw/_bounce_web_and_runbook.mjs
+
+
+> salanor@0.0.0 demo:runbook-walk D:\PROJECTS\salanor
+> node tools/demo/demo-runbook-walk.mjs
+
+PASS  signed in as admin@demo-bank.local  (http://localhost:3000/aegis/traces)
+PASS  signed in as officer@demo-bank.local  (http://localhost:3000/aegis/traces)
+PASS  signed in as manager@demo-bank.local  (http://localhost:3000/aegis/traces)
+PASS  signed in as head@demo-bank.local  (http://localhost:3000/aegis/traces)
+wrote D:\PROJECTS\salanor\docs\screens\runbook\01-overview.png
+wrote D:\PROJECTS\salanor\docs\screens\runbook\02-live-feed.png
+PASS  nav includes Rules
+PASS  nav includes Cases
+PASS  nav includes Reports
+PASS  nav includes Access log
+PASS  nav includes Delegations
+PASS  no Simulator in production-style nav
+PASS  quiet Demo organisation tag (or no loud strip)
+PASS  story loan_within_limit: outcome allow matches expected allow
+wrote D:\PROJECTS\salanor\docs\screens\runbook\03-simulator-standalone.png
+PASS  standalone simulator page reachable
+wrote D:\PROJECTS\salanor\docs\screens\runbook\04-case-allowed-four-answers.png
+PASS  story loan_needs_manager: outcome hold matches expected hold
+wrote D:\PROJECTS\salanor\docs\screens\runbook\05-approvals-as-officer.png
+PASS  officer cannot approve a manager-band case  (HTTP 403)
+wrote D:\PROJECTS\salanor\docs\screens\runbook\06-approvals-as-manager.png
+PASS  manager can approve  (HTTP 200 )
+wrote D:\PROJECTS\salanor\docs\screens\runbook\07-case-released-after-approval.png
+wrote D:\PROJECTS\salanor\docs\screens\runbook\08-case-replay.png
+PASS  §4 prepare live v4 draft (dual publish)  (HTTP 201 )
+PASS  §4 draft has dual_publish_required
+PASS  §4 draft version is v4-or-next (live, not pre-seeded)  (draft=v6 against=v5)
+PASS  §4 first publisher alone cannot finish dual publish  (HTTP 200 published=false)
+PASS  signed in as head@demo-bank.local  (http://localhost:3000/aegis/traces)
+PASS  §4 second publisher completes dual publish → v4 live  (HTTP 200)
+wrote D:\PROJECTS\salanor\docs\screens\runbook\09-rules-v4-live.png
+wrote D:\PROJECTS\salanor\docs\screens\runbook\10-rules-v3-v4-diff.png
+wrote D:\PROJECTS\salanor\docs\screens\runbook\11-case-still-v3-after-v4.png
+PASS  §4/§6 earlier receipt still references v3 (or prior hash)
+PASS  story sanctions_pep_stop: outcome stop matches expected stop
+PASS  manager cannot release a hard stop  (HTTP 403)
+PASS  head of compliance can release  (HTTP 200)
+wrote D:\PROJECTS\salanor\docs\screens\runbook\12-case-hard-stop-released.png
+PASS  story payment_callback_unverified: outcome hold matches expected hold
+wrote D:\PROJECTS\salanor\docs\screens\runbook\13-story-payment_callback_unverified.png
+PASS  story escalation_time_limit: outcome hold matches expected hold
+wrote D:\PROJECTS\salanor\docs\screens\runbook\14-story-escalation_time_limit.png
+PASS  story delegate_inside_window: outcome hold matches expected hold
+wrote D:\PROJECTS\salanor\docs\screens\runbook\15-story-delegate_inside_window.png
+PASS  story delegate_outside_window: outcome hold matches expected hold
+wrote D:\PROJECTS\salanor\docs\screens\runbook\16-story-delegate_outside_window.png
+PASS  story unreachable_replayed: outcome allow matches expected allow
+wrote D:\PROJECTS\salanor\docs\screens\runbook\17-story-unreachable_replayed.png
+wrote D:\PROJECTS\salanor\docs\screens\runbook\18-evidence.png
+wrote D:\PROJECTS\salanor\docs\screens\runbook\19-verify.png
+PASS  §6 Verify page offers Demo Bank bundles (or drop zone)
+wrote D:\PROJECTS\salanor\docs\screens\runbook\20-reports.png
+wrote D:\PROJECTS\salanor\docs\screens\runbook\21-access-log.png
+wrote D:\PROJECTS\salanor\docs\screens\runbook\22-live-feed-after.png
+
+§12 Lying to Aegis — Red Team against http://127.0.0.1:4000
+  beat attack #5: HTTP 200 [Live] PASS: altered amount → params_mismatch/execution_mismatch naming amount
+PASS  §12 beat2 altered execution refused or Simulation-labelled
+  beat attack #11: HTTP 200 [Simulated] Not verified live
+PASS  §12 beat3 ledger edit recorded or Simulation-labelled
+  beat honest-limit: HTTP 200 [Live] PASS: false signed value accepted (G1 honest limit)
+PASS  §12 beat5 honest-limit ran
+PASS  §12 beats 1+4 case/verify remain console-driven (walk already shot verify)
+
+Runbook walk OK.
+
+
+
+EXIT=0 ELAPSED_MS=57434

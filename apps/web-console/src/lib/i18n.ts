@@ -1,5 +1,5 @@
 /**
- * Minimal i18n for Aegis console pages — loads locales/en.json.
+ * Minimal i18n for Aegis console pages - loads locales/en.json.
  * Extend with additional locale files + navigator.language later.
  */
 import en from "../locales/en.json";

@@ -11,6 +11,16 @@ export {
   type DemoIngestKeyResult,
 } from "./demo-ingest-key.js";
 export {
+  DemoTenantRefusal,
+  platformAssertDemoOrTest,
+  platformListDemoTenantAudit,
+  platformListDemoTenants,
+  platformRecordDemoTenantAction,
+  requireConfirmSlug,
+  type DemoTenantAuditRow,
+  type DemoTenantRow,
+} from "./demo-tenants.js";
+export {
   SALANOR_SESSION_COOKIE,
   createSession,
   deleteSession,

@@ -45,6 +45,13 @@ export default function BanksPage() {
           See the verifier guide in the docs once your pilot is active.
         </p>
 
+        <h2>What Aegis proves and what it does not</h2>
+        <p>
+          Aegis proves when a record was made and that it has not changed since.
+          It does not check that the data inside is accurate. Evidence grades say
+          who vouched for the data and how, not whether an amount or name is correct.
+        </p>
+
         <h2>Low-risk pilot</h2>
         <p>
           Start in record-only mode on one workflow, on your side if required.

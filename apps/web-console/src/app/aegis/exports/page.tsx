@@ -519,7 +519,7 @@ function ExportTable({
                 <StatusBadge status={row.status} />
               </td>
               <td style={{ fontSize: "0.8125rem", whiteSpace: "nowrap" }}>
-                <ConsoleTime iso={row.period_start} /> –{" "}
+                <ConsoleTime iso={row.period_start} /> -{" "}
                 <ConsoleTime iso={row.period_end} />
               </td>
               <td>{row.event_count ?? "-"}</td>

@@ -82,7 +82,7 @@ export default async function OpsContentResearchEditPage({
           byline={
             byline
               ? { name: byline.name, role: byline.role }
-              : { name: "—", role: "—" }
+              : { name: "-", role: "-" }
           }
         />
       ) : (

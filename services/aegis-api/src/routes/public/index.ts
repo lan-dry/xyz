@@ -27,6 +27,7 @@ import {
 } from "../../forensic/public-keys.js";
 import { getDidDocumentByAgent, getDidDocumentByDid } from "../../repo/did.js";
 import { buildPublicVerificationBundle } from "../../transparency/bundle.js";
+import { loadProvenanceForEvent } from "../../forensic/case-provenance.js";
 import { verifyPublicVerificationBundle } from "../../transparency/verify-public.js";
 
 export const publicRoutes = new Hono();
@@ -87,6 +88,37 @@ publicRoutes.get("/keys", async (c) => {
 
 /** Flat key_id -> public key map; drop-in for `aegis-verify --keys keys.json`. */
 publicRoutes.get("/keys.json", async (c) => {
+  const keys = await collectPublicKeys();
+  return c.json(
+    Object.fromEntries(keys.map((k) => [k.key_id, k.public_key_b64])),
+    200,
+    { "Cache-Control": "public, max-age=300" },
+  );
+});
+
+/**
+ * Stage 3 decision-token public keys (same Ed25519 custody as receipts;
+ * signature domain AEGIS-TOKEN1). Also published at
+ * /.well-known/aegis/decision-keys.json.
+ */
+export const DECISION_TOKEN_SIGNATURE_SCHEME =
+  'Ed25519 (pure, RFC 8032) over SHA-256 of the text "AEGIS-TOKEN1\\n<key_id>\\n" + JCS(token without signature); public_key_b64 is the raw 32-byte key (standard base64).';
+
+publicRoutes.get("/decision-keys", async (c) => {
+  const keys = await collectPublicKeys();
+  return c.json(
+    {
+      generated_at: new Date().toISOString(),
+      signature_scheme: DECISION_TOKEN_SIGNATURE_SCHEME,
+      domain: "AEGIS-TOKEN1",
+      keys,
+    },
+    200,
+    { "Cache-Control": "public, max-age=300" },
+  );
+});
+
+publicRoutes.get("/decision-keys.json", async (c) => {
   const keys = await collectPublicKeys();
   return c.json(
     Object.fromEntries(keys.map((k) => [k.key_id, k.public_key_b64])),
@@ -157,6 +189,42 @@ function pushFieldNames(target: string[], value: unknown) {
   }
 }
 
+/**
+ * Bank policy_decision payloads store facts under `attributes`, not
+ * fields_accessed. Share receipts must still list amount/currency/etc.
+ */
+function pushBankAttributeFields(target: string[], payload: Record<string, unknown>) {
+  if (!isBankPayload(payload)) return;
+  const attrs = payload.attributes as Record<string, unknown>;
+  // Short share list: business facts only (no envelope / aegis.* dump).
+  const preferred = [
+    "amount",
+    "currency",
+    "product",
+    "segment",
+    "customer_id",
+    "applicant_name",
+    "loan_purpose",
+    "branch",
+    "channel",
+    "requester_email",
+    "requester_name",
+    "requester_role",
+    "officer_id",
+    "beneficiary_account",
+    "beneficiary_country",
+    "new_beneficiary",
+  ];
+  for (const key of preferred) {
+    const fromAttrs = attrs[key];
+    const fromTop = payload[key];
+    if (fromAttrs != null && fromAttrs !== "") target.push(key);
+    else if (fromTop != null && fromTop !== "" && typeof fromTop !== "object") {
+      target.push(key);
+    }
+  }
+}
+
 function humanField(raw: string): string {
   return raw.replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -171,7 +239,7 @@ function seenSentence(fields: string[]): string | null {
 
 function anomalySentence(type: string | null, reason: string | null): string | null {
   if (!reason && !type) return null;
-  if (!reason) return "Suspicious behaviour flagged — review required";
+  if (!reason) return "Suspicious behaviour flagged: review required";
   if (type === "prompt_injection_indicator") {
     return `Possible prompt injection detected: ${reason}`;
   }
@@ -356,6 +424,7 @@ function storyFromTrace(steps: TraceStep[]): {
     pushFieldNames(fields, payload.fields_accessed);
     pushFieldNames(fields, payload.data_touched);
     pushFieldNames(fields, payload.fields);
+    pushBankAttributeFields(fields, payload);
     const context = payload.evaluation_context;
     if (context && typeof context === "object" && !Array.isArray(context)) {
       pushFieldNames(fields, (context as Record<string, unknown>).fields_accessed);
@@ -659,9 +728,25 @@ publicRoutes.get("/orgs/:slug/verify/:eventId", async (c) => {
     const includeVerification =
       c.req.query("verify") === "1" || c.req.query("include") === "verification";
     if (includeVerification) {
+      // Stage 2: say where the data came from next to the seal check. The seal check is about
+      // the record; the source line is about the data. They are never merged into one "verified".
+      let provenance = null;
+      try {
+        const org = await client.query<{ organization_id: string }>(
+          `SELECT organization_id FROM organization WHERE slug = $1`,
+          [slug],
+        );
+        const organizationId = org.rows[0]?.organization_id;
+        if (organizationId) {
+          provenance = await loadProvenanceForEvent(client, organizationId, eventId);
+        }
+      } catch {
+        provenance = null;
+      }
       return c.json({
         ...bundle,
         verification: verifyPublicVerificationBundle(bundle),
+        provenance,
       });
     }
     return c.json(bundle);
@@ -786,6 +871,14 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
       [row.organization_id, ev.agent_id],
     );
 
+    // Stage 2: where the data came from (separate from the seal check below).
+    let provenance = null;
+    try {
+      provenance = await loadProvenanceForEvent(client, row.organization_id, row.event_id);
+    } catch {
+      provenance = null;
+    }
+
     let verification: {
       status: "valid" | "pending" | "unavailable";
       detail: string;
@@ -794,7 +887,7 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
     } = {
       status: ev.chain_valid ? "valid" : "unavailable",
       detail: ev.chain_valid
-        ? "Signature chain verified."
+        ? "Signature chain is intact."
         : "Public cryptographic bundle not built for this receipt yet.",
       inclusion_status: "pending",
       inclusion_detail: ev.chain_valid
@@ -812,10 +905,10 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
         verification = {
           status: checked.ok || ev.chain_valid ? "valid" : "unavailable",
           detail: checked.ok
-            ? "Witness and transparency inclusion verified."
+            ? "Witness and transparency log entries match this record."
             : ev.chain_valid
-              ? "Signature chain verified."
-              : checked.errors.join("; ") || "Verification failed.",
+              ? "Signature chain is intact."
+              : checked.errors.join("; ") || "Record check failed.",
           inclusion_status: checked.ok ? "ok" : "unavailable",
           inclusion_detail: checked.ok
             ? null
@@ -824,7 +917,7 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
       } else if (ev.chain_valid) {
         verification = {
           status: "valid",
-          detail: "Signature chain verified.",
+          detail: "Signature chain is intact.",
           inclusion_status: "pending",
           inclusion_detail:
             "Witness or transparency inclusion may still be processing.",
@@ -865,6 +958,7 @@ publicRoutes.get("/share/receipt/:token", async (c) => {
       },
       story,
       verification,
+      provenance,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

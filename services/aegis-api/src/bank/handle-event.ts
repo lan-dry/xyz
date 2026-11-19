@@ -5,6 +5,7 @@ import { issueForensicReceipt } from "../forensic/issue.js";
 import { isReceiptSigningConfigured } from "../crypto/receipt-signing.js";
 import { applyFieldPolicy } from "./field-policy.js";
 import { evaluateBankEvent } from "./evaluate.js";
+import { deriveGovernanceAttributes } from "./derive-governance.js";
 import { policyContentHash } from "./policy-hash.js";
 import { sealGovernedDecision } from "./seal-decision.js";
 import { storeMaskedFieldClears } from "./sensitive-field-vault.js";
@@ -18,7 +19,37 @@ import {
 } from "./repo.js";
 import type { BankEvent, BankDecisionResponse } from "./types.js";
 import type { RuleCombineMode } from "../policy/evaluate-rules.js";
-import { describeDecision } from "./describe-decision.js";
+import { describeDecision, formatRoleLabel } from "./describe-decision.js";
+import { extractRequester } from "./requester.js";
+import { roleDisplayName } from "./rule-preview.js";
+import {
+  sourceProvenanceAttributes,
+  type VerifiedSourceEnvelope,
+} from "../sources/grade.js";
+import {
+  bearerSource,
+  buildFieldAssertions,
+  buildProvenanceBlock,
+} from "../sources/provenance.js";
+import { organizationRequiresSignedEvents } from "../sources/registry.js";
+import {
+  applySignedOverrides,
+  resolveThirdPartyFacts,
+} from "../sources/third-party-facts.js";
+import { parseInputCommitments } from "../sources/input-commitments.js";
+import { upsertException } from "../reconciliation/exceptions.js";
+import { raisePlausibilityFlags } from "../reconciliation/plausibility.js";
+import { nowIso } from "../time/clock.js";
+import { issueDecisionToken } from "../execution/decision-token.js";
+import { resolveExecutionConfigForCase } from "../execution/workflow-config.js";
+
+/** UI/seed labelling only — never seal into the forensic receipt body. */
+function attributesForSeal(
+  attrs: Record<string, unknown>,
+): Record<string, unknown> {
+  const { demo_history: _demoHistory, ...rest } = attrs;
+  return rest;
+}
 
 export type HandleBankEventOptions = {
   /** Force evaluate/seal in record-only mode (batch import pilot). */
@@ -28,6 +59,16 @@ export type HandleBankEventOptions = {
    * replaying the queued event now. The receipt is marked "decided without Aegis".
    */
   decidedWithoutAegis?: boolean;
+  /**
+   * The event arrived in a verified AEGIS-SRC1 envelope. The envelope, source id, key id and
+   * evidence grade G1 are sealed into the APS event and the forensic receipt attributes.
+   */
+  sourceEnvelope?: VerifiedSourceEnvelope;
+  /**
+   * Ingest key id when the caller authenticated with a bearer key only (no source signature).
+   * Labels the receipt "sent by an ingest key" (grade G0) instead of an unknown sender.
+   */
+  ingestKeyId?: string;
 };
 
 export async function handleBankEvent(
@@ -58,6 +99,46 @@ export async function handleBankEvent(
 
   const fieldRules = await listFieldPolicies(client, organizationId);
   const fielded = applyFieldPolicy(event.attributes, fieldRules);
+  const sourceAttrs = options?.sourceEnvelope
+    ? sourceProvenanceAttributes(options.sourceEnvelope, {
+        eventContainsRedactedFields: fielded.redacted_paths.length > 0,
+      })
+    : {};
+  // Setting in force at decision/seal time (org column), recorded on every sealed event/receipt.
+  const requireSignedEventsInForce = await organizationRequiresSignedEvents(
+    client,
+    organizationId,
+  );
+
+  // Stage 7: verify nested third-party facts; policy uses signed values.
+  const thirdParty = await resolveThirdPartyFacts(
+    client,
+    organizationId,
+    { ...fielded.for_evaluate, ...fielded.stored },
+  );
+  fielded.for_evaluate = applySignedOverrides(
+    fielded.for_evaluate,
+    thirdParty.overrides,
+  );
+  fielded.stored = applySignedOverrides(fielded.stored, thirdParty.overrides);
+  for (const m of thirdParty.mismatches) {
+    await upsertException(client, {
+      organization_id: organizationId,
+      kind: "fact_mismatch",
+      case_id: event.case_id,
+      source_name: m.source_name,
+      fingerprint_key: m.field,
+      detail: {
+        field: m.field,
+        asserted_value: m.asserted_value,
+        signed_value: m.signed_value,
+        third_party_source_id: m.source_id,
+        third_party_key_id: m.key_id,
+        used_value: m.signed_value,
+      },
+    });
+  }
+  const inputCommitments = parseInputCommitments(event.attributes);
 
   const recordOnly =
     options?.forceRecordOnly === true ||
@@ -116,6 +197,21 @@ export async function handleBankEvent(
           : undefined,
     })) ?? [];
 
+  // Governance attrs from sealed history (velocity, new beneficiary, TOD, segment limits).
+  const overrideKeys = Object.keys(thirdParty.overrides);
+  const modelSigned = overrideKeys.some(
+    (k) => k === "model" || k === "model.score" || k.startsWith("model."),
+  );
+  const gov = await deriveGovernanceAttributes(client, {
+    organizationId,
+    attributes: { ...fielded.for_evaluate, ...fielded.stored },
+    product: event.product,
+    emittedAt: event.emitted_at,
+    modelScoreSignedByModelService: modelSigned,
+  });
+  fielded.for_evaluate = { ...fielded.for_evaluate, ...gov.derived };
+  fielded.stored = { ...fielded.stored, ...gov.derived };
+
   const evalResult = evaluateBankEvent({
     policy_id: policyId,
     combine: policyCombine,
@@ -126,6 +222,7 @@ export async function handleBankEvent(
     ladder,
     product: event.product,
     record_only: recordOnly,
+    plain_explanation: gov.hold_plain_english,
   });
 
   const decisionId = `dec_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
@@ -165,13 +262,18 @@ export async function handleBankEvent(
         product: event.product,
         event_type: event.event_type,
         tool_name: toolName,
-        attributes: fielded.stored,
+        attributes: {
+          ...attributesForSeal(fielded.stored),
+          ...sourceAttrs,
+          require_signed_events_in_force: requireSignedEventsInForce,
+        },
         matched_rules: matched,
         policy_id: policyId,
         policy_version: policyVersion,
         policy_content_hash: contentHash,
         agent_id: event.agent_id,
         idempotency_key: event.idempotency_key,
+        emitted_at: event.emitted_at,
       });
       if (sealed) {
         eventId = sealed.event_id;
@@ -185,6 +287,21 @@ export async function handleBankEvent(
         "[governed] APS seal failed; issuing provisional citation",
         err instanceof Error ? err.message : err,
       );
+      // persistSignedEvent / key lookup may have aborted this transaction. Without a
+      // fresh BEGIN, provisional citation + upsertBankCase fail with 25P02 and the
+      // whole governed intake returns 500 (breaks demo:fresh / seed-history).
+      if ("query" in client) {
+        try {
+          await (client as pg.PoolClient).query("ROLLBACK");
+          await (client as pg.PoolClient).query("BEGIN");
+        } catch (recoverErr) {
+          console.error(
+            "[governed] failed to recover transaction after seal error",
+            recoverErr instanceof Error ? recoverErr.message : recoverErr,
+          );
+          throw err instanceof Error ? err : new Error(String(err));
+        }
+      }
     }
   }
 
@@ -220,7 +337,80 @@ export async function handleBankEvent(
     typeof fielded.stored.currency === "string"
       ? fielded.stored.currency
       : null;
-  const plainSummary = describeDecision({
+  const requiredRole = evalResult.required_roles[0] ?? null;
+  const requiredRoleLabel =
+    roleDisplayName(ladder, requiredRole) ?? formatRoleLabel(requiredRole);
+  const requester = extractRequester(fielded.stored);
+  const receiptAttributes: Record<string, unknown> = {
+    ...attributesForSeal(fielded.stored),
+    ...sourceAttrs,
+    require_signed_events_in_force: requireSignedEventsInForce,
+    ...(requiredRole
+      ? {
+          required_role: requiredRole,
+          required_role_label: requiredRoleLabel,
+        }
+      : {}),
+    ...(requester.label
+      ? {
+          requester: requester.label,
+          requester_name: requester.name,
+          requester_role: requester.role,
+          requester_email: requester.email,
+          requester_officer_id: requester.officer_id,
+        }
+      : evalResult.outcome === "hold" && evalResult.mode === "enforce"
+        ? { requester_missing: true }
+        : {}),
+    ...(thirdParty.sealed.length > 0
+      ? { third_party_signed: thirdParty.sealed }
+      : {}),
+    ...(inputCommitments.length > 0
+      ? { input_commitments: inputCommitments }
+      : {}),
+  };
+  // Stage 2 honest labelling: sealed into the receipt body (inside the signature).
+  const sourceLabel = options?.sourceEnvelope
+    ? {
+        source_id: options.sourceEnvelope.source_id,
+        source_name:
+          options.sourceEnvelope.source_name?.trim() ||
+          options.sourceEnvelope.source_id,
+      }
+    : bearerSource(options?.ingestKeyId);
+
+  // Stage 7: non-blocking plausibility flags (never change the outcome).
+  const plausibilityFlags = await raisePlausibilityFlags(client, {
+    organization_id: organizationId,
+    case_id: event.case_id,
+    source_id:
+      options?.sourceEnvelope?.source_id ??
+      (typeof receiptAttributes.source_id === "string"
+        ? receiptAttributes.source_id
+        : null),
+    source_name: sourceLabel.source_name,
+    attributes: receiptAttributes,
+    emitted_at: event.emitted_at,
+  });
+  if (plausibilityFlags.length > 0) {
+    receiptAttributes.plausibility_flags = plausibilityFlags.map((f) => ({
+      kind: f.kind,
+      title: f.title,
+      detail: f.detail,
+      non_blocking: true,
+    }));
+  }
+
+  const provenance = buildProvenanceBlock({
+    ...sourceLabel,
+    source_key_id: options?.sourceEnvelope?.source_key_id ?? null,
+    authentication: options?.sourceEnvelope ? "source_signature" : "bearer_key",
+    field_assertions: buildFieldAssertions(Object.keys(receiptAttributes), {
+      overrides: thirdParty.assertion_overrides,
+    }),
+    recorded_at: nowIso(),
+  });
+  let plainSummary = describeDecision({
     outcome: evalResult.outcome,
     product: event.product,
     event_type: event.event_type,
@@ -231,10 +421,18 @@ export async function handleBankEvent(
     matched_rules: matched,
     decided_by_rule_id: evalResult.decision_basis.decided_by_rule_id,
     decision_basis: evalResult.decision_basis,
-    required_role: evalResult.required_roles[0] ?? null,
+    required_role: requiredRole,
+    required_role_label: requiredRoleLabel,
     would_have: evalResult.would_have,
     mode: evalResult.mode,
   });
+  if (
+    !requester.label &&
+    evalResult.outcome === "hold" &&
+    evalResult.mode === "enforce"
+  ) {
+    plainSummary = `${plainSummary} Requester was not recorded.`.trim();
+  }
 
   let evidenceStatus: "ok" | "failed" | "skipped" = "skipped";
   if (isReceiptSigningConfigured()) {
@@ -263,7 +461,9 @@ export async function handleBankEvent(
             sequence_num: sequenceNum,
           },
         ],
-        attributes: fielded.stored,
+        attributes: receiptAttributes,
+        provenance,
+        issued_at: event.emitted_at,
         timeline: [
           {
             at: event.emitted_at,
@@ -346,7 +546,7 @@ export async function handleBankEvent(
     outcome: evalResult.outcome,
     mode: evalResult.mode,
     status: evalResult.mode === "record_only" ? "approved" : status,
-    attributes: fielded.stored,
+    attributes: receiptAttributes,
     matched_rules: evalResult.matched_rules,
     policy_id: policyId,
     policy_version: policyVersion,
@@ -377,6 +577,41 @@ export async function handleBankEvent(
     }
   }
 
+  let decisionToken: Record<string, unknown> | undefined;
+  if (evalResult.outcome === "allow" && evalResult.mode === "enforce") {
+    try {
+      const execConfig = await resolveExecutionConfigForCase(client, organizationId, {
+        workflow_id: event.workflow_id,
+        product: event.product,
+        case_id: event.case_id,
+      });
+      const tokenAttrs: Record<string, unknown> = {
+        ...receiptAttributes,
+        ...(event.product ? { product: event.product } : {}),
+      };
+      // Accept common aliases so packs that name beneficiary_account still bind.
+      if (
+        tokenAttrs.beneficiary_account == null &&
+        tokenAttrs.beneficiary != null
+      ) {
+        tokenAttrs.beneficiary_account = tokenAttrs.beneficiary;
+      }
+      const issued = await issueDecisionToken(client, {
+        organizationId,
+        caseId: event.case_id,
+        decisionId,
+        attributes: tokenAttrs,
+        config: execConfig,
+      });
+      if (issued) decisionToken = issued as unknown as Record<string, unknown>;
+    } catch (err) {
+      console.error(
+        "[governed] decision token issue failed",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   return {
     case_id: event.case_id,
     decision_id: decisionId,
@@ -402,6 +637,7 @@ export async function handleBankEvent(
     event_id: eventId,
     event_hash: eventHash,
     sequence_num: sequenceNum,
+    ...(decisionToken ? { decision_token: decisionToken } : {}),
     flags: {
             ...(provisional ? { provisional: true } : {}),
       ...(options?.decidedWithoutAegis ? { decided_without_aegis: true } : {}),

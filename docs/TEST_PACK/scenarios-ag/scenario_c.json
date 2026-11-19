@@ -1,0 +1,154 @@
+{
+  "status": 200,
+  "ok": true,
+  "story_id": "scenario_c",
+  "expected": "stop",
+  "expect_detail": "Stopped: fraud model score 0.94 (asserted by source) meets Retail Standard block threshold 0.90. Supervisor cannot self-release; Fraud Analyst releases with a reason (sealed with score, version, approver, view).",
+  "resolver": "Fraud Analyst",
+  "case_id": "SIM-FE95A7F4F6",
+  "trace_id": "tr_sim_fe95a7f4f6",
+  "outcome": "stop",
+  "console_url": "http://localhost:3000/aegis/traces/tr_sim_fe95a7f4f6",
+  "plain_summary": "Stopped: fraud model score 0.94 (version 3.2, asserted by source) meets or exceeds the Retail Standard block threshold of 0.90 Policy v4.",
+  "matched_rules": [
+    {
+      "rule_id": "pol_pack_demo_banking_b66927e8_FRD-SCORE-RET",
+      "policy_id": "pol_pack_demo_banking_b66927e8",
+      "decision": "deny"
+    }
+  ],
+  "approval_id": "apr_21c4fe0820484a61",
+  "sealed": true,
+  "action": {
+    "amount": 3500000,
+    "currency": "RWF"
+  },
+  "target_grade": "G1",
+  "can_disburse": false,
+  "decision_token": null,
+  "evidence_grade": "G1",
+  "steps": [
+    "LOS Connector → signed source-events (G1).",
+    "Governed intake: stop (source-signed)",
+    "Approval requested: approve in the console, then disburse via the core ledger (permit gate).",
+    "Target evidence grade for this story: G1."
+  ],
+  "requests": [
+    {
+      "method": "POST",
+      "endpoint": "http://127.0.0.1:8088/v1/aegis/source-events",
+      "via": "aegis-connector",
+      "source_id": "src_los",
+      "key_id": "k_los_2026_01_mwn5jeo7",
+      "headers": {
+        "Authorization": "Bearer aegis_…****",
+        "Content-Type": "application/json"
+      },
+      "payload": {
+        "schema_version": 1,
+        "case_id": "SIM-FE95A7F4F6",
+        "idempotency_key": "26f8721d-5da7-4f87-8b6d-30f928b70167",
+        "event_type": "payment_transfer",
+        "product": "payment_transfer",
+        "emitted_at": "2026-11-19T12:24:16.538Z",
+        "actor": {
+          "type": "system",
+          "id": "payments-gateway"
+        },
+        "attributes": {
+          "requester_email": "officer@demo.test",
+          "requester_name": "Patience Ingabire",
+          "requester_role": "credit_officer",
+          "officer_id": "OFF-1042",
+          "system_account": "core-banking",
+          "amount": 3500000,
+          "currency": "RWF",
+          "customer_id": "CUST-RW-SCEN-C",
+          "segment": "retail_standard",
+          "channel": "web",
+          "beneficiary_account": "BEN-RW-C-01",
+          "beneficiary_country": "RW",
+          "applicant_name": "Divine Uwase",
+          "branch": "Rubavu",
+          "product": "payment_transfer",
+          "model": {
+            "id": "fraud-v3",
+            "version": "3.2",
+            "score": "0.94",
+            "recommendation": "block"
+          }
+        },
+        "trace_id": "tr_sim_fe95a7f4f6"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "case_id": "SIM-FE95A7F4F6",
+          "decision_id": "dec_53002740760a4d3b",
+          "receipt_id": "rcpt_747b1b7a11f5451a",
+          "outcome": "stop",
+          "mode": "enforce",
+          "matched_rules": [
+            {
+              "rule_id": "pol_pack_demo_banking_b66927e8_FRD-SCORE-RET",
+              "policy_id": "pol_pack_demo_banking_b66927e8",
+              "decision": "deny"
+            }
+          ],
+          "decision_basis": {
+            "outcome": "stop",
+            "decided_by_rule_id": "pol_pack_demo_banking_b66927e8_FRD-SCORE-RET",
+            "explanation": "Stopped: fraud model score 0.94 (version 3.2, asserted by source) meets or exceeds the Retail Standard block threshold of 0.90",
+            "matched": [
+              {
+                "rule_id": "pol_pack_demo_banking_b66927e8_FRD-SCORE-RET",
+                "policy_id": "pol_pack_demo_banking_b66927e8",
+                "decision": "deny",
+                "effect": "stop"
+              }
+            ]
+          },
+          "plain_summary": "Stopped: fraud model score 0.94 (version 3.2, asserted by source) meets or exceeds the Retail Standard block threshold of 0.90 Policy v4.",
+          "policy": {
+            "policy_id": "pol_pack_demo_banking_b66927e8",
+            "version": 4,
+            "content_hash": "c48ad5ccd7630980399fe3278033efb5a715eeb16a47e29589c5781e2508db11"
+          },
+          "approval": null,
+          "event_id": "evt_fee41508991a4fa2a9c761e3",
+          "event_hash": "30e46adce8791a7acca8c16e9d2a3d3777b0e78b251c6a7e465add728ddb82a6",
+          "sequence_num": 20,
+          "flags": {
+            "evidence_status": "ok"
+          },
+          "source_signed": true,
+          "evidence_grade": "G1"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "endpoint": "http://127.0.0.1:8088/v1/aegis/approvals/request",
+      "headers": {
+        "Authorization": "Bearer aegis_…****",
+        "Content-Type": "application/json"
+      },
+      "payload": {
+        "organization_id": "d8a7fa6f-8b10-4271-9fd0-f783939090b9",
+        "event_id": "evt_fee41508991a4fa2a9c761e3",
+        "trace_id": "tr_sim_fe95a7f4f6",
+        "tool_name": "governed.action",
+        "deferred": {
+          "url": "http://127.0.0.1:4000/core/loans/disburse-resume",
+          "method": "POST"
+        }
+      },
+      "response": {
+        "status": 201,
+        "body": {
+          "approval_id": "apr_21c4fe0820484a61"
+        }
+      }
+    }
+  ]
+}

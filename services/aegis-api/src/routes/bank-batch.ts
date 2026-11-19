@@ -14,6 +14,8 @@ import {
 import { handleBankEvent } from "../bank/handle-event.js";
 import type { BankEvent } from "../bank/types.js";
 import { getPool } from "../db/pool.js";
+import { organizationRequiresSignedEvents } from "../sources/registry.js";
+import { signedEventsRequiredBody } from "./bank-events.js";
 
 function bearerToken(authorization: string | undefined): string | null {
   if (!authorization?.startsWith("Bearer ")) return null;
@@ -103,6 +105,11 @@ export async function postBankEventBatch(c: Context): Promise<Response> {
       return c.json({ error: "Invalid API key" }, 401);
     }
 
+    // Batch imports are unsigned; a dry run only reports, so only committing is refused.
+    if (!dryRun && (await organizationRequiresSignedEvents(client, auth.organizationId))) {
+      return c.json(signedEventsRequiredBody(), 400);
+    }
+
     const report = await runBatchImport(text, format, mapping, {
       dry_run: dryRun,
       defaults: body.defaults,
@@ -111,6 +118,7 @@ export async function postBankEventBatch(c: Context): Promise<Response> {
         : async (event) =>
             handleBankEvent(client, auth.organizationId, event, {
               forceRecordOnly: true,
+              ingestKeyId: auth.keyId,
             }),
     });
 

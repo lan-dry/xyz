@@ -29,12 +29,18 @@ There is **no** runtime demo mode and **no** time travel.
 ```powershell
 # Needs PLATFORM_BOOTSTRAP_SECRET and uncommitted .demo-tenant-emails.local.json
 pnpm demo:up              # Postgres + normal API + provision + seed Demo Bank
-pnpm bank-simulator       # standalone story driver (real timers)
-pnpm demo:rehearse        # headless PASS/FAIL against normal API + simulator
+pnpm bank:up              # multi-system bank + in-process LOS Connector (signed events)
+pnpm demo:connectors      # optional: standalone Connector HTTP (:8787 LOS, :8788 core, :8789 pay)
+pnpm bank-simulator       # story driver alone (uses Connector keys from .data/connectors/)
+pnpm demo:rehearse        # headless PASS/FAIL against normal API + signed ingest
 pnpm demo:runbook-walk    # click-path + screenshots
 pnpm demo:screens         # Playwright shots → docs/screens/
-pnpm demo:fresh           # wipe → provision → seed (same as hosted refresh)
+pnpm demo:fresh           # wipe → provision (incl. source keys) → seed via Connector
 ```
+
+Demo Bank keeps `require_signed_events=true`. Provision registers `src_los` / `src_core` /
+`src_pay` and stores private keys under `.data/connectors/` (gitignored). Seed history and
+the bank simulator sign through `@salanor/aegis-connector` — never commit those keys.
 
 Also: `tools/demo/demo-up.ps1` / `tools/demo/demo-up.sh`
 
@@ -85,6 +91,54 @@ Also true: sealed decisions cannot be altered by the application database role
 
 Hosted stack: `docs/DEPLOY_PRODUCTION.md`. The marketing site is **not published**.
 
+## Must not claim: what Aegis proves about data
+
+Aegis proves **when a record was made** and that it has **not changed since**. It does **not** check
+that the data inside the record is accurate. Every screen and export says where the data came from
+(see `docs/PROVENANCE.md`). Say the same thing out loud.
+
+| Say | Never say |
+|-----|-----------|
+| "The record is intact: signed and unchanged since 14:02 UTC." | "Verified", "validated", "certified" next to an amount, a name, or a decision |
+| "The data was signed by Demo Core Banking with its own key (grade G1)." | "Aegis verified the loan amount" / "Aegis confirms the customer is real" |
+| "The data was sent with an ingest key; the sender did not sign it (grade G0)." | "Trusted data" or "clean data" for G0 or G1 |
+| "Aegis does not check that the data is accurate." | "Aegis proves the transaction happened" (only a reconciled feed or an independent capture says that, and those are G2 and G3) |
+| "Grade G1 means the source system signed this data." | "G1 means accurate" (a grade is about **who vouches for the data**, never about whether they are right) |
+| "A source that signs false data produces a validly signed false record. Aegis shows who signed it." | "Tamper-proof data" (the **record** is tamper-evident; the data can still be wrong at the source) |
+
+Wording on screen, in the PDF, in the bundle and on the share link:
+
+- Line one: **Record intact: signed and unchanged since \<time\>**
+- Line two: **Source of the data: \<grade and plain wording\>**
+- Never the standalone word "Verified" next to data content. `pnpm check:wording` fails the build if it
+  appears (`scripts/check-no-bare-verified.mjs`; web-console `build` runs it too).
+
+Grades today: **G0** ingest key only, **G1** signed by the source, **G2** corroborated (reconciled or
+execution matched), **G3** captured independently of the source. A case reaches G2 or G3 only by a
+**sealed grade-change** receipt. Story cards may say "target G2/G3"; say the grade only after confirm
++ reconcile (or collector match) actually ran. Live G3 from Postgres logical decoding is
+**Done** on bank-core (`:5436`, `wal_level=logical`) with `aegis-collector-pg`
+(`docs/provenance/STAGE_6_REPORT.md`). Present the **"Lying to Aegis"** segment in
+`docs/DEMO_RUNBOOK.md` §12 (~8 minutes).
+
+## Real today vs roadmap
+
+| Real today (say this) | Roadmap / not built (do not imply) |
+|-----------------------|-------------------------------------|
+| Source-signed events (G1), provenance block, two-line wording | HSM / hardware-backed receipt keys as the default claim |
+| Decision tokens + executor confirm (G2 when matched) | Approver **device** signatures (WebAuthn bound into the seal) |
+| Feed reconciliation + Exceptions page (G2 on match) | Regulator / counterparty co-sign of witness roots |
+| Approver binding: view hash + authenticated account/session | Independent external monitors product |
+| Live pgoutput G3 on bank-core (`loan_large_with_cdc`) | AWS KMS live key in every environment (Plan A code Ready; software interim until `AEGIS_RECEIPT_KMS_KEY_ID`) |
+| Third-party signed facts (bureau stub), input commitments, plausibility flags | TEE for policy / seal path |
+| Bank simulator multi-system Red Team panel + `pnpm test:redteam` | Certified / attested product; FedRAMP; HIPAA |
+| Offline bundle verify + independent Python envelope check | "Aegis verified the amount / customer is real" |
+
+Full ladder: `docs/provenance/ASSURANCE_LADDER.md`. Stage roll-up: `docs/provenance/FINAL_STATUS.md`.
+
 ## Not done (honest)
 
 - Website **live** publish (founder approval) — preview only; see `WEBSITE_CHANGES.md`
+- AWS KMS Ed25519 live key (`pnpm smoke:kms` — Partial until `AEGIS_RECEIPT_KMS_KEY_ID`)
+- WebAuthn step-up on approve (Stage 5 Partial)
+- Full provenance screenshot pack polish (G1–G3 shots under `docs/TEST_PACK/provenance/` include G3)
