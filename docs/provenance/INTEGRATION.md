@@ -109,8 +109,10 @@ Connector treat 409 as delivered only when the body is not `{ "error": "envelope
 
 ## Organisations that require signed events
 
-`organization.require_signed_events` is `true` by default for demo organisations (`is_demo`) and can be set
-per organisation. When it is on:
+`organization.require_signed_events` is a dedicated org column (migration 006). Demo Bank sets it
+explicitly on provision; turning it **off** needs two distinct admins (pending + confirm) and every
+applied change is sealed as a forensic `setting_change` receipt. Sealed events record
+`require_signed_events_in_force` from the org column at decision time. When the flag is on:
 
 - Unsigned events to `/v1/aegis/governed/events` and `/v1/aegis/bank/events` get **400**
   `signed_events_required`: "This organisation only accepts signed events. Send them through the Aegis

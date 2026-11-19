@@ -39,21 +39,51 @@ describe("sign/verify roundtrip", () => {
     expect(await verifyEnvelope(signed, keys.publicKeyB64)).toEqual({ ok: true });
   });
 
-  it("fills nonce (16 bytes), uuid idempotency key, event_hash", () => {
+  it("fills nonce (16 bytes), uuid idempotency key, event_hash; mirrors idem into event", () => {
     const env = baseEnvelope();
     expect(Buffer.from(env.nonce, "base64url")).toHaveLength(16);
     expect(env.idempotency_key).toMatch(/^[0-9a-f-]{36}$/);
-    expect(env.event_hash).toBe(sha256Hex(jcs(event)));
-    expect(env.event_hash).toBe(eventHash(event));
+    expect(env.event.idempotency_key).toBe(env.idempotency_key);
+    expect(env.event_hash).toBe(sha256Hex(jcs(env.event)));
+    expect(env.event_hash).toBe(eventHash(env.event));
   });
 
   it("event key order does not affect hash or signature validity", async () => {
     const keys = await generateKeyPair();
-    const reordered = { meta: { a: null, b: [1, 2] }, currency: "USD", amount: "1234.50", type: "payout.requested" };
-    expect(eventHash(reordered)).toBe(eventHash(event));
     const signed = await signEnvelope(baseEnvelope(), keys.privateKey);
+    const reordered = {
+      meta: { a: null, b: [1, 2] },
+      currency: "USD",
+      amount: "1234.50",
+      type: "payout.requested",
+      idempotency_key: signed.idempotency_key,
+    };
+    expect(eventHash(reordered)).toBe(eventHash(signed.event));
     const swapped: SignedEnvelope = { ...signed, event: reordered };
     expect(await verifyEnvelope(swapped, keys.publicKey)).toEqual({ ok: true });
+  });
+
+  it("signature still verifies when event body is redacted after ingest", async () => {
+    const keys = await generateKeyPair();
+    const signed = await signEnvelope(baseEnvelope(), keys.privateKey);
+    const redacted: SignedEnvelope = {
+      ...signed,
+      event: { redacted_by_field_policy: true },
+    };
+    expect(await verifyEnvelope(redacted, keys.publicKey)).toEqual({ ok: true });
+  });
+
+  it("rejects when envelope.idempotency_key ≠ event.idempotency_key", async () => {
+    const keys = await generateKeyPair();
+    const env = baseEnvelope();
+    const otherIdem = "11111111-1111-4111-8111-111111111111";
+    const badEvent = { ...env.event, idempotency_key: otherIdem };
+    const bad = {
+      ...env,
+      event: badEvent,
+      event_hash: eventHash(badEvent),
+    };
+    await expect(signEnvelope(bad, keys.privateKey)).rejects.toThrow(/idempotency_key/);
   });
 });
 
@@ -95,13 +125,24 @@ describe("forged / tampered envelopes", () => {
   it("signature binds seq, ts, source_id, key_id, nonce and idempotency_key", async () => {
     const keys = await generateKeyPair();
     const signed = await signEnvelope(baseEnvelope(), keys.privateKey);
-    const variants: Partial<SignedEnvelope>[] = [
+    const variants: Array<Partial<SignedEnvelope>> = [
       { seq: signed.seq + 1 },
       { ts: "2026-11-18T10:01:22.124Z" },
       { source_id: "src_other" },
       { key_id: "k_other" },
       { nonce: Buffer.alloc(16, 9).toString("base64url") },
-      { idempotency_key: "00000000-0000-4000-8000-000000000000" },
+      {
+        idempotency_key: "00000000-0000-4000-8000-000000000000",
+        event: {
+          ...signed.event,
+          idempotency_key: "00000000-0000-4000-8000-000000000000",
+        },
+        // Keep old event_hash so body check fails first... recompute so signature is the fail mode.
+        event_hash: eventHash({
+          ...signed.event,
+          idempotency_key: "00000000-0000-4000-8000-000000000000",
+        }),
+      },
     ];
     for (const patch of variants) {
       const result = await verifyEnvelope({ ...signed, ...patch }, keys.publicKey);

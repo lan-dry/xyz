@@ -7,9 +7,11 @@ Deliberately shares no code with the TypeScript SDK. Uses:
 
 Spec:
   event_hash       = hex(SHA-256(JCS(event)))
+  signing payload  = envelope without "signature" and without "event" (event_hash remains)
   signature input  = SHA-256("AEGIS-SRC1\\n" + source_id + "\\n" + key_id + "\\n"
-                             + JCS(envelope without "signature"))
+                             + JCS(signing payload))
   signature        = Ed25519 over that 32-byte digest, base64url (no padding)
+  Full event body is checked against event_hash only when present (not redacted).
 
 Usage:
   verify_envelope.py --vectors ../../conformance/vectors.json
@@ -141,12 +143,20 @@ def event_hash(event: dict) -> str:
     return hashlib.sha256(jcs(_check_event_value(event))).hexdigest()
 
 
+def signing_payload(envelope: dict) -> dict:
+    """Envelope without signature and without event — only event_hash binds the body."""
+    return {k: v for k, v in envelope.items() if k not in ("signature", "event")}
+
+
 def signature_input(envelope: dict) -> bytes:
-    """32-byte digest that is signed."""
-    unsigned = {k: v for k, v in envelope.items() if k != "signature"}
-    unsigned["event"] = _check_event_value(unsigned["event"])
-    prefix = f"{SIGNATURE_DOMAIN}{unsigned['source_id']}\n{unsigned['key_id']}\n".encode("utf-8")
-    return hashlib.sha256(prefix + jcs(unsigned)).digest()
+    """32-byte digest that is signed (AEGIS-SRC1 domain; RFC 8785 JCS)."""
+    payload = signing_payload(envelope)
+    prefix = f"{SIGNATURE_DOMAIN}{payload['source_id']}\n{payload['key_id']}\n".encode("utf-8")
+    return hashlib.sha256(prefix + jcs(payload)).digest()
+
+
+def is_full_event_body(event: Any) -> bool:
+    return isinstance(event, dict) and event.get("redacted_by_field_policy") is not True
 
 
 # --------------------------------------------------------------------------- #
@@ -212,8 +222,16 @@ def verify_envelope(envelope: Any, public_key: str | bytes) -> Result:
     signature = b64url_decode(envelope["signature"])
     if signature is None or len(signature) != 64:
         return Result(False, "malformed", "signature must be base64url of 64 bytes")
-    if event_hash(envelope["event"]) != envelope["event_hash"]:
-        return Result(False, "event_hash_mismatch")
+    if is_full_event_body(envelope["event"]):
+        if event_hash(envelope["event"]) != envelope["event_hash"]:
+            return Result(False, "event_hash_mismatch")
+        event_idem = envelope["event"].get("idempotency_key")
+        if isinstance(event_idem, str) and event_idem != envelope["idempotency_key"]:
+            return Result(
+                False,
+                "malformed",
+                "envelope.idempotency_key must equal event.idempotency_key",
+            )
     key_bytes = decode_key(public_key) if isinstance(public_key, str) else public_key
     if key_bytes is None or len(key_bytes) != 32:
         return Result(False, "malformed", "public key must be 32 bytes")

@@ -29,15 +29,15 @@ the key, the clock, the sequence number and the nonce, then seals the event. A s
 2. **Sequence gaps:** accept `seq > last+1` with a recorded gap; accept a later arrival that fills a recorded gap (needed for parallel senders). True replay (`seq` already accepted) still 409.
 3. **Connector 409:** only 2xx marks delivered (Aegis returns 200 for idempotent duplicates).
 
-## Test results (2026-11-18, local Postgres)
+## Test results (corrections re-run 2026-11-19)
 
 | Command | Result |
 | --- | --- |
-| `pnpm --filter aegis-api exec vitest run test/source-envelope.test.ts` | **41 / 41 passed** |
-| `pnpm --filter aegis-api exec vitest run test/forensic-source-envelope.test.ts` | **1 / 1 passed** |
-| `pnpm --filter @salanor/aegis-sdk test` | **46 / 46 passed** |
-| `pnpm --filter @salanor/aegis-connector test` | **24 passed, 1 skipped** (POSIX key mode on Windows) |
-| `node conformance/run.mjs` | **all legs passed** (TS + Python) |
+| `pnpm --filter @salanor/aegis-sdk test` | **55 / 55 passed** |
+| `pnpm --filter @salanor/aegis-connector test` | **24 passed, 1 skipped** |
+| `node conformance/run.mjs` | **all legs passed** (TS + Python; vectors also in `sdks/conformance/vectors/aegis-src1-v1.json`) |
+| `pnpm --filter aegis-api exec vitest run test/source-envelope.test.ts test/require-signed-events-setting.test.ts` | **45 passed** (incl. idem equality + two-person setting) |
+| `pnpm --filter aegis-api exec vitest run test/forensic-source-envelope.test.ts` | **1 / 1 passed** (redacted body still verifies) |
 | `py -3 tools/independent-verify/verify_envelope.py --vectors conformance/vectors.json` | **OK** |
 | `pnpm --filter aegis-api typecheck` | **clean** |
 
@@ -90,11 +90,22 @@ conformance: all legs passed
 
 | Item | Status |
 | --- | --- |
-| `tools/demo` / bank-simulator still post **unsigned** HTTP events | **Partial** — Demo Bank `require_signed_events=true` will 400 until Connector wiring in bank rebuild (Stage 4). Work around: turn the flag off for local unsigned demos, or register a source and sign. |
+| `tools/demo` / bank-simulator still post **unsigned** HTTP events | **Partial** — provision sets `require_signed_events=true` explicitly (two-person to turn off). Unsigned demos 400 until Connector wiring (Stage 4), or disable via two-admin confirm / register a source and sign. |
 | PKCS#11/KMS private key interface in Connector | **Partial** — interface/docs stub only; encrypted file for dev/tests |
 | Console “disable source” action | **Partial** — registry supports it; UI revoke-all-keys works |
 | OpenAPI for `/source-events` | **Not done** |
 | Full aegis-api suite `trusted-time` label mismatch | Pre-existing, unrelated |
+
+## Corrections (exploration approved)
+
+| # | Correction | Where |
+| --- | --- | --- |
+| 1 | Signature covers envelope with `event` replaced by `event_hash`; full body checked only when stored | `@salanor/aegis-sdk` `signingPayload` / `verifyEnvelope`; Python verifier; `SIGNING.md` |
+| 2 | Domain `AEGIS-SRC1` + RFC 8785 `canonicalize` only (not APS1 / receipt sorter) | unchanged prefix; docs clarified |
+| 3 | `require_signed_events` dedicated column; changes sealed; two-person to turn **off**; Demo provision sets explicitly; `require_signed_events_in_force` on each event | `006_sources.sql`, `org/require-signed-events.ts`, provision, handle-event |
+| 4 | `envelope.idempotency_key` == `event.idempotency_key` before evaluation on governed/bank/source-events | `verify-and-accept.ts` + SDK |
+| 5 | New vectors file (do not touch `spec/`) | `sdks/conformance/vectors/aegis-src1-v1.json` (+ `conformance/vectors.json`) |
+| 6 | Migration 006 covered by upgrade/migrate test | `migrate.integration.test.ts` asserts source tables + column + `006_sources` |
 
 ## Honesty line
 

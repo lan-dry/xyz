@@ -113,11 +113,38 @@ function stripSignature(envelope: UnsignedEnvelope | SignedEnvelope): UnsignedEn
   return copy as unknown as UnsignedEnvelope;
 }
 
-/** SHA-256( "AEGIS-SRC1\n" + source_id + "\n" + key_id + "\n" + JCS(envelope without signature) ) */
-export function signatureInput(envelope: UnsignedEnvelope | SignedEnvelope): Uint8Array {
+/**
+ * Signing object: envelope without `signature` and with `event` replaced by nothing —
+ * only `event_hash` remains. Field policy can mask/omit the stored event body later
+ * without breaking the signature.
+ */
+export function signingPayload(
+  envelope: UnsignedEnvelope | SignedEnvelope,
+): Record<string, unknown> {
   const unsigned = stripSignature(envelope);
-  const text =
-    SIGNATURE_DOMAIN + unsigned.source_id + "\n" + unsigned.key_id + "\n" + jcs(unsigned);
+  const { event: _event, ...rest } = unsigned as UnsignedEnvelope & {
+    event?: unknown;
+  };
+  void _event;
+  return { ...rest };
+}
+
+/** True when `event` looks like a full business body (not a redaction marker). */
+export function isFullEventBody(event: unknown): event is BusinessEvent {
+  if (!isPlainObject(event)) return false;
+  if (event.redacted_by_field_policy === true) return false;
+  return true;
+}
+
+/**
+ * SHA-256( "AEGIS-SRC1\n" + source_id + "\n" + key_id + "\n" + JCS(signingPayload) )
+ * Domain prefix is AEGIS-SRC1 only — never APS1 or the receipt local sorter.
+ */
+export function signatureInput(envelope: UnsignedEnvelope | SignedEnvelope): Uint8Array {
+  const payload = signingPayload(envelope);
+  const sourceId = String(payload.source_id ?? "");
+  const keyId = String(payload.key_id ?? "");
+  const text = SIGNATURE_DOMAIN + sourceId + "\n" + keyId + "\n" + jcs(payload);
   return sha256Bytes(text);
 }
 
@@ -127,6 +154,16 @@ export function signatureInputHex(envelope: UnsignedEnvelope | SignedEnvelope): 
 
 /** Build an unsigned envelope: fills nonce, idempotency key, ts and event_hash. */
 export function buildEnvelope(input: BuildEnvelopeInput): UnsignedEnvelope {
+  const idem =
+    input.idempotency_key ??
+    (typeof input.event.idempotency_key === "string"
+      ? input.event.idempotency_key
+      : randomUUID());
+  const eventIdem = input.event.idempotency_key;
+  if (typeof eventIdem === "string" && eventIdem !== idem) {
+    throw new TypeError("envelope.idempotency_key must equal event.idempotency_key");
+  }
+  const event: BusinessEvent = { ...input.event, idempotency_key: idem };
   const envelope: UnsignedEnvelope = {
     aegis_envelope: ENVELOPE_VERSION,
     source_id: input.source_id,
@@ -134,9 +171,9 @@ export function buildEnvelope(input: BuildEnvelopeInput): UnsignedEnvelope {
     seq: input.seq,
     ts: formatTimestamp(input.ts ?? new Date()),
     nonce: input.nonce ?? newNonce(),
-    idempotency_key: input.idempotency_key ?? randomUUID(),
-    event: input.event,
-    event_hash: eventHash(input.event),
+    idempotency_key: idem,
+    event,
+    event_hash: eventHash(event),
   };
   const err = shapeError(envelope, false);
   if (err) {
@@ -145,7 +182,11 @@ export function buildEnvelope(input: BuildEnvelopeInput): UnsignedEnvelope {
   return envelope;
 }
 
-/** Sign an envelope (any existing signature is replaced). Throws if event_hash is wrong. */
+/**
+ * Sign an envelope (any existing signature is replaced).
+ * Throws if event_hash is wrong, or if envelope.idempotency_key ≠ event.idempotency_key
+ * when the event carries that field.
+ */
 export async function signEnvelope(
   envelope: UnsignedEnvelope | SignedEnvelope,
   privateKey: KeyInput,
@@ -155,6 +196,10 @@ export async function signEnvelope(
   if (err) {
     throw new TypeError(`Invalid envelope: ${err}`);
   }
+  const eventIdem = unsigned.event.idempotency_key;
+  if (typeof eventIdem === "string" && eventIdem !== unsigned.idempotency_key) {
+    throw new Error("envelope.idempotency_key must equal event.idempotency_key");
+  }
   if (eventHash(unsigned.event) !== unsigned.event_hash) {
     throw new Error("event_hash does not match JCS(event)");
   }
@@ -163,15 +208,29 @@ export async function signEnvelope(
   return { ...unsigned, signature: base64urlEncode(new Uint8Array(signature)) };
 }
 
-/** Verify event_hash and the Ed25519 signature of an AEGIS-SRC1 envelope. Never throws. */
+/**
+ * Verify an AEGIS-SRC1 envelope. Never throws.
+ *
+ * - Signature is always checked over the payload with `event` replaced by `event_hash`.
+ * - When a full event body is present, `event_hash` must match JCS(event).
+ * - When the body was redacted for field policy, only the signature + event_hash are checked.
+ */
 export async function verifyEnvelope(
   envelope: unknown,
   publicKey: KeyInput,
+  options: { requireFullEventBody?: boolean } = {},
 ): Promise<VerifyResult> {
   if (isPlainObject(envelope) && "aegis_envelope" in envelope && envelope.aegis_envelope !== ENVELOPE_VERSION) {
     return { ok: false, reason: "unsupported_version" };
   }
-  const shape = shapeError(envelope, true);
+  // Redacted stored envelopes omit a valid business event; allow that shape when not requiring body.
+  const allowRedacted =
+    isPlainObject(envelope) &&
+    isPlainObject((envelope as { event?: unknown }).event) &&
+    (envelope as { event: Record<string, unknown> }).event.redacted_by_field_policy === true;
+  const shape = allowRedacted && !options.requireFullEventBody
+    ? shapeErrorRedacted(envelope)
+    : shapeError(envelope, true);
   if (shape) {
     return { ok: false, reason: "malformed", detail: shape };
   }
@@ -183,8 +242,20 @@ export async function verifyEnvelope(
   if (!signature || signature.length !== 64) {
     return { ok: false, reason: "malformed", detail: "signature must be base64url of 64 bytes" };
   }
-  if (eventHash(signed.event) !== signed.event_hash) {
-    return { ok: false, reason: "event_hash_mismatch" };
+  if (isFullEventBody(signed.event)) {
+    if (eventHash(signed.event) !== signed.event_hash) {
+      return { ok: false, reason: "event_hash_mismatch" };
+    }
+    const eventIdem = signed.event.idempotency_key;
+    if (typeof eventIdem === "string" && eventIdem !== signed.idempotency_key) {
+      return {
+        ok: false,
+        reason: "malformed",
+        detail: "envelope.idempotency_key must equal event.idempotency_key",
+      };
+    }
+  } else if (options.requireFullEventBody) {
+    return { ok: false, reason: "malformed", detail: "full event body required" };
   }
   const keyBytes = typeof publicKey === "string" ? decodeKeyString(publicKey) : publicKey;
   if (!keyBytes || keyBytes.length !== 32) {
@@ -197,4 +268,26 @@ export async function verifyEnvelope(
     valid = false;
   }
   return valid ? { ok: true } : { ok: false, reason: "bad_signature" };
+}
+
+/** Shape check when `event` was replaced by a redaction marker after ingest. */
+function shapeErrorRedacted(envelope: unknown): string | null {
+  if (!isPlainObject(envelope)) return "envelope must be an object";
+  const allowed = new Set<string>([...ENVELOPE_FIELDS, "signature"]);
+  for (const key of Object.keys(envelope)) {
+    if (!allowed.has(key)) return `unknown field: ${key}`;
+  }
+  for (const key of ENVELOPE_FIELDS) {
+    if (key === "event") continue;
+    if (!(key in envelope)) return `missing field: ${key}`;
+  }
+  const e = envelope as Record<string, unknown>;
+  if (typeof e.signature !== "string") return "missing field: signature";
+  if (typeof e.event_hash !== "string" || !HEX256_RE.test(e.event_hash)) {
+    return "event_hash must be 64 lowercase hex chars";
+  }
+  if (!isPlainObject(e.event) || e.event.redacted_by_field_policy !== true) {
+    return "redacted event marker required";
+  }
+  return null;
 }

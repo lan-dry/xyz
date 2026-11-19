@@ -30,6 +30,7 @@ import {
   buildFieldAssertions,
   buildProvenanceBlock,
 } from "../sources/provenance.js";
+import { organizationRequiresSignedEvents } from "../sources/registry.js";
 import {
   applySignedOverrides,
   resolveThirdPartyFacts,
@@ -102,6 +103,11 @@ export async function handleBankEvent(
         eventContainsRedactedFields: fielded.redacted_paths.length > 0,
       })
     : {};
+  // Setting in force at decision/seal time (org column), recorded on every sealed event/receipt.
+  const requireSignedEventsInForce = await organizationRequiresSignedEvents(
+    client,
+    organizationId,
+  );
 
   // Stage 7: verify nested third-party facts; policy uses signed values.
   const thirdParty = await resolveThirdPartyFacts(
@@ -239,7 +245,11 @@ export async function handleBankEvent(
         product: event.product,
         event_type: event.event_type,
         tool_name: toolName,
-        attributes: { ...attributesForSeal(fielded.stored), ...sourceAttrs },
+        attributes: {
+          ...attributesForSeal(fielded.stored),
+          ...sourceAttrs,
+          require_signed_events_in_force: requireSignedEventsInForce,
+        },
         matched_rules: matched,
         policy_id: policyId,
         policy_version: policyVersion,
@@ -317,6 +327,7 @@ export async function handleBankEvent(
   const receiptAttributes: Record<string, unknown> = {
     ...attributesForSeal(fielded.stored),
     ...sourceAttrs,
+    require_signed_events_in_force: requireSignedEventsInForce,
     ...(requiredRole
       ? {
           required_role: requiredRole,

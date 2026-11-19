@@ -80,6 +80,25 @@ ALTER TABLE organization
 -- New tenants / demo: set require_signed_events=true where is_demo=true
 UPDATE organization SET require_signed_events = true WHERE is_demo = true;
 
+-- Two-person / sealed changes to org settings (require_signed_events).
+-- Also ensured idempotently by ensureOrganizationSettingChangeTable() after migrate.
+CREATE TABLE IF NOT EXISTS organization_setting_change (
+  change_id text PRIMARY KEY,
+  organization_id uuid NOT NULL REFERENCES organization(organization_id),
+  setting_key text NOT NULL, -- 'require_signed_events'
+  from_value jsonb NOT NULL,
+  to_value jsonb NOT NULL,
+  requested_by text NOT NULL,
+  confirmed_by text,
+  status text NOT NULL CHECK (status IN ('pending','applied','cancelled')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  decided_at timestamptz
+);
+
+CREATE INDEX IF NOT EXISTS organization_setting_change_org_pending_idx
+  ON organization_setting_change (organization_id, setting_key, status)
+  WHERE status = 'pending';
+
 -- Tenant wipe: new tenant-scoped tables must be in the children-first allowlist
 -- (tenant-wipe-coverage test). source_key references source, so it goes first.
 CREATE OR REPLACE FUNCTION public.platform_tenant_wipe_tables() RETURNS text[]
@@ -143,6 +162,7 @@ CREATE OR REPLACE FUNCTION public.platform_tenant_wipe_tables() RETURNS text[]
     'organization_billing_event',
     'siem_destination',
     'webhook_endpoint',
+    'organization_setting_change',
     'source_envelope_idempotency',
     'source_sequence_gap',
     'source_nonce',

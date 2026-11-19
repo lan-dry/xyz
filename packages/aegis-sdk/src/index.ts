@@ -5,10 +5,12 @@ export {
   buildEnvelope,
   eventHash,
   formatTimestamp,
+  isFullEventBody,
   newNonce,
   signEnvelope,
   signatureInput,
   signatureInputHex,
+  signingPayload,
   verifyEnvelope,
 } from "./envelope.js";
 export {

@@ -136,13 +136,26 @@ export async function createConnector(
   }
 
   async function submit(event: BusinessEvent, idempotencyKey?: string): Promise<SubmitResult> {
-    assertEventJson(event);
-    const hash = eventHash(event);
+    // Mirror envelope.idempotency_key into the event before hashing (same as buildEnvelope).
+    const idem =
+      idempotencyKey ??
+      (typeof event.idempotency_key === "string" ? event.idempotency_key : undefined);
+    if (
+      typeof event.idempotency_key === "string" &&
+      idempotencyKey &&
+      event.idempotency_key !== idempotencyKey
+    ) {
+      throw new ConflictError("envelope.idempotency_key must equal event.idempotency_key");
+    }
+    const normalized: BusinessEvent =
+      idem !== undefined ? { ...event, idempotency_key: idem } : event;
+    assertEventJson(normalized);
+    const hash = eventHash(normalized);
 
     // seq assignment + signing + durable enqueue are serialised: a seq is never reused.
     const queued = await mutex.run(async () => {
-      if (idempotencyKey) {
-        const existing = state.findByIdempotencyKey(idempotencyKey);
+      if (idem) {
+        const existing = state.findByIdempotencyKey(idem);
         if (existing) {
           const stored = existing.state === "delivered" ? existing.record : existing.entry.envelope;
           if (stored.event_hash !== hash) {
@@ -156,8 +169,8 @@ export async function createConnector(
         key_id: config.key_id,
         seq: state.lastSeq + 1,
         ts: new Date(now()),
-        event,
-        idempotency_key: idempotencyKey,
+        event: normalized,
+        idempotency_key: idem,
       });
       const signed = await signEnvelope(unsigned, seed);
       await state.appendOutbox(signed);

@@ -60,26 +60,35 @@ For the example above `JCS(event)` is `{"loan_id":"LN-0001","type":"loan.approve
 
 ## 4. The signature
 
-1. Remove `signature` from the envelope (every other field stays, including `event` and `event_hash`).
-2. Canonicalize what is left with JCS.
-3. Build the signing text, with a single `\n` (0x0A) between the parts and **no** trailing newline:
+The signature covers the envelope with **`event` replaced by `event_hash`** (the full event body is
+not inside the signed bytes). Field policy can later mask or omit the stored body without breaking
+offline verification. The verifier re-checks `JCS(event)` against `event_hash` **only when the full
+body is still stored**.
+
+1. Build the signing payload: take the envelope, drop `signature`, drop `event`, keep `event_hash`
+   and every other field. Canonicalize with the `canonicalize` package (RFC 8785 JCS) — never the
+   APS-1 prefix and never the forensic receipt local sorter.
+2. Build the signing text, with a single `\n` (0x0A) between the parts and **no** trailing newline:
 
    ```
-   "AEGIS-SRC1\n" + source_id + "\n" + key_id + "\n" + JCS(envelope without signature)
+   "AEGIS-SRC1\n" + source_id + "\n" + key_id + "\n" + JCS(signing payload)
    ```
 
-4. `digest = SHA-256( UTF8(signing text) )` (32 bytes).
-5. `signature = Ed25519_sign( privateKey, digest )`: pure Ed25519 (RFC 8032) over the 32 digest bytes as the
+3. `digest = SHA-256( UTF8(signing text) )` (32 bytes).
+4. `signature = Ed25519_sign( privateKey, digest )`: pure Ed25519 (RFC 8032) over the 32 digest bytes as the
    message (not Ed25519ph, no extra context). The 64-byte result is base64url-encoded without padding.
 
 The `AEGIS-SRC1\n` prefix is domain separation: a signature made for another purpose with the same key can
 never be valid here. `source_id` and `key_id` are repeated outside the JSON so the signer commits to which
 source and key it speaks for.
 
+`envelope.idempotency_key` must equal `event.idempotency_key` (reject otherwise), on both
+`/v1/aegis/governed/events` and `/v1/aegis/bank/events`, before policy evaluation.
+
 Worked example (test-only key from `conformance/vectors.json`, `minimal-ascii`):
 
 ```
-signature_input_hash = 7cea331ac5b53117de5dec241c26ceb3f270755f4b0bcf95cd7906045545f42d
+signature_input_hash = 00f7f930627ac99156ad29e61bcafde974bf37b6f0e8adb02750f50616088abf
 public_key_b64       = 0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc=
 ```
 

@@ -152,6 +152,8 @@ const BOOKKEEPING_KEYS = new Set([
   "third_party_signed",
   "input_commitments",
   "plausibility_flags",
+  "require_signed_events_in_force",
+  "setting_change",
 ]);
 
 /** Receipt-level fields Aegis always derives from the policy. */

@@ -234,6 +234,15 @@ export async function verifyAndAcceptEnvelope<T>(
   }
   const envelope = rawEnvelope as unknown as SignedEnvelope;
 
+  // Envelope and business event must share the same idempotency key (before evaluation).
+  const eventIdem = envelope.event?.idempotency_key;
+  if (typeof eventIdem !== "string" || eventIdem !== envelope.idempotency_key) {
+    return reject(
+      "malformed",
+      "envelope.idempotency_key must equal event.idempotency_key",
+    );
+  }
+
   // ---- 3. Serialize per source and decide --------------------------------
   const lock = lockName(organizationId, envelope.source_id);
   await client.query(`SELECT pg_advisory_lock(hashtext($1))`, [lock]);

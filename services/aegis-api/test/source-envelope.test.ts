@@ -59,6 +59,7 @@ const SOURCE_TABLES = [
   "source_registry_event",
   "source_key",
   "source",
+  "organization_setting_change",
 ];
 
 function businessEvent(): BusinessEvent {
@@ -216,6 +217,11 @@ describeIfDb("source registry + signed envelope ingest (Stage 1)", () => {
       sourceId?: string;
     } = {},
   ): Promise<SignedEnvelope> {
+    const baseEvent = o.event ?? businessEvent();
+    const event =
+      o.idempotency_key !== undefined
+        ? { ...baseEvent, idempotency_key: o.idempotency_key }
+        : baseEvent;
     const unsigned = buildEnvelope({
       source_id: o.sourceId ?? src.sourceId,
       key_id: o.keyId ?? src.keyId,
@@ -223,7 +229,7 @@ describeIfDb("source registry + signed envelope ingest (Stage 1)", () => {
       ts: o.ts,
       nonce: o.nonce,
       idempotency_key: o.idempotency_key,
-      event: o.event ?? businessEvent(),
+      event,
     });
     return signEnvelope(unsigned, (o.signWith ?? src.kp).privateKey);
   }
@@ -316,6 +322,7 @@ describeIfDb("source registry + signed envelope ingest (Stage 1)", () => {
     expect(attrs.evidence_grade).toBe("G1");
     expect(attrs.checks).toEqual({ source_signed: true });
     expect(attrs.provenance).toEqual({ authentication: "source_signature", grade: "G1" });
+    expect(attrs.require_signed_events_in_force).toBe(false);
 
     // ... and on the sealed APS event.
     const ev = await getPool().query<{ payload: { attributes: Record<string, unknown> } }>(
@@ -324,6 +331,7 @@ describeIfDb("source registry + signed envelope ingest (Stage 1)", () => {
     );
     expect(ev.rows[0]?.payload.attributes.source_envelope).toEqual(env);
     expect(ev.rows[0]?.payload.attributes.evidence_grade).toBe("G1");
+    expect(ev.rows[0]?.payload.attributes.require_signed_events_in_force).toBe(false);
   });
 
   it("an envelope posted to /governed/events and /bank/events takes the signed path", async () => {
@@ -716,6 +724,35 @@ describeIfDb("source registry + signed envelope ingest (Stage 1)", () => {
       "Idempotency-Key": env.idempotency_key,
     });
     expect(ok.status).toBe(200);
+  });
+
+  it("envelope.idempotency_key must equal event.idempotency_key (governed + bank paths)", async () => {
+    const src = await newSource();
+    const { eventHash, signatureInput, base64urlEncode } = await import("@salanor/aegis-sdk");
+    const ed = await import("@noble/ed25519");
+    const env = await signed(src, 1);
+    const otherIdem = "11111111-1111-4111-8111-111111111111";
+    const badEvent = { ...env.event, idempotency_key: otherIdem };
+    // Craft: envelope.idem stays original; event.idem differs; event_hash + signature match that craft.
+    const crafted = {
+      ...env,
+      event: badEvent,
+      event_hash: eventHash(badEvent),
+    };
+    const digest = signatureInput(crafted);
+    const sig = await ed.signAsync(digest, src.kp.privateKey);
+    const broken = { ...crafted, signature: base64urlEncode(new Uint8Array(sig)) };
+    for (const path of [
+      "/v1/aegis/source-events",
+      "/v1/aegis/governed/events",
+      "/v1/aegis/bank/events",
+    ]) {
+      const res = await post(path, broken);
+      expect(res.status, path).toBe(400);
+      const body = (await res.json()) as { code?: string; message?: string; error?: string };
+      const text = `${body.code ?? ""} ${body.message ?? ""} ${body.error ?? ""}`;
+      expect(text.includes("idempotency") || body.code === "malformed", path).toBe(true);
+    }
   });
 
   // ------------------------------------------------------------ seq gaps

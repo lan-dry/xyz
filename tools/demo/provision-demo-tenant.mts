@@ -347,6 +347,26 @@ async function main(): Promise<void> {
   );
   log("Signed in as the organisation admin.");
 
+  // Explicit: Demo Bank always requires signed source events (Stage 1).
+  // Enabling is single-admin and seals a setting_change receipt when the flag flips.
+  {
+    const flag = await admin.call<{
+      require_signed_events: boolean;
+      unchanged?: boolean;
+      sealed?: boolean;
+    }>("/organization/require-signed-events", {
+      method: "POST",
+      body: { enabled: true },
+    });
+    if (flag.data.unchanged) {
+      log("require_signed_events already true.");
+    } else {
+      log(
+        `require_signed_events set to true${flag.data.sealed ? " (sealed)" : ""}.`,
+      );
+    }
+  }
+
   step(3, "Agents and signing bridge");
   await ensureAgents(admin);
 

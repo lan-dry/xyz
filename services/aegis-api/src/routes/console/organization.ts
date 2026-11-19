@@ -7,11 +7,123 @@ import {
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import { getPool } from "../../db/pool.js";
 import {
+  getRequireSignedEventsState,
+  setRequireSignedEvents,
+} from "../../org/require-signed-events.js";
+import {
   requireConsoleSession,
   type ConsoleVariables,
 } from "../../middleware/console-session.js";
 
 export const organizationRoutes = new Hono<{ Variables: ConsoleVariables }>();
+
+organizationRoutes.get(
+  "/organization/require-signed-events",
+  requireConsoleSession,
+  async (c) => {
+    const session = c.get("consoleSession");
+    try {
+      const state = await getRequireSignedEventsState(
+        getPool(),
+        session.organizationId,
+      );
+      return c.json(state);
+    } catch (err) {
+      if (err instanceof Error && err.message === "organization_not_found") {
+        return c.json({ error: "Not found" }, 404);
+      }
+      throw err;
+    }
+  },
+);
+
+/**
+ * POST { enabled: boolean }
+ * - enabled true: apply immediately + seal (single admin).
+ * - enabled false: create pending change; a second distinct admin posting false confirms + seals.
+ */
+organizationRoutes.post(
+  "/organization/require-signed-events",
+  requireConsoleSession,
+  async (c) => {
+    const session = c.get("consoleSession");
+    if (session.role !== "admin" && session.role !== "owner") {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    let body: { enabled?: boolean };
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON" }, 422);
+    }
+    if (typeof body.enabled !== "boolean") {
+      return c.json({ error: "enabled boolean required" }, 422);
+    }
+    const pool = getPool();
+    try {
+      const result = await setRequireSignedEvents(pool, {
+        organization_id: session.organizationId,
+        enabled: body.enabled,
+        actor_membership_id: session.userId,
+      });
+      if (result.status === "pending_confirmation") {
+        await auditFromConsoleSession(pool, session, {
+          action: "organization.require_signed_events_disable_requested",
+          resourceType: "organization",
+          resourceId: session.organizationId,
+          metadata: { change_id: result.change_id },
+        });
+        return c.json({
+          pending_confirmation: true,
+          require_signed_events: result.require_signed_events,
+          change_id: result.change_id,
+          message: result.message,
+        });
+      }
+      if (result.status === "unchanged") {
+        return c.json({
+          require_signed_events: result.require_signed_events,
+          unchanged: true,
+        });
+      }
+      await auditFromConsoleSession(pool, session, {
+        action: body.enabled
+          ? "organization.require_signed_events_on"
+          : "organization.require_signed_events_off",
+        resourceType: "organization",
+        resourceId: session.organizationId,
+        metadata: {
+          change_id: result.change_id,
+          receipt_id: result.receipt_id,
+        },
+      });
+      return c.json({
+        require_signed_events: result.require_signed_events,
+        change_id: result.change_id,
+        receipt_id: result.receipt_id,
+        receipt_hash: result.receipt_hash,
+        sealed: Boolean(result.receipt_id),
+      });
+    } catch (err) {
+      if (
+        err &&
+        typeof err === "object" &&
+        (err as { code?: string }).code === "four_eyes_same_admin"
+      ) {
+        return c.json(
+          {
+            error:
+              err instanceof Error
+                ? err.message
+                : "Four-eyes: a different admin must confirm.",
+          },
+          403,
+        );
+      }
+      throw err;
+    }
+  },
+);
 
 organizationRoutes.get(
   "/organization/plan-usage",

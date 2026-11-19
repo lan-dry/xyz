@@ -25,6 +25,8 @@ import {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outPath = join(here, "vectors.json");
+/** Also published under sdks/conformance (do not touch spec/). */
+const sdkConformancePath = join(here, "..", "sdks", "conformance", "vectors", "aegis-src1-v1.json");
 
 /** Deterministic test-only seeds: 32 bytes filled with a single repeated value. */
 function testSeed(fill) {
@@ -222,6 +224,8 @@ async function makeVector(c) {
     throw new Error(`self-check failed for ${c.id}: ${JSON.stringify(verify)}`);
   }
   const { signature, ...withoutSignature } = signed;
+  // event_jcs / event_hash are taken from the envelope event (buildEnvelope mirrors
+  // idempotency_key into the event), not the raw case input.
   const envelopeJcs = jcs(withoutSignature);
   return {
     id: c.id,
@@ -229,10 +233,10 @@ async function makeVector(c) {
     test_only_private_key_b64: pair.privateKeyB64,
     public_key_b64: pair.publicKeyB64,
     envelope_without_signature: withoutSignature,
-    event_jcs: jcs(c.event),
+    event_jcs: jcs(withoutSignature.event),
     canonical_envelope_jcs: envelopeJcs,
     canonical_envelope_utf8_hex: Buffer.from(envelopeJcs, "utf8").toString("hex"),
-    event_hash: eventHash(c.event),
+    event_hash: withoutSignature.event_hash,
     signature_input_hash: signatureInputHex(signed),
     signature_b64url: signature,
   };
@@ -381,12 +385,26 @@ if (process.argv.includes("--check")) {
   } catch {
     /* missing */
   }
+  let sdkCurrent = "";
+  try {
+    sdkCurrent = readFileSync(sdkConformancePath, "utf8");
+  } catch {
+    /* missing */
+  }
   if (current.replace(/\r\n/g, "\n") !== text) {
     console.error("conformance/vectors.json is stale; run: node conformance/generate-vectors.mjs");
     process.exit(1);
   }
-  console.log("vectors.json is up to date");
+  if (sdkCurrent.replace(/\r\n/g, "\n") !== text) {
+    console.error(
+      "sdks/conformance/vectors/aegis-src1-v1.json is stale; run: node conformance/generate-vectors.mjs",
+    );
+    process.exit(1);
+  }
+  console.log("vectors.json and sdks/conformance/vectors/aegis-src1-v1.json are up to date");
 } else {
   writeFileSync(outPath, text, "utf8");
+  writeFileSync(sdkConformancePath, text, "utf8");
   console.log(`wrote ${outPath}`);
+  console.log(`wrote ${sdkConformancePath}`);
 }

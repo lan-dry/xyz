@@ -96,6 +96,14 @@ export async function applyIntegrationFixture(
       .catch((err: unknown) => {
         if ((err as { code?: string } | null)?.code !== "42P01") throw err;
       });
+    // Stage 1 setting-change rows (organization_setting_change).
+    await client
+      .query(`DELETE FROM organization_setting_change WHERE organization_id = $1`, [
+        INTEGRATION_ORG_A,
+      ])
+      .catch((err: unknown) => {
+        if ((err as { code?: string } | null)?.code !== "42P01") throw err;
+      });
     // Stage 4 reconciliation (migration 009) — children first.
     await client.query(
       `DELETE FROM reconciliation_exception_note WHERE organization_id = $1`,

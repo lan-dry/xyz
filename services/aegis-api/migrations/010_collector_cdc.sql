@@ -142,6 +142,7 @@ CREATE OR REPLACE FUNCTION public.platform_tenant_wipe_tables() RETURNS text[]
     'organization_billing_event',
     'siem_destination',
     'webhook_endpoint',
+    'organization_setting_change',
     'source_envelope_idempotency',
     'source_sequence_gap',
     'source_nonce',
