@@ -237,8 +237,10 @@ async function auditDemoTenantRefusal(
   try {
     await platformRecordDemoTenantAction(getPool(), {
       slug,
-      action: requested,
+      // SQL allowlist is wipe|create|load_history|reset|refuse — always record refuse.
+      action: "refuse",
       actor: demoActor(access),
+      result: { requested_action: requested },
       requireDemoOrTest: true,
     });
   } catch {
