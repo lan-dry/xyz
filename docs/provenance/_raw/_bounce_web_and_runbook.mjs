@@ -1,36 +1,28 @@
-import { spawnSync } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import { setTimeout as sleep } from "timers/promises";
 
-function ps(command) {
-  return spawnSync("powershell", ["-NoProfile", "-Command", command], {
-    encoding: "utf8",
-    shell: false,
-  });
-}
-
 function stopPort(port) {
-  ps(
-    `Get-NetTCPConnection -LocalPort ${port} -State Listen -EA SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -EA SilentlyContinue }`,
+  spawnSync(
+    "powershell",
+    [
+      "-NoProfile",
+      "-Command",
+      `Get-NetTCPConnection -LocalPort ${port} -State Listen -EA SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -EA SilentlyContinue }`,
+    ],
+    { encoding: "utf8" },
   );
 }
 
 stopPort(3000);
 await sleep(2000);
 
-const start = spawnSync(
-  "pnpm.cmd",
-  ["--filter", "@salanor/web-console", "start"],
-  {
-    detached: true,
-    stdio: "ignore",
-    shell: true,
-    windowsHide: true,
-  },
-);
-if (start.error) {
-  console.error(start.error);
-  process.exit(1);
-}
+// Must use spawn (not spawnSync) — next start never exits.
+const start = spawn("pnpm.cmd", ["--filter", "@salanor/web-console", "start"], {
+  detached: true,
+  stdio: "ignore",
+  shell: true,
+  windowsHide: true,
+});
 start.unref();
 
 let ok = false;
@@ -54,6 +46,8 @@ if (!ok) {
 const walk = spawnSync("pnpm", ["demo:runbook-walk"], {
   encoding: "utf8",
   shell: true,
-  stdio: "inherit",
+  maxBuffer: 64 * 1024 * 1024,
 });
+process.stdout.write(walk.stdout || "");
+process.stderr.write(walk.stderr || "");
 process.exit(walk.status ?? 1);
