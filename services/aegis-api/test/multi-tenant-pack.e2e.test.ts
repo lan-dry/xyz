@@ -172,13 +172,14 @@ describe("multi-tenant policy packs (banking + insurance)", () => {
     });
     expect(verified.ok).toBe(true);
 
-    // Banking pack on a different tenant does not share insurance roles
+    // Insurance-only roles (e.g. claims_handler) do not satisfy banking ladder roles.
+    // fraud_analyst exists on both packs, so it is not a cross-tenant proof.
     const banking = loadDemoPack("banking");
     const bankLadder = packRoles(banking);
     const cross = checkApprovalAttempt(bankLadder, {
       actor_membership_id: "x",
-      actor_email: "fraud@demo.test",
-      actor_roles: ["fraud_analyst"],
+      actor_email: "claims@demo.test",
+      actor_roles: ["claims_handler"],
       is_requester: false,
       action: "approve",
       required_role: "credit_manager",

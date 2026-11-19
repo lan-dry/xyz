@@ -2,9 +2,10 @@
  * Stage 8 Red Team attack catalog (#1–18) + honest limits.
  * Buttons prefer live Aegis calls via RealConnectors / ingest; anything that
  * cannot run live returns simulated:true and must be labelled Simulation.
+ *
+ * Catalog data is static so unit tests can import ATTACKS without resolving
+ * @salanor/aegis-connector (live runner is loaded only inside runAttack).
  */
-
-import { runLiveAttack } from "./redteam-live.mjs";
 
 /** @typedef {{
  *   id: number,
@@ -196,6 +197,7 @@ export async function runAttack(attackId, deps) {
     return { ok: false, error: "Unknown attack", status: 404 };
   }
 
+  const { runLiveAttack } = await import("./redteam-live.mjs");
   const partial = await runLiveAttack(attackId, deps);
   if (partial && partial.ok === false) return partial;
 
