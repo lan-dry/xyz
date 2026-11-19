@@ -1,5 +1,5 @@
 /** Ensure fraud@demo-bank.local exists with fraud_analyst bank role. */
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
@@ -51,8 +51,6 @@ const login = await fetch(`${idBase}/v1/id/auth/login`, {
     organization_id: orgId,
   }),
 });
-const cookies =
-  typeof login.headers.getSetCookie === "function" ? login.headers.getSetCookies?.() : null;
 const setCookies =
   typeof login.headers.getSetCookie === "function" ? login.headers.getSetCookie() : [];
 const cookie = setCookies.map((c) => c.split(";")[0]).find((c) => c.startsWith("salanor_session="));
