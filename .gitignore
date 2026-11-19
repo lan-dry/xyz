@@ -49,6 +49,9 @@ bin/
 
 # hosted Demo Bank tenant: real people's emails/passwords stay local, never committed
 .demo-tenant-emails.local.json
+.demo-tenant-emails.prod.json
+.demo-tenant-emails.deploy.json
 .demo-tenant-*.local.json
+.demo-tenant-*.prod.json
 !.demo-tenant-emails.local.example.json
 .bank-simulator/

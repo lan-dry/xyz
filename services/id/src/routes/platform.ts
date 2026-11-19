@@ -50,8 +50,9 @@ import {
   updatePlanCatalogRow,
 } from "@salanor/platform-auth";
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve as resolvePath } from "node:path";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join as joinPath, resolve as resolvePath } from "node:path";
 import pg from "pg";
 import {
   EmailDeliveryError,
@@ -327,7 +328,11 @@ function resolveDemoIngestKey(): string | undefined {
 }
 
 /** Env for provision + seed so both share one ingest secret after wipe. */
-function demoPopulateCliEnv(slug: string, name: string): Record<string, string | undefined> {
+function demoPopulateCliEnv(
+  slug: string,
+  name: string,
+  tenantFilePath?: string,
+): Record<string, string | undefined> {
   const ingest = resolveDemoIngestKey();
   return {
     DEMO_ORG_SLUG: slug,
@@ -335,9 +340,71 @@ function demoPopulateCliEnv(slug: string, name: string): Record<string, string |
     DEMO_ORG_IS_DEMO: "1",
     DEMO_ORG_IS_TEST: "1",
     DEMO_TENANT_SLUG: slug,
+    ...(tenantFilePath ? { DEMO_TENANT_FILE: tenantFilePath } : {}),
     ...(ingest
       ? { AEGIS_INGEST_KEY: ingest, DEMO_BANK_INGEST_KEY: ingest }
       : {}),
+  };
+}
+
+type TenantFileHandle = { path: string; cleanup: () => void };
+
+/**
+ * Resolve tenant emails JSON for demo CLIs.
+ * Prefer Ops-pasted `tenant_json`, then DEMO_TENANT_JSON env, then DEMO_TENANT_FILE path.
+ * Never commit passwords; Ops paste is request-scoped only.
+ */
+function materializeDemoTenantFile(input?: unknown): TenantFileHandle {
+  const fromEnvFile = process.env.DEMO_TENANT_FILE?.trim();
+  const fromEnvJson = process.env.DEMO_TENANT_JSON?.trim();
+
+  let raw: string | undefined;
+  if (typeof input === "string" && input.trim()) {
+    raw = input.trim();
+  } else if (input && typeof input === "object") {
+    raw = JSON.stringify(input, null, 2);
+  } else if (fromEnvJson) {
+    raw = fromEnvJson;
+  } else if (fromEnvFile && existsSync(fromEnvFile)) {
+    return { path: fromEnvFile, cleanup: () => undefined };
+  }
+
+  if (!raw) {
+    throw new Error(
+      "Paste the tenant JSON in Ops (same shape as .demo-tenant-emails.local.json), " +
+        "or set DEMO_TENANT_JSON / DEMO_TENANT_FILE on salanor-id.",
+    );
+  }
+
+  let parsed: {
+    api_base?: string;
+    id_base?: string;
+    personas?: { admin?: { email?: string; password?: string } };
+  };
+  try {
+    parsed = JSON.parse(raw) as typeof parsed;
+  } catch {
+    throw new Error("tenant_json is not valid JSON");
+  }
+  if (!parsed.api_base?.trim() || !parsed.id_base?.trim()) {
+    throw new Error("tenant_json needs api_base and id_base");
+  }
+  if (!parsed.personas?.admin?.email?.trim() || !parsed.personas?.admin?.password) {
+    throw new Error("tenant_json needs personas.admin.email and personas.admin.password");
+  }
+
+  const dir = mkdtempSync(joinPath(tmpdir(), "demo-tenant-"));
+  const path = joinPath(dir, "tenant.json");
+  writeFileSync(path, raw, { encoding: "utf8", mode: 0o600 });
+  return {
+    path,
+    cleanup: () => {
+      try {
+        rmSync(dir, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
+    },
   };
 }
 
@@ -412,7 +479,12 @@ platformRoutes.get("/demo-tenants/audit", async (c) => {
 platformRoutes.post("/demo-tenants/populate", async (c) => {
   const access = await requirePlatformPermission(c, "platform:provision");
   if (!access.ok) return c.json({ error: access.error }, 403);
-  let body: { slug?: string; confirm_slug?: string; name?: string };
+  let body: {
+    slug?: string;
+    confirm_slug?: string;
+    name?: string;
+    tenant_json?: unknown;
+  };
   try {
     body = await c.req.json();
   } catch {
@@ -430,21 +502,22 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
   const name =
     (body.name ?? "").trim() ||
     (slug === "redteam-lab" ? "Red Team Lab" : slug === "demo-bank" ? "Demo Bank" : slug);
-  const tenantFile = process.env.DEMO_TENANT_FILE?.trim();
-  if (!tenantFile || !existsSync(tenantFile)) {
+
+  let tenantHandle: TenantFileHandle;
+  try {
+    tenantHandle = materializeDemoTenantFile(body.tenant_json);
+  } catch (err) {
     return c.json(
       {
         ok: false,
         action: "populate",
         slug,
-        error:
-          "DEMO_TENANT_FILE is not set (or missing) on salanor-id. " +
-          "Point it at a tenant JSON on the service, or provision from the aegis-api shell / laptop " +
-          "(docs/DEPLOY_PRODUCTION.md §10).",
+        error: err instanceof Error ? err.message : "Invalid tenant_json",
       },
-      503,
+      400,
     );
   }
+
   const client = await getPool().connect();
   try {
     await client.query("BEGIN");
@@ -464,7 +537,7 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
     });
     await client.query("COMMIT");
 
-    const cliEnv = demoPopulateCliEnv(slug, name);
+    const cliEnv = demoPopulateCliEnv(slug, name, tenantHandle.path);
     const stack = await runDemoCli(
       "tools/demo/provision-demo-tenant.mts",
       ["--force-pack"],
@@ -525,6 +598,7 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
     );
   } finally {
     client.release();
+    tenantHandle.cleanup();
   }
 });
 
@@ -632,7 +706,7 @@ platformRoutes.post("/demo-tenants/wipe", async (c) => {
 platformRoutes.post("/demo-tenants/reset", async (c) => {
   const access = await requirePlatformPermission(c, "platform:orgs.write");
   if (!access.ok) return c.json({ error: access.error }, 403);
-  let body: { slug?: string; confirm_slug?: string };
+  let body: { slug?: string; confirm_slug?: string; tenant_json?: unknown };
   try {
     body = await c.req.json();
   } catch {
@@ -661,6 +735,20 @@ platformRoutes.post("/demo-tenants/reset", async (c) => {
         code: "env_not_set",
       },
       403,
+    );
+  }
+  let tenantHandle: TenantFileHandle;
+  try {
+    tenantHandle = materializeDemoTenantFile(body.tenant_json);
+  } catch (err) {
+    return c.json(
+      {
+        ok: false,
+        action: "reset",
+        slug,
+        error: err instanceof Error ? err.message : "Invalid tenant_json",
+      },
+      400,
     );
   }
   const actor = demoActor(access);
@@ -694,7 +782,7 @@ platformRoutes.post("/demo-tenants/reset", async (c) => {
       client.release();
     }
 
-    const cliEnv = demoPopulateCliEnv(slug, name);
+    const cliEnv = demoPopulateCliEnv(slug, name, tenantHandle.path);
     const stack = await runDemoCli(
       "tools/demo/provision-demo-tenant.mts",
       ["--force-pack"],
@@ -743,6 +831,8 @@ platformRoutes.post("/demo-tenants/reset", async (c) => {
     }
     console.error("[id] demo-tenants reset", err);
     return c.json({ error: msg }, 500);
+  } finally {
+    tenantHandle.cleanup();
   }
 });
 

@@ -52,8 +52,25 @@ export default function DemoTenantsPage() {
 
   const [slug, setSlug] = useState("demo-bank");
   const [confirm, setConfirm] = useState("");
+  const [tenantJson, setTenantJson] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return window.localStorage.getItem("ops-demo-tenant-json") ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function persistTenantJson(value: string) {
+    setTenantJson(value);
+    try {
+      window.localStorage.setItem("ops-demo-tenant-json", value);
+    } catch {
+      /* ignore quota */
+    }
+  }
 
   const tenantsQ = useQuery({
     queryKey: ["demo-tenants"],
@@ -74,17 +91,32 @@ export default function DemoTenantsPage() {
           : action === "wipe"
             ? "demo-tenants/wipe"
             : "demo-tenants/reset";
+      if (action !== "wipe") {
+        const trimmed = tenantJson.trim();
+        if (!trimmed) {
+          throw new Error(
+            "Paste your tenant JSON first (same content as .demo-tenant-emails.prod.json).",
+          );
+        }
+        try {
+          JSON.parse(trimmed);
+        } catch {
+          throw new Error("Tenant JSON is not valid JSON.");
+        }
+      }
       return platformApi<{
         ok: boolean;
         action?: string;
         warning?: string;
         detail?: string;
+        error?: string;
       }>(path, {
         method: "POST",
         body: JSON.stringify({
           slug,
           confirm_slug: confirm,
           name: slug === "demo-bank" ? "Demo Bank" : slug === "redteam-lab" ? "Red Team Lab" : slug,
+          ...(action === "wipe" ? {} : { tenant_json: tenantJson.trim() }),
         }),
       });
     },
@@ -179,7 +211,8 @@ export default function DemoTenantsPage() {
       <section className={`${ui.card} ${ui.cardPad}`} style={{ marginBottom: 24 }}>
         <h2 className={ui.cardTitle}>Actions</h2>
         <p className={ui.cardHint}>
-          Type the slug twice. Customer orgs cannot be deleted here.
+          Type the slug twice. Paste the tenant emails JSON (production api_base / id_base). Saved in
+          this browser only — never commit passwords. Customer orgs cannot be deleted here.
         </p>
         <div
           style={{
@@ -252,6 +285,23 @@ export default function DemoTenantsPage() {
               }
             }
           `}</style>
+          <label>
+            Tenant JSON (emails / passwords)
+            <textarea
+              className={ui.input}
+              value={tenantJson}
+              onChange={(e) => persistTenantJson(e.target.value)}
+              rows={12}
+              spellCheck={false}
+              placeholder='Paste contents of .demo-tenant-emails.prod.json here'
+              style={{
+                fontFamily: "ui-monospace, monospace",
+                fontSize: 12,
+                marginTop: 6,
+                resize: "vertical",
+              }}
+            />
+          </label>
           {hasWrite ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {canProvision ? (
