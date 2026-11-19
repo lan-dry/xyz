@@ -1,0 +1,17 @@
+{
+  "navChecks": {
+    "demo_org_tag": true,
+    "no_demo_strip": true,
+    "no_simulator_nav": true,
+    "required": {
+      "Rules": true,
+      "Cases": true,
+      "Reports": true,
+      "Access log": true,
+      "Delegations": true
+    },
+    "forbidden": {
+      "Simulator": true
+    }
+  }
+}
