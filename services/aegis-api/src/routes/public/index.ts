@@ -189,6 +189,42 @@ function pushFieldNames(target: string[], value: unknown) {
   }
 }
 
+/**
+ * Bank policy_decision payloads store facts under `attributes`, not
+ * fields_accessed. Share receipts must still list amount/currency/etc.
+ */
+function pushBankAttributeFields(target: string[], payload: Record<string, unknown>) {
+  if (!isBankPayload(payload)) return;
+  const attrs = payload.attributes as Record<string, unknown>;
+  // Short share list: business facts only (no envelope / aegis.* dump).
+  const preferred = [
+    "amount",
+    "currency",
+    "product",
+    "segment",
+    "customer_id",
+    "applicant_name",
+    "loan_purpose",
+    "branch",
+    "channel",
+    "requester_email",
+    "requester_name",
+    "requester_role",
+    "officer_id",
+    "beneficiary_account",
+    "beneficiary_country",
+    "new_beneficiary",
+  ];
+  for (const key of preferred) {
+    const fromAttrs = attrs[key];
+    const fromTop = payload[key];
+    if (fromAttrs != null && fromAttrs !== "") target.push(key);
+    else if (fromTop != null && fromTop !== "" && typeof fromTop !== "object") {
+      target.push(key);
+    }
+  }
+}
+
 function humanField(raw: string): string {
   return raw.replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -203,7 +239,7 @@ function seenSentence(fields: string[]): string | null {
 
 function anomalySentence(type: string | null, reason: string | null): string | null {
   if (!reason && !type) return null;
-  if (!reason) return "Suspicious behaviour flagged — review required";
+  if (!reason) return "Suspicious behaviour flagged: review required";
   if (type === "prompt_injection_indicator") {
     return `Possible prompt injection detected: ${reason}`;
   }
@@ -388,6 +424,7 @@ function storyFromTrace(steps: TraceStep[]): {
     pushFieldNames(fields, payload.fields_accessed);
     pushFieldNames(fields, payload.data_touched);
     pushFieldNames(fields, payload.fields);
+    pushBankAttributeFields(fields, payload);
     const context = payload.evaluation_context;
     if (context && typeof context === "object" && !Array.isArray(context)) {
       pushFieldNames(fields, (context as Record<string, unknown>).fields_accessed);

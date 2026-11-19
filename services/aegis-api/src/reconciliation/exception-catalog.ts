@@ -54,6 +54,10 @@ export const EXCEPTION_CATALOG: Record<
     title: "Ledger row changed with no matching application event",
     severity: "high",
   },
+  db_value_mismatch: {
+    title: "Ledger values differ from the confirmed application event",
+    severity: "critical",
+  },
   plausibility_flag: {
     title: "Plausibility check flagged this case",
     severity: "medium",

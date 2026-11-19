@@ -10,7 +10,7 @@
  * `pnpm demo:connectors`.
  */
 import { spawn, execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync, openSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, openSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createConnection } from "node:net";
@@ -107,9 +107,45 @@ if (!docker.ok) {
   try {
     await waitPort(5436, "127.0.0.1", 45_000);
     status.postgres = "ready :5436";
+    // Bootstrap roles / publication / slot (idempotent).
+    const initSql = join(here, "bank-core-init.sql");
+    try {
+      execFileSync(
+        "docker",
+        [
+          "exec",
+          "-i",
+          "salanor-bank-core-pg",
+          "psql",
+          "-U",
+          "salanor",
+          "-d",
+          "bank_core",
+          "-v",
+          "ON_ERROR_STOP=1",
+          "-f",
+          "-",
+        ],
+        {
+          cwd: root,
+          input: existsSync(initSql) ? readFileSync(initSql, "utf8") : "",
+          stdio: ["pipe", "inherit", "inherit"],
+          timeout: 30_000,
+        },
+      );
+    } catch (initErr) {
+      status.partials.push(
+        `bank-core init SQL failed: ${initErr instanceof Error ? initErr.message : initErr}`,
+      );
+    }
+    // App uses bank_app (no REPLICATION). Collector uses aegis_collector separately.
     process.env.BANK_CORE_DATABASE_URL ||=
-      "postgresql://salanor:salanor@127.0.0.1:5436/bank_core";
-    console.log("  Postgres bank-core healthy on :5436 (wal_level=logical)");
+      "postgresql://bank_app:bank_app_dev@127.0.0.1:5436/bank_core";
+    process.env.AEGIS_COLLECTOR_DATABASE_URL ||=
+      "postgresql://aegis_collector:aegis_collector_dev@127.0.0.1:5436/bank_core";
+    console.log(
+      "  Postgres bank-core healthy on :5436 (wal_level=logical; roles bank_app / aegis_collector)",
+    );
   } catch (err) {
     status.postgres = "unhealthy";
     status.partials.push(
@@ -134,6 +170,9 @@ const simEnv = {
 };
 if (process.env.BANK_CORE_DATABASE_URL) {
   simEnv.BANK_CORE_DATABASE_URL = process.env.BANK_CORE_DATABASE_URL;
+}
+if (process.env.AEGIS_COLLECTOR_DATABASE_URL) {
+  simEnv.AEGIS_COLLECTOR_DATABASE_URL = process.env.AEGIS_COLLECTOR_DATABASE_URL;
 }
 if (process.env.AEGIS_API_BASE) simEnv.AEGIS_API_BASE = process.env.AEGIS_API_BASE;
 if (process.env.AEGIS_INGEST_KEY) simEnv.AEGIS_INGEST_KEY = process.env.AEGIS_INGEST_KEY;

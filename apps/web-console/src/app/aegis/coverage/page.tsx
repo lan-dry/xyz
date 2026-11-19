@@ -161,7 +161,7 @@ export default function CoveragePage() {
                     </td>
                     <td>{t.event_count}</td>
                     <td className="mono" style={{ fontSize: "0.75rem" }}>
-                      {t.agent_ids.slice(0, 3).join(", ") || "—"}
+                      {t.agent_ids.slice(0, 3).join(", ") || "-"}
                     </td>
                   </tr>
                 ))}
@@ -201,7 +201,7 @@ export default function CoveragePage() {
                       </span>
                     </td>
                     <td className="mono" style={{ fontSize: "0.75rem" }}>
-                      {t.matched_patterns.join(", ") || "—"}
+                      {t.matched_patterns.join(", ") || "-"}
                     </td>
                     <td>{t.event_count}</td>
                   </tr>

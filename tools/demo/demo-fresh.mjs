@@ -25,7 +25,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync, writeFileSync, chmodSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -153,21 +153,7 @@ if (dryRun) {
 
 runTool("1/3 wipe Demo Bank", "wipe-tenant", ["--slug", SLUG, "--confirm", SLUG, "--allow-missing"]);
 
-// Connector private keys are kept across wipe, but outbox/delivered state must not be —
-// otherwise seed reuses fixed idempotency keys against a different local event hash.
-{
-  const connectorsDir =
-    process.env.AEGIS_CONNECTORS_DIR?.trim() || join(root, ".data", "connectors");
-  if (existsSync(connectorsDir)) {
-    for (const src of ["src_los", "src_core", "src_pay", "src_los_redteam", "src_bureau"]) {
-      const statePath = join(connectorsDir, src, "state");
-      if (existsSync(statePath)) {
-        rmSync(statePath, { recursive: true, force: true });
-        console.log(`  Cleared Connector state: ${statePath}`);
-      }
-    }
-  }
-}
+// Connector private keys are kept across wipe; seed-history clears outbox/delivered state.
 
 // --force-pack: workflow_id is a global PK; always re-bind banking pack +
 // executable_params to this fresh org (avoids empty tokens after wipe).

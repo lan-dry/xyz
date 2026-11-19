@@ -14,7 +14,6 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 
 import { isNavActive, navForProfile, type ConsoleNavItem } from "@/lib/console-nav";
-import { useOrgProfile } from "@/hooks/use-org-profile";
 import { isBankDemoProfile } from "@/lib/ui-profile";
 import {
   applyConsoleTheme,
@@ -151,9 +150,6 @@ export function ConsoleShell({
 
   const productTitle = product === "aegis" ? "Aegis" : "Insurance";
   const bankDemo = isBankDemoProfile() && product === "aegis";
-  // A hosted demo tenant (organization.is_demo) shows a quiet tag in the org display
-  // instead of the loud strip, and no misleading Production/Sandbox switch.
-  const { isDemo: demoOrg } = useOrgProfile();
 
   return (
     <div
@@ -244,7 +240,7 @@ export function ConsoleShell({
         </div>
 
         {/* Only show a product switcher when more than one product is active.
-            Insurance stays status=hidden until connected — never render a dead preview. */}
+            Insurance stays status=hidden until connected - never render a dead preview. */}
         {bankDemo || VISIBLE_PLATFORM_PRODUCTS.length <= 1 ? null : (
           <div className={shell.productBlock}>
             {!collapsed ? <p className={shell.productLabel}>Products</p> : null}
@@ -282,7 +278,7 @@ export function ConsoleShell({
         <header className={shell.topBar}>
           <div className={shell.topBarLeft}>
             <OrgDisplay organization={organization} organizations={organizations} />
-            {product === "aegis" && !bankDemo && !demoOrg ? (
+            {product === "aegis" && !bankDemo ? (
               <label className={shell.envSwitcher}>
                 <span className={shell.envLabel}>Env</span>
                 <select
@@ -336,11 +332,6 @@ export function ConsoleShell({
             </button>
           </div>
         </header>
-        {bankDemo && !demoOrg ? (
-          <div className={shell.demoStrip} role="status" data-demo-strip>
-            Demo environment, synthetic data
-          </div>
-        ) : null}
         {impersonation ? (
           <div className={shell.impersonationBanner} role="status">
             <div>

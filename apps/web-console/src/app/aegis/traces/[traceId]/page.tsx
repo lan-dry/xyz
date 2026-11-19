@@ -25,12 +25,18 @@ import {
 import { SpanTreePanel } from "@/components/console/span-tree-panel";
 import { ConsoleTime } from "@/components/console/console-time";
 import { EvidenceDownloads } from "@/components/console/evidence-downloads";
+import { Modal } from "@/components/console/modal";
 import { SealChip } from "@/components/console/seal-chip";
 import { useCaseSummaries } from "@/hooks/use-case-summaries";
 import { consoleApi } from "@/lib/api";
 import { idApi } from "@/lib/id-api";
 import { agentLabel } from "@/lib/agent-label";
-import { buildCaseStory, TREATMENT_LABEL } from "@/lib/case-story";
+import {
+  buildCaseStory,
+  partitionDataSeen,
+  TREATMENT_LABEL,
+  type DataSeenField,
+} from "@/lib/case-story";
 import { formatRuleLabel } from "@/lib/describe-decision";
 import type {
   EventDetail,
@@ -47,6 +53,7 @@ export default function TraceDetailPage() {
   const traceId = decodeURIComponent(params.traceId);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [revealError, setRevealError] = useState<string | null>(null);
+  const [dataSeenOpen, setDataSeenOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["console", "trace", traceId],
@@ -289,104 +296,149 @@ export default function TraceDetailPage() {
           >
             <section className={`${ui.card} ${ui.cardPad}`}>
               <h2 className={ui.panelTitle}>What data was seen</h2>
-              {story.dataSeen.length > 0 ? (
-                <>
-                  <ul
-                    style={{
-                      margin: story.dataSensitivity ? "0 0 0.65rem" : 0,
-                      paddingLeft: "1.1rem",
-                      fontSize: "0.9375rem",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {story.dataSeen.map((f) => {
-                      const clear = revealed[f.field];
-                      const showReveal =
-                        canReveal &&
-                        f.treatment === "masked" &&
-                        !clear &&
-                        (f.field === "applicant_name" ||
-                          f.field === "national_id" ||
-                          /id$/i.test(f.field) ||
-                          /name$/i.test(f.field));
-                      return (
-                        <li key={f.field}>
-                          {f.label}
-                          {clear
-                            ? `: ${clear}`
-                            : f.value
-                              ? `: ${f.value}`
-                              : ""}{" "}
-                          <span
+              {(() => {
+                const { primary, more } = partitionDataSeen(story.dataSeen);
+                const allFields = [...primary, ...more];
+                const renderField = (f: DataSeenField) => {
+                  const clear = revealed[f.field];
+                  const showReveal =
+                    canReveal &&
+                    f.treatment === "masked" &&
+                    !clear &&
+                    (f.field === "applicant_name" ||
+                      f.field === "national_id" ||
+                      /id$/i.test(f.field) ||
+                      /name$/i.test(f.field));
+                  return (
+                    <li key={f.field}>
+                      {f.label}
+                      {clear ? `: ${clear}` : f.value ? `: ${f.value}` : ""}{" "}
+                      <span
+                        style={{
+                          fontSize: "0.75rem",
+                          color: "var(--console-fg-muted)",
+                        }}
+                      >
+                        ({clear ? "revealed (logged)" : TREATMENT_LABEL[f.treatment]})
+                      </span>
+                      {showReveal ? (
+                        <>
+                          {" "}
+                          <button
+                            type="button"
+                            className={ui.tableLink}
                             style={{
+                              background: "none",
+                              border: "none",
+                              padding: 0,
                               fontSize: "0.75rem",
-                              color: "var(--console-fg-muted)",
+                              cursor: "pointer",
                             }}
+                            disabled={revealMutation.isPending}
+                            onClick={() => revealMutation.mutate(f.field)}
                           >
-                            (
-                            {clear
-                              ? "revealed (logged)"
-                              : TREATMENT_LABEL[f.treatment]}
-                            )
-                          </span>
-                          {showReveal ? (
-                            <>
-                              {" "}
-                              <button
-                                type="button"
-                                className={ui.tableLink}
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  padding: 0,
-                                  fontSize: "0.75rem",
-                                  cursor: "pointer",
-                                }}
-                                disabled={revealMutation.isPending}
-                                onClick={() => revealMutation.mutate(f.field)}
-                              >
-                                Reveal
-                              </button>
-                            </>
-                          ) : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  {revealError ? (
-                    <p
-                      style={{
-                        margin: "0 0 0.65rem",
-                        fontSize: "0.8125rem",
-                        color: "var(--console-danger, #b91c1c)",
-                      }}
-                    >
-                      {revealError}
-                    </p>
-                  ) : null}
-                  {story.dataSensitivity ? (
+                            Reveal
+                          </button>
+                        </>
+                      ) : null}
+                    </li>
+                  );
+                };
+                if (allFields.length === 0) {
+                  return (
                     <p
                       style={{
                         margin: 0,
-                        fontSize: "0.8125rem",
+                        fontSize: "0.875rem",
                         color: "var(--console-fg-muted)",
                       }}
                     >
-                      Sensitivity: {story.dataSensitivity}
+                      This case did not send any data fields to Aegis.
                     </p>
-                  ) : null}
-                </>
-              ) : (
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "0.875rem",
-                    color: "var(--console-fg-muted)",
-                  }}
-                >
-                  This case did not send any data fields to Aegis.
-                </p>
-              )}
+                  );
+                }
+                return (
+                  <>
+                    <ul
+                      style={{
+                        margin:
+                          more.length > 0 || story.dataSensitivity ? "0 0 0.65rem" : 0,
+                        paddingLeft: "1.1rem",
+                        fontSize: "0.9375rem",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {primary.map(renderField)}
+                    </ul>
+                    {more.length > 0 ? (
+                      <button
+                        type="button"
+                        className={ui.tableLink}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          margin: "0 0 0.65rem",
+                          fontSize: "0.8125rem",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => setDataSeenOpen(true)}
+                      >
+                        Show all fields ({allFields.length})
+                      </button>
+                    ) : null}
+                    {revealError ? (
+                      <p
+                        style={{
+                          margin: "0 0 0.65rem",
+                          fontSize: "0.8125rem",
+                          color: "var(--console-danger, #b91c1c)",
+                        }}
+                      >
+                        {revealError}
+                      </p>
+                    ) : null}
+                    {story.dataSensitivity ? (
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "0.8125rem",
+                          color: "var(--console-fg-muted)",
+                        }}
+                      >
+                        Sensitivity: {story.dataSensitivity}
+                      </p>
+                    ) : null}
+                    <Modal
+                      open={dataSeenOpen}
+                      title="What data was seen"
+                      description="Business fields recorded for this decision. Seal and signature details stay under Technical details."
+                      onClose={() => setDataSeenOpen(false)}
+                      wide
+                      footer={
+                        <button
+                          type="button"
+                          className={`${ui.btn} ${ui.btnSecondary}`}
+                          onClick={() => setDataSeenOpen(false)}
+                        >
+                          Close
+                        </button>
+                      }
+                    >
+                      <ul
+                        style={{
+                          margin: 0,
+                          paddingLeft: "1.1rem",
+                          fontSize: "0.9375rem",
+                          lineHeight: 1.55,
+                        }}
+                      >
+                        {allFields.map(renderField)}
+                      </ul>
+                    </Modal>
+                  </>
+                );
+              })()}
             </section>
 
             <section className={`${ui.card} ${ui.cardPad}`}>
@@ -586,7 +638,7 @@ export default function TraceDetailPage() {
                 <>
                   <br />
                   Requester email:{" "}
-                  <code className="mono">{story.requesterEmail ?? "—"}</code>
+                  <code className="mono">{story.requesterEmail ?? "-"}</code>
                   {story.requesterOfficerId ? (
                     <>
                       {" "}
@@ -606,7 +658,7 @@ export default function TraceDetailPage() {
                 }}
               >
                 Seal chain: intact. Public witness or transparency inclusion may
-                still be processing for a minute after ingest — that does not change
+                still be processing for a minute after ingest - that does not change
                 the intact chain above.
               </p>
             ) : null}

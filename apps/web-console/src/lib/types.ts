@@ -285,6 +285,8 @@ export type CaseProvenance = {
   record_line: string;
   source_line: string;
   source_line_short: string;
+  /** ISO time when a later CDC observation contradicted a sealed G3. */
+  contradicted_at?: string | null;
 };
 
 /** Signed-event source registry (GET /v1/console/sources). */

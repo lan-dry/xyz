@@ -14,7 +14,7 @@ export const PLATFORM_PRODUCTS = [
     description: "Risk metrics and reinsurance bridge (preview, not GA)",
     href: "/insurance",
     external: false,
-    /** Hidden in nav until insurance-api is connected — do not show an empty preview. */
+    /** Hidden in nav until insurance-api is connected - do not show an empty preview. */
     status: "hidden" as const,
   },
 ] as const;

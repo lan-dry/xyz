@@ -5,7 +5,7 @@
  * LOS Aegis Connector (AEGIS-SRC1 → /v1/aegis/source-events), with holds requested
  * through the real approvals endpoint and decided by the personas' own console
  * sessions. Intake emitted_at and sealed issued_at values are staggered across
- * ~45 prior days; approvals use a historical decided_at hours after each hold
+ * ~60 prior days; approvals use a historical decided_at hours after each hold
  * (demo org only). Requires provisioned Connector keys (`.data/connectors/`).
  *
  * Idempotent: case ids and idempotency keys are fixed, so a re-run re-sends nothing new
@@ -29,11 +29,15 @@ import {
   fail,
   httpJson,
   loadTenantFile,
+  repoRoot,
   type PersonaKey,
   type TenantFile,
 } from "./demo-tenant-lib.mts";
 import type { BusinessEvent } from "@salanor/aegis-sdk";
-import { openDemoConnector } from "./connector-sources.mts";
+import {
+  clearDemoConnectorRuntimeState,
+  openDemoConnector,
+} from "./connector-sources.mts";
 
 type Story = {
   n: string;
@@ -41,8 +45,13 @@ type Story = {
   product: string;
   agent: "credit-decision" | "payments-gateway" | "customer-data" | "core-banking";
   attributes: Record<string, unknown>;
-  /** Who decides a hold, and how. Omitted: nothing to decide (allow, or a final stop). */
-  decide?: { by: PersonaKey; decision: "approve" | "decline"; reason: string; reason_code?: string };
+  /** Who decides a hold/stop, and how. Omitted: nothing to decide (allow, or a final stop). */
+  decide?: {
+    by: PersonaKey;
+    decision: "approve" | "decline" | "release";
+    reason: string;
+    reason_code?: string;
+  };
 };
 
 /** Resolved at run time, after .env has been loaded (DEMO_HISTORY_FILE may live there). */
@@ -94,7 +103,20 @@ type ApprovalRow = { approval_id: string; trace_id: string; status?: string };
 const log = (msg: string) => console.log(`  ${msg}`);
 
 function ingestKey(): string {
-  const key = process.env.AEGIS_INGEST_KEY?.trim() || process.env.DEMO_BANK_INGEST_KEY?.trim();
+  let key = process.env.AEGIS_INGEST_KEY?.trim() || process.env.DEMO_BANK_INGEST_KEY?.trim();
+  if (!key) {
+    try {
+      const stackPath = resolve(repoRoot(), ".demo-tenant-local-stack.local.json");
+      if (existsSync(stackPath)) {
+        const parsed = JSON.parse(readFileSync(stackPath, "utf8")) as {
+          ingest_key?: string;
+        };
+        key = parsed.ingest_key?.trim();
+      }
+    } catch {
+      /* ignore */
+    }
+  }
   if (!key) {
     fail(
       "AEGIS_INGEST_KEY (or DEMO_BANK_INGEST_KEY) is not set. Use the stable DEMO_BANK_INGEST_KEY you gave\n  pilot:provision-demo-tenant, or the key it printed once (re-run it with --new-ingest-key for a fresh one).",
@@ -226,16 +248,16 @@ async function main(): Promise<void> {
       caseId,
       traceId: `TR-RW-${year}-${ref}`,
       // v5 bump: SRC1 requires UUID; keep deterministic for idempotent re-seed.
-      idem: stableUuid(`${prefix.toLowerCase()}-history-${year}-${ref}-v5`),
+      idem: stableUuid(`${prefix.toLowerCase()}-history-${year}-${ref}-v6`),
     };
   }
 
   /**
-   * Spread intake across ~45 days of business hours. Newest story is still ≥2 days
+   * Spread intake across ~60 days of business hours. Newest story is still ≥2 days
    * ago so an approval hours later stays in the past (API refuses future decided_at).
    */
   function emittedAtForIndex(index: number, total: number): string {
-    const oldestMs = 45 * 24 * 60 * 60 * 1000;
+    const oldestMs = 60 * 24 * 60 * 60 * 1000;
     const newestMs = 2 * 24 * 60 * 60 * 1000;
     const frac = (total - 1 - index) / Math.max(total - 1, 1);
     const offset = newestMs + (oldestMs - newestMs) * frac;
@@ -272,6 +294,9 @@ async function main(): Promise<void> {
     if (d.getTime() > maxT) d.setTime(Math.max(hold + 15 * 60_000, maxT));
     return d.toISOString();
   }
+
+  // After Ops wipe/delete, local outbox still holds old hashes for the same keys.
+  await clearDemoConnectorRuntimeState(undefined, log);
 
   // Sign every history event through the LOS Connector (require_signed_events=true).
   log("Opening LOS Connector (src_los) for signed ingest…");
@@ -318,10 +343,13 @@ async function main(): Promise<void> {
     const outcome = decision.outcome;
     let result = outcome === "allow" ? "allowed" : outcome === "stop" ? "stopped (hard stop)" : "held";
 
-    if (outcome === "hold" && story.decide) {
+    if ((outcome === "hold" || outcome === "stop") && story.decide) {
       const eventId = decision.event_id;
       if (!eventId || eventId.startsWith("evt_gov_")) {
-        result = "held, NOT sealed (signing bridge missing: set AEGIS_BRIDGE_MASTER_KEY and re-run)";
+        result =
+          outcome === "stop"
+            ? "stopped, NOT sealed (signing bridge missing)"
+            : "held, NOT sealed (signing bridge missing: set AEGIS_BRIDGE_MASTER_KEY and re-run)";
       } else {
         let found = await findApproval(admin, traceId, eventId);
         const decisionApprovalId = (decision as unknown as { approval_id?: string }).approval_id;
@@ -342,14 +370,22 @@ async function main(): Promise<void> {
           result = "already decided";
         } else {
           const attempts: PersonaKey[] =
-            story.decide.by === "head" ? ["head"] : [story.decide.by, "head"];
+            story.decide.by === "head"
+              ? ["head"]
+              : story.decide.by === "fraud"
+                ? ["fraud", "head"]
+                : [story.decide.by, "head"];
           let done = false;
+          const action =
+            story.decide.decision === "release"
+              ? "release"
+              : story.decide.decision === "approve"
+                ? "approve"
+                : "reject";
           for (const who of attempts) {
             const s = await sessionFor(who);
             if (!s) continue;
-            const path = `/approvals/${encodeURIComponent(found.row.approval_id)}/${
-              story.decide.decision === "approve" ? "approve" : "reject"
-            }`;
+            const path = `/approvals/${encodeURIComponent(found.row.approval_id)}/${action}`;
             try {
               await s.call(path, {
                 method: "POST",
@@ -360,7 +396,12 @@ async function main(): Promise<void> {
                   ...(story.decide.reason_code ? { reason_code: story.decide.reason_code } : {}),
                 },
               });
-              result = story.decide.decision === "approve" ? "approved" : "declined";
+              result =
+                action === "release"
+                  ? "released (fraud override)"
+                  : story.decide.decision === "approve"
+                    ? "approved"
+                    : "declined";
               done = true;
               break;
             } catch (err) {

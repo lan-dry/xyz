@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * Keep console HTML/RSC out of the browser disk cache.
  *
  * Without this, Chrome can keep an old client shell (e.g. "Insurance · preview")
- * after a deploy or `next dev` restart — Incognito looks correct, the main
+ * after a deploy or `next dev` restart - Incognito looks correct, the main
  * profile does not. Hashed `/_next/static/*` assets in production stay
  * immutable; only unhashed dev chunks are forced to revalidate.
  */

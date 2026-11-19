@@ -116,8 +116,9 @@ Wording on screen, in the PDF, in the bundle and on the share link:
 Grades today: **G0** ingest key only, **G1** signed by the source, **G2** corroborated (reconciled or
 execution matched), **G3** captured independently of the source. A case reaches G2 or G3 only by a
 **sealed grade-change** receipt. Story cards may say "target G2/G3"; say the grade only after confirm
-+ reconcile (or collector match) actually ran. Live G3 from Postgres logical decoding is still
-**Partial** (`docs/provenance/STAGE_6_REPORT.md`). Present the **"Lying to Aegis"** segment in
++ reconcile (or collector match) actually ran. Live G3 from Postgres logical decoding is
+**Done** on bank-core (`:5436`, `wal_level=logical`) with `aegis-collector-pg`
+(`docs/provenance/STAGE_6_REPORT.md`). Present the **"Lying to Aegis"** segment in
 `docs/DEMO_RUNBOOK.md` §12 (~8 minutes).
 
 ## Real today vs roadmap
@@ -128,7 +129,7 @@ execution matched), **G3** captured independently of the source. A case reaches 
 | Decision tokens + executor confirm (G2 when matched) | Approver **device** signatures (WebAuthn bound into the seal) |
 | Feed reconciliation + Exceptions page (G2 on match) | Regulator / counterparty co-sign of witness roots |
 | Approver binding: view hash + authenticated account/session | Independent external monitors product |
-| Collector **interfaces** + simulated CDC tests; G3 path in code | Live pgoutput G3 in every demo environment |
+| Live pgoutput G3 on bank-core (`loan_large_with_cdc`) | AWS KMS live key in every environment (Plan A code Ready; software interim until `AEGIS_RECEIPT_KMS_KEY_ID`) |
 | Third-party signed facts (bureau stub), input commitments, plausibility flags | TEE for policy / seal path |
 | Bank simulator multi-system Red Team panel + `pnpm test:redteam` | Certified / attested product; FedRAMP; HIPAA |
 | Offline bundle verify + independent Python envelope check | "Aegis verified the amount / customer is real" |
@@ -138,6 +139,6 @@ Full ladder: `docs/provenance/ASSURANCE_LADDER.md`. Stage roll-up: `docs/provena
 ## Not done (honest)
 
 - Website **live** publish (founder approval) — preview only; see `WEBSITE_CHANGES.md`
-- Live collector G3 against Docker `wal_level=logical` (Stage 6 Partial)
+- AWS KMS Ed25519 live key (`pnpm smoke:kms` — Partial until `AEGIS_RECEIPT_KMS_KEY_ID`)
 - WebAuthn step-up on approve (Stage 5 Partial)
-- Provenance screenshot pack under `docs/TEST_PACK/provenance/` (Stage 9 Partial)
+- Full provenance screenshot pack polish (G1–G3 shots under `docs/TEST_PACK/provenance/` include G3)

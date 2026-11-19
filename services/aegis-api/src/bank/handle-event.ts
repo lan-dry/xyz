@@ -5,6 +5,7 @@ import { issueForensicReceipt } from "../forensic/issue.js";
 import { isReceiptSigningConfigured } from "../crypto/receipt-signing.js";
 import { applyFieldPolicy } from "./field-policy.js";
 import { evaluateBankEvent } from "./evaluate.js";
+import { deriveGovernanceAttributes } from "./derive-governance.js";
 import { policyContentHash } from "./policy-hash.js";
 import { sealGovernedDecision } from "./seal-decision.js";
 import { storeMaskedFieldClears } from "./sensitive-field-vault.js";
@@ -196,6 +197,21 @@ export async function handleBankEvent(
           : undefined,
     })) ?? [];
 
+  // Governance attrs from sealed history (velocity, new beneficiary, TOD, segment limits).
+  const overrideKeys = Object.keys(thirdParty.overrides);
+  const modelSigned = overrideKeys.some(
+    (k) => k === "model" || k === "model.score" || k.startsWith("model."),
+  );
+  const gov = await deriveGovernanceAttributes(client, {
+    organizationId,
+    attributes: { ...fielded.for_evaluate, ...fielded.stored },
+    product: event.product,
+    emittedAt: event.emitted_at,
+    modelScoreSignedByModelService: modelSigned,
+  });
+  fielded.for_evaluate = { ...fielded.for_evaluate, ...gov.derived };
+  fielded.stored = { ...fielded.stored, ...gov.derived };
+
   const evalResult = evaluateBankEvent({
     policy_id: policyId,
     combine: policyCombine,
@@ -206,6 +222,7 @@ export async function handleBankEvent(
     ladder,
     product: event.product,
     record_only: recordOnly,
+    plain_explanation: gov.hold_plain_english,
   });
 
   const decisionId = `dec_${randomUUID().replace(/-/g, "").slice(0, 16)}`;

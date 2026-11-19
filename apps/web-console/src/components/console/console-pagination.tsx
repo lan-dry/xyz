@@ -66,7 +66,7 @@ export function ConsolePagination({
       <span>
         {total === 0
           ? `No ${plural}`
-          : `Showing ${from}–${to} of ${total} ${plural}`}
+          : `Showing ${from}-${to} of ${total} ${plural}`}
       </span>
       <div
         style={{

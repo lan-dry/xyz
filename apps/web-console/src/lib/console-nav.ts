@@ -24,7 +24,7 @@ export type ConsoleNavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** Dynamic badge key — shell fills Approvals from pending count. */
+  /** Dynamic badge key - shell fills Approvals from pending count. */
   badgeKey?: "approvals";
   external?: boolean;
   /** Only shown to organisation admins. */
@@ -33,7 +33,7 @@ export type ConsoleNavItem = {
 
 /**
  * Default (production-style) nav. Includes Rules, Cases (with search), Reports,
- * Access log and Delegations. In-console simulator removed — use standalone bank-simulator.
+ * Access log and Delegations. In-console simulator removed - use standalone bank-simulator.
  */
 export const AEGIS_NAV: ConsoleNavItem[] = [
   { href: "/aegis", label: t("nav.overview", "Overview"), icon: LayoutDashboard },

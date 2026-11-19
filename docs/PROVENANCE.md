@@ -178,7 +178,7 @@ Risk Approval Pack ("Where the data came from": counts by grade, legacy cases, c
 | 3 | Decision token + executor confirm | Done (see `provenance/STAGE_3_REPORT.md`) |
 | 4 | Reconciliation + exceptions | Done (see `provenance/STAGE_4_REPORT.md`) |
 | 5 | Approver binding (view hash + authenticated identity) | Done, WebAuthn Partial (see `provenance/STAGE_5_REPORT.md`) |
-| 6 | Independent capture / PG collector (G3) | Partial (see `provenance/STAGE_6_REPORT.md`) |
+| 6 | Independent capture / PG collector (G3) | Done — live pgoutput G3 on bank-core; KMS live key Partial (see `provenance/STAGE_6_REPORT.md`) |
 | 7 | Third-party signed facts, input commitments, plausibility | Done, with Partials (see `provenance/STAGE_7_REPORT.md`) |
 | 8 | Red Team suite + multi-system bank test environment | Done, with Partials (see `provenance/STAGE_8_REPORT.md`) |
 | 9 | Documentation and demo ("Lying to Aegis", assurance ladder, honest claims) | Done, with Partials (see `provenance/STAGE_9_REPORT.md`) |

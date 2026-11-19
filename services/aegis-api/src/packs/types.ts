@@ -71,6 +71,16 @@ export type PackLabels = {
   event_type_labels?: Record<string, string>;
 };
 
+/** Segment × product rolling limits (Aegis-reported activity only). */
+export type PackSegmentProductLimit = {
+  segment: string;
+  product: string;
+  label: string;
+  window_hours: number;
+  max_amount?: number;
+  max_count?: number;
+};
+
 export type PolicyPack = {
   /** Pack id, e.g. demo.banking, demo.insurance */
   id: string;
@@ -91,4 +101,6 @@ export type PolicyPack = {
   currencies: string[];
   /** Plain-language titles for rules/roles/products (optional). */
   labels?: PackLabels;
+  /** Optional segment × product daily/rolling limits. */
+  segment_product_limits?: PackSegmentProductLimit[];
 };

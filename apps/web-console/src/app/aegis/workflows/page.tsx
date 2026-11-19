@@ -81,7 +81,7 @@ export default function WorkflowsPage() {
     },
   });
 
-  // Hide the Northwind demo seed — it is not tied to a real process.
+  // Hide the Northwind demo seed - it is not tied to a real process.
   const workflows = (listQuery.data?.workflows ?? []).filter(
     (w) => w.name.trim().toLowerCase() !== "merchant payouts",
   );
@@ -145,7 +145,7 @@ export default function WorkflowsPage() {
         <EmptyStatePanel
           mark={<AegisMark />}
           title="No workflows yet"
-          description="Name a governed path for this environment — for example loan decisions or refunds — and link an agent and policies when you are ready."
+          description="Name a governed path for this environment - for example loan decisions or refunds - and link an agent and policies when you are ready."
           action={
             <button
               type="button"
@@ -209,7 +209,7 @@ export default function WorkflowsPage() {
                     </td>
                     {showCoverageCol ? (
                       <td>
-                        {linked && w.coverage_pct != null ? `${w.coverage_pct}%` : "—"}
+                        {linked && w.coverage_pct != null ? `${w.coverage_pct}%` : "-"}
                       </td>
                     ) : null}
                   </tr>

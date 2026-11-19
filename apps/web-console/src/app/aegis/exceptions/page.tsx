@@ -30,6 +30,7 @@ type ExceptionRow = {
   first_seen_at: string;
   acknowledge_note: string | null;
   resolve_note: string | null;
+  detail?: Record<string, unknown> | null;
 };
 
 type StatusFilter = "all" | "open" | "acknowledged" | "resolved";
@@ -134,12 +135,25 @@ export default function ExceptionsPage() {
                     <div style={{ fontWeight: 600 }}>{ex.title}</div>
                     <p className={ui.cardHint} style={{ margin: "0.25rem 0 0" }}>
                       {ex.kind}
+                      {ex.kind === "db_value_mismatch" &&
+                      typeof (ex.detail as { contradicted_at?: unknown } | null)
+                        ?.contradicted_at === "string" ? (
+                        <>
+                          {" "}
+                          · contradicted on{" "}
+                          {String(
+                            (ex.detail as { contradicted_at: string }).contradicted_at,
+                          )
+                            .replace("T", " ")
+                            .replace(/\.\d{3}Z$/, " UTC")}
+                        </>
+                      ) : null}
                     </p>
                   </td>
                   <td>
                     <StatusBadge status={ex.severity} />
                   </td>
-                  <td>{ex.source_name ?? "—"}</td>
+                  <td>{ex.source_name ?? "-"}</td>
                   <td>
                     {ex.case_id ? (
                       <Link
@@ -149,7 +163,7 @@ export default function ExceptionsPage() {
                         {ex.case_id}
                       </Link>
                     ) : (
-                      "—"
+                      "-"
                     )}
                   </td>
                   <td>

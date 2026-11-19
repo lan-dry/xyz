@@ -87,7 +87,7 @@ export function assertApprovedViewFresh(
       ok: false,
       code: "stale_approval_payload",
       message:
-        "This approval view is out of date. The underlying request changed since you opened it — refresh and review again.",
+        "This approval view is out of date. The underlying request changed since you opened it. Refresh and review again.",
     };
   }
   return { ok: true, viewConfirmation: "confirmed_by_approver" };

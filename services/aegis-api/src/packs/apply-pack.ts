@@ -225,7 +225,7 @@ export async function applyDemoPack(
     }
   }
 
-  // Record pack id + version on the tenant (never a silent schema wipe).
+  // Record pack id + version (+ segment limits) on the tenant.
   await client.query(
     `UPDATE organization
        SET governance_settings =
@@ -242,6 +242,9 @@ export async function applyDemoPack(
           applied_at: new Date().toISOString(),
           force,
         },
+        ...(Array.isArray(pack.segment_product_limits)
+          ? { segment_product_limits: pack.segment_product_limits }
+          : {}),
       }),
     ],
   );

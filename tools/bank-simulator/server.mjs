@@ -50,6 +50,7 @@ import { SimulatedConnectors } from "./connectors-sim.mjs";
 import { RealConnectors } from "./real-connectors.mjs";
 import { CoreLedger } from "./core-ledger.mjs";
 import { ATTACKS, HONEST_LIMIT, runAttack } from "./redteam-attacks.mjs";
+import { finishScenario } from "./scenario-finish.mjs";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 
@@ -714,24 +715,110 @@ async function runStory(storyId) {
     };
   }
 
-  const built = buildEvent(story);
+  // Isolate customers across story runs (except B priors share one key).
+  const runCustomer =
+    story.setup === "velocity_prior_three"
+      ? `CUST-RW-SCEN-B-${randomUUID().replace(/-/g, "").slice(0, 8)}`
+      : story.attributes?.customer_id
+        ? `${story.attributes.customer_id}-${randomUUID().replace(/-/g, "").slice(0, 6)}`
+        : undefined;
+  const storyAttrs = {
+    ...story.attributes,
+    ...(runCustomer ? { customer_id: runCustomer } : {}),
+  };
+  const storyForRun = { ...story, attributes: storyAttrs };
+
+  // Scenario B: three prior 2.4M transfers (mixed channels) before the fourth.
+  if (story.setup === "velocity_prior_three") {
+    const channels = ["mobile", "branch", "agent"];
+    for (let i = 0; i < 3; i++) {
+      const priorStory = {
+        ...storyForRun,
+        id: `${story.id}_prior_${i + 1}`,
+        attributes: {
+          ...storyAttrs,
+          channel: channels[i],
+          amount: 2_400_000,
+        },
+      };
+      const priorBuilt = buildEvent(priorStory);
+      try {
+        const prior = await submit(priorBuilt.body, steps, calls);
+        steps.push(
+          `Prior ${i + 1}/3 (${channels[i]}): ${prior.decision.outcome} ${priorBuilt.caseId}`,
+        );
+      } catch (err) {
+        steps.push(
+          `Prior ${i + 1}/3 failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+  }
+
+  const emitOverride =
+    story.attributes?.force_off_hours === true
+      ? (() => {
+          const d = new Date();
+          // 22:10 Africa/Kigali ≈ 20:10 UTC
+          d.setUTCHours(20, 10, 0, 0);
+          return d.toISOString();
+        })()
+      : undefined;
+  const built = buildEvent(storyForRun, { queuedAt: emitOverride });
   try {
     const { decision, sealed, approvalId, action } = await submit(built.body, steps, calls);
     const targetGrade = story.target_grade ?? null;
     if (targetGrade) steps.push(`Target evidence grade for this story: ${targetGrade}.`);
+
+    // C / E / F / G: persona release, amount-bind refuse, ledger edit, dual-publish.
+    let finish = {};
+    if (story.letter && "CEFG".includes(String(story.letter).toUpperCase())) {
+      try {
+        finish = await finishScenario({
+          letter: String(story.letter).toUpperCase(),
+          story,
+          decision,
+          approvalId,
+          caseId: built.caseId,
+          action,
+          steps,
+          coreDisburse,
+          coreLedger,
+        });
+      } catch (err) {
+        steps.push(
+          `Finish ${story.letter} failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    const outcomeOut = decision.outcome;
+    const plainOut = finish.plain_summary_override || decision.plain_summary || null;
+    const velocity_ms =
+      decision.aegis?.velocity?.query_ms ??
+      decision.attributes?.aegis?.velocity?.query_ms ??
+      decision.derived?.velocity?.query_ms ??
+      null;
+
     return {
       status: 200,
       body: {
-        ...result(story, built.caseId, built.traceId, decision.outcome),
-        plain_summary: decision.plain_summary ?? null,
+        ...result(story, built.caseId, built.traceId, outcomeOut),
+        plain_summary: plainOut,
         matched_rules: decision.matched_rules ?? [],
         approval_id: approvalId,
         sealed,
         action,
         target_grade: targetGrade,
-        can_disburse: decision.outcome === "allow" || decision.outcome === "hold",
+        can_disburse: outcomeOut === "allow" || outcomeOut === "hold" || outcomeOut === "released",
         decision_token: decision.decision_token ?? null,
         evidence_grade: decision.evidence_grade ?? null,
+        ...(finish.execute_refused ? { execute_refused: finish.execute_refused } : {}),
+        ...(finish.fraud_release ? { fraud_release: finish.fraud_release } : {}),
+        ...(finish.ledger_edit ? { ledger_edit: finish.ledger_edit } : {}),
+        ...(finish.dual_publish ? { dual_publish: finish.dual_publish } : {}),
+        ...(velocity_ms ? { velocity_query_ms: velocity_ms } : {}),
+        customer_id: runCustomer ?? storyAttrs.customer_id ?? null,
         steps,
         requests: calls,
       },

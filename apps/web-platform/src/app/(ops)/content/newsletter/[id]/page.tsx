@@ -98,7 +98,7 @@ export default async function OpsNewsletterCampaignPage({
           <dt style={{ color: "var(--console-fg-muted)" }}>Status</dt>
           <dd style={{ margin: 0 }}>{campaign.status}</dd>
           <dt style={{ color: "var(--console-fg-muted)" }}>Created</dt>
-          <dd style={{ margin: 0 }}>{campaign.created_at.toISOString().slice(0, 16)} by {campaign.created_by_email ?? "—"}</dd>
+          <dd style={{ margin: 0 }}>{campaign.created_at.toISOString().slice(0, 16)} by {campaign.created_by_email ?? "-"}</dd>
           {campaign.scheduled_at && campaign.status === "scheduled" ? (
             <>
               <dt style={{ color: "var(--console-fg-muted)" }}>Scheduled</dt>
@@ -152,7 +152,7 @@ export default async function OpsNewsletterCampaignPage({
 
       <h3 style={{ fontSize: "0.9375rem", fontWeight: 600, margin: "0 0 0.75rem" }}>Recipients</h3>
       {deliveries.length === 0 ? (
-        <p className={ui.badgeMuted}>No delivery log yet — send or test the campaign.</p>
+        <p className={ui.badgeMuted}>No delivery log yet. Send or test the campaign.</p>
       ) : (
         <div className={ui.tableWrap}>
           <table className={ui.table}>
@@ -170,7 +170,7 @@ export default async function OpsNewsletterCampaignPage({
                   <td>{d.email}</td>
                   <td>{d.status}</td>
                   <td>{d.sent_at.toISOString().slice(0, 16)}</td>
-                  <td style={{ fontSize: "0.75rem", color: "var(--console-fg-muted)" }}>{d.error_message ?? "—"}</td>
+                  <td style={{ fontSize: "0.75rem", color: "var(--console-fg-muted)" }}>{d.error_message ?? "-"}</td>
                 </tr>
               ))}
             </tbody>

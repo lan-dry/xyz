@@ -37,7 +37,7 @@ type InviteLinkResult = {
   email?: string;
 };
 
-/** Members management UI — rendered inside Settings so Organization / Members / Billing tabs stay visible. */
+/** Members management UI - rendered inside Settings so Organization / Members / Billing tabs stay visible. */
 export function MembersView() {
   const queryClient = useQueryClient();
   const router = useRouter();

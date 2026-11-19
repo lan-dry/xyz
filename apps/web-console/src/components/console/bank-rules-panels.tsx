@@ -246,7 +246,7 @@ export function BankRuleEvaluator() {
     if (!product && products[0]) setProduct(products[0].key);
   }, [product, products]);
 
-  // Currency comes from the tenant's authority matrix / pack — never invent one.
+  // Currency comes from the tenant's authority matrix / pack - never invent one.
   const currency = products.find((p) => p.key === product)?.currency ?? "";
 
   const evaluate = useMutation({

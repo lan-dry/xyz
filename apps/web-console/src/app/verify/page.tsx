@@ -144,8 +144,8 @@ function VerifyForm() {
           </h2>
           <p style={{ margin: 0 }}>
             Aegis proves when a record was made and that it has not changed since.
-            It does not check that the data inside is accurate. A grade (G0–G3)
-            says who vouched for the data and how — not whether the content is right.
+            It does not check that the data inside is accurate. A grade (G0-G3)
+            says who vouched for the data and how, not whether the content is right.
           </p>
         </section>
       </header>

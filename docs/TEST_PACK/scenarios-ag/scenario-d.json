@@ -1,0 +1,178 @@
+{
+  "letter": "D",
+  "story_id": "scenario_d",
+  "ms": 121,
+  "status": 200,
+  "data": {
+    "ok": true,
+    "story_id": "scenario_d",
+    "expected": "hold",
+    "expect_detail": "Held: first transfer to this beneficiary for the customer, large amount, outside business hours.",
+    "resolver": "Credit Manager",
+    "case_id": "SIM-BEC789D325",
+    "trace_id": "tr_sim_bec789d325",
+    "outcome": "hold",
+    "console_url": "http://localhost:3000/aegis/traces/tr_sim_bec789d325",
+    "plain_summary": "Held: first transfer to this beneficiary for the customer, RWF 6,200,000, outside business hours (off_hours) Policy v5.",
+    "matched_rules": [
+      {
+        "rule_id": "r_93f50b592e68",
+        "policy_id": "pol_21740b84c1f900ce",
+        "decision": "allow_with_obligation"
+      },
+      {
+        "rule_id": "AUTH-XFER-2",
+        "policy_id": "pol_21740b84c1f900ce",
+        "decision": "allow_with_obligation"
+      }
+    ],
+    "approval_id": "apr_213cdebd7e6843c2",
+    "sealed": true,
+    "action": {
+      "amount": 6200000,
+      "currency": "RWF"
+    },
+    "target_grade": "G2",
+    "can_disburse": true,
+    "decision_token": null,
+    "evidence_grade": "G1",
+    "customer_id": "CUST-RW-SCEN-D-766b1b",
+    "steps": [
+      "LOS Connector → signed source-events (G1).",
+      "Governed intake: hold (source-signed)",
+      "Approval requested: approve in the console, then disburse via the core ledger (permit gate).",
+      "Target evidence grade for this story: G2."
+    ],
+    "requests": [
+      {
+        "method": "POST",
+        "endpoint": "http://127.0.0.1:8088/v1/aegis/source-events",
+        "via": "aegis-connector",
+        "source_id": "src_los",
+        "key_id": "k_los_2026_01_mwn5jeo7",
+        "headers": {
+          "Authorization": "Bearer aegis_…****",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "schema_version": 1,
+          "case_id": "SIM-BEC789D325",
+          "idempotency_key": "01b5822b-b9db-4207-915b-0849919d37e9",
+          "event_type": "payment_transfer",
+          "product": "payment_transfer",
+          "emitted_at": "2026-11-19T20:10:00.000Z",
+          "actor": {
+            "type": "system",
+            "id": "payments-gateway"
+          },
+          "attributes": {
+            "requester_email": "officer@demo.test",
+            "requester_name": "Patience Ingabire",
+            "requester_role": "credit_officer",
+            "officer_id": "OFF-1042",
+            "system_account": "core-banking",
+            "amount": 6200000,
+            "currency": "RWF",
+            "customer_id": "CUST-RW-SCEN-D-766b1b",
+            "segment": "retail_standard",
+            "channel": "mobile",
+            "beneficiary_account": "BEN-RW-NEVER-SEEN-D",
+            "beneficiary_country": "KE",
+            "applicant_name": "Claudine Uwimana",
+            "branch": "Musanze",
+            "product": "payment_transfer",
+            "force_off_hours": true
+          },
+          "trace_id": "tr_sim_bec789d325"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "case_id": "SIM-BEC789D325",
+            "decision_id": "dec_0750f4f1f9e3487f",
+            "receipt_id": "rcpt_b22ff3197a934f0b",
+            "outcome": "hold",
+            "mode": "enforce",
+            "matched_rules": [
+              {
+                "rule_id": "r_93f50b592e68",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow_with_obligation"
+              },
+              {
+                "rule_id": "AUTH-XFER-2",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow_with_obligation"
+              }
+            ],
+            "decision_basis": {
+              "outcome": "hold",
+              "decided_by_rule_id": "r_93f50b592e68",
+              "explanation": "Held: first transfer to this beneficiary for the customer, RWF 6,200,000, outside business hours (off_hours)",
+              "matched": [
+                {
+                  "rule_id": "r_93f50b592e68",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow_with_obligation",
+                  "effect": "hold",
+                  "note": "requires human approval"
+                },
+                {
+                  "rule_id": "AUTH-XFER-2",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow_with_obligation",
+                  "effect": "hold",
+                  "note": "requires human approval"
+                }
+              ]
+            },
+            "plain_summary": "Held: first transfer to this beneficiary for the customer, RWF 6,200,000, outside business hours (off_hours) Policy v5.",
+            "policy": {
+              "policy_id": "pol_21740b84c1f900ce",
+              "version": 5,
+              "content_hash": "58dd0b14e27b3941906d6e9af036d6b750a459a148f3cf6b5f222f13d1968ca2"
+            },
+            "approval": {
+              "required_roles": [
+                "credit_manager"
+              ],
+              "approval_id": null
+            },
+            "event_id": "evt_3fde1f63258b4b21a27c5983",
+            "event_hash": "a216393300210a661010f56cdee41e30f6bd6d226a890f6ba64f1aa688f7d3d0",
+            "sequence_num": 63,
+            "flags": {
+              "evidence_status": "ok"
+            },
+            "source_signed": true,
+            "evidence_grade": "G1"
+          }
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "http://127.0.0.1:8088/v1/aegis/approvals/request",
+        "headers": {
+          "Authorization": "Bearer aegis_…****",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "organization_id": "d8a7fa6f-8b10-4271-9fd0-f783939090b9",
+          "event_id": "evt_3fde1f63258b4b21a27c5983",
+          "trace_id": "tr_sim_bec789d325",
+          "tool_name": "governed.action",
+          "deferred": {
+            "url": "http://127.0.0.1:4000/core/loans/disburse-resume",
+            "method": "POST"
+          }
+        },
+        "response": {
+          "status": 201,
+          "body": {
+            "approval_id": "apr_213cdebd7e6843c2"
+          }
+        }
+      }
+    ]
+  }
+}

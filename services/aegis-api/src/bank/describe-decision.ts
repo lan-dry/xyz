@@ -30,6 +30,11 @@ export const RULE_TITLES: Record<string, string> = {
   "AUTH-RL": "Within officer limit",
   "AUTH-RL-HIGH": "Above manager band",
   "LN-07": "High model score requires Credit Manager",
+  "VEL-SEG-DAY": "Segment daily limit (Aegis-reported)",
+  "BEN-NEW-OFF": "New beneficiary off-hours",
+  "FRD-SCORE-RET": "Retail fraud score hard stop",
+  "AUTH-XFER-1": "Within transfer officer limit",
+  "AUTH-XFER-2": "Above transfer officer limit",
   "PAY-03": "Payment callback verification",
   "SANC-01": "Sanctions / PEP hard stop",
   "CLM-01": "Within claims handler limit",
@@ -277,6 +282,10 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
   }
 
   if (outcome === "hold") {
+    const basis = receipt.decision_basis?.explanation?.trim();
+    if (basis && /^(Held:|Stopped:)/i.test(basis)) {
+      return `${basis} ${pol}`.trim();
+    }
     const role =
       receipt.required_role_label ??
       formatRoleLabel(receipt.required_role) ??
@@ -289,6 +298,10 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
   }
 
   if (outcome === "stop") {
+    const basis = receipt.decision_basis?.explanation?.trim();
+    if (basis && /^(Held:|Stopped:)/i.test(basis)) {
+      return `${basis} ${pol}`.trim();
+    }
     return (
       `${subject} was stopped` +
       (rule ? ` by rule ${rule}` : " by policy") +

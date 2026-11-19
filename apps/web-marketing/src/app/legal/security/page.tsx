@@ -57,7 +57,7 @@ export default function SecurityPage() {
           <p>
             Aegis proves when a record was made and that it has not changed since sealing.
             It does not check that customer-asserted data is accurate. Evidence grades
-            (G0–G3) describe who vouched for the data and how — not whether the content
+            (G0-G3) describe who vouched for the data and how, not whether the content
             is right. Do not read a passing seal check as content validation.
           </p>
         </LegalSection>

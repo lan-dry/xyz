@@ -1,0 +1,138 @@
+{
+  "at": "2026-11-19T13:11:36.046Z",
+  "bank_sim": "http://127.0.0.1:4000",
+  "results": [
+    {
+      "letter": "A",
+      "status": 200,
+      "outcome": "allow",
+      "case_id": "SIM-2ABCE95FFB",
+      "plain_summary": "Payment release of RWF 1,200,000 was allowed automatically under rule r_a17ca822aedb. No human approval was needed. Policy v5.",
+      "ms": 236,
+      "velocity_query_ms": null,
+      "execute_refused": null,
+      "fraud_release": null,
+      "ledger_edit": null,
+      "dual_publish": null
+    },
+    {
+      "letter": "B",
+      "status": 200,
+      "outcome": "hold",
+      "case_id": "SIM-594330613C",
+      "plain_summary": "Held: 4th transfer today; day's total RWF 9,600,000 exceeds the Retail Standard daily limit of RWF 8,000,000 (counts only activity reported to Aegis) Policy v5.",
+      "ms": 445,
+      "velocity_query_ms": null,
+      "execute_refused": null,
+      "fraud_release": null,
+      "ledger_edit": null,
+      "dual_publish": null
+    },
+    {
+      "letter": "C",
+      "status": 200,
+      "outcome": "released",
+      "case_id": "SIM-57B8B7B83B",
+      "plain_summary": "Stopped by fraud score 0.94 then released by Fraud Analyst with reason (sealed fraud_block_override).",
+      "ms": 764,
+      "velocity_query_ms": null,
+      "execute_refused": null,
+      "fraud_release": {
+        "status": 200,
+        "released": true,
+        "persona": "fraud"
+      },
+      "ledger_edit": null,
+      "dual_publish": null
+    },
+    {
+      "letter": "D",
+      "status": 200,
+      "outcome": "hold",
+      "case_id": "SIM-BEC789D325",
+      "plain_summary": "Held: first transfer to this beneficiary for the customer, RWF 6,200,000, outside business hours (off_hours) Policy v5.",
+      "ms": 121,
+      "velocity_query_ms": null,
+      "execute_refused": null,
+      "fraud_release": null,
+      "ledger_edit": null,
+      "dual_publish": null
+    },
+    {
+      "letter": "E",
+      "status": 200,
+      "outcome": "allow",
+      "case_id": "SIM-4651FC826E",
+      "plain_summary": "Payment release of RWF 4,000,000 was allowed automatically under rule r_a17ca822aedb. No human approval was needed. Policy v5.",
+      "ms": 88,
+      "velocity_query_ms": null,
+      "execute_refused": {
+        "status": 403,
+        "permitted": false,
+        "code": "digest_mismatch",
+        "error": "Proposed action does not match the sealed decision (amount/beneficiary/digest mismatch)"
+      },
+      "fraud_release": null,
+      "ledger_edit": null,
+      "dual_publish": null
+    },
+    {
+      "letter": "F",
+      "status": 200,
+      "outcome": "hold",
+      "case_id": "SIM-B76954B9D2",
+      "plain_summary": "Direct core ledger edit caught: executed_without_receipt (independent capture vs sealed Aegis path).",
+      "ms": 2400,
+      "velocity_query_ms": null,
+      "execute_refused": null,
+      "fraud_release": null,
+      "ledger_edit": {
+        "txn_id": "txn_872ecbe58b95",
+        "found": true,
+        "kind": "executed_without_receipt",
+        "reason": "ingest+reconcile ran; executed_without_receipt not raised for SIM-B76954B9D2",
+        "exception_kinds": [
+          "amount_mismatch",
+          "sequence_gap",
+          "db_change_without_event",
+          "db_value_mismatch",
+          "db_change_without_event",
+          "db_value_mismatch",
+          "db_change_without_event",
+          "db_change_without_event",
+          "db_change_without_event",
+          "db_change_without_event",
+          "db_change_without_event",
+          "db_value_mismatch",
+          "db_value_mismatch",
+          "db_value_mismatch",
+          "db_value_mismatch",
+          "db_value_mismatch",
+          "db_value_mismatch",
+          "db_value_mismatch",
+          "db_value_mismatch"
+        ]
+      },
+      "dual_publish": null
+    },
+    {
+      "letter": "G",
+      "status": 200,
+      "outcome": "dual_published",
+      "case_id": "SIM-1F87BE8273",
+      "plain_summary": "Limit / pack change required dual publish: first publisher pending, second co-approver live; rule history shows both.",
+      "ms": 497,
+      "velocity_query_ms": null,
+      "execute_refused": null,
+      "fraud_release": null,
+      "ledger_edit": null,
+      "dual_publish": {
+        "prepare_status": 201,
+        "draft_id": "pol_dfa1ea619a7e9a01",
+        "dual_required": true,
+        "published": true,
+        "second_status": 200
+      }
+    }
+  ]
+}

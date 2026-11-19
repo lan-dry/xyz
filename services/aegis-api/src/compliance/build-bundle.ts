@@ -113,18 +113,25 @@ export async function buildComplianceZip(input: {
   ).length;
   const checkpointsSigned = input.context.witnessRoots.filter(isWitnessRootSigned).length;
 
+  const allEventsSigned =
+    input.events.length > 0 && eventsWithSig === input.events.length;
+  const hasCheckpoints = input.context.witnessRoots.length > 0;
+  const allCheckpointsSigned =
+    hasCheckpoints && checkpointsSigned === input.context.witnessRoots.length;
   const verification_summary = {
     events_total: input.events.length,
     events_with_signature: eventsWithSig,
     checkpoints_total: input.context.witnessRoots.length,
     checkpoints_signed: checkpointsSigned,
-    claim:
-      checkpointsSigned === input.context.witnessRoots.length &&
-      input.context.witnessRoots.length > 0 &&
-      eventsWithSig === input.events.length &&
-      input.events.length > 0
-        ? "Signed events and checkpoints for this period."
-        : "Some events or checkpoints in this period are not signed.",
+    claim: !allEventsSigned
+      ? input.events.length === 0
+        ? "No events in this period."
+        : "Some events in this period are not signed."
+      : !hasCheckpoints
+        ? "All events in this period are signed. No witness checkpoints yet (inclusion still pending)."
+        : allCheckpointsSigned
+          ? "Signed events and checkpoints for this period."
+          : "All events are signed. Some witness checkpoints in this period are not signed.",
   };
 
   const baseArtifacts = [

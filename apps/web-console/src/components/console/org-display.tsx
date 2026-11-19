@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { useOrgProfile } from "@/hooks/use-org-profile";
 import { consoleApi } from "@/lib/api";
 import { idApi } from "@/lib/id-api";
 import type { ConsoleOrganization, MeResponse } from "@/lib/types";
@@ -28,8 +27,7 @@ export function OrgDisplay({
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  const { isDemo } = useOrgProfile();
-  const hidePlan = isBankDemoProfile() || isDemo;
+  const hidePlan = isBankDemoProfile();
 
   const planQuery = useQuery({
     queryKey: ["console", "plan-usage"],
@@ -39,7 +37,6 @@ export function OrgDisplay({
         "/organization/plan-usage",
       ),
   });
-  // A demo organisation is not on a commercial plan: no plan badge (and so no "Free").
   const planLabel = hidePlan ? undefined : planQuery.data?.plan_usage.display_name;
 
   useEffect(() => {
@@ -115,15 +112,6 @@ export function OrgDisplay({
           </div>
         ) : null}
       </div>
-      {isDemo ? (
-        <span
-          className={styles.demoTag}
-          title="Synthetic data. Nothing here is a real customer decision."
-          data-demo-org-tag
-        >
-          Demo organisation
-        </span>
-      ) : null}
       {planLabel ? (
         <Link
           href="/aegis/settings/billing"

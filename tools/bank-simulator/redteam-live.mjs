@@ -2,6 +2,10 @@
  * Live Red Team with positive controls.
  * For each attack: (a) unaltered control succeeds, (b) one change, (c) assert expected code.
  * Uses src_los_redteam only — never src_los (sequence ownership).
+ *
+ * Tenant hygiene: Red Team must not run on the Demo Bank org. Prefer a dedicated
+ * is_test / redteam slug (set REDTEAM_ORGANIZATION_ID or cfg.organizationId that is
+ * not demo-bank). When the resolved org looks like Demo Bank, attacks are refused.
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { resolve, dirname, join } from "node:path";
@@ -410,6 +414,23 @@ export async function runLiveAttack(attackId, deps) {
   const c = typeof deps.cfg === "function" ? deps.cfg() : null;
   if (!c?.configured || typeof deps.postJson !== "function") {
     return sim("Aegis API / ingest key not configured");
+  }
+
+  // Keep Demo Bank clean: Red Team must target a dedicated tenant.
+  const demoOrg = process.env.AEGIS_ORGANIZATION_ID?.trim() || "";
+  const redOrg =
+    process.env.REDTEAM_ORGANIZATION_ID?.trim() ||
+    c.organizationId ||
+    "";
+  if (
+    process.env.REDTEAM_ALLOW_ON_DEMO_BANK !== "1" &&
+    demoOrg &&
+    redOrg &&
+    redOrg === demoOrg
+  ) {
+    return sim(
+      "Red Team refused: would run on Demo Bank. Provision a dedicated is_test tenant and set REDTEAM_ORGANIZATION_ID (or REDTEAM_ALLOW_ON_DEMO_BANK=1 only for intentional local override).",
+    );
   }
 
   const sdk = await loadSdk();

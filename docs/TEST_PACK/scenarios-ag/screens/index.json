@@ -1,0 +1,51 @@
+[
+  {
+    "letter": "A",
+    "case_id": "SIM-2ABCE95FFB",
+    "url": "http://localhost:3000/aegis/traces/tr_sim_2abce95ffb",
+    "file": "D:\\PROJECTS\\salanor\\docs\\TEST_PACK\\scenarios-ag\\screens/scenario-a-case.png",
+    "ok": true
+  },
+  {
+    "letter": "B",
+    "case_id": "SIM-594330613C",
+    "url": "http://localhost:3000/aegis/traces/tr_sim_594330613c",
+    "file": "D:\\PROJECTS\\salanor\\docs\\TEST_PACK\\scenarios-ag\\screens/scenario-b-case.png",
+    "ok": true
+  },
+  {
+    "letter": "C",
+    "case_id": "SIM-57B8B7B83B",
+    "url": "http://localhost:3000/aegis/traces/tr_sim_57b8b7b83b",
+    "file": "D:\\PROJECTS\\salanor\\docs\\TEST_PACK\\scenarios-ag\\screens/scenario-c-case.png",
+    "ok": true
+  },
+  {
+    "letter": "D",
+    "case_id": "SIM-BEC789D325",
+    "url": "http://localhost:3000/aegis/traces/tr_sim_bec789d325",
+    "file": "D:\\PROJECTS\\salanor\\docs\\TEST_PACK\\scenarios-ag\\screens/scenario-d-case.png",
+    "ok": true
+  },
+  {
+    "letter": "E",
+    "case_id": "SIM-4651FC826E",
+    "url": "http://localhost:3000/aegis/traces/tr_sim_4651fc826e",
+    "file": "D:\\PROJECTS\\salanor\\docs\\TEST_PACK\\scenarios-ag\\screens/scenario-e-case.png",
+    "ok": true
+  },
+  {
+    "letter": "F",
+    "case_id": "SIM-B76954B9D2",
+    "url": "http://localhost:3000/aegis/traces/tr_sim_b76954b9d2",
+    "file": "D:\\PROJECTS\\salanor\\docs\\TEST_PACK\\scenarios-ag\\screens/scenario-f-case.png",
+    "ok": true
+  },
+  {
+    "letter": "G",
+    "case_id": "SIM-1F87BE8273",
+    "url": "http://localhost:3000/aegis/traces/tr_sim_1f87be8273",
+    "file": "D:\\PROJECTS\\salanor\\docs\\TEST_PACK\\scenarios-ag\\screens/scenario-g-case.png",
+    "ok": true
+  }
+]

@@ -120,6 +120,46 @@ export async function loadCaseReceiptsLite(
   return out;
 }
 
+/** Latest open db_value_mismatch contradicted_at per case (after G3). */
+async function loadContradictedAt(
+  client: Db,
+  organizationId: string,
+  caseIds: string[],
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (caseIds.length === 0) return out;
+  const r = await client.query<{
+    case_id: string;
+    contradicted_at: string | null;
+    last_seen_at: Date;
+  }>(
+    `SELECT case_id,
+            detail->>'contradicted_at' AS contradicted_at,
+            last_seen_at
+       FROM reconciliation_exception
+      WHERE organization_id = $1
+        AND case_id = ANY($2::text[])
+        AND kind = 'db_value_mismatch'
+        AND status <> 'resolved'
+        AND (
+          detail->>'contradicted_at' IS NOT NULL
+          OR detail->>'reason' = 'collector_values_contradict_after_g3'
+        )
+      ORDER BY last_seen_at DESC`,
+    [organizationId, caseIds],
+  );
+  for (const row of r.rows) {
+    if (out.has(row.case_id)) continue;
+    const at =
+      row.contradicted_at?.trim() ||
+      (row.last_seen_at instanceof Date
+        ? row.last_seen_at.toISOString()
+        : String(row.last_seen_at));
+    if (at) out.set(row.case_id, at);
+  }
+  return out;
+}
+
 /** Provenance view per case_id (cases without receipts are absent). */
 export async function loadCaseProvenance(
   client: Db,
@@ -127,10 +167,14 @@ export async function loadCaseProvenance(
   caseIds: string[],
 ): Promise<Map<string, CaseProvenanceView>> {
   const receipts = await loadCaseReceiptsLite(client, organizationId, caseIds);
+  const contradicted = await loadContradictedAt(client, organizationId, caseIds);
   const out = new Map<string, CaseProvenanceView>();
   for (const [caseId, list] of receipts) {
     const view = buildCaseProvenance(list);
-    if (view) out.set(caseId, view);
+    if (!view) continue;
+    const at = contradicted.get(caseId);
+    if (at) view.contradicted_at = at;
+    out.set(caseId, view);
   }
   return out;
 }

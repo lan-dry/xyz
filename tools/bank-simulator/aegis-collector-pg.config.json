@@ -1,0 +1,24 @@
+{
+  "source_id": "src_core_cdc",
+  "key_id": "k_core_cdc",
+  "private_key_path": "./.bank-simulator/collector.key.json",
+  "database_url": "postgresql://aegis_collector:aegis_collector_dev@127.0.0.1:5436/bank_core",
+  "publication": "aegis_collector",
+  "slot": "aegis_collector_slot",
+  "tables": [
+    {
+      "table": "public.bank_transaction",
+      "key_columns": ["txn_id", "case_id"]
+    }
+  ],
+  "case_id_mappings": [
+    {
+      "table": "public.bank_transaction",
+      "case_id_column": "case_id"
+    }
+  ],
+  "aegis_url": "http://127.0.0.1:8080",
+  "ingest_path": "/v1/aegis/collector-events",
+  "ingest_bearer": "",
+  "state_dir": "./.bank-simulator/collector-state"
+}

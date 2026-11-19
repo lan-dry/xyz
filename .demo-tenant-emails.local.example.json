@@ -9,6 +9,7 @@
     "officer":    { "email": "officer@example.invalid",    "display_name": "Patience Ingabire",     "password": "__SET_LOCAL_PASSWORD__" },
     "manager":    { "email": "manager@example.invalid",    "display_name": "Jean Mutabazi",         "password": "__SET_LOCAL_PASSWORD__" },
     "compliance": { "email": "compliance@example.invalid", "display_name": "Diane Uwizeye",         "password": "__SET_LOCAL_PASSWORD__" },
+    "fraud":      { "email": "fraud@example.invalid",      "display_name": "Eric Habimana",         "password": "__SET_LOCAL_PASSWORD__" },
     "head":       { "email": "head@example.invalid",       "display_name": "Olivier Kayitesi",      "password": "__SET_LOCAL_PASSWORD__" },
     "dpo":        { "email": "dpo@example.invalid",        "display_name": "Sandra Murekatete",     "password": "__SET_LOCAL_PASSWORD__" },
     "deputy":     { "email": "deputy@example.invalid",     "display_name": "Aimee Nyirahabimana",   "password": "__SET_LOCAL_PASSWORD__" }

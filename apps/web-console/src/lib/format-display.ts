@@ -54,7 +54,7 @@ export function kigaliDayBounds(day: string): { from: string; to: string } | nul
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-/** Amount with optional currency code (no default currency — pass pack/event currency). */
+/** Amount with optional currency code (no default currency - pass pack/event currency). */
 export function formatRwf(amount: number, currency?: string | null): string {
   const n = Math.round(amount).toLocaleString("en-US");
   const cur = currency?.trim() ? currency.trim().toUpperCase() : "";

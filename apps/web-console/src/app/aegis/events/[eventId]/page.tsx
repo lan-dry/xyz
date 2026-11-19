@@ -76,7 +76,7 @@ function verifyBanner(v: VerifyResult["verification"]): {
       title: "Record intact: signature chain unbroken",
       className: ui.alertSuccess,
       inclusionLabel: "pending",
-      note: "Witness inclusion is still processing. Details stay under the seal checks below — the record itself is finished.",
+      note: "Witness inclusion is still processing. Details stay under the seal checks below - the record itself is finished.",
     };
   }
   return {
@@ -286,7 +286,7 @@ export default function EventDetailPage() {
                   }}
                   title={
                     e.event_id.startsWith("evt_gov_")
-                      ? "No agent APS seal — provisional citation"
+                      ? "No agent APS seal - provisional citation"
                       : "APS-1 sealed event"
                   }
                 >

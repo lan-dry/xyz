@@ -1110,6 +1110,22 @@ approvalRoutes.post(
         requesterEmail: releaseRequester.email,
         requesterOfficerId: releaseRequester.officer_id,
       });
+      const attrs =
+        payload?.attributes && typeof payload.attributes === "object"
+          ? (payload.attributes as Record<string, unknown>)
+          : {};
+      const aegis =
+        attrs.aegis && typeof attrs.aegis === "object"
+          ? (attrs.aegis as Record<string, unknown>)
+          : {};
+      const model =
+        attrs.model && typeof attrs.model === "object"
+          ? (attrs.model as Record<string, unknown>)
+          : {};
+      const isFraudBlock =
+        meta.fraud_block === true ||
+        meta.hard_stop === true ||
+        (typeof model.score === "number" && model.score >= 0.9);
       await issueApprovalOutcomeReceipt(client, {
         organizationId: session.organizationId,
         approvalId,
@@ -1130,6 +1146,20 @@ approvalRoutes.post(
         eventPayload: payload,
         approved_view_hash: approvedViewHash,
         approver_binding: approverBinding,
+        fraud_block_override: isFraudBlock
+          ? {
+              model_score:
+                typeof model.score === "number" ? model.score : null,
+              model_version:
+                typeof model.version === "string" ? model.version : null,
+              model_score_label:
+                typeof aegis.model_score_label === "string"
+                  ? aegis.model_score_label
+                  : "asserted by source",
+              release_reason: releaseReason,
+              requester_email: releaseRequester.email,
+            }
+          : null,
       });
 
       const updated = await getApprovalRich(

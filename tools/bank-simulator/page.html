@@ -16,8 +16,6 @@
   main { max-width:1100px; margin:0 auto; padding:1.25rem 1.5rem 3rem; display:grid; gap:1.25rem; }
   .bar { display:flex; flex-wrap:wrap; gap:1rem; align-items:center; background:var(--card);
          border:1px solid var(--line); border-radius:8px; padding:.75rem 1rem; }
-  .bar.offline { border-color:var(--warn); background:#fff8e6; }
-  .switch { display:flex; gap:.5rem; align-items:center; font-weight:600; cursor:pointer; }
   .meta { color:var(--muted); font-size:.85rem; }
   .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:1rem; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:1rem;
@@ -48,11 +46,8 @@
   .status { padding:.45rem 1.5rem; font-size:.9rem; font-weight:600; border-bottom:1px solid var(--line);
             background:#eaf6ee; color:var(--ok); }
   .status.off { background:#fdecea; color:var(--bad); }
-  details.setup { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.75rem 1rem; }
-  details.setup summary { cursor:pointer; font-weight:600; }
-  #setupForm { display:grid; gap:.6rem; margin-top:.75rem; max-width:560px; }
-  #setupForm label { font-size:.8rem; color:var(--muted); display:grid; gap:.2rem; }
-  #setupForm input { font:inherit; padding:.45rem .6rem; border:1px solid var(--line); border-radius:6px; width:100%; }
+  .banner { background:#eef4ff; border-bottom:1px solid var(--line); padding:.35rem 1.5rem;
+            font-size:.8rem; color:var(--muted); }
   .sent { margin-top:.75rem; border-top:1px solid var(--line); padding-top:.75rem; }
   .sent h3 { margin:0 0 .4rem; font-size:.9rem; }
   .sent .call { border:1px solid var(--line); border-radius:6px; padding:.5rem .7rem; margin:.4rem 0; background:#fbfcfd; }
@@ -62,8 +57,6 @@
   .sent .lbl { font-size:.75rem; color:var(--muted); margin-top:.4rem; }
   .sent .st { font-weight:700; }
   .sent .st.bad { color:var(--bad); } .sent .st.good { color:var(--ok); }
-  .banner { background:#eef4ff; border-bottom:1px solid var(--line); padding:.35rem 1.5rem;
-            font-size:.8rem; color:var(--muted); }
 </style>
 </head>
 <body>
@@ -84,68 +77,18 @@
   <p class="err" id="loginError" role="alert"></p>
 </form>
 <main id="app">
-  <details class="setup" id="setup">
-    <summary>Setup: API base, ingest key, organisation, agent</summary>
-    <p class="meta">Overrides the server's environment values. The ingest key is stored on this server only and is never shown again; leave it blank to keep the saved key.</p>
-    <form id="setupForm" autocomplete="off">
-      <label>API base<input id="cfgApiBase" type="url" placeholder="https://api.salanor.com" required></label>
-      <label>Ingest key <span id="keyHint"></span><input id="cfgKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="paste to set or replace"></label>
-      <label>Organisation id<input id="cfgOrg" type="text" required></label>
-      <label>Agent id<input id="cfgAgent" type="text" required></label>
-      <div class="row">
-        <button type="submit" id="cfgSave">Save</button>
-        <button type="button" class="secondary" id="cfgReset">Use environment defaults</button>
-      </div>
-      <p class="meta" id="cfgMsg" role="status"></p>
-    </form>
-  </details>
-
-  <section class="bar" id="bar">
-    <label class="switch"><input type="checkbox" id="offline"> Aegis unreachable</label>
-    <span class="meta" id="offlineHint">Link to Aegis is up.</span>
-    <span class="meta" id="queueInfo"></span>
+  <section class="bar" id="healthLights">
+    <span class="meta"><strong>Health</strong></span>
+    <span class="chip" id="hlApi">API …</span>
+    <span class="chip" id="hlSim">Simulator …</span>
+    <span class="meta">Use <code>demo-start.cmd</code> / <code>demo-stop.cmd</code> in this folder.</span>
   </section>
 
   <section id="result" class="hidden" aria-live="polite"></section>
 
-  <section class="card" id="systemsPanel">
-    <h3 style="margin:0">Systems (one Connector per system)</h3>
-    <p class="meta" style="margin:0">
-      LOS, Core Banking, Payment Gateway, and Credit Bureau — each with its own key and sequence.
-      Panels show connection, key id, last seq, and outbox size.
-    </p>
-    <div class="row" style="margin-top:.5rem">
-      <button type="button" class="secondary" id="refreshSystems">Refresh systems</button>
-      <button type="button" class="secondary" id="exportFeed">Export ledger feed (JSONL)</button>
-    </div>
-    <div class="grid" id="systemsView" style="margin-top:.75rem"></div>
-  </section>
-
-  <section class="card" id="ledgerPanel">
-    <h3 style="margin:0">Core ledger (in-path gate)</h3>
-    <p class="meta" style="margin:0">
-      Disbursement always asks Aegis <code>/v1/aegis/execution/permit</code> (or confirms a decision token).
-      Skipping Aegis is refused by the ledger — sealed fiction does not pay.
-    </p>
-    <div class="row" style="margin-top:.5rem">
-      <button type="button" class="secondary" id="refreshLedger">Refresh ledger</button>
-    </div>
-    <div id="ledgerView" class="attrs" style="margin-top:.75rem"></div>
-  </section>
-
-  <section class="card" id="redteamPanel">
-    <h3 style="margin:0">Red Team</h3>
-    <p class="meta" style="margin:0">
-      Each button runs an attack from the Stage 8 brief and shows what an attacker would gain
-      and what Aegis (or the bank) did. The honest-limits case shows what Aegis does <em>not</em> catch.
-    </p>
-    <div class="row" style="margin-top:.5rem">
-      <button type="button" class="secondary" id="runHonestLimit">Honest limit (false signed value → G1)</button>
-    </div>
-    <div class="grid" id="redteamView" style="margin-top:.75rem"></div>
-  </section>
-
   <section>
+    <h2 style="margin:0 0 .75rem;font-size:1rem">Scenarios A–G</h2>
+    <p class="meta" style="margin:0 0 1rem">Realistic governance stories through Connectors. Red Team / wipe / demo data: Platform Ops → Demo tenants (including redteam-lab).</p>
     <div class="grid" id="stories"></div>
   </section>
 </main>
@@ -154,8 +97,6 @@
 (function () {
   var storiesEl = document.getElementById("stories");
   var resultEl = document.getElementById("result");
-  var offlineEl = document.getElementById("offline");
-  var barEl = document.getElementById("bar");
   var state = {};
 
   function el(tag, attrs, children) {
@@ -195,10 +136,15 @@
   function start() {
     loginEl.hidden = true;
     appEl.hidden = false;
-    Promise.all([api("/api/stories"), refreshState(), loadConfig(), loadSystems(), loadRedteam()])
+    Promise.all([api("/api/stories"), refreshState()])
       .then(function (res) {
         logoutEl.hidden = !state.auth_enabled;
         renderStories(res[0].stories);
+        var apiOk = !!(res[1] && res[1].configured !== false);
+        var hlApi = document.getElementById("hlApi");
+        var hlSim = document.getElementById("hlSim");
+        if (hlApi) { hlApi.textContent = apiOk ? "API up" : "API check"; hlApi.className = "chip " + (apiOk ? "allow" : "hold"); }
+        if (hlSim) { hlSim.textContent = "Simulator up"; hlSim.className = "chip allow"; }
       })
       .catch(function (e) { if (e.message !== "Login required") storiesEl.textContent = "Could not load: " + e.message; });
   }
@@ -236,59 +182,14 @@
   }
 
   function renderState() {
-    offlineEl.checked = !!state.offline;
-    barEl.className = "bar" + (state.offline ? " offline" : "");
-    document.getElementById("offlineHint").textContent = state.offline
-      ? "Simulated outage: the bank proceeds under its own fallback and queues each event."
-      : "Link to Aegis is up.";
-    var q = [];
-    if (state.queued) q.push(state.queued + " queued for replay");
-    if (state.sdk_buffered) q.push(state.sdk_buffered + " in the SDK buffer");
-    document.getElementById("queueInfo").textContent = q.join(" \u00b7 ");
     document.getElementById("target").textContent = state.api_base ? "Aegis API: " + state.api_base : "";
     var st = document.getElementById("statusLine");
     st.textContent = state.status_line || "";
     st.className = "status" + (state.configured ? "" : " off");
   }
 
-  var cfgEl = {
-    apiBase: document.getElementById("cfgApiBase"), key: document.getElementById("cfgKey"),
-    org: document.getElementById("cfgOrg"), agent: document.getElementById("cfgAgent"),
-    msg: document.getElementById("cfgMsg"), hint: document.getElementById("keyHint")
-  };
-
-  // Fill the form from the server. The key is never returned, only whether one is present.
-  function applyConfig(c) {
-    cfgEl.apiBase.value = c.apiBase || "";
-    cfgEl.org.value = c.orgId || "";
-    cfgEl.agent.value = c.agentId || "";
-    cfgEl.key.value = "";
-    cfgEl.hint.textContent = c.keyPresent ? "(saved: " + c.keyHint + ")" : "(not set)";
-    if (!c.configured) document.getElementById("setup").open = true;
-  }
-
-  function loadConfig() { return api("/api/config").then(applyConfig); }
-
-  document.getElementById("setupForm").addEventListener("submit", function (ev) {
-    ev.preventDefault();
-    cfgEl.msg.textContent = "Saving\u2026";
-    api("/api/config", {
-      apiBase: cfgEl.apiBase.value, ingestKey: cfgEl.key.value,
-      orgId: cfgEl.org.value, agentId: cfgEl.agent.value
-    }).then(function (c) {
-      applyConfig(c); cfgEl.msg.textContent = "Saved. The key stays on the server."; return refreshState();
-    }).catch(function (e) { cfgEl.msg.textContent = e.message; cfgEl.key.value = ""; });
-  });
-
-  document.getElementById("cfgReset").addEventListener("click", function () {
-    api("/api/config/reset", {}).then(function (c) {
-      applyConfig(c); cfgEl.msg.textContent = "Saved override removed."; return refreshState();
-    }).catch(function (e) { cfgEl.msg.textContent = e.message; });
-  });
-
   function pretty(v) { try { return JSON.stringify(v, null, 2); } catch (e) { return String(v); } }
 
-  // "What was sent": endpoint, payload, response status and body. The key is masked by the server.
   function renderSent(requests) {
     if (!requests || !requests.length) return null;
     var wrap = el("div", { class: "sent" }, [el("h3", { text: "What was sent" })]);
@@ -344,63 +245,9 @@
     if (r.resolver) box.appendChild(el("p", { class: "meta", text: "Resolved by: " + r.resolver }));
     box.appendChild(steps(r.steps));
     if (r.console_url) box.appendChild(caseLink(r));
-    if (r.can_disburse && r.case_id) {
-      var gate = el("div", { class: "row", style: "margin-top:.75rem;flex-wrap:wrap" });
-      var pay = el("button", { text: "Disburse via core ledger (Aegis permit)" });
-      var skip = el("button", { class: "secondary", text: "Try disburse without Aegis (must fail)" });
-      pay.addEventListener("click", function () {
-        pay.disabled = true;
-        api("/api/disburse", { case_id: r.case_id, action: r.action || {} })
-          .then(function (d) {
-            showResult("Disbursed", el("div", {}, [
-              el("p", { text: "Paid " + (d.entry && d.entry.id) + " under sealed " + (d.permit && d.permit.outcome) }),
-              el("p", { class: "meta", text: "receipt " + (d.permit && d.permit.receipt_id) })
-            ]));
-            return loadLedger();
-          })
-          .catch(function (e) {
-            showResult("Disburse refused", el("p", { class: "err", text: (e.data && (e.data.reason || e.data.error)) || e.message }));
-            return loadLedger();
-          })
-          .then(function () { pay.disabled = false; });
-      });
-      skip.addEventListener("click", function () {
-        skip.disabled = true;
-        api("/api/disburse/skip-aegis", { case_id: r.case_id, action: r.action || {} })
-          .then(function () {
-            showResult("Unexpected", el("p", { class: "err", text: "Ledger should have refused ungated pay" }));
-          })
-          .catch(function (e) {
-            showResult("Ungated pay blocked (expected)", el("p", { text: (e.data && (e.data.reason || e.data.error)) || e.message }));
-            return loadLedger();
-          })
-          .then(function () { skip.disabled = false; });
-      });
-      gate.appendChild(pay);
-      gate.appendChild(skip);
-      box.appendChild(gate);
-      if (r.outcome === "hold") {
-        box.appendChild(el("p", { class: "meta", text: "For holds: approve in the console first, then Disburse via core ledger." }));
-      }
-    }
     var sent = renderSent(r.requests);
     if (sent) box.appendChild(sent);
     showResult(r.queued ? "Queued while Aegis is unreachable" : "Sent", box);
-  }
-
-  function loadLedger() {
-    return api("/api/ledger").then(function (data) {
-      var view = document.getElementById("ledgerView");
-      if (!view) return;
-      view.textContent = "";
-      view.appendChild(el("p", { text: "Paid: " + (data.ledger || []).length + " · Refused: " + (data.refused || []).length + " · Pending: " + (data.pending || []).length }));
-      (data.ledger || []).slice(0, 8).forEach(function (row) {
-        view.appendChild(el("p", { text: "PAY " + row.case_id + " · " + JSON.stringify(row.action) + " · " + row.at }));
-      });
-      (data.refused || []).slice(0, 5).forEach(function (row) {
-        view.appendChild(el("p", { class: "err", text: "REFUSED " + row.case_id + " · " + row.reason }));
-      });
-    }).catch(function () {});
   }
 
   function send(story, btn) {
@@ -418,6 +265,9 @@
 
   function renderStories(list) {
     storiesEl.textContent = "";
+    list = (list || []).filter(function (s) {
+      return s.letter && "ABCDEFG".indexOf(String(s.letter).toUpperCase()) >= 0;
+    });
     list.forEach(function (s) {
       var btn = el("button", { text: s.wrong_key ? "Send with a wrong key" : "Send this case" });
       btn.addEventListener("click", function () { send(s, btn); });
@@ -439,136 +289,7 @@
     });
   }
 
-  offlineEl.addEventListener("change", function () {
-    var on = offlineEl.checked;
-    offlineEl.disabled = true;
-    api("/api/unreachable", { on: on })
-      .then(function (r) {
-        if (!on && r.replayed) {
-          var box = el("div");
-          box.appendChild(el("p", { text: r.replayed.length + " event(s) replayed and sealed, marked decided without Aegis." }));
-          box.appendChild(steps(r.steps));
-          r.replayed.forEach(function (c) {
-            box.appendChild(el("p", {}, [
-              el("span", { text: c.case_id + " \u00b7 " + c.outcome + " \u00b7 " }),
-              el("a", { href: c.console_url, target: "_blank", rel: "noreferrer noopener", text: "open case" })
-            ]));
-          });
-          var sentReplay = renderSent(r.requests);
-          if (sentReplay) box.appendChild(sentReplay);
-          showResult("Link restored", box);
-        }
-        return refreshState();
-      })
-      .catch(function (e) { showResult("Could not change the link state", el("p", { class: "err", text: e.message })); })
-      .then(function () { offlineEl.disabled = false; return refreshState(); });
-  });
-
-  function loadSystems() {
-    return api("/api/systems").then(function (data) {
-      var view = document.getElementById("systemsView");
-      if (!view) return;
-      view.textContent = "";
-      (data.systems || []).forEach(function (s) {
-        view.appendChild(el("article", { class: "card" }, [
-          el("h3", { text: s.name }),
-          el("p", { class: "attrs", text: s.role || "" }),
-          el("p", { text: "Connection: " + (s.connected ? s.connection : "not connected") }),
-          el("p", { text: "Key id: " + (s.key_id || "—") }),
-          el("p", { text: "Last seq: " + (s.last_seq == null ? "n/a" : s.last_seq) }),
-          el("p", { text: "Outbox size: " + (s.outbox_size == null ? "n/a" : s.outbox_size) }),
-          el("p", { class: "meta", text: s.source_id + " · " + s.mode })
-        ]));
-      });
-      if (data.core_ledger) {
-        view.appendChild(el("p", { class: "meta", text: "Core ledger mode: " + data.core_ledger.mode }));
-      }
-    }).catch(function () {});
-  }
-
-  function loadRedteam() {
-    return api("/api/redteam").then(function (data) {
-      var view = document.getElementById("redteamView");
-      if (!view) return;
-      view.textContent = "";
-      (data.attacks || []).forEach(function (a) {
-        var btn = el("button", { text: "Run #" + a.id });
-        btn.addEventListener("click", function () {
-          btn.disabled = true;
-          api("/api/redteam/run", { attack_id: a.id })
-            .then(function (r) {
-              var box = el("div");
-              var mode = r.simulated ? "Simulation" : "Live";
-              box.appendChild(el("p", {
-                class: r.simulated ? "err" : "meta",
-                text: "Mode: " + mode + (r.report_status ? " (report: " + r.report_status + ")" : "")
-              }));
-              box.appendChild(el("p", { text: "What attacker gains: " + (r.attack && r.attack.attacker_gains) }));
-              box.appendChild(el("p", { text: "Expected: " + (r.attack && r.attack.expected) }));
-              box.appendChild(el("p", { text: "Outcome: " + (r.result || "") }));
-              box.appendChild(steps(r.steps));
-              showResult("Red Team #" + a.id + " [" + mode + "] — " + a.title, box);
-            })
-            .catch(function (e) {
-              showResult("Red Team #" + a.id + " failed", el("p", { class: "err", text: e.message }));
-            })
-            .then(function () { btn.disabled = false; return loadSystems(); });
-        });
-        view.appendChild(el("article", { class: "card" }, [
-          el("div", {}, [
-            el("span", { class: "chip", text: "#" + a.id }),
-            el("span", {
-              class: "chip",
-              text: a.mode === "live" ? "Live preferred" : "May be Simulation"
-            })
-          ]),
-          el("h3", { text: a.title }),
-          el("p", { text: "What attacker gains: " + a.attacker_gains }),
-          el("p", { class: "meta", text: "Expected outcome: " + a.expected }),
-          el("div", { class: "row" }, [btn])
-        ]));
-      });
-    }).catch(function () {});
-  }
-
-  var refreshLedgerBtn = document.getElementById("refreshLedger");
-  if (refreshLedgerBtn) refreshLedgerBtn.addEventListener("click", function () { loadLedger(); });
-  var refreshSystemsBtn = document.getElementById("refreshSystems");
-  if (refreshSystemsBtn) refreshSystemsBtn.addEventListener("click", function () { loadSystems(); });
-  var exportFeedBtn = document.getElementById("exportFeed");
-  if (exportFeedBtn) exportFeedBtn.addEventListener("click", function () {
-    api("/api/feed/export", { format: "jsonl" }).then(function (r) {
-      showResult("Ledger feed exported", el("div", {}, [
-        el("p", { text: r.path + " (" + r.rows + " rows)" }),
-        el("pre", { text: (r.preview || []).join("\n") })
-      ]));
-    }).catch(function (e) {
-      showResult("Feed export failed", el("p", { class: "err", text: e.message }));
-    });
-  });
-  var honestBtn = document.getElementById("runHonestLimit");
-  if (honestBtn) honestBtn.addEventListener("click", function () {
-    honestBtn.disabled = true;
-    api("/api/honest-limit", {})
-      .then(function (r) {
-        var box = el("div");
-        var mode = r.simulated ? "Simulation" : "Live";
-        box.appendChild(el("p", {
-          class: r.simulated ? "err" : "meta",
-          text: "Mode: " + mode
-        }));
-        box.appendChild(el("p", { text: "What attacker gains: " + (r.attack && r.attack.attacker_gains) }));
-        box.appendChild(el("p", { text: "Outcome: " + (r.result || "") }));
-        box.appendChild(el("p", { class: "meta", text: (r.attack && r.attack.what_aegis_does_not_catch) || "" }));
-        box.appendChild(steps(r.steps));
-        showResult("Honest limit [" + mode + "]", box);
-      })
-      .catch(function (e) { showResult("Honest limit failed", el("p", { class: "err", text: e.message })); })
-      .then(function () { honestBtn.disabled = false; });
-  });
-
   start();
-  loadLedger();
 })();
 </script>
 </body>

@@ -1,0 +1,50 @@
+{
+  "A": {
+    "case_id": "SIM-E0B703DE7B",
+    "outcome": "allow",
+    "plain": "Payment release of RWF 1,200,000 was allowed automatically under rule AUTH-RL-1 · Within officer limit. No human approval was needed. Policy v4.",
+    "ms": 392
+  },
+  "B": {
+    "case_id": "SIM-65C8CFB8DD",
+    "outcome": "hold",
+    "plain": "Held: 4th transfer today; day's total RWF 9,600,000 exceeds the Retail Standard daily limit of RWF 8,000,000 (counts only activity reported to Aegis) Policy v4.",
+    "ms": 732
+  },
+  "C": {
+    "case_id": "SIM-609D68E9EF",
+    "outcome": "stop",
+    "plain": "Stopped: fraud model score 0.94 (version 3.2, asserted by source) meets or exceeds the Retail Standard block threshold of 0.90 Policy v4.",
+    "ms": 166
+  },
+  "D": {
+    "case_id": "SIM-BEFBDEE555",
+    "outcome": "hold",
+    "plain": "Held: first transfer to this beneficiary for the customer, RWF 6,200,000, outside business hours (off_hours) Policy v4.",
+    "ms": 159
+  },
+  "E": {
+    "case_id": "SIM-ABF89C6A33",
+    "outcome": "hold",
+    "plain": "Payment release of RWF 6,000,000 was held because rule AUTH-XFER-2 · Above transfer officer limit requires a Credit Manager. Policy v4.",
+    "ms": 178,
+    "execute_refused": {
+      "status": 403,
+      "permitted": false,
+      "code": "held",
+      "error": "Case is still held — human approval required before execution"
+    }
+  },
+  "F": {
+    "case_id": "SIM-F8AC248068",
+    "outcome": "hold",
+    "plain": "Loan disbursement of RWF 18,000,000 was held because rule AUTH-RL-2 · Above officer limit requires a Credit Manager. Policy v4.",
+    "ms": 150
+  },
+  "G": {
+    "case_id": "SIM-193E3F06BA",
+    "outcome": "allow",
+    "plain": "Policy publish of RWF 1,000,000 was allowed automatically under rule AUTH-RL-1 · Within officer limit. No human approval was needed. Policy v4.",
+    "ms": 100
+  }
+}

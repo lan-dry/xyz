@@ -63,6 +63,15 @@ This is a **separate Next.js app**, not a route group inside the console — sam
 
 ### Granting access
 
+**After a demo wipe / fresh DB** (tenant data gone; platform org remains from migrations): restore the Ops superadmin with:
+
+```bash
+# From repo root; uses BOOTSTRAP_ADMIN_EMAIL + BOOTSTRAP_ADMIN_PASSWORD from .env
+pnpm db:seed:bootstrap
+```
+
+That creates/updates the account as `platform_role = 'superadmin'`, verifies email, and attaches membership on `salanor-platform`. Local smoke alternative after `pnpm db:seed` is `dev@salanor.local` already as superadmin.
+
 1. **Platform roles (Salanor internal):** Super admin or platform admin → **Accounts** → profile → **Platform role** (admin cannot grant or modify super admin). Logged as `platform.role.changed` in **Audit log**. Or SQL for bootstrap. Cannot demote the **last** super admin.
 2. **Org admin (customer):** Console → **Members** → invite with role **admin**, or change an existing member’s role. Cannot demote the **only** admin.
 3. **Automation:** `POST /v1/id/platform/*` with `X-Platform-Secret: <PLATFORM_BOOTSTRAP_SECRET>` (no browser session; full API access).
@@ -102,12 +111,44 @@ There is **no** `NEXT_PUBLIC_PLATFORM_OPS` flag on the customer console anymore.
 
 ---
 
+## Demo data (staff Ops)
+
+| Path | Function |
+|------|----------|
+| `/demo-tenants` | **Populate full demo** / **Reset to fresh demo** / **Delete demo** (slug confirm). Audit in `platform_tenant_wipe_audit` |
+
+Starting from Ops superadmin + `salanor-platform` only:
+
+1. **Populate** — creates `demo-bank` (org, personas, pack, keys, ~60d history)
+2. **Reset** — wipe then populate again (same end state)
+3. **Delete** — removes that org and its demo-only users; **Ops superadmin + platform org stay**
+
+Customer orgs are refused in Postgres + API (`not_wipeable`). Wipe/reset need `AEGIS_ALLOW_TENANT_WIPE=1` and `MIGRATION_DATABASE_URL`. No special “demo UX” in the customer console.
+
+---
+
+## Auth review (Ops) — verified
+
+| Control | Status |
+|---------|--------|
+| Platform role gate (`staff` / `admin` / `superadmin`) | **Built** — session via Salanor ID |
+| Staff MFA (TOTP) for Ops login | **Gap** — MFA exists on marketing Auth.js, not on ID/Ops password login |
+| Session lifetime | **Partial** — ID session cookie **7 days**; Ops does not set a shorter Ops-only TTL |
+| Password login rate limit | **Gap** — OAuth rate-limited; `/v1/id/auth/login` password path has no `checkRateLimit` |
+| IP allowlist for Ops | **Gap** — not implemented (edge/CDN allowlist recommended for `ops.salanor.com`) |
+| robots / noindex | **Built** — `robots.ts` disallows `/`; `X-Robots-Tag: noindex, nofollow` on all routes |
+| Destructive action confirm (type slug) | **Built** on Demo tenants |
+| Audit of wipe/demo actions | **Built** — `platform_tenant_wipe_audit` (+ platform audit event on create) |
+
+---
+
 ## Platform Ops features (routes)
 
 | Path | Function |
 |------|----------|
 | `/` | Overview |
 | `/provision` | Create org + admin + default agent + plan (admin+) |
+| `/demo-tenants` | Demo data: populate / reset / delete + audit |
 | `/organizations` | List/edit orgs, plan assignment, **View in console** (impersonate) |
 | `/accounts` | List accounts, platform role (superadmin), suspend, password reset |
 | `/plans` | Plan catalog limits + Stripe price IDs |

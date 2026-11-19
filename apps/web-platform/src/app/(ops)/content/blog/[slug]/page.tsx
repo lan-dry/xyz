@@ -71,19 +71,19 @@ export default async function OpsContentBlogEditPage({
       <div className={ui.statGrid}>
         <div className={`${ui.card} ${ui.cardPad}`}>
           <p className={ui.cardTitle}>Page views</p>
-          <p className={ui.cardValue}>{stats?.views ?? "—"}</p>
+          <p className={ui.cardValue}>{stats?.views ?? "-"}</p>
         </div>
         <div className={`${ui.card} ${ui.cardPad}`}>
           <p className={ui.cardTitle}>Unique sessions</p>
-          <p className={ui.cardValue}>{stats?.uniqueSessions ?? "—"}</p>
+          <p className={ui.cardValue}>{stats?.uniqueSessions ?? "-"}</p>
         </div>
         <div className={`${ui.card} ${ui.cardPad}`}>
           <p className={ui.cardTitle}>Listen starts</p>
-          <p className={ui.cardValue}>{stats?.listenStarts ?? "—"}</p>
+          <p className={ui.cardValue}>{stats?.listenStarts ?? "-"}</p>
         </div>
         <div className={`${ui.card} ${ui.cardPad}`}>
           <p className={ui.cardTitle}>Share clicks</p>
-          <p className={ui.cardValue}>{stats?.shareClicks ?? "—"}</p>
+          <p className={ui.cardValue}>{stats?.shareClicks ?? "-"}</p>
         </div>
       </div>
 

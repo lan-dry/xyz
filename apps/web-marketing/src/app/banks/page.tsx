@@ -49,7 +49,7 @@ export default function BanksPage() {
         <p>
           Aegis proves when a record was made and that it has not changed since.
           It does not check that the data inside is accurate. Evidence grades say
-          who vouched for the data and how — not whether an amount or name is correct.
+          who vouched for the data and how, not whether an amount or name is correct.
         </p>
 
         <h2>Low-risk pilot</h2>

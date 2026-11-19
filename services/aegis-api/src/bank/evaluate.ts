@@ -43,6 +43,8 @@ export type BankEvalInput = {
   product?: string;
   currency?: string;
   record_only?: boolean;
+  /** Prefer this on decision_basis when hold/stop (velocity / fraud plain English). */
+  plain_explanation?: string | null;
 };
 
 export type BankEvalResult = {
@@ -265,6 +267,7 @@ export function evaluateBankEvent(input: BankEvalInput): BankEvalResult {
     decided_rule_id: combined.rule_id,
     reason: combined.reason,
     matrix_rule_id: matrix?.row.rule_code ?? null,
+    plain_explanation: input.plain_explanation,
   });
 
   if (recordOnly && would_have) {

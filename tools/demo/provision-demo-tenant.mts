@@ -30,6 +30,7 @@ import {
   fail,
   findOrganizationId,
   loadTenantFile,
+  orgDemoFlags,
   orgName,
   orgSlug,
   platformCall,
@@ -49,13 +50,12 @@ const AGENTS = [
 
 const INGEST_KEY_NAME = "demo-bank-simulator";
 
-const isSmokeSlug = (slug: string) => /smoke/i.test(slug);
-
 const log = (msg: string) => console.log(`  ${msg}`);
 const step = (n: number, title: string) => console.log(`\n[${n}] ${title}`);
 
 async function ensureOrganization(file: TenantFile): Promise<string> {
   const slug = orgSlug(file);
+  const flags = orgDemoFlags(slug);
   const existing = await findOrganizationId(file, slug);
   if (existing) {
     // Idempotent: make sure the flag is set (quiet tag, no plan badge, no Production/Sandbox)
@@ -63,10 +63,9 @@ async function ensureOrganization(file: TenantFile): Promise<string> {
     await platformCall(file, `/organizations/${existing}`, {
       method: "PATCH",
       body: {
-        is_demo: true,
+        is_demo: flags.is_demo,
+        is_test: flags.is_test,
         plan: "enterprise",
-        // A smoke-test tenant is also disposable (wipeable): slug must contain "smoke".
-        ...(isSmokeSlug(slug) ? { is_test: true } : {}),
       },
     });
     // Existing Demo Bank orgs may predate the local admin account — attach before login,
@@ -81,7 +80,9 @@ async function ensureOrganization(file: TenantFile): Promise<string> {
         password: admin.password,
       },
     });
-    log(`Organisation "${slug}" already exists (is_demo + enterprise seats confirmed).`);
+    log(
+      `Organisation "${slug}" already exists (is_demo=${flags.is_demo}, is_test=${flags.is_test}).`,
+    );
     return existing;
   }
   const admin = file.personas.admin;
@@ -95,12 +96,14 @@ async function ensureOrganization(file: TenantFile): Promise<string> {
       admin_password: admin.password,
       // A demo tenant is not on a commercial plan, but needs room for 8 members.
       plan: "enterprise",
-      is_demo: true,
-      ...(isSmokeSlug(slug) ? { is_test: true } : {}),
+      is_demo: flags.is_demo,
+      is_test: flags.is_test,
     },
   });
   // The default agent's one-time private key is deliberately not printed or stored.
-  log(`Created organisation "${slug}" (is_demo${isSmokeSlug(slug) ? ", is_test" : ""}).`);
+  log(
+    `Created organisation "${slug}" (is_demo=${flags.is_demo}, is_test=${flags.is_test}).`,
+  );
   return created.data.organization_id;
 }
 
@@ -372,7 +375,12 @@ async function main(): Promise<void> {
   await ensureAgents(admin);
 
   step(4, "Ingest key");
-  const stableSecret = process.env.DEMO_BANK_INGEST_KEY?.trim();
+  // Prefer DEMO_BANK_INGEST_KEY; fall back to AEGIS_INGEST_KEY so Ops Populate +
+  // seed-history (same parent env) share one secret after wipe. Random mint only
+  // when neither is set (CLI operators who copy the one-time print).
+  const stableSecret =
+    process.env.DEMO_BANK_INGEST_KEY?.trim() ||
+    process.env.AEGIS_INGEST_KEY?.trim();
   if (stableSecret) {
     await ensureStableIngestKey(file, organizationId, stableSecret);
   } else {

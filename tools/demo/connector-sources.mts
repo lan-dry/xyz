@@ -6,7 +6,7 @@
  *
  * Private keys never leave `.data/connectors/` (or AEGIS_CONNECTORS_DIR).
  */
-import { mkdir, readFile, writeFile, chmod } from "node:fs/promises";
+import { mkdir, readFile, writeFile, chmod, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { generateKeyPair, keyPairFromSeed } from "@salanor/aegis-sdk";
@@ -84,6 +84,18 @@ export const DEMO_SOURCES: DemoSourceDef[] = [
     kind: "third_party",
     port: 8798,
   },
+  /**
+   * Independent Postgres CDC collector (G3). Own process + REPLICATION role;
+   * not started by demo:connectors listen loop.
+   */
+  {
+    id: "core_cdc",
+    source_id: "src_core_cdc",
+    key_id: "k_core_cdc_2026_01",
+    name: "Core ledger CDC collector",
+    kind: "collector",
+    port: 8799,
+  },
 ];
 
 export type SourceLocalMeta = {
@@ -122,6 +134,24 @@ export function configPath(root: string, sourceId: string): string {
 
 export function stateDir(root: string, sourceId: string): string {
   return join(sourceDir(root, sourceId), "state");
+}
+
+/**
+ * Drop local outbox/delivered/last_seq for demo sources. Private keys stay.
+ * Required after tenant wipe: seed-history reuses fixed idempotency keys, and a
+ * stale local hash (emitted_at drifted) throws ConflictError before Aegis sees the event.
+ */
+export async function clearDemoConnectorRuntimeState(
+  root = connectorsRoot(),
+  log: (msg: string) => void = () => undefined,
+): Promise<void> {
+  if (!existsSync(root)) return;
+  for (const def of DEMO_SOURCES) {
+    const path = stateDir(root, def.source_id);
+    if (!existsSync(path)) continue;
+    await rm(path, { recursive: true, force: true });
+    log(`Cleared Connector state: ${path}`);
+  }
 }
 
 async function writeJson(path: string, value: unknown, mode = 0o600): Promise<void> {

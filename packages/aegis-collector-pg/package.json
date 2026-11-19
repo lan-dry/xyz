@@ -12,7 +12,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
@@ -23,13 +25,16 @@
   "nx": {
     "targets": {
       "build": {
-        "dependsOn": ["^build"]
+        "dependsOn": [
+          "^build"
+        ]
       }
     }
   },
   "dependencies": {
     "@salanor/aegis-sdk": "workspace:*",
-    "pg": "^8.16.0"
+    "pg": "^8.16.0",
+    "pg-logical-replication": "2.6.0"
   },
   "devDependencies": {
     "@salanor/config": "workspace:*",

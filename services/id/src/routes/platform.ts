@@ -2,6 +2,7 @@ import { getCookie } from "hono/cookie";
 import { Hono } from "hono";
 import {
   DemoIngestKeyError,
+  DemoTenantRefusal,
   getPlanCatalog,
   getPlatformEmailSettings,
   hashPassword,
@@ -11,14 +12,18 @@ import {
   platformSetStableIngestKey,
   ImpersonationError,
   isPlatformRole,
+  platformAssertDemoOrTest,
   platformGetAccount,
   platformListAccountsPaginated,
   platformListAuditLogs,
+  platformListDemoTenantAudit,
+  platformListDemoTenants,
   platformListDistinctAuditActions,
   platformListWorkerRuns,
   platformListOrganizations,
   platformGetOrganization,
   platformOverviewStats,
+  platformRecordDemoTenantAction,
   platformResetAccountPassword,
   platformSetAccountActive,
   platformSetMembershipStatus,
@@ -31,6 +36,7 @@ import {
   PlatformRoleError,
   provisionOrganization,
   platformEnsureOrganizationMember,
+  requireConfirmSlug,
   InviteError,
   resolvePlatformStaffSession,
   SALANOR_SESSION_COOKIE,
@@ -43,6 +49,10 @@ import {
   type PlatformStaffSession,
   updatePlanCatalogRow,
 } from "@salanor/platform-auth";
+import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve as resolvePath } from "node:path";
+import pg from "pg";
 import {
   EmailDeliveryError,
   sendTransactionalEmail,
@@ -210,6 +220,484 @@ platformRoutes.get("/organizations", async (c) => {
     // Surface the DB/driver message so laptop provision can show the real cause
     // (e.g. missing is_demo) instead of a blank Internal Server Error.
     return c.json({ error: message }, 500);
+  }
+});
+
+function demoActor(access: Extract<AccessResult, { ok: true }>): string {
+  if (access.bootstrap) return "platform:bootstrap";
+  return `ops:${access.staff?.email ?? "unknown"}`;
+}
+
+/** Persist a refuse audit row when Ops targets a non–demo/test tenant. */
+async function auditDemoTenantRefusal(
+  access: Extract<AccessResult, { ok: true }>,
+  slug: string,
+  requested: "wipe" | "create" | "load_history" | "reset" | "populate",
+): Promise<void> {
+  try {
+    await platformRecordDemoTenantAction(getPool(), {
+      slug,
+      action: requested,
+      actor: demoActor(access),
+      requireDemoOrTest: true,
+    });
+  } catch {
+    /* recorded by SQL, or org missing */
+  }
+}
+
+function runDemoCli(
+  scriptRel: string,
+  args: string[],
+  env: Record<string, string | undefined>,
+): Promise<{ code: number; stdout: string; stderr: string }> {
+  // ID service lives at services/id; repo root is three levels up from routes/.
+  const repoRoot = resolvePath(import.meta.dirname, "../../../..");
+  const script = resolvePath(repoRoot, scriptRel);
+  return new Promise((resolve) => {
+    const child = spawn(
+      process.platform === "win32" ? "pnpm.cmd" : "pnpm",
+      ["exec", "tsx", script, ...args],
+      {
+        cwd: repoRoot,
+        env: { ...process.env, ...env },
+        shell: process.platform === "win32",
+      },
+    );
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", (d) => {
+      stdout += String(d);
+    });
+    child.stderr?.on("data", (d) => {
+      stderr += String(d);
+    });
+    child.on("close", (code) => {
+      resolve({ code: code ?? 1, stdout, stderr });
+    });
+  });
+}
+
+/** Prefer env; else the gitignored local-stack file written by demo:fresh. */
+function resolveDemoIngestKey(): string | undefined {
+  const fromEnv =
+    process.env.DEMO_BANK_INGEST_KEY?.trim() ||
+    process.env.AEGIS_INGEST_KEY?.trim();
+  if (fromEnv) return fromEnv;
+  try {
+    const repoRoot = resolvePath(import.meta.dirname, "../../../..");
+    const path = resolvePath(repoRoot, ".demo-tenant-local-stack.local.json");
+    if (!existsSync(path)) return undefined;
+    const raw = readFileSync(path, "utf8");
+    const parsed = JSON.parse(raw) as { ingest_key?: string };
+    return parsed.ingest_key?.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Env for provision + seed so both share one ingest secret after wipe. */
+function demoPopulateCliEnv(slug: string, name: string): Record<string, string | undefined> {
+  const ingest = resolveDemoIngestKey();
+  return {
+    DEMO_ORG_SLUG: slug,
+    DEMO_ORG_NAME: name,
+    DEMO_ORG_IS_DEMO: "1",
+    DEMO_ORG_IS_TEST: "1",
+    DEMO_TENANT_SLUG: slug,
+    ...(ingest
+      ? { AEGIS_INGEST_KEY: ingest, DEMO_BANK_INGEST_KEY: ingest }
+      : {}),
+  };
+}
+
+async function executeOwnerWipe(slug: string, actor: string): Promise<Record<string, unknown>> {
+  const url = process.env.MIGRATION_DATABASE_URL?.trim();
+  if (!url) {
+    throw new Error(
+      "MIGRATION_DATABASE_URL (schema owner) is required for wipe/reset on Platform Ops",
+    );
+  }
+  const client = new pg.Client({ connectionString: url });
+  await client.connect();
+  try {
+    const result = await client.query<{ platform_wipe_tenant: Record<string, unknown> }>(
+      `SELECT platform_wipe_tenant($1, true, $2) AS platform_wipe_tenant`,
+      [slug, actor],
+    );
+    return result.rows[0]?.platform_wipe_tenant ?? {};
+  } finally {
+    await client.end();
+  }
+}
+
+/** List is_demo / is_test tenants for the Demo tenants Ops page. */
+platformRoutes.get("/demo-tenants", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:read");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  try {
+    const tenants = await platformListDemoTenants(getPool());
+    return c.json({
+      tenants: tenants.map((t) => ({
+        ...t,
+        created_at: new Date(t.created_at).toISOString(),
+        last_demo_reset_at: t.last_demo_reset_at
+          ? new Date(t.last_demo_reset_at).toISOString()
+          : null,
+      })),
+    });
+  } catch (err) {
+    console.error("[id] demo-tenants list", err);
+    return c.json(
+      { error: err instanceof Error ? err.message : "Failed to list demo tenants" },
+      500,
+    );
+  }
+});
+
+platformRoutes.get("/demo-tenants/audit", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:read");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  try {
+    const rows = await platformListDemoTenantAudit(getPool(), 80);
+    return c.json({
+      audit: rows.map((r) => ({
+        ...r,
+        wiped_at: new Date(r.wiped_at).toISOString(),
+      })),
+    });
+  } catch (err) {
+    console.error("[id] demo-tenants audit", err);
+    return c.json(
+      { error: err instanceof Error ? err.message : "Failed to list audit" },
+      500,
+    );
+  }
+});
+
+/**
+ * One-click: org + personas + pack + source keys + ~60d history.
+ * Wipeable flag is set only so Delete/Reset can refuse customer orgs — no console "demo UX".
+ */
+platformRoutes.post("/demo-tenants/populate", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:provision");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  let body: { slug?: string; confirm_slug?: string; name?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+  const slug = (body.slug ?? "demo-bank").trim() || "demo-bank";
+  try {
+    requireConfirmSlug(slug, body.confirm_slug);
+  } catch (err) {
+    if (err instanceof DemoTenantRefusal) {
+      return c.json({ error: err.message, code: err.code }, 422);
+    }
+    throw err;
+  }
+  const name =
+    (body.name ?? "").trim() ||
+    (slug === "redteam-lab" ? "Red Team Lab" : slug === "demo-bank" ? "Demo Bank" : slug);
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    const adminEmail =
+      access.staff?.email ??
+      process.env.PLATFORM_DEMO_ADMIN_EMAIL?.trim() ??
+      "admin@demo-bank.local";
+    // Both flags true = wipeable in platform_wipe_tenant (safety rail only).
+    const provisioned = await provisionOrganization(client, {
+      name,
+      slug,
+      plan: "enterprise",
+      adminEmail,
+      adminDisplayName: "Demo Admin",
+      isDemo: true,
+      isTest: true,
+    });
+    await client.query("COMMIT");
+
+    const cliEnv = demoPopulateCliEnv(slug, name);
+    const stack = await runDemoCli(
+      "tools/demo/provision-demo-tenant.mts",
+      ["--force-pack"],
+      cliEnv,
+    );
+    const history = await runDemoCli("tools/demo/seed-history.mts", [], cliEnv);
+
+    await platformRecordDemoTenantAction(getPool(), {
+      slug,
+      action: "create",
+      actor: demoActor(access),
+      result: {
+        organization_id: provisioned.organization_id,
+        provision_exit: stack.code,
+        history_exit: history.code,
+        provision_stderr_tail: stack.stderr.slice(-800),
+        history_stderr_tail: history.stderr.slice(-800),
+        history_stdout_tail: history.stdout.slice(-800),
+      },
+      requireDemoOrTest: true,
+    });
+    if (access.staff?.accountId) {
+      await writePlatformAuditEvent(getPool(), {
+        actorAccountId: access.staff.accountId,
+        action: "platform.demo_tenant.populate",
+        resourceType: "organization",
+        resourceId: provisioned.organization_id,
+        metadata: { slug },
+      });
+    }
+    const ok = stack.code === 0 && history.code === 0;
+    return c.json({
+      ok,
+      action: "populate",
+      organization_id: provisioned.organization_id,
+      slug,
+      provision_exit: stack.code,
+      history_exit: history.code,
+      ...(ok
+        ? {}
+        : {
+            warning: "Populate finished with non-zero exit(s)",
+            detail:
+              history.stderr.slice(-1200) ||
+              stack.stderr.slice(-1200) ||
+              history.stdout.slice(-800),
+          }),
+    });
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    if (err instanceof DemoTenantRefusal) {
+      return c.json({ error: err.message, code: err.code }, 403);
+    }
+    console.error("[id] demo-tenants populate", err);
+    return c.json(
+      { error: err instanceof Error ? err.message : "Populate failed" },
+      500,
+    );
+  } finally {
+    client.release();
+  }
+});
+
+platformRoutes.post("/demo-tenants/load-history", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:orgs.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  let body: { slug?: string; confirm_slug?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+  const slug = (body.slug ?? "").trim();
+  try {
+    requireConfirmSlug(slug, body.confirm_slug);
+    await platformAssertDemoOrTest(getPool(), slug);
+  } catch (err) {
+    if (err instanceof DemoTenantRefusal) {
+      if (err.code === "not_wipeable") {
+        await auditDemoTenantRefusal(access, slug, "load_history");
+      }
+      return c.json(
+        { error: err.message, code: err.code },
+        err.code === "confirm_mismatch" ? 422 : 403,
+      );
+    }
+    throw err;
+  }
+  const run = await runDemoCli("tools/demo/seed-history.mts", [], {
+    DEMO_ORG_SLUG: slug,
+    DEMO_TENANT_SLUG: slug,
+  });
+  await platformRecordDemoTenantAction(getPool(), {
+    slug,
+    action: "load_history",
+    actor: demoActor(access),
+    result: {
+      exit_code: run.code,
+      stdout_tail: run.stdout.slice(-2000),
+      stderr_tail: run.stderr.slice(-2000),
+    },
+  });
+  if (run.code !== 0) {
+    return c.json(
+      {
+        error: "Load history failed",
+        code: "seed_failed",
+        detail: run.stderr.slice(-1500) || run.stdout.slice(-1500),
+      },
+      500,
+    );
+  }
+  return c.json({ ok: true, slug, action: "load_history" });
+});
+
+platformRoutes.post("/demo-tenants/wipe", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:orgs.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  let body: { slug?: string; confirm_slug?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+  const slug = (body.slug ?? "").trim();
+  try {
+    requireConfirmSlug(slug, body.confirm_slug);
+    await platformAssertDemoOrTest(getPool(), slug);
+  } catch (err) {
+    if (err instanceof DemoTenantRefusal) {
+      if (err.code === "not_wipeable") {
+        await auditDemoTenantRefusal(access, slug, "wipe");
+      }
+      return c.json(
+        { error: err.message, code: err.code },
+        err.code === "confirm_mismatch" ? 422 : 403,
+      );
+    }
+    throw err;
+  }
+  if (process.env.AEGIS_ALLOW_TENANT_WIPE?.trim() !== "1") {
+    return c.json(
+      {
+        error: "AEGIS_ALLOW_TENANT_WIPE=1 is required for wipe/reset from Ops",
+        code: "env_not_set",
+      },
+      403,
+    );
+  }
+  const actor = demoActor(access);
+  try {
+    const wipe = await executeOwnerWipe(slug, actor);
+    return c.json({ ok: true, action: "wipe", wipe });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/tenant_wipe_refused|neither is_demo nor is_test/i.test(msg)) {
+      await auditDemoTenantRefusal(access, slug, "wipe");
+      return c.json({ error: msg, code: "not_wipeable" }, 403);
+    }
+    console.error("[id] demo-tenants wipe", err);
+    return c.json({ error: msg }, 500);
+  }
+});
+
+platformRoutes.post("/demo-tenants/reset", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:orgs.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  let body: { slug?: string; confirm_slug?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+  const slug = (body.slug ?? "").trim();
+  try {
+    requireConfirmSlug(slug, body.confirm_slug);
+    await platformAssertDemoOrTest(getPool(), slug);
+  } catch (err) {
+    if (err instanceof DemoTenantRefusal) {
+      if (err.code === "not_wipeable") {
+        await auditDemoTenantRefusal(access, slug, "reset");
+      }
+      return c.json(
+        { error: err.message, code: err.code },
+        err.code === "confirm_mismatch" ? 422 : 403,
+      );
+    }
+    throw err;
+  }
+  if (process.env.AEGIS_ALLOW_TENANT_WIPE?.trim() !== "1") {
+    return c.json(
+      {
+        error: "AEGIS_ALLOW_TENANT_WIPE=1 is required for wipe/reset from Ops",
+        code: "env_not_set",
+      },
+      403,
+    );
+  }
+  const actor = demoActor(access);
+  try {
+    const wipe = await executeOwnerWipe(slug, actor);
+    // Back to the same populated demo state as Populate.
+    const name = slug === "redteam-lab" ? "Red Team Lab" : slug === "demo-bank" ? "Demo Bank" : slug;
+    const client = await getPool().connect();
+    let organizationId: string;
+    try {
+      await client.query("BEGIN");
+      const adminEmail =
+        access.staff?.email ??
+        process.env.PLATFORM_DEMO_ADMIN_EMAIL?.trim() ??
+        "admin@demo-bank.local";
+      const provisioned = await provisionOrganization(client, {
+        name,
+        slug,
+        plan: "enterprise",
+        adminEmail,
+        adminDisplayName: "Demo Admin",
+        isDemo: true,
+        isTest: true,
+      });
+      organizationId = provisioned.organization_id;
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    const cliEnv = demoPopulateCliEnv(slug, name);
+    const stack = await runDemoCli(
+      "tools/demo/provision-demo-tenant.mts",
+      ["--force-pack"],
+      cliEnv,
+    );
+    const history = await runDemoCli("tools/demo/seed-history.mts", [], cliEnv);
+
+    const ok = stack.code === 0 && history.code === 0;
+    await platformRecordDemoTenantAction(getPool(), {
+      slug,
+      action: "reset",
+      actor,
+      result: {
+        wipe,
+        organization_id: organizationId,
+        provision_exit: stack.code,
+        history_exit: history.code,
+        history_stderr_tail: history.stderr.slice(-800),
+        history_stdout_tail: history.stdout.slice(-800),
+      },
+      requireDemoOrTest: true,
+    });
+    return c.json({
+      ok,
+      action: "reset",
+      organization_id: organizationId,
+      slug,
+      wipe,
+      provision_exit: stack.code,
+      history_exit: history.code,
+      ...(ok
+        ? {}
+        : {
+            warning: "Reset finished with non-zero exit(s)",
+            detail:
+              history.stderr.slice(-1200) ||
+              stack.stderr.slice(-1200) ||
+              history.stdout.slice(-800),
+          }),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/tenant_wipe_refused|neither is_demo nor is_test/i.test(msg)) {
+      await auditDemoTenantRefusal(access, slug, "reset");
+      return c.json({ error: msg, code: "not_wipeable" }, 403);
+    }
+    console.error("[id] demo-tenants reset", err);
+    return c.json({ error: msg }, 500);
   }
 });
 

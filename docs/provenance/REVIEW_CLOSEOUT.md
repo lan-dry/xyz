@@ -1,23 +1,42 @@
-# Review close-out (Stages 1–9 honesty pass) — Round 3 + follow-up
+# Review closeout (feature/provenance-g3-kms)
 
-Branch `feature/provenance` (Round 3 freeze). Follow-up work lives on `fix/provenance-followup` (no new features).
+## Live proof (paste)
 
-## Round 3 live proof
+### Environment
+```
+wal_level | logical   (salanor-bank-core-pg :5436)
+bank_app  | rolreplication = f
+aegis_collector | rolreplication = t
+publication aegis_collector; slot aegis_collector_slot (pgoutput)
+```
 
-1. **Red Team positive controls** — unaltered control → one change → assert specific codes; print control/expected/actual. Raw: `docs/provenance/_raw/redteam_round3.txt`.
-2. **Sequence ownership** — `src_los_redteam` for Red Team; Connector re-reads last-seq on `seq_replay`; two-instance test; HA options in `INTEGRATION.md`.
-3. **Flake loop** — `source-envelope` + `require-signed-events` (+ 50-parallel) × 25: **25/25 PASS**. Raw: `docs/provenance/_raw/flake_loop_25.txt`.
-4. **demo:fresh** rewrites `.demo-tenant-local-stack.local.json` (ingest + personas + org marker). **demo:runbook-walk** PASS on fresh tenant. G1→G2 screenshots under `docs/TEST_PACK/provenance/`.
-5. **gitleaks** — exact path allowlists. Full-history findings: **7** remaining, all `.env_deploy` (rotate). Redacted: `docs/provenance/_raw/gitleaks_full_history_redacted.txt`.
-6. **Final suite** — `docs/provenance/_raw/final_suite.txt` (OVERALL PASS).
+### Live G3 (`docs/provenance/_raw/live_g3_console.txt`)
+```
+after_cdc_grade {"case_id":"SIM-DFD9C418F6","grade":"G3"}
+insider_exception {"found":true,"kind":"db_value_mismatch",… "elapsed_ms":209}
+grade_after_contradict {"grade":"G3"}
+orphan_exception {"found":true,"kind":"db_change_without_event","elapsed_ms":184}
+LIVE_G3_PASS {"ok":true,"case_id":"SIM-DFD9C418F6","trace_id":"tr_sim_dfd9c418f6","g3":true,"contradicted":true,"orphan":true}
+```
 
-## Flake (what it was / what fixed it)
+### Red Team #6 / #11 / #13 (`docs/provenance/_raw/redteam_6_11_13_g3.txt`)
+```
+#6  PASS: … executed_without_receipt
+#11 PASS: db_change_without_event present
+#13 PASS: amount_mismatch
+```
 
-The intermittent failures in `source-envelope` / `require-signed-events` / parallel bank-event paths came from `upsertBankCase` always issuing `SAVEPOINT` even when the caller used a pool connection outside an open transaction — Postgres then errored with “SAVEPOINT can only be used in transaction blocks”, which aborted or flaked under concurrent ingest and bank-case upserts. The fix is to call `txid_current_if_assigned()` and only use SAVEPOINT when already inside a transaction; outside a transaction a failed INSERT is caught normally without aborting a txn. After that change the 25× loop was **25/25 PASS**.
+### Screenshots
+- `docs/TEST_PACK/provenance/case-g3-independently-captured.png`
+- `docs/TEST_PACK/provenance/exceptions-insider-edit.png`
+- `docs/TEST_PACK/provenance/case-g3-contradicted.png`
 
-## Follow-up honesty notes
+### Key custody
+```
+Partial: no AEGIS_RECEIPT_KMS_KEY_ID
+SKIP smoke:kms AEGIS_RECEIPT_KMS_KEY_ID is not set
+```
+Code Ready: `kms-ed25519.ts` (ECC_NIST_EDWARDS25519 / ED25519_SHA_512 / RAW); receipts + decision tokens via `resolveReceiptSigning`.
 
-- Red Team summary must print `live-proven N, not verified live N, simulated N` (never a single pass count).
-- Stage 6 remains **Partial** without native `wal_level=logical` CDC; #11 can still live-prove via ingesting a collector observation + reconcile.
-- Confirm mismatch API code is `params_mismatch` (sealed exception kind `execution_mismatch`).
-- Hosted deploy order: `docs/DEPLOY_PROVENANCE.md`.
+## Status docs
+Updated to match: `STAGE_6_REPORT.md`, `FINAL_STATUS.md`, `COLLECTOR.md`, `ASSURANCE_LADDER.md`, `docs/PROVENANCE.md`, `docs/DEMO.md`.

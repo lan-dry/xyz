@@ -26,17 +26,18 @@ Evidence archive for this period: agent actions, policy decisions, approvals, an
 
 **Period:** ${eventStats.total} events · ${eventStats.deny} stopped · ${eventStats.obligation} sent for approval · ${eventStats.unique_agents} agents
 Signed events: ${vs.events_with_signature} / ${vs.events_total}. Signed checkpoints: ${vs.checkpoints_signed} / ${vs.checkpoints_total}.
+Verification: ${vs.claim}
 
 ## What is in the ZIP
 
 | File | Contents |
 |------|----------|
-| \`events.ndjson\` | Events — ${manifest.stats.event_count} |
+| \`events.ndjson\` | Events (${manifest.stats.event_count}) |
 | \`policies.json\` | Active policies |
-| \`approvals.ndjson\` | Approvals — ${manifest.stats.approval_count} |
-| \`audit-log.ndjson\` | Console audit log — ${manifest.stats.audit_log_count} |
-| \`witness-roots.json\` | Salanor witness checkpoints (signed) — ${manifest.stats.witness_root_count}. Externally anchored roots are labelled as such. Includes root signature and RFC 3161 timestamp token when present. |
-| \`inclusion-proofs.ndjson\` | Inclusion proofs (merkle path + root) — ${manifest.stats.inclusion_proof_count} |
+| \`approvals.ndjson\` | Approvals (${manifest.stats.approval_count}) |
+| \`audit-log.ndjson\` | Console audit log (${manifest.stats.audit_log_count}) |
+| \`witness-roots.json\` | Salanor witness checkpoints (signed) (${manifest.stats.witness_root_count}). Externally anchored roots are labelled as such. Includes root signature and RFC 3161 timestamp token when present. |
+| \`inclusion-proofs.ndjson\` | Inclusion proofs (merkle path + root) (${manifest.stats.inclusion_proof_count}) |
 | \`public-keys.json\` | Public keys for the signatures |
 | \`manifest.json\` | File list and SHA-256 hashes |
 

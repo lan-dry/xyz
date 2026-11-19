@@ -121,20 +121,38 @@ export async function deriveApprovalMetadata(
   const topRole = [...ladder].sort((a, b) => b.level - a.level)[0]?.role_key;
 
   if (result.outcome === "stop") {
-    // Hard stops cannot be approved; only the top role may release, with a reason.
-    const hardStop = primary.rules.some(
+    // Hard stops cannot be ordinary-approved; release needs a named role + reason.
+    const stopRule = primary.rules.find(
       (r) =>
         result.matched_rules.some((m) => m.rule_id === r.rule_id) &&
         r.conditions &&
         typeof r.conditions === "object" &&
         (r.conditions as { hard_stop?: unknown }).hard_stop === true,
     );
-    if (!hardStop || !topRole) return {};
+    if (!stopRule || !topRole) return {};
+    const obl =
+      stopRule.obligations && typeof stopRule.obligations === "object"
+        ? (stopRule.obligations as Record<string, unknown>)
+        : stopRule.conditions &&
+            typeof stopRule.conditions === "object" &&
+            (stopRule.conditions as { obligations?: unknown }).obligations &&
+            typeof (stopRule.conditions as { obligations: unknown })
+              .obligations === "object"
+          ? ((stopRule.conditions as { obligations: Record<string, unknown> })
+              .obligations)
+          : {};
+    const releaseRole =
+      (typeof obl.release_requires_role === "string" &&
+        obl.release_requires_role) ||
+      (typeof obl.required_role === "string" && obl.required_role) ||
+      topRole;
+    const isFraudBlock = stopRule.rule_id.startsWith("FRD-");
     return {
       hard_stop: true,
-      release_requires_role: topRole,
-      required_role: topRole,
-      required_roles: [topRole],
+      fraud_block: isFraudBlock,
+      release_requires_role: releaseRole,
+      required_role: releaseRole,
+      required_roles: [releaseRole],
       required_fields: ["reason_code", "comment"],
     };
   }

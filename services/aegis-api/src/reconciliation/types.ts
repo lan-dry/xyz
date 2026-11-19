@@ -14,6 +14,7 @@ export const RECONCILIATION_EXCEPTION_KINDS = [
   "source_silent",
   "below_required_grade_past_deadline",
   "db_change_without_event",
+  "db_value_mismatch",
   "plausibility_flag",
   "fact_mismatch",
 ] as const;

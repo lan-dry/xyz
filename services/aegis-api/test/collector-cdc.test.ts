@@ -12,8 +12,11 @@ import { issueForensicReceipt } from "../src/forensic/issue.js";
 import { getCurrentGrade } from "../src/forensic/case-provenance.js";
 import { publishReceiptSigningKey } from "../src/repo/receipt-keys.js";
 import { resolveReceiptSigning } from "../src/crypto/receipt-signing.js";
+import { paramsHash } from "@salanor/aegis-sdk";
 import {
+  hashMatchParams,
   insertCollectorCdcEvent,
+  pickMatchFields,
   reconcileCollectorEvents,
 } from "../src/reconciliation/collector-match.js";
 import { runReconciliation } from "../src/reconciliation/run.js";
@@ -137,6 +140,13 @@ describeIfDb("collector CDC reconciliation (Stage 6)", () => {
     await seedAppCase(caseId);
     expect(await getCurrentGrade(pool, ORG, caseId)).toBe("G0");
 
+    const matchParams = pickMatchFields({
+      amount: "1000000",
+      currency: "RWF",
+      beneficiary_account: "ACCT-OK",
+    })!;
+    const valuesHash = hashMatchParams(matchParams);
+
     await insertCollectorCdcEvent(pool, {
       organization_id: ORG,
       source_id: "src_core_cdc",
@@ -144,7 +154,7 @@ describeIfDb("collector CDC reconciliation (Stage 6)", () => {
       table_name: "ledger_entry",
       operation: "insert",
       row_key: { case_id: caseId },
-      new_values_hash: "c".repeat(64),
+      new_values_hash: valuesHash,
       lsn: `0/${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`,
       captured_at: "2026-11-12T11:00:00.000Z",
     });
@@ -162,5 +172,109 @@ describeIfDb("collector CDC reconciliation (Stage 6)", () => {
       match.exceptions.filter((e) => e.case_id === caseId),
     ).toHaveLength(0);
     expect(await getCurrentGrade(pool, ORG, caseId)).toBe("G3");
+  });
+
+  it("value mismatch raises db_value_mismatch and does not grant G3", async () => {
+    const pool = getPool();
+    const caseId = `LN-CDC-MISMATCH-${randomUUID().slice(0, 8)}`;
+    await seedAppCase(caseId);
+
+    await insertCollectorCdcEvent(pool, {
+      organization_id: ORG,
+      source_id: "src_core_cdc",
+      case_id: caseId,
+      table_name: "bank_transaction",
+      operation: "update",
+      row_key: { case_id: caseId },
+      new_values_hash: paramsHash({
+        amount: "999999",
+        currency: "RWF",
+        beneficiary_account: "ACCT-OK",
+      }),
+      lsn: `0/${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`,
+      captured_at: "2026-11-12T12:00:00.000Z",
+    });
+
+    const match = await reconcileCollectorEvents(pool, {
+      organization_id: ORG,
+      run_id: `run_${randomUUID()}`,
+      period_start: PERIOD_START,
+      period_end: PERIOD_END,
+      now: new Date("2026-11-18T12:00:00.000Z"),
+      signingKey: signingKey(),
+    });
+    expect(match.matched).not.toContain(caseId);
+    expect(
+      match.exceptions.some(
+        (e) => e.kind === "db_value_mismatch" && e.case_id === caseId,
+      ),
+    ).toBe(true);
+    expect(await getCurrentGrade(pool, ORG, caseId)).toBe("G0");
+  });
+
+  it("later mismatch after G3 keeps grade and marks contradicted", async () => {
+    const pool = getPool();
+    const caseId = `LN-CDC-CONTRA-${randomUUID().slice(0, 8)}`;
+    await seedAppCase(caseId);
+    const goodHash = hashMatchParams(
+      pickMatchFields({
+        amount: "1000000",
+        currency: "RWF",
+        beneficiary_account: "ACCT-OK",
+      })!,
+    );
+    await insertCollectorCdcEvent(pool, {
+      organization_id: ORG,
+      source_id: "src_core_cdc",
+      case_id: caseId,
+      table_name: "bank_transaction",
+      operation: "insert",
+      row_key: { case_id: caseId },
+      new_values_hash: goodHash,
+      lsn: `0/${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`,
+      captured_at: "2026-11-12T11:00:00.000Z",
+    });
+    await reconcileCollectorEvents(pool, {
+      organization_id: ORG,
+      run_id: `run_${randomUUID()}`,
+      period_start: PERIOD_START,
+      period_end: PERIOD_END,
+      now: new Date("2026-11-18T12:00:00.000Z"),
+      signingKey: signingKey(),
+    });
+    expect(await getCurrentGrade(pool, ORG, caseId)).toBe("G3");
+
+    await insertCollectorCdcEvent(pool, {
+      organization_id: ORG,
+      source_id: "src_core_cdc",
+      case_id: caseId,
+      table_name: "bank_transaction",
+      operation: "update",
+      row_key: { case_id: caseId },
+      new_values_hash: paramsHash({
+        amount: "42",
+        currency: "RWF",
+        beneficiary_account: "ACCT-OK",
+      }),
+      lsn: `0/${randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`,
+      captured_at: "2026-11-12T13:00:00.000Z",
+    });
+    const second = await reconcileCollectorEvents(pool, {
+      organization_id: ORG,
+      run_id: `run_${randomUUID()}`,
+      period_start: PERIOD_START,
+      period_end: PERIOD_END,
+      now: new Date("2026-11-18T13:00:00.000Z"),
+      signingKey: signingKey(),
+    });
+    expect(second.contradicted).toContain(caseId);
+    expect(await getCurrentGrade(pool, ORG, caseId)).toBe("G3");
+    const hit = second.exceptions.find(
+      (e) => e.kind === "db_value_mismatch" && e.case_id === caseId,
+    );
+    expect(hit?.detail).toMatchObject({
+      reason: "collector_values_contradict_after_g3",
+      contradicted_at: "2026-11-18T13:00:00.000Z",
+    });
   });
 });

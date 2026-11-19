@@ -471,6 +471,11 @@ export type CaseProvenanceView = {
   source_line: string;
   /** Short chip text, e.g. "G1 · signed by X". */
   source_line_short: string;
+  /**
+   * When a later independent capture contradicts a sealed G3, the grade history
+   * stays; this ISO timestamp is shown as "contradicted on <time>".
+   */
+  contradicted_at?: string | null;
 };
 
 export function formatUtcMinute(isoText: string | null | undefined): string {

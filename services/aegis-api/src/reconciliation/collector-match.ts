@@ -1,12 +1,17 @@
 /**
  * Stage 6: link independent collector CDC events to application cases.
  *
- * - Matched pair (collector change + app sealed receipt for same case_id)
- *   → recordGradeChange to G3 (independently_captured).
- * - Collector change with no matching app event
- *   → db_change_without_event exception.
+ * Matching compares values, not just case identity:
+ *   hash(amount, currency, beneficiary) from CDC
+ *   vs the same fields from the confirmed / authorised executable params.
+ *
+ * - Match → independently_captured / G3
+ * - No application event → db_change_without_event
+ * - Values differ → db_value_mismatch and NO G3
+ * - Later contradict after G3 → keep sealed history; exception + contradicted_at
  */
 import type pg from "pg";
+import { paramsHash, type ExecutableParams } from "@salanor/aegis-sdk";
 import {
   GradeChangeError,
   getCurrentGrade,
@@ -36,6 +41,7 @@ export type CollectorMatchResult = {
   matched: string[];
   exceptions: ExceptionRow[];
   scanned: number;
+  contradicted: string[];
 };
 
 async function loadCollectorEvents(
@@ -74,9 +80,83 @@ async function appCaseExists(
 }
 
 /**
+ * Executable amount/currency/beneficiary from the decision token (preferred)
+ * or from the sealed allow/executed receipt attributes.
+ */
+export async function loadExecutedMatchParams(
+  client: Db,
+  organizationId: string,
+  caseId: string,
+): Promise<ExecutableParams | null> {
+  const token = await client.query<{ executable_params: Record<string, unknown> }>(
+    `SELECT executable_params
+       FROM decision_token
+      WHERE organization_id = $1 AND case_id = $2
+        AND status IN ('used', 'issued')
+      ORDER BY
+        CASE status WHEN 'used' THEN 0 ELSE 1 END,
+        issued_at DESC
+      LIMIT 1`,
+    [organizationId, caseId],
+  );
+  if (token.rows[0]?.executable_params) {
+    return pickMatchFields(token.rows[0].executable_params);
+  }
+
+  const receipt = await client.query<{ attrs: Record<string, unknown> | null }>(
+    `SELECT COALESCE(body->'attributes', body->'event'->'attributes') AS attrs
+       FROM forensic_receipt
+      WHERE organization_id = $1 AND case_id = $2
+        AND outcome IN ('allow', 'executed', 'approved')
+      ORDER BY seq DESC
+      LIMIT 1`,
+    [organizationId, caseId],
+  );
+  if (receipt.rows[0]?.attrs && typeof receipt.rows[0].attrs === "object") {
+    return pickMatchFields(receipt.rows[0].attrs);
+  }
+
+  const bankCase = await client.query<{ attributes: Record<string, unknown> }>(
+    `SELECT attributes
+       FROM bank_case
+      WHERE organization_id = $1 AND case_id = $2
+      LIMIT 1`,
+    [organizationId, caseId],
+  );
+  const caseAttrs = bankCase.rows[0]?.attributes;
+  if (!caseAttrs || typeof caseAttrs !== "object") return null;
+  return pickMatchFields(caseAttrs);
+}
+
+/** Canonical match bag: always amount, currency, beneficiary_account (same shape as CDC). */
+export function pickMatchFields(
+  attrs: Record<string, unknown>,
+): ExecutableParams | null {
+  const amount = attrs.amount;
+  const currency = attrs.currency;
+  const beneficiary =
+    attrs.beneficiary_account ?? attrs.account_id ?? attrs.beneficiary;
+  if (amount == null && currency == null && beneficiary == null) return null;
+
+  let amountStr = amount == null ? "" : String(amount);
+  if (/^-?\d+(\.\d+)?$/.test(amountStr)) {
+    const n = Number(amountStr);
+    if (Number.isFinite(n)) amountStr = String(n);
+  }
+  return {
+    amount: amountStr,
+    currency: currency == null ? "" : String(currency),
+    beneficiary_account: beneficiary == null ? "" : String(beneficiary),
+  };
+}
+
+export function hashMatchParams(params: ExecutableParams): string {
+  return paramsHash(params);
+}
+
+/**
  * Reconcile collector CDC events for the period. Safe to call on every
- * reconciliation run (org-wide). Feed-scoped runs still run this pass so a
- * direct DB write is not missed because an operator filtered by feed.
+ * reconciliation run (org-wide).
  */
 export async function reconcileCollectorEvents(
   client: Db,
@@ -97,6 +177,7 @@ export async function reconcileCollectorEvents(
     input.period_end,
   );
   const matched: string[] = [];
+  const contradicted: string[] = [];
   const exceptions: ExceptionRow[] = [];
 
   for (const ev of events) {
@@ -153,7 +234,59 @@ export async function reconcileCollectorEvents(
       continue;
     }
 
-    // Matched pair → G3.
+    const executed = await loadExecutedMatchParams(
+      client,
+      input.organization_id,
+      caseId,
+    );
+    const executedHash = executed ? hashMatchParams(executed) : null;
+    const valuesMatch =
+      executedHash != null &&
+      ev.new_values_hash.length > 0 &&
+      executedHash === ev.new_values_hash;
+
+    if (!valuesMatch) {
+      const current = await getCurrentGrade(
+        client,
+        input.organization_id,
+        caseId,
+      );
+      const alreadyG3 = gradeRank(current) >= gradeRank("G3");
+      const contradictedAt = now.toISOString();
+      const { exception } = await upsertException(client, {
+        organization_id: input.organization_id,
+        kind: "db_value_mismatch",
+        run_id: input.run_id,
+        case_id: caseId,
+        source_name: ev.source_id,
+        fingerprint_key: `${caseId}:value:${ev.lsn}`,
+        detail: {
+          reason: alreadyG3
+            ? "collector_values_contradict_after_g3"
+            : "collector_values_differ_from_executed_params",
+          schema: ev.schema_name,
+          table: ev.table_name,
+          operation: ev.operation,
+          row_key: ev.row_key,
+          new_values_hash: ev.new_values_hash,
+          executed_values_hash: executedHash,
+          executed_params: executed,
+          lsn: ev.lsn,
+          collector_event_id: ev.event_id,
+          collector_source_id: ev.source_id,
+          contradicted_at: alreadyG3 ? contradictedAt : null,
+          previous_grade: current,
+        },
+      });
+      exceptions.push(exception);
+      if (alreadyG3) {
+        contradicted.push(caseId);
+        // Keep sealed G3 history — do not recordGradeChange downward.
+      }
+      continue;
+    }
+
+    // Values match → G3.
     matched.push(caseId);
     if (!ev.matched_case_id) {
       await client.query(
@@ -188,7 +321,7 @@ export async function reconcileCollectorEvents(
     }
   }
 
-  return { matched, exceptions, scanned: events.length };
+  return { matched, exceptions, scanned: events.length, contradicted };
 }
 
 /** Test / admin helper: insert a collector CDC row without going through HTTP. */

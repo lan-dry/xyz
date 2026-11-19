@@ -826,7 +826,7 @@ export function smsDeliveryAvailable(): boolean {
 }
 
 const ANOMALY_NOTIFY_DELAY_MS = 2500;
-const GENERIC_FLAG = "Suspicious behaviour flagged — review required";
+const GENERIC_FLAG = "Suspicious behaviour flagged: review required";
 
 function receiptConsoleUrl(traceId: string): string {
   const origin = (process.env.CONSOLE_ORIGIN ?? "http://localhost:3000").replace(

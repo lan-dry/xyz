@@ -569,7 +569,7 @@ export default function SourcesPage() {
         title="Disable source"
         description={
           disableFor
-            ? `Aegis will refuse every new event from ${disableFor.name}. Existing sealed events stay on the ledger. Re-enable is not offered here — register a new source if you need to send again.`
+            ? `Aegis will refuse every new event from ${disableFor.name}. Existing sealed events stay on the ledger. Re-enable is not offered here - register a new source if you need to send again.`
             : undefined
         }
         closeOnOverlayClick={false}

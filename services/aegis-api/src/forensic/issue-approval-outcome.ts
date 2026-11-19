@@ -119,6 +119,17 @@ export async function issueApprovalOutcomeReceipt(
     approver_bindings?: ApproverBinding[] | null;
     /** Optional software key override for tests. */
     signingKey?: { key_id: string; private_key_b64: string };
+    /**
+     * Fraud-block override path: seal score, version, label, and that this
+     * was a hard-stop release (approver ≠ requester enforced upstream).
+     */
+    fraud_block_override?: {
+      model_score: number | null;
+      model_version: string | null;
+      model_score_label: string;
+      release_reason: string;
+      requester_email: string | null;
+    } | null;
   },
 ): Promise<(SignedForensicReceipt & { decision_token?: DecisionToken }) | null> {
   const prior = await findPriorHoldOrStopReceipt(
@@ -216,6 +227,17 @@ export async function issueApprovalOutcomeReceipt(
             delegated_by: input.delegation.delegator,
             expires_at: input.delegation.expires_at,
           },
+        }
+      : {}),
+    ...(input.fraud_block_override
+      ? {
+          fraud_block_override: true,
+          model_score: input.fraud_block_override.model_score,
+          model_version: input.fraud_block_override.model_version,
+          model_score_label: input.fraud_block_override.model_score_label,
+          release_reason: input.fraud_block_override.release_reason,
+          override_requester_email:
+            input.fraud_block_override.requester_email,
         }
       : {}),
   };

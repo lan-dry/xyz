@@ -10,7 +10,12 @@ export type {
   LogicalChangeStream,
 } from "./types.js";
 
-export { hashNewValues, changeFingerprint } from "./hash.js";
+export {
+  hashNewValues,
+  changeFingerprint,
+  matchValuesFromRow,
+  normalizeAmount,
+} from "./hash.js";
 export {
   buildCollectorEvent,
   resolveCaseId,

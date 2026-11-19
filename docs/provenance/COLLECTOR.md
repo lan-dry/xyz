@@ -54,23 +54,23 @@ Logical decoding needs:
 - A publication over the watched tables
 - A replication slot (`pgoutput`)
 
-### Demo container (`aegis-pg-demo`)
-
-As of Stage 6 work, the local demo Postgres on `:5435` was probed at
-**`wal_level=replica`**. Logical decoding is therefore **not** finished/tested against
-that container in this stage.
-
-To enable logical decoding for a future Done claim:
+### Bank-core (`salanor-bank-core-pg` on `:5436`)
 
 ```bash
-docker compose -f deploy/docker/docker-compose.postgres-demo.yml \
-  -f deploy/docker/docker-compose.postgres-demo.logical.yml up -d
+docker compose -f tools/bank-simulator/docker-compose.bank.yml up -d
+# roles / publication / slot: tools/bank-simulator/bank-core-init.sql
 ```
 
-Then:
+| Role | Privilege | Used by |
+| --- | --- | --- |
+| `bank_app` | DML, **no** REPLICATION | Core ledger (`BANK_CORE_DATABASE_URL`) |
+| `aegis_collector` | `REPLICATION` + SELECT | `aegis-collector-pg` (`AEGIS_COLLECTOR_DATABASE_URL`) |
+
+Publication `aegis_collector`, slot `aegis_collector_slot` (plugin `pgoutput`).
 
 ```bash
-pnpm --filter @salanor/aegis-collector-pg exec node -e "…"  # or: aegis-collector-pg check
+aegis-collector-pg check --config tools/bank-simulator/.bank-simulator/aegis-collector-pg.config.json
+aegis-collector-pg start --config …
 ```
 
 **Do not** substitute table triggers (or LISTEN/NOTIFY) and call the result G3. Triggers
@@ -81,15 +81,17 @@ run inside the same database session as the writer; they are not independent cap
 On each reconciliation run (`runReconciliation`):
 
 1. Load `collector_cdc_event` rows in the period.
-2. If there is a sealed app receipt for the same `case_id` → mark matched and
-   `recordGradeChange` to **G3** (`independently_captured`), reason:
-   `independently captured by src_core_cdc (LSN …) on <time>`.
-3. If the collector saw a change and there is **no** matching app event →
-   exception `db_change_without_event` ("Ledger row changed with no matching
-   application event").
+2. Compare **values**: sha256(JCS({amount, currency, beneficiary_account})) from CDC
+   against the same fields from the confirmed / authorised executable params.
+3. Match → mark matched and `recordGradeChange` to **G3** (`independently_captured`).
+4. No matching app event → `db_change_without_event`.
+5. Values differ → `db_value_mismatch` and **no** G3. If the case was already G3,
+   keep sealed history and show **contradicted on \<time\>** on the case page and in
+   Exceptions.
 
 This is the red-team case: someone updates the ledger directly; the collector signs what
-it saw; Aegis raises an exception because the application never sent an event.
+it saw; Aegis raises an exception because the application never sent an event (or the
+amounts no longer agree).
 
 ## 5. Payment gateway tap / webhook capture pattern
 
@@ -144,7 +146,6 @@ Example config fields: `source_id`, `key_id`, `private_key_path`, `database_url`
 
 ## 7. Status
 
-See [STAGE_6_REPORT.md](./STAGE_6_REPORT.md). Stage status is **Partial** until
-pgoutput streaming is finished and tested against Docker with `wal_level=logical`.
+See [STAGE_6_REPORT.md](./STAGE_6_REPORT.md). Live pgoutput G3 on bank-core is **Done**.
 Do not present a simulated collector row in a unit test as live independent capture
 in a customer environment. Ladder context: [ASSURANCE_LADDER.md](./ASSURANCE_LADDER.md).

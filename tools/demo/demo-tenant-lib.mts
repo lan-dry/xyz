@@ -17,6 +17,7 @@ export const PERSONA_KEYS = [
   "officer",
   "manager",
   "compliance",
+  "fraud",
   "head",
   "dpo",
   "deputy",
@@ -28,6 +29,7 @@ export const PERSONA_BANK_ROLE: Partial<Record<PersonaKey, string>> = {
   officer: "credit_officer",
   manager: "credit_manager",
   compliance: "compliance_officer",
+  fraud: "fraud_analyst",
   head: "head_of_compliance",
   dpo: "dpo",
 };
@@ -107,10 +109,29 @@ export function loadTenantFile(): TenantFile {
 }
 
 export function orgSlug(file: TenantFile): string {
-  return file.organization?.slug?.trim() || "demo-bank";
+  // Ops Demo tenants / CI can override without rewriting the local persona file.
+  return (
+    process.env.DEMO_ORG_SLUG?.trim() ||
+    file.organization?.slug?.trim() ||
+    "demo-bank"
+  );
 }
 export function orgName(file: TenantFile): string {
-  return file.organization?.name?.trim() || "Demo Bank";
+  return (
+    process.env.DEMO_ORG_NAME?.trim() ||
+    file.organization?.name?.trim() ||
+    "Demo Bank"
+  );
+}
+
+/** Demo/test flags for provision (Ops create/reset + smoke/redteam-lab). */
+export function orgDemoFlags(slug: string): { is_demo: boolean; is_test: boolean } {
+  const isDemo = process.env.DEMO_ORG_IS_DEMO?.trim() !== "0";
+  const isTest =
+    process.env.DEMO_ORG_IS_TEST?.trim() === "1" ||
+    /smoke/i.test(slug) ||
+    slug === "redteam-lab";
+  return { is_demo: isDemo, is_test: isTest };
 }
 
 export class HttpError extends Error {

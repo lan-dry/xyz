@@ -78,7 +78,7 @@ export function ProvenancePanel({
         <p style={{ margin: "0.5rem 0 0", fontSize: "0.8125rem", lineHeight: 1.55 }}>
           Aegis proves when this record was made and that it has not changed since.
           It does not check that the data inside is accurate. The grade says who
-          vouched for the data and how — not whether they were right.
+          vouched for the data and how, not whether they were right.
         </p>
       </details>
       <p style={{ margin: "0 0 0.75rem", fontSize: "0.9375rem", lineHeight: 1.55 }}>
@@ -129,7 +129,7 @@ export function ProvenancePanel({
             }}
           >
             <span aria-hidden style={{ width: "1.1rem", flex: "none" }}>
-              {item.met ? "✓" : "–"}
+              {item.met ? "Yes" : "No"}
             </span>
             <span>
               {item.id === "approver_bound" && !item.met && approvalNotNeeded
@@ -154,6 +154,19 @@ export function ProvenancePanel({
         ) : null}
         .
       </p>
+      {provenance.contradicted_at ? (
+        <p
+          className={`${ui.alert} ${ui.alertInfo}`}
+          role="status"
+          style={{ marginBottom: "0.75rem", fontSize: "0.875rem" }}
+        >
+          Contradicted on{" "}
+          <time dateTime={provenance.contradicted_at}>
+            {new Date(provenance.contradicted_at).toISOString().replace("T", " ").replace(/\.\d{3}Z$/, " UTC")}
+          </time>
+          . The sealed grade history is unchanged; open Exceptions for the mismatch.
+        </p>
+      ) : null}
       {provenance.grade_changes.length > 0 ? (
         <ul style={{ margin: "0 0 0.5rem", paddingLeft: "1.1rem", fontSize: "0.8125rem" }}>
           {provenance.grade_changes.map((c) => (

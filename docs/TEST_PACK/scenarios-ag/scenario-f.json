@@ -1,0 +1,191 @@
+{
+  "letter": "F",
+  "story_id": "scenario_f",
+  "ms": 2400,
+  "status": 200,
+  "data": {
+    "ok": true,
+    "story_id": "scenario_f",
+    "expected": "hold",
+    "expect_detail": "Forced core ledger write + direct amount edit without matching Aegis event → db_change_without_event / contradicted.",
+    "resolver": "Collector / reconcile",
+    "case_id": "SIM-B76954B9D2",
+    "trace_id": "tr_sim_b76954b9d2",
+    "outcome": "hold",
+    "console_url": "http://localhost:3000/aegis/traces/tr_sim_b76954b9d2",
+    "plain_summary": "Direct core ledger edit caught: executed_without_receipt (independent capture vs sealed Aegis path).",
+    "matched_rules": [
+      {
+        "rule_id": "AUTH-RL-2",
+        "policy_id": "pol_21740b84c1f900ce",
+        "decision": "allow_with_obligation"
+      }
+    ],
+    "approval_id": "apr_dc8ee004bd884c88",
+    "sealed": true,
+    "action": {
+      "amount": 18000000,
+      "currency": "RWF"
+    },
+    "target_grade": "G3",
+    "can_disburse": true,
+    "decision_token": null,
+    "evidence_grade": "G1",
+    "ledger_edit": {
+      "txn_id": "txn_872ecbe58b95",
+      "found": true,
+      "kind": "executed_without_receipt",
+      "reason": "ingest+reconcile ran; executed_without_receipt not raised for SIM-B76954B9D2",
+      "exception_kinds": [
+        "amount_mismatch",
+        "sequence_gap",
+        "db_change_without_event",
+        "db_value_mismatch",
+        "db_change_without_event",
+        "db_value_mismatch",
+        "db_change_without_event",
+        "db_change_without_event",
+        "db_change_without_event",
+        "db_change_without_event",
+        "db_change_without_event",
+        "db_value_mismatch",
+        "db_value_mismatch",
+        "db_value_mismatch",
+        "db_value_mismatch",
+        "db_value_mismatch",
+        "db_value_mismatch",
+        "db_value_mismatch",
+        "db_value_mismatch"
+      ]
+    },
+    "customer_id": "CUST-RW-SCEN-F-8a303a",
+    "steps": [
+      "LOS Connector → signed source-events (G1).",
+      "Governed intake: hold (source-signed)",
+      "Approval requested: approve in the console, then disburse via the core ledger (permit gate).",
+      "Target evidence grade for this story: G3.",
+      "Forced ledger write without Aegis confirm txn=txn_872ecbe58b95",
+      "Direct ledger edit amount → 99999999",
+      "Reconcile raised executed_without_receipt [PASS]"
+    ],
+    "requests": [
+      {
+        "method": "POST",
+        "endpoint": "http://127.0.0.1:8088/v1/aegis/source-events",
+        "via": "aegis-connector",
+        "source_id": "src_los",
+        "key_id": "k_los_2026_01_mwn5jeo7",
+        "headers": {
+          "Authorization": "Bearer aegis_…****",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "schema_version": 1,
+          "case_id": "SIM-B76954B9D2",
+          "idempotency_key": "017991f5-9d84-462c-96fc-15bdf716d4d3",
+          "event_type": "loan_decision",
+          "product": "retail_loan",
+          "emitted_at": "2026-11-19T13:11:33.149Z",
+          "actor": {
+            "type": "system",
+            "id": "credit-decision"
+          },
+          "attributes": {
+            "requester_email": "officer@demo.test",
+            "requester_name": "Patience Ingabire",
+            "requester_role": "credit_officer",
+            "officer_id": "OFF-1042",
+            "system_account": "core-banking",
+            "amount": 18000000,
+            "currency": "RWF",
+            "customer_id": "CUST-RW-SCEN-F-8a303a",
+            "segment": "retail_standard",
+            "beneficiary_account": "ACCT-DEMO-001",
+            "applicant_name": "Claire Habimana",
+            "branch": "Musanze",
+            "loan_purpose": "Cold-storage construction",
+            "cdc_expected": true,
+            "direct_ledger_edit": true,
+            "product": "retail_loan"
+          },
+          "trace_id": "tr_sim_b76954b9d2"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "case_id": "SIM-B76954B9D2",
+            "decision_id": "dec_8cd58978d8d0468c",
+            "receipt_id": "rcpt_0a991f40863d47e7",
+            "outcome": "hold",
+            "mode": "enforce",
+            "matched_rules": [
+              {
+                "rule_id": "AUTH-RL-2",
+                "policy_id": "pol_21740b84c1f900ce",
+                "decision": "allow_with_obligation"
+              }
+            ],
+            "decision_basis": {
+              "outcome": "hold",
+              "decided_by_rule_id": "AUTH-RL-2",
+              "explanation": "Held because rule AUTH-RL-2 requires human approval.",
+              "matched": [
+                {
+                  "rule_id": "AUTH-RL-2",
+                  "policy_id": "pol_21740b84c1f900ce",
+                  "decision": "allow_with_obligation",
+                  "effect": "hold",
+                  "note": "requires human approval"
+                }
+              ]
+            },
+            "plain_summary": "Loan disbursement of RWF 18,000,000 was held because rule AUTH-RL-2 · Above officer limit requires a Credit Manager. Policy v5.",
+            "policy": {
+              "policy_id": "pol_21740b84c1f900ce",
+              "version": 5,
+              "content_hash": "58dd0b14e27b3941906d6e9af036d6b750a459a148f3cf6b5f222f13d1968ca2"
+            },
+            "approval": {
+              "required_roles": [
+                "credit_manager"
+              ],
+              "approval_id": null
+            },
+            "event_id": "evt_749234632f454141960f2867",
+            "event_hash": "839410bbd998ef227c7f6c8502d0fadac49141a9a75e542a18543d098f465259",
+            "sequence_num": 65,
+            "flags": {
+              "evidence_status": "ok"
+            },
+            "source_signed": true,
+            "evidence_grade": "G1"
+          }
+        }
+      },
+      {
+        "method": "POST",
+        "endpoint": "http://127.0.0.1:8088/v1/aegis/approvals/request",
+        "headers": {
+          "Authorization": "Bearer aegis_…****",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "organization_id": "d8a7fa6f-8b10-4271-9fd0-f783939090b9",
+          "event_id": "evt_749234632f454141960f2867",
+          "trace_id": "tr_sim_b76954b9d2",
+          "tool_name": "governed.action",
+          "deferred": {
+            "url": "http://127.0.0.1:4000/core/loans/disburse-resume",
+            "method": "POST"
+          }
+        },
+        "response": {
+          "status": 201,
+          "body": {
+            "approval_id": "apr_dc8ee004bd884c88"
+          }
+        }
+      }
+    ]
+  }
+}
