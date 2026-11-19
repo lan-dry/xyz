@@ -153,7 +153,7 @@ export default function DemoTenantsPage() {
   return (
     <OpsShell
       title="Demo data"
-      subtitle="Populate full demo (org, users, pack, history). Reset restores that state. Delete leaves only your Ops superadmin and salanor-platform."
+      subtitle="Paste tenant JSON, then Populate (safe if the org already exists — fills personas/pack/history). Delete/Reset need AEGIS_ALLOW_TENANT_WIPE=1 on salanor-id."
       staffEmail={email}
       onLogout={logout}
     >

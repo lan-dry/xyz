@@ -519,24 +519,70 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
   }
 
   const client = await getPool().connect();
+  let organizationId: string;
   try {
     await client.query("BEGIN");
-    const adminEmail =
-      access.staff?.email ??
-      process.env.PLATFORM_DEMO_ADMIN_EMAIL?.trim() ??
-      "admin@demo-bank.local";
-    // Both flags true = wipeable in platform_wipe_tenant (safety rail only).
-    const provisioned = await provisionOrganization(client, {
-      name,
-      slug,
-      plan: "enterprise",
-      adminEmail,
-      adminDisplayName: "Demo Admin",
-      isDemo: true,
-      isTest: true,
-    });
+    const existing = await client.query<{
+      organization_id: string;
+      is_demo: boolean;
+      is_test: boolean;
+    }>(
+      `SELECT organization_id, COALESCE(is_demo, false) AS is_demo, COALESCE(is_test, false) AS is_test
+       FROM organization WHERE slug = $1 LIMIT 1`,
+      [slug],
+    );
+    if (existing.rows[0]) {
+      const row = existing.rows[0];
+      if (!row.is_demo && !row.is_test) {
+        throw new DemoTenantRefusal(
+          "not_wipeable",
+          `Refusing populate: "${slug}" exists and is not a demo/test tenant`,
+        );
+      }
+      // Idempotent: reuse shell org (e.g. earlier Ops create with 1 member) and
+      // ensure wipe flags stay set — provision CLI fills personas/pack.
+      await client.query(
+        `UPDATE organization
+         SET is_demo = true, is_test = true, require_signed_events = true,
+             plan = 'enterprise', updated_at = now()
+         WHERE organization_id = $1`,
+        [row.organization_id],
+      );
+      organizationId = row.organization_id;
+    } else {
+      const adminEmail =
+        access.staff?.email ??
+        process.env.PLATFORM_DEMO_ADMIN_EMAIL?.trim() ??
+        "admin@demo-bank.local";
+      // Both flags true = wipeable in platform_wipe_tenant (safety rail only).
+      const provisioned = await provisionOrganization(client, {
+        name,
+        slug,
+        plan: "enterprise",
+        adminEmail,
+        adminDisplayName: "Demo Admin",
+        isDemo: true,
+        isTest: true,
+      });
+      organizationId = provisioned.organization_id;
+    }
     await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    tenantHandle.cleanup();
+    if (err instanceof DemoTenantRefusal) {
+      return c.json({ error: err.message, code: err.code }, 403);
+    }
+    console.error("[id] demo-tenants populate", err);
+    return c.json(
+      { error: err instanceof Error ? err.message : "Populate failed" },
+      500,
+    );
+  } finally {
+    client.release();
+  }
 
+  try {
     const cliEnv = demoPopulateCliEnv(slug, name, tenantHandle.path);
     const stack = await runDemoCli(
       "tools/demo/provision-demo-tenant.mts",
@@ -550,7 +596,7 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
       action: "create",
       actor: demoActor(access),
       result: {
-        organization_id: provisioned.organization_id,
+        organization_id: organizationId,
         provision_exit: stack.code,
         history_exit: history.code,
         provision_stderr_tail: stack.stderr.slice(-800),
@@ -564,7 +610,7 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
         actorAccountId: access.staff.accountId,
         action: "platform.demo_tenant.populate",
         resourceType: "organization",
-        resourceId: provisioned.organization_id,
+        resourceId: organizationId,
         metadata: { slug },
       });
     }
@@ -572,7 +618,7 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
     return c.json({
       ok,
       action: "populate",
-      organization_id: provisioned.organization_id,
+      organization_id: organizationId,
       slug,
       provision_exit: stack.code,
       history_exit: history.code,
@@ -587,7 +633,6 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
           }),
     });
   } catch (err) {
-    await client.query("ROLLBACK").catch(() => undefined);
     if (err instanceof DemoTenantRefusal) {
       return c.json({ error: err.message, code: err.code }, 403);
     }
@@ -597,7 +642,6 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
       500,
     );
   } finally {
-    client.release();
     tenantHandle.cleanup();
   }
 });
@@ -682,7 +726,8 @@ platformRoutes.post("/demo-tenants/wipe", async (c) => {
   if (process.env.AEGIS_ALLOW_TENANT_WIPE?.trim() !== "1") {
     return c.json(
       {
-        error: "AEGIS_ALLOW_TENANT_WIPE=1 is required for wipe/reset from Ops",
+        error:
+          "Set AEGIS_ALLOW_TENANT_WIPE=1 on Railway salanor-id (then redeploy) to allow Delete/Reset from Ops. Populate does not need it.",
         code: "env_not_set",
       },
       403,
@@ -731,7 +776,8 @@ platformRoutes.post("/demo-tenants/reset", async (c) => {
   if (process.env.AEGIS_ALLOW_TENANT_WIPE?.trim() !== "1") {
     return c.json(
       {
-        error: "AEGIS_ALLOW_TENANT_WIPE=1 is required for wipe/reset from Ops",
+        error:
+          "Set AEGIS_ALLOW_TENANT_WIPE=1 on Railway salanor-id (then redeploy) to allow Delete/Reset from Ops. Populate does not need it.",
         code: "env_not_set",
       },
       403,
