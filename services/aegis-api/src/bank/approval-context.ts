@@ -16,6 +16,8 @@ import type { RuleCombineMode } from "../policy/evaluate-rules.js";
 export type DerivedApprovalMetadata = {
   /** Hard stop: cannot be approved, only released by the named role with a reason. */
   hard_stop?: boolean;
+  /** FRD-* hard stops: release is a fraud-block override, not ordinary approval. */
+  fraud_block?: boolean;
   release_requires_role?: string;
   required_role?: string;
   required_roles?: string[];
@@ -130,17 +132,16 @@ export async function deriveApprovalMetadata(
         (r.conditions as { hard_stop?: unknown }).hard_stop === true,
     );
     if (!stopRule || !topRole) return {};
+    // PolicyRuleRow stores obligations under conditions (no top-level column).
     const obl =
-      stopRule.obligations && typeof stopRule.obligations === "object"
-        ? (stopRule.obligations as Record<string, unknown>)
-        : stopRule.conditions &&
-            typeof stopRule.conditions === "object" &&
-            (stopRule.conditions as { obligations?: unknown }).obligations &&
-            typeof (stopRule.conditions as { obligations: unknown })
-              .obligations === "object"
-          ? ((stopRule.conditions as { obligations: Record<string, unknown> })
-              .obligations)
-          : {};
+      stopRule.conditions &&
+      typeof stopRule.conditions === "object" &&
+      (stopRule.conditions as { obligations?: unknown }).obligations &&
+      typeof (stopRule.conditions as { obligations: unknown }).obligations ===
+        "object"
+        ? ((stopRule.conditions as { obligations: Record<string, unknown> })
+            .obligations)
+        : {};
     const releaseRole =
       (typeof obl.release_requires_role === "string" &&
         obl.release_requires_role) ||
