@@ -49,6 +49,7 @@ import {
   type PlatformStaffSession,
   updatePlanCatalogRow,
 } from "@salanor/platform-auth";
+import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -327,13 +328,31 @@ function resolveDemoIngestKey(): string | undefined {
   }
 }
 
+/**
+ * Ops Populate must always have an ingest secret for provision + seed-history.
+ * Prefer DEMO_BANK_INGEST_KEY on salanor-id; otherwise mint one for this request
+ * (same pattern as demo:fresh). Set a stable key on Railway so bank-sim matches.
+ */
+function demoPopulateIngestKey(): { key: string; minted: boolean } {
+  const existing = resolveDemoIngestKey();
+  if (existing) {
+    if (existing.length < 32 || /\s/.test(existing)) {
+      throw new Error(
+        "DEMO_BANK_INGEST_KEY / AEGIS_INGEST_KEY must be at least 32 characters with no whitespace",
+      );
+    }
+    return { key: existing, minted: false };
+  }
+  return { key: `aegis_${randomBytes(24).toString("hex")}`, minted: true };
+}
+
 /** Env for provision + seed so both share one ingest secret after wipe. */
 function demoPopulateCliEnv(
   slug: string,
   name: string,
-  tenantFilePath?: string,
+  tenantFilePath: string | undefined,
+  ingestKey: string,
 ): Record<string, string | undefined> {
-  const ingest = resolveDemoIngestKey();
   return {
     DEMO_ORG_SLUG: slug,
     DEMO_ORG_NAME: name,
@@ -341,9 +360,8 @@ function demoPopulateCliEnv(
     DEMO_ORG_IS_TEST: "1",
     DEMO_TENANT_SLUG: slug,
     ...(tenantFilePath ? { DEMO_TENANT_FILE: tenantFilePath } : {}),
-    ...(ingest
-      ? { AEGIS_INGEST_KEY: ingest, DEMO_BANK_INGEST_KEY: ingest }
-      : {}),
+    AEGIS_INGEST_KEY: ingestKey,
+    DEMO_BANK_INGEST_KEY: ingestKey,
   };
 }
 
@@ -583,7 +601,8 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
   }
 
   try {
-    const cliEnv = demoPopulateCliEnv(slug, name, tenantHandle.path);
+    const ingest = demoPopulateIngestKey();
+    const cliEnv = demoPopulateCliEnv(slug, name, tenantHandle.path, ingest.key);
     const stack = await runDemoCli(
       "tools/demo/provision-demo-tenant.mts",
       ["--force-pack"],
@@ -599,6 +618,7 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
         organization_id: organizationId,
         provision_exit: stack.code,
         history_exit: history.code,
+        ingest_key_minted: ingest.minted,
         provision_stderr_tail: stack.stderr.slice(-800),
         history_stderr_tail: history.stderr.slice(-800),
         history_stdout_tail: history.stdout.slice(-800),
@@ -622,6 +642,13 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
       slug,
       provision_exit: stack.code,
       history_exit: history.code,
+      ingest_key_minted: ingest.minted,
+      ...(ingest.minted
+        ? {
+            hint:
+              "Minted a one-off DEMO_BANK_INGEST_KEY for this run. Set a stable DEMO_BANK_INGEST_KEY on salanor-id (and bank-sim) so live bank matches after refresh.",
+          }
+        : {}),
       ...(ok
         ? {}
         : {
@@ -828,7 +855,8 @@ platformRoutes.post("/demo-tenants/reset", async (c) => {
       client.release();
     }
 
-    const cliEnv = demoPopulateCliEnv(slug, name, tenantHandle.path);
+    const ingest = demoPopulateIngestKey();
+    const cliEnv = demoPopulateCliEnv(slug, name, tenantHandle.path, ingest.key);
     const stack = await runDemoCli(
       "tools/demo/provision-demo-tenant.mts",
       ["--force-pack"],
@@ -846,6 +874,7 @@ platformRoutes.post("/demo-tenants/reset", async (c) => {
         organization_id: organizationId,
         provision_exit: stack.code,
         history_exit: history.code,
+        ingest_key_minted: ingest.minted,
         history_stderr_tail: history.stderr.slice(-800),
         history_stdout_tail: history.stdout.slice(-800),
       },
@@ -859,6 +888,7 @@ platformRoutes.post("/demo-tenants/reset", async (c) => {
       wipe,
       provision_exit: stack.code,
       history_exit: history.code,
+      ingest_key_minted: ingest.minted,
       ...(ok
         ? {}
         : {

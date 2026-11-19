@@ -109,6 +109,7 @@ export default function DemoTenantsPage() {
         action?: string;
         warning?: string;
         detail?: string;
+        hint?: string;
         error?: string;
       }>(path, {
         method: "POST",
@@ -135,6 +136,7 @@ export default function DemoTenantsPage() {
           `${label} ${slug}`,
           data?.warning,
           shortDetail,
+          data?.hint,
         ]
           .filter(Boolean)
           .join(": "),
