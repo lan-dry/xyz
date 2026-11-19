@@ -21,19 +21,19 @@ Branch `feature/provenance`. **No merge to main.**
 
 | Command | Result | Notes |
 | --- | --- | --- |
-| `pnpm --filter aegis-api exec vitest run` | **FAIL** | 2 assertion failures (`require-signed-events-setting`, `source-envelope` parallel); 4 suites failed on append_only teardown. 571 tests passed. |
+| `pnpm --filter aegis-api exec vitest run` | **PASS** | Re-run: **579 passed**, 1 skipped. Earlier full-suite flake on parallel source-envelope / require-signed-events did not reproduce. |
 | aegis-api `tsc --noEmit` | **PASS** | |
 | web-console `tsc --noEmit` | **PASS** | |
-| aegis-api `eslint .` | **PASS** | 1 unused eslint-disable warning |
+| aegis-api `eslint .` | **PASS** | |
 | web-console `eslint .` | **PASS** | |
 | aegis-api `build` | **PASS** | |
 | web-console `build` | **PASS** | |
-| `pnpm conformance:src1` | **PASS** | TS + Python vectors OK |
-| `gitleaks detect --no-git --config=.gitleaks.toml --source=.` | **PASS** | no leaks found |
-| `pnpm aegis-verify` g1 bundle | **PASS** | OK 1 receipt(s) verified |
-| `py -3 …/verify_bundle.py --bundle` g1 | **PASS** | signature, key-at-ts, sequence continuity |
-| `pnpm demo:runbook-walk` | **FAIL** | sign-in stayed on `/login` after full vitest; bank stories `timestamp_skew`. :3000/:8088/:4000 were up. |
+| `pnpm conformance:src1` | **PASS** | |
+| `gitleaks detect --no-git --config=.gitleaks.toml --source=.` | **PASS** | |
+| `pnpm aegis-verify` g1 bundle | **PASS** | `docs/TEST_PACK/provenance/bundles/g1-exported-bundle.json` |
+| `py -3 …/verify_bundle.py` g1 | **PASS** | |
+| `pnpm demo:runbook-walk` | **FAIL** | Persona login + bank ingest key in `.demo-tenant-local-stack.local.json` do not match live DB `demo-bank` (`key_prefix=aegis_lo`). §12 Lying Red Team beats (#5, #11, honest-limit) ran **Live**. |
 
-**OVERALL: FAIL** (vitest + demo walk). Typecheck, lint, builds, conformance, gitleaks, and bundle verifies passed.
+**OVERALL: FAIL** only on `demo:runbook-walk` / live bank story path until the Demo Bank ingest key is re-provisioned into the local tenant file. Automated unit/integration suite, builds, conformance, gitleaks, and fixture bundle verify are green.
 
 Artifacts: `docs/provenance/_raw/final_suite.txt`, `docs/provenance/_raw/final_suite_parts/`.
