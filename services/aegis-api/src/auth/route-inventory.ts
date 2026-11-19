@@ -67,6 +67,7 @@ export const AEGIS_ROUTE_RULES: RouteRule[] = [
   { method: "POST", path: "/v1/aegis/approvals/request", anon: 401, allowRoles: ["ingest"] },
   { method: "POST", path: "/v1/aegis/bank/events/batch", anon: 401, allowRoles: ["ingest"] },
   { method: "POST", path: "/v1/aegis/source-events", anon: 401, allowRoles: ["ingest"] },
+  { method: "GET", path: "/v1/aegis/sources/:sourceId/last-seq", anon: 401, allowRoles: ["ingest"] },
   { method: "POST", path: "/v1/aegis/reconciliation/feeds/:feedId/ingest", anon: 401, allowRoles: ["ingest"] },
 ];
 

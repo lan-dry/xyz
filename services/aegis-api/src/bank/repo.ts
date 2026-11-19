@@ -195,7 +195,9 @@ export async function upsertBankCase(
     policy_version?: number | null;
     policy_content_hash?: string | null;
   },
-): Promise<"inserted" | "conflict"> {
+): Promise<"inserted" | "updated" | "conflict"> {
+  // SAVEPOINT so a unique violation does not abort the outer transaction (25P02).
+  await client.query("SAVEPOINT sp_upsert_bank_case");
   try {
     await client.query(
       `INSERT INTO bank_case (
@@ -224,11 +226,53 @@ export async function upsertBankCase(
         row.policy_content_hash ?? null,
       ],
     );
+    await client.query("RELEASE SAVEPOINT sp_upsert_bank_case");
     return "inserted";
   } catch (err) {
+    await client.query("ROLLBACK TO SAVEPOINT sp_upsert_bank_case");
     const code = (err as { code?: string }).code;
-    if (code === "23505") return "conflict";
-    throw err;
+    if (code !== "23505") throw err;
+
+    // Same idempotency → idempotent replay.
+    const sameIdem = await findCaseByIdempotency(
+      client,
+      row.organization_id,
+      row.idempotency_key,
+    );
+    if (sameIdem) return "conflict";
+
+    // Same case_id, new event (e.g. sanctions overlay) → update sealed outcome.
+    await client.query(
+      `UPDATE bank_case SET
+         decision_id = $3,
+         receipt_id = $4,
+         outcome = $5,
+         mode = $6,
+         status = $7,
+         attributes = $8::jsonb,
+         matched_rules = $9::jsonb,
+         event_id = COALESCE($10, event_id),
+         policy_id = COALESCE($11, policy_id),
+         policy_version = COALESCE($12, policy_version),
+         policy_content_hash = COALESCE($13, policy_content_hash)
+       WHERE organization_id = $1 AND case_id = $2`,
+      [
+        row.organization_id,
+        row.case_id,
+        row.decision_id,
+        row.receipt_id,
+        row.outcome,
+        row.mode,
+        row.status,
+        JSON.stringify(row.attributes),
+        JSON.stringify(row.matched_rules),
+        row.event_id ?? null,
+        row.policy_id ?? null,
+        row.policy_version ?? null,
+        row.policy_content_hash ?? null,
+      ],
+    );
+    return "updated";
   }
 }
 

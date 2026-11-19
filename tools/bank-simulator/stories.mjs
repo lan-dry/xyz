@@ -40,6 +40,8 @@ export const STORIES = [
       ...OFFICER_REQUESTER,
       amount: WITHIN_LIMIT_AMOUNT_RWF,
       currency: "RWF",
+      beneficiary_account: "ACCT-DEMO-001",
+      product: "retail_loan",
       applicant_name: "Uwase Aline",
       branch: "Kigali - Nyarugenge",
       loan_purpose: "School fees bridge loan",

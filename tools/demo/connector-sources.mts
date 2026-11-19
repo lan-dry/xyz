@@ -60,6 +60,30 @@ export const DEMO_SOURCES: DemoSourceDef[] = [
     kind: "executor",
     port: 8789,
   },
+  /**
+   * Red Team only — never share seq with src_los. Not started by demo:connectors
+   * (no listen port used by bank stories); private key under .data/connectors/.
+   */
+  {
+    id: "los_redteam",
+    source_id: "src_los_redteam",
+    key_id: "k_los_redteam_2026_01",
+    name: "Demo LOS Red Team",
+    kind: "application",
+    port: 8797,
+  },
+  /**
+   * Credit bureau (third_party) for nested fact envelopes / fact_mismatch demos.
+   * Not started by demo:connectors listen loop.
+   */
+  {
+    id: "bureau",
+    source_id: "src_bureau",
+    key_id: "k_bureau_2026_01",
+    name: "Demo Credit Bureau",
+    kind: "third_party",
+    port: 8798,
+  },
 ];
 
 export type SourceLocalMeta = {

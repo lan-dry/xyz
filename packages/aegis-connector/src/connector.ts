@@ -11,7 +11,7 @@ import {
   type BusinessEvent,
   type SignedEnvelope,
 } from "@salanor/aegis-sdk";
-import { confirmUrl, ingestUrl, type ConnectorConfig } from "./config.js";
+import { confirmUrl, ingestUrl, lastSeqUrl, type ConnectorConfig } from "./config.js";
 import { readPrivateKey } from "./keystore.js";
 import { OutboxSender } from "./outbox.js";
 import { ConnectorState, type DeliveredRecord } from "./state.js";
@@ -103,11 +103,45 @@ export async function createConnector(
   const state = await ConnectorState.open(config.state_dir, config.source_id);
 
   const url = ingestUrl(config);
+  const doFetch = deps.fetch ?? fetch;
+
+  async function fetchLastSeq(): Promise<number> {
+    const response = await doFetch(lastSeqUrl(config), {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${config.ingest_bearer}`,
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(config.request_timeout_ms),
+    });
+    const text = await response.text();
+    let body: unknown;
+    try {
+      body = text.length > 0 ? JSON.parse(text) : {};
+    } catch {
+      body = { raw: text };
+    }
+    if (!response.ok) {
+      throw new Error(
+        `Failed to read remote last_seq (HTTP ${response.status}): ${JSON.stringify(body).slice(0, 200)}`,
+      );
+    }
+    const last =
+      typeof body === "object" && body !== null
+        ? (body as Record<string, unknown>).last_seq
+        : undefined;
+    if (typeof last !== "number" || !Number.isSafeInteger(last) || last < 0) {
+      throw new Error(`Invalid last_seq response: ${JSON.stringify(body).slice(0, 200)}`);
+    }
+    return last;
+  }
+
   const sender = new OutboxSender({
     state,
     retry: config.retry,
     now,
     random: deps.random,
+    fetchLastSeq,
     send: (envelope: SignedEnvelope) =>
       sendEvent({
         url,
@@ -281,7 +315,6 @@ export async function createConnector(
           }
         }
         try {
-          const doFetch = deps.fetch ?? fetch;
           const upstream = await doFetch(confirmUrl(config), {
             method: "POST",
             headers: {

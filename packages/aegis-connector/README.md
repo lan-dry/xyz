@@ -41,9 +41,15 @@ State lives in `state_dir` (one connector process per directory, enforced with a
 
 Rules: a seq is assigned, signed and persisted **before** anything is sent; seq is never reused; the outbox
 is delivered one envelope at a time in seq order; an envelope is removed only after Aegis answers 2xx
-(idempotent duplicates also return 200 with the stored response; 409 is a conflict and stays queued);
-every retry sends the identical envelope with the same idempotency key (`Idempotency-Key` header).
+(idempotent duplicates also return 200 with the stored response). On **409** `seq_replay` (or
+`idempotency_conflict`) the Connector calls `GET /v1/aegis/sources/:sourceId/last-seq`, advances local
+`last_seq` to the remote value, drops conflicting outbox envelopes, and never reuses a number — logging
+clearly if another instance appears to own the source. Other failures stay queued and retry the identical
+envelope with the same idempotency key (`Idempotency-Key` header).
 Rejected requests (bad JSON, floats, ...) do not consume a seq.
+
+**One source key = one sequence owner.** For HA use a single active Connector per `source_id`, or a
+distinct `source_id` per instance. See `docs/provenance/INTEGRATION.md`.
 
 Failures (network, 5xx, 4xx such as a bad bearer) keep the envelope queued and retry with exponential backoff
 (`retry.initial_ms`, `max_ms`, `factor`, `jitter`). A permanently rejected head blocks later seqs (order is

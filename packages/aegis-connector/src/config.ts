@@ -147,3 +147,13 @@ export function confirmUrl(
 ): string {
   return new URL(config.confirm_path, config.aegis_url).toString();
 }
+
+/** Last-accepted-seq sync endpoint (used after seq_replay / sequence conflict). */
+export function lastSeqUrl(
+  config: Pick<ConnectorConfig, "aegis_url" | "source_id">,
+): string {
+  return new URL(
+    `/v1/aegis/sources/${encodeURIComponent(config.source_id)}/last-seq`,
+    config.aegis_url,
+  ).toString();
+}

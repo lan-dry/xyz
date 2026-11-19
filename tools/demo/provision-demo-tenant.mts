@@ -405,6 +405,28 @@ async function main(): Promise<void> {
     await syncBankRoles(admin, file);
   }
 
+  // Marker for demo:fresh rewrite — never trust a stale AEGIS_ORGANIZATION_ID after wipe.
+  try {
+    const { writeFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    writeFileSync(
+      resolve(process.cwd(), ".demo-tenant-org.local.json"),
+      `${JSON.stringify(
+        {
+          organization_id: organizationId,
+          slug: file.organization?.slug || "demo-bank",
+          written_at: new Date().toISOString(),
+          written_by: "provision-demo-tenant",
+        },
+        null,
+        2,
+      )}\n`,
+      { mode: 0o600 },
+    );
+  } catch {
+    /* non-fatal */
+  }
+
   console.log(
     `\nDone. Organisation id: ${organizationId}${
       file.console_origin ? `\nConsole: ${file.console_origin}/aegis` : ""

@@ -135,6 +135,31 @@ export class ConnectorState {
     await this.writeStateFile();
   }
 
+  /**
+   * After Aegis reports seq_replay, adopt the remote last accepted seq so the next
+   * envelope uses remote+1 and never reuses a number. Drops outbox entries with
+   * seq <= remoteLast (they cannot succeed and must not be retried with the same seq).
+   * Returns the new local last_seq.
+   */
+  async syncFromRemoteLastSeq(remoteLast: number): Promise<{ last_seq: number; dropped: number[] }> {
+    if (!Number.isSafeInteger(remoteLast) || remoteLast < 0) {
+      throw new Error(`Invalid remote last_seq: ${remoteLast}`);
+    }
+    const dropped: number[] = [];
+    for (const seq of [...this.outbox.keys()].sort((a, b) => a - b)) {
+      if (seq <= remoteLast) {
+        await unlink(join(this.outboxDir, outboxName(seq))).catch(() => undefined);
+        this.outbox.delete(seq);
+        dropped.push(seq);
+      }
+    }
+    if (remoteLast > this._lastSeq) {
+      this._lastSeq = remoteLast;
+    }
+    await this.writeStateFile();
+    return { last_seq: this._lastSeq, dropped };
+  }
+
   /** Record an accepted delivery and drop the envelope from the outbox. */
   async markDelivered(seq: number, status: number, receipt: unknown): Promise<DeliveredRecord> {
     const envelope = this.outbox.get(seq);

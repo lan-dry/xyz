@@ -70,6 +70,33 @@ pnpm bank:up           # bank-simulator embeds in-process Connectors; stories ar
 
 `pnpm pilot:seed-history` also submits through the LOS Connector. Do not commit `.data/`.
 
+### Sequence ownership (one source key → one owner)
+
+Red Team and other scratch senders must use their **own** `source_id` (e.g.
+`src_los_redteam`), never the production LOS id (`src_los`). Sharing a source id
+across processes without HA discipline causes `seq_replay`.
+
+**One registered `source_id` / signing key has a single sequence owner.** Aegis accepts
+strictly increasing `seq` values per source; a second process that reuses the same
+`source_id` with its own `last_seq` will get **409** `seq_replay`.
+
+The Connector recovers by calling `GET /v1/aegis/sources/:sourceId/last-seq` (ingest
+bearer), advancing local `last_seq` to the remote value, and dropping conflicting
+outbox envelopes so the **next** envelope uses `last+1` — never reusing a number. If
+local `last_seq` is behind remote after the conflict, it logs a clear error that
+**another instance appears to own the source**.
+
+HA options:
+
+1. **One active instance** per `source_id` (preferred): shared `state_dir` is locked to a
+   single process; run a standby that only takes over after the active instance stops.
+2. **One `source_id` per instance**: give each replica its own registered source (and key)
+   so sequences never collide.
+
+Do not run two live Connectors against the same `source_id` with separate state
+directories in production — the second will sync forward and drop its conflicting
+outbox items; those events must be re-submitted if still needed.
+
 ## SDK
 
 ```ts
@@ -113,11 +140,11 @@ A retry of an envelope Aegis already accepted returns **200** with the original 
 4xx (including 409) will not succeed by retrying the same bytes; fix the cause and, if the envelope was never
 accepted, sign a new one.
 
-**Known issue (Connector).** The Connector removes an outbox item from the queue on **any** 409 (it assumes
-"already ingested"). Aegis answers a genuine duplicate with 200, so every 409 it sends is a real conflict
-(sequence replay, reused nonce, idempotency key reused for a different event). For example, if a Connector's
-`state_dir` is lost and it restarts at seq 1, its events would be dropped as "delivered". Follow-up: make the
-Connector treat 409 as delivered only when the body is not `{ "error": "envelope_rejected" }`.
+**409 recovery (Connector).** Aegis answers a genuine duplicate with **200**, so every **409** is a real
+conflict (`seq_replay`, `nonce_reused`, `idempotency_conflict`). On `seq_replay` / `idempotency_conflict`
+the Connector re-reads `GET /v1/aegis/sources/:sourceId/last-seq`, advances local `last_seq`, and drops
+conflicting outbox envelopes (never reuses a seq). Other 4xx stay queued and retry the identical
+envelope. See [Sequence ownership](#sequence-ownership-one-source-key--one-owner).
 
 ## Organisations that require signed events
 

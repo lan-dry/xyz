@@ -730,6 +730,8 @@ async function runStory(storyId) {
         action,
         target_grade: targetGrade,
         can_disburse: decision.outcome === "allow" || decision.outcome === "hold",
+        decision_token: decision.decision_token ?? null,
+        evidence_grade: decision.evidence_grade ?? null,
         steps,
         requests: calls,
       },

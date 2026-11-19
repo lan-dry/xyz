@@ -1,0 +1,88 @@
+=== Red Team round3 2026-11-19T08:54:15.069Z ===
+org=3159a7b7-16d4-40ee-ad28-2393093f31cb api=http://127.0.0.1:8088 sim=http://127.0.0.1:4000
+health sim 200
+health api 200
+#1 [Live/PASS] control={"status":200,"code":"http_200"} attack={"status":401,"code":"bad_signature"} result=PASS: control accepted; forged signature → bad_signature
+  assert control expected=ok|accepted|http_200|unknown actual=http_200 PASS
+  assert attack expected=bad_signature actual=bad_signature PASS
+    - CONTROL unaltered POST → HTTP 200 code=http_200 [PASS]
+    - ATTACK flipped signature byte → HTTP 401 code=bad_signature [PASS]
+    - expected=bad_signature actual=bad_signature
+#2 [Live/PASS] control={"status":200,"code":"http_200"} attack={"status":401,"code":"unknown_key"} result=PASS: control ok; unregistered key → unknown_key
+  assert control expected=200|201 actual=200 PASS
+  assert attack expected=unknown_key actual=unknown_key PASS
+    - CONTROL registered key → HTTP 200 [PASS]
+    - ATTACK unregistered key_id → HTTP 401 code=unknown_key [PASS]
+    - expected=unknown_key actual=unknown_key
+#3 [Live/PASS] control={"status":200,"code":"http_200"} attack={"status":200,"code":"http_200"} result=PASS: first accepted; replay seq_replay or idempotent 200
+  assert control_first expected=200|201 actual=200 PASS
+  assert replay expected=seq_replay|ok|accepted|http_200 actual=http_200 PASS
+    - CONTROL first POST → HTTP 200 code=http_200 [PASS]
+    - ATTACK identical replay → HTTP 200 code=http_200 [PASS]
+    - expected=seq_replay|idempotent_200 actual=http_200
+#4 [Live/PASS] control={"status":200,"code":"http_200"} attack={"status":400,"code":"signed_events_required"} result=PASS: unsigned refused with signed_events_required
+  assert control expected=200|201 actual=200 PASS
+  assert attack expected=signed_events_required actual=signed_events_required PASS
+    - CONTROL signed envelope → HTTP 200 [PASS]
+    - ATTACK unsigned valid bank event → HTTP 400 code=signed_events_required [PASS]
+    - expected=signed_events_required actual=signed_events_required
+#5 [Live/PASS] control={"status":200,"code":"matched"} attack={"status":409,"code":"params_mismatch","mismatched_fields":["amount"]} result=PASS: altered amount → params_mismatch/execution_mismatch naming amount
+  assert control_confirm expected=matched|ok|executed|http_200 actual=matched PASS
+  assert attack expected=params_mismatch|execution_mismatch actual=params_mismatch PASS
+  assert field_amount expected=amount actual=amount PASS
+    - CONTROL confirm amount=1200000 → HTTP 200 code=matched [PASS]
+    - ATTACK amount=18000000 → HTTP 409 code=params_mismatch fields=amount [PASS]
+    - expected=params_mismatch|execution_mismatch (amount named) actual=params_mismatch
+#6 [Live/PASS] control=null attack=null result=PASS: Core refuses without token; forced bypass recorded for reconciliation
+  assert ungated_refuse expected=confirm_required actual=confirm_required PASS
+  assert forced_bypass expected=txn_id actual=txn_e9572faa7771 PASS
+    - CONTROL ungated skip_aegis → HTTP 403 code=confirm_required [PASS]
+    - ATTACK force_db_bypass → HTTP 200 txn=txn_e9572faa7771 [PASS]
+    - Forced write should surface executed_without_receipt on reconcile
+#7 [Live/PASS] control={"status":200,"code":"matched"} attack={"status":409,"code":"used"} result=PASS: token reuse → used
+  assert control_first_confirm expected=matched|ok|executed|http_200 actual=matched PASS
+  assert attack_reuse expected=used actual=used PASS
+    - CONTROL first confirm → HTTP 200 code=matched [PASS]
+    - ATTACK reuse same token → HTTP 409 code=used [PASS]
+    - expected=used actual=used
+#8 [Live/PASS] control={"code":"token_issued"} attack={"status":409,"code":"stopped"} result=PASS: confirm → stopped
+  assert stop_event expected=stop actual=stop PASS
+  assert attack expected=stopped actual=stopped PASS
+    - CONTROL token issued for RT-TOKEN-1795078456339 (allow)
+    - STOP overlay → HTTP 200 outcome=stop [PASS]
+    - ATTACK confirm after stop → HTTP 409 code=stopped [PASS]
+    - expected=stopped actual=stopped
+#9 [Simulation/PASS] control=null attack=null result=Attack #9 remains fixture/Simulation (no live positive-control path)
+    - Simulation: Attack #9 remains fixture/Simulation (no live positive-control path)
+#10 [Simulation/PASS] control=null attack=null result=Attack #10 remains fixture/Simulation (no live positive-control path)
+    - Simulation: Attack #10 remains fixture/Simulation (no live positive-control path)
+#11 [Simulation/PASS] control=null attack=null result=Not verified live
+    - Forced ledger edit txn=txn_7544a2575dd5
+    - Collector/reconcile did not surface db_change_without_event
+    - Not verified live
+#12 [Live/PASS] control=null attack=null result=PASS: fact_mismatch
+  assert control expected=200|201 actual=200 PASS
+  assert fact_mismatch expected=fact_mismatch actual=fact_mismatch PASS
+    - CONTROL score=612 → HTTP 200 [PASS]
+    - ATTACK score=780 → HTTP 200 fact_mismatch=true [PASS]
+    - expected=fact_mismatch actual=fact_mismatch
+#13 [Simulation/PASS] control=null attack=null result=Not verified live
+    - Edited feed row txn_119193edda00; exported D:\PROJECTS\salanor\tools\bank-simulator\.bank-simulator\ledger\feed-2026-11-19T08-54-16-768Z.jsonl
+    - Not verified live — amount_mismatch not observed
+#14 [Simulation/PASS] control=null attack=null result=Attack #14 remains fixture/Simulation (no live positive-control path)
+    - Simulation: Attack #14 remains fixture/Simulation (no live positive-control path)
+#15 [Simulation/PASS] control=null attack=null result=Attack #15 remains fixture/Simulation (no live positive-control path)
+    - Simulation: Attack #15 remains fixture/Simulation (no live positive-control path)
+#16 [Live/PASS] control=null attack=null result=PASS: connector crash sim
+  assert seq_monotonic expected=>= before actual=10 PASS
+    - Crash/restart los: last_seq 10→10
+    - PASS: outbox retained; no seq reuse in sim
+#17 [Simulation/PASS] control=null attack=null result=Attack #17 remains fixture/Simulation (no live positive-control path)
+    - Simulation: Attack #17 remains fixture/Simulation (no live positive-control path)
+#18 [Simulation/PASS] control=null attack=null result=Attack #18 remains fixture/Simulation (no live positive-control path)
+    - Simulation: Attack #18 remains fixture/Simulation (no live positive-control path)
+honest_limit [Live/PASS] result=PASS: false signed value accepted (G1 honest limit)
+  assert honest_ingest expected=200|201 actual=200 PASS
+
+SUMMARY pass=19 fail=0
+OVERALL: PASS

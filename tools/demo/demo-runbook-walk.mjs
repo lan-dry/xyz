@@ -42,6 +42,20 @@ if (resolved.error) {
   process.exit(1);
 }
 const password = resolved.password;
+const personas =
+  resolved.data?.personas && typeof resolved.data.personas === "object"
+    ? /** @type {Record<string, { email?: string, password?: string }>} */ (
+        resolved.data.personas
+      )
+    : {};
+function personaEmail(key, fallback) {
+  const e = personas[key]?.email?.trim();
+  return e || fallback;
+}
+function personaPass(key) {
+  const p = personas[key]?.password?.trim();
+  return p && p.length >= 10 ? p : password;
+}
 const base =
   process.env.CONSOLE_ORIGIN?.trim() ||
   resolved.data?.console_origin?.trim() ||
@@ -94,14 +108,14 @@ if (process.env.PLAYWRIGHT_CHANNEL?.trim()) {
 const browser = await playwright.chromium.launch(launchOpts);
 const viewport = { width: 1920, height: 1080 };
 
-async function signIn(email) {
+async function signIn(email, pass = password) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
   const page = await context.newPage();
   await page.goto(`${base}/login`, { waitUntil: "networkidle" }).catch(() => {});
   const emailSel = 'input[type="email"], input[name="email"]';
   if (await page.locator(emailSel).count()) {
     await page.fill(emailSel, email);
-    await page.fill('input[type="password"]', password);
+    await page.fill('input[type="password"]', pass);
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/aegis/, { timeout: 60000 }).catch(() => {});
     await page.waitForTimeout(800);
@@ -214,10 +228,22 @@ async function runStory(_admin, storyId) {
   return body;
 }
 
-const admin = await signIn("admin@demo.test");
-const officer = await signIn("officer@demo.test");
-const manager = await signIn("manager@demo.test");
-const head = await signIn("head@demo.test");
+const admin = await signIn(
+  personaEmail("admin", "admin@demo.test"),
+  personaPass("admin"),
+);
+const officer = await signIn(
+  personaEmail("officer", "officer@demo.test"),
+  personaPass("officer"),
+);
+const manager = await signIn(
+  personaEmail("manager", "manager@demo.test"),
+  personaPass("manager"),
+);
+const head = await signIn(
+  personaEmail("head", "head@demo.test"),
+  personaPass("head"),
+);
 
 try {
   // 0. Open clean
@@ -302,7 +328,7 @@ try {
         ? allowed.policy.content_hash
         : null;
   const prep = await post(admin, "/api/console/demo-tenant/prepare-v4-dual-publish", {
-    co_publisher_email: "head@demo.test",
+    co_publisher_email: personaEmail("head", "head@demo.test"),
   });
   check(
     "§4 prepare live v4 draft (dual publish)",
@@ -331,7 +357,10 @@ try {
       `HTTP ${alone.status} published=${alone.body?.published}`,
     );
     // Head was elevated to console admin by prepare-v4 so they can co-publish.
-    const headCtx = await signIn("head@demo.test");
+    const headCtx = await signIn(
+      personaEmail("head", "head@demo.test"),
+      personaPass("head"),
+    );
     const two = await post(headCtx, `/api/console/policies/${draftId}/activate`, {});
     check(
       "§4 second publisher completes dual publish → v4 live",

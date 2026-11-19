@@ -175,3 +175,36 @@ describe("local auth token", () => {
     expect((await fetch(`${base}/health`)).status).toBe(200);
   });
 });
+
+describe("sequence ownership", () => {
+  it("two Connectors on one source_id: second syncs after seq_replay and never reuses a seq", async () => {
+    h.aegis.mode = "seq_gate";
+    const first = await h.start();
+    const second = await h.startSibling("state_b");
+
+    for (let n = 1; n <= 3; n++) {
+      const res = await (await post(first.base, "/events", { from: "a", n })).json();
+      expect(res).toMatchObject({ status: "delivered", seq: n });
+    }
+    expect(h.aegis.lastSeqBySource.get("src_test")).toBe(3);
+
+    // Second instance still thinks last_seq=0 and will try seq 1 → seq_replay → sync to 3.
+    const bConflict = await post(second.base, "/events", { from: "b", conflict: true });
+    expect([200, 202]).toContain(bConflict.status);
+
+    await waitFor(() => Number(second.connector.health().last_seq) >= 3);
+    expect(h.aegis.accepted.filter((e) => e.seq === 1)).toHaveLength(1);
+    expect(String(second.connector.health().last_error ?? "")).toMatch(
+      /another instance appears to own|seq ownership conflict|behind remote/i,
+    );
+
+    const bNext = await post(second.base, "/events", { from: "b", n: 4 });
+    expect(bNext.status).toBe(200);
+    const body = (await bNext.json()) as { seq: number };
+    expect(body.seq).toBe(4);
+
+    const acceptedSeqs = h.aegis.accepted.map((e) => e.seq).sort((a, b) => a - b);
+    expect(acceptedSeqs).toEqual([1, 2, 3, 4]);
+    expect(new Set(acceptedSeqs).size).toBe(4);
+  });
+});

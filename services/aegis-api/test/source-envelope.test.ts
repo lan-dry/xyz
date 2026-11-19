@@ -673,6 +673,32 @@ describeIfDb("source registry + signed envelope ingest (Stage 1)", () => {
     expect(await gaps(src)).toEqual([]);
   });
 
+  it("GET /sources/:sourceId/last-seq returns last accepted seq for Connector sync", async () => {
+    const src = await newSource();
+    const none = await app.request(`/v1/aegis/sources/${src.sourceId}/last-seq`);
+    expect(none.status).toBe(401);
+    const empty = await app.request(`/v1/aegis/sources/${src.sourceId}/last-seq`, {
+      headers: { Authorization: `Bearer ${INGEST}` },
+    });
+    expect(empty.status).toBe(200);
+    expect(await empty.json()).toMatchObject({
+      source_id: src.sourceId,
+      last_seq: 0,
+      status: "active",
+    });
+    expect((await ingest(await signed(src, 1))).status).toBe(200);
+    expect((await ingest(await signed(src, 2))).status).toBe(200);
+    const after = await app.request(`/v1/aegis/sources/${src.sourceId}/last-seq`, {
+      headers: { Authorization: `Bearer ${INGEST}` },
+    });
+    expect(after.status).toBe(200);
+    expect(await after.json()).toMatchObject({ source_id: src.sourceId, last_seq: 2 });
+    const missing = await app.request(`/v1/aegis/sources/src_does_not_exist/last-seq`, {
+      headers: { Authorization: `Bearer ${INGEST}` },
+    });
+    expect(missing.status).toBe(404);
+  });
+
   it("nonce reuse → 409 nonce_reused and state does not advance", async () => {
     const src = await newSource();
     const first = await signed(src, 1);

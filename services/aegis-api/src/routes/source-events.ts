@@ -1,5 +1,6 @@
 /**
  * POST /v1/aegis/source-events — AEGIS-SRC1 signed envelope ingest (ingest key auth).
+ * GET  /v1/aegis/sources/:sourceId/last-seq — last accepted seq for Connector sync after conflict.
  *
  * Body is a SignedEnvelope. On success the inner event goes through the same decision
  * path as /governed/events and the full envelope (with signature) is sealed on the
@@ -19,6 +20,7 @@ import type { BankDecisionResponse } from "../bank/types.js";
 import { BankValidationError, parseBankEvent } from "../bank/validate.js";
 import { getPool } from "../db/pool.js";
 import { SOURCE_SIGNED_GRADE } from "../sources/grade.js";
+import { getSource } from "../sources/registry.js";
 import { verifyAndAcceptEnvelope } from "../sources/verify-and-accept.js";
 
 export type SignedDecisionResponse = BankDecisionResponse & {
@@ -40,6 +42,48 @@ export function isEnvelopeBody(body: unknown): boolean {
     !Array.isArray(body) &&
     (body as Record<string, unknown>).aegis_envelope === "1"
   );
+}
+
+/**
+ * Minimal sync endpoint for Connectors that hit seq_replay / conflict: returns the
+ * last sequence Aegis has accepted for this source so the sender can advance local
+ * last_seq and never reuse a number. Ingest-key auth only; not a general status API.
+ */
+export async function getSourceLastSeq(c: Context): Promise<Response> {
+  const token = bearerToken(c.req.header("Authorization"));
+  if (!token) {
+    return c.json({ error: "Missing or invalid Authorization" }, 401);
+  }
+
+  const sourceId = c.req.param("sourceId")?.trim();
+  if (!sourceId) {
+    return c.json(
+      { error: "validation_error", code: "missing_source_id", message: "sourceId is required" },
+      400,
+    );
+  }
+
+  const client = await getPool().connect();
+  try {
+    const auth = await resolveIngestKey(client, token);
+    if (!auth) {
+      return c.json({ error: "Invalid API key" }, 401);
+    }
+    const source = await getSource(client, auth.organizationId, sourceId);
+    if (!source) {
+      return c.json({ error: "not_found", code: "unknown_source" }, 404);
+    }
+    return c.json(
+      {
+        source_id: source.source_id,
+        last_seq: source.last_seq,
+        status: source.status,
+      },
+      200,
+    );
+  } finally {
+    client.release();
+  }
 }
 
 export async function postSourceEvent(c: Context): Promise<Response> {

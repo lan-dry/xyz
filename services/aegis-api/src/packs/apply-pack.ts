@@ -178,17 +178,22 @@ export async function applyDemoPack(
   }
 
   for (const wf of pack.workflows) {
-    const workflowId = `wf_${pack.id.replace(/\W/g, "_")}_${wf.product}`;
+    // Org-scoped id: workflow_id is a global PK; a prior demo org must not block
+    // demo:fresh from installing executable_params on the new org.
+    const orgSuffix = orgId.replace(/-/g, "").slice(0, 8);
+    const workflowId = `wf_${pack.id.replace(/\W/g, "_")}_${wf.product}_${orgSuffix}`;
     const executionConfig = {
       ...executionConfigFromPackWorkflow(wf),
       product: wf.product,
     };
+    const desc = `pack:${pack.id} product=${wf.product} on_unreachable=${wf.on_unreachable ?? "hold"}`;
     if (force) {
       await client.query(
         `INSERT INTO governed_workflow (
            workflow_id, organization_id, name, description, record_only, execution_config
          ) VALUES ($1, $2, $3, $4, $5, $6::jsonb)
          ON CONFLICT (workflow_id) DO UPDATE SET
+           organization_id = EXCLUDED.organization_id,
            name = EXCLUDED.name,
            description = EXCLUDED.description,
            record_only = EXCLUDED.record_only,
@@ -197,7 +202,7 @@ export async function applyDemoPack(
           workflowId,
           orgId,
           wf.name,
-          `pack:${pack.id} product=${wf.product} on_unreachable=${wf.on_unreachable ?? "hold"}`,
+          desc,
           Boolean(wf.record_only),
           JSON.stringify(executionConfig),
         ],
@@ -212,7 +217,7 @@ export async function applyDemoPack(
           workflowId,
           orgId,
           wf.name,
-          `pack:${pack.id} product=${wf.product} on_unreachable=${wf.on_unreachable ?? "hold"}`,
+          desc,
           Boolean(wf.record_only),
           JSON.stringify(executionConfig),
         ],

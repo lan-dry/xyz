@@ -199,12 +199,12 @@ export async function runAttack(attackId, deps) {
   if (partial && partial.ok === false) return partial;
 
   return {
-    ok: true,
+    ok: partial.ok !== false,
     attack: def ?? HONEST_LIMIT,
     ran_at: new Date().toISOString(),
     simulated: partial.simulated === true,
-    label: partial.simulated ? "Simulation" : "Live",
-    report_status: partial.simulated ? "Simulated" : "Live",
+    label: partial.label ?? (partial.simulated ? "Simulation" : "Live"),
+    report_status: partial.report_status ?? (partial.simulated ? "Simulated" : "Live"),
     steps: partial.steps ?? [],
     result: partial.result ?? "",
     evidence: partial.evidence ?? {},

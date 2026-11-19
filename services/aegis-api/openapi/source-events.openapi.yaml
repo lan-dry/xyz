@@ -11,6 +11,39 @@ servers:
   - url: https://api.example.local/v1/aegis
     description: Replace with your Aegis base URL
 paths:
+  /sources/{sourceId}/last-seq:
+    get:
+      operationId: getSourceLastSeq
+      summary: Last accepted sequence for a source (Connector sync after seq_replay)
+      security:
+        - ingestBearer: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current last_seq for the source in this organisation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [source_id, last_seq, status]
+                properties:
+                  source_id:
+                    type: string
+                  last_seq:
+                    type: integer
+                    minimum: 0
+                  status:
+                    type: string
+                    enum: [active, disabled]
+        "401":
+          description: Missing or invalid ingest key
+        "404":
+          description: Unknown source_id for this organisation
   /source-events:
     post:
       operationId: postSourceEvent
