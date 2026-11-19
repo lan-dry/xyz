@@ -1,0 +1,37 @@
+=== Final suite from committed tree (feature/provenance) ===
+Date: 2026-11-19
+
+## Results
+
+| Step | Exit | Notes |
+| --- | --- | --- |
+| aegis-api vitest (full) | 1 | 572 passed / 6 failed / 2 skipped (102 files pass, 3 fail). Failures: source-envelope (seq/parallel/fixture wipe), policy.integration exit, tenant-wipe deadlock. Re-run under disk pressure on C:; Partial. |
+| aegis-api targeted (approver/facts/012/redteam/token/provenance) | 0 | 60/60 passed |
+| conformance:src1 | 0 | TS + Python vectors OK |
+| typecheck aegis-api | 0 | |
+| typecheck web-console | 0 | |
+| lint aegis-api | 0 | 1 warning fixed in migration-012 test |
+| lint web-console | 0 | |
+| build aegis-sdk | 0 | |
+| build aegis-api | 0 | |
+| build web-console | 0 | after cleaning corrupted `.next` |
+| gitleaks --no-git (tree) | 0 | no leaks after allowlist for local `.env` / simulator state / `_raw` |
+| gitleaks history | 0* | no leaks reported; scan still errors on historical Word lockfile `~$ug-in-venture-discovery-brief.docx` |
+| aegis-verify fixture bundle | 0 | OK 1 receipt |
+| python verify_bundle | 0 | OK signature/key-at-ts/seq |
+| demo:runbook-walk | 1 | Personas/rules dual-publish OK; bank stories failed `timestamp_skew` (host clock vs Aegis). §12 Red Team fixed (`x-simulator` + simUrl TDZ); re-check Live #5/#11 OK — see `lying-segment.txt`. Partial. |
+
+## Secrets
+
+- `.env` / `.env_deploy` gitignored; not in current tree index.
+- Historical `.env_deploy` once tracked (Sep 2026) — rotate those values; not allowlisted as live secrets.
+- Hosted key delivery: `docs/provenance/HOSTED_SIGNING_KEYS.md`
+
+## Stage 6
+
+Remains **Partial** — no native `wal_level=logical` Postgres available on this host.
+
+Raw parts: `docs/provenance/_raw/final_suite_parts/`
+
+Lying §12 re-check: docs/provenance/_raw/final_suite_parts/lying-segment.txt
+

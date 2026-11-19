@@ -1,0 +1,11 @@
+$ pnpm aegis-verify "docs/TEST_PACK/provenance/bundles/g1-exported-bundle.json"
+
+
+> salanor@0.0.0 aegis-verify D:\PROJECTS\salanor
+> tsx tools/aegis-verify/cli.mts "docs/TEST_PACK/provenance/bundles/g1-exported-bundle.json"
+
+OK 1 receipt(s) verified
+
+
+
+EXIT=0 ELAPSED_MS=1740

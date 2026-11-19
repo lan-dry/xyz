@@ -1,0 +1,1575 @@
+$ pnpm --filter aegis-api exec vitest run
+
+
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+ ✓ test/amount.test.ts (3 tests) 3ms
+ ✓ test/anomaly-signal.test.ts (5 tests) 8ms
+ ✓ test/approval-outcome-receipt.test.ts (5 tests) 130ms
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 006_sources (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+stdout | test/approval.integration.test.ts > human approvals (Stage 7 exit) > obligation → pending → approve → tool runs → trace completed
+
+[aegis-api] Approval notification email
+  To:     vitest-b7ed05de8c644f0cb484653b6b6db9fa@local.invalid
+  Tool:   payments.wire.transfer
+  Review: http://localhost:3000/aegis/approvals?focus=apr_1bdf1fa886314505
+
+ ✓ test/approval.integration.test.ts (1 test) 991ms
+   ✓ human approvals (Stage 7 exit) > obligation → pending → approve → tool runs → trace completed  524ms
+ ✓ test/bank-approvals-guard.test.ts (5 tests) 6ms
+ ✓ test/bank-authority-matrix.test.ts (4 tests) 4ms
+ ✓ test/bank-batch-import.test.ts (3 tests) 9ms
+ ✓ test/bank-batch-route.test.ts (3 tests) 11ms
+ ✓ test/bank-console-approval-guard.test.ts (8 tests) 5ms
+ ✓ test/bank-evaluate.test.ts (14 tests) 11ms
+ ✓ test/bank-expr.test.ts (3 tests) 5ms
+ ✓ test/bank-field-policy.test.ts (3 tests) 5ms
+ ✓ test/bank-ready-pass2.test.ts (26 tests) 124ms
+ ✓ test/canned-reports.test.ts (4 tests) 8ms
+ ✓ test/clock.test.ts (4 tests) 5ms
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 006_sources (already applied)
+
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/collector-cdc.test.ts > collector CDC reconciliation (Stage 6)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/collector-cdc.test.ts (2 tests) 337ms
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 006_sources (already applied)
+
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/compliance-export.integration.test.ts > compliance export (Stage 10 exit)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/compliance-export.integration.test.ts (1 test) 480ms
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 001_baseline (already applied)
+
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 006_sources (already applied)
+
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/console-approval-http.integration.test.ts > console approval HTTP + bank ladder
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/console-approval-http.integration.test.ts (1 test) 767ms
+   ✓ console approval HTTP + bank ladder > officer 403 then manager 200 on /v1/console/approvals/:id/approve  371ms
+ ✓ test/console-route-auth-matrix.test.ts (55 tests) 49ms
+stdout | test/console.integration.test.ts > console API
+migrate: skip 001_baseline (already applied)
+
+stdout | test/console.integration.test.ts > console API
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/console.integration.test.ts > console API
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/console.integration.test.ts > console API
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/console.integration.test.ts > console API
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/console.integration.test.ts > console API
+migrate: skip 006_sources (already applied)
+
+stdout | test/console.integration.test.ts > console API
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/console.integration.test.ts > console API
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/console.integration.test.ts > console API
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/console.integration.test.ts > console API
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/console.integration.test.ts > console API
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/console.integration.test.ts > console API
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ❯ test/console.integration.test.ts (2 tests | 2 skipped) 344ms
+   ↓ console API > org A sees traces when events exist; org B sees none
+   ↓ console API > admin can create ingest key scoped to organization
+ ✓ test/control-mapping.test.ts (2 tests) 7ms
+ ✓ test/demo-tenant-delegation.test.ts (10 tests) 10ms
+ ✓ test/describe-decision.test.ts (15 tests) 31ms
+ ✓ test/dual-publish.test.ts (1 test) 2ms
+ ✓ test/enrich-payload.test.ts (1 test) 3ms
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 006_sources (already applied)
+
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ❯ test/escalate-approve-http.integration.test.ts (1 test | 1 skipped) 162ms
+   ↓ escalated approve HTTP (scenario 10 root) > sealed event → request → escalate metadata → head approve 200
+ ✓ test/escalate-to-role.test.ts (5 tests) 11ms
+ ✓ test/evaluate-rules-all-matching.test.ts (3 tests) 8ms
+ ✓ test/evaluate-rules.golden.test.ts (4 tests) 4ms
+ ✓ test/evaluate-rules.test.ts (3 tests) 4ms
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/event-seq-lock.integration.test.ts > event sequence lock (concurrent seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/event-seq-lock.integration.test.ts (1 test) 509ms
+ ✓ test/evidence-bundle.test.ts (13 tests) 271ms
+ ✓ test/evidence-write-failure.test.ts (5 tests) 8ms
+ ✓ test/execution-permit.test.ts (6 tests) 7ms
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 001_baseline (already applied)
+
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 006_sources (already applied)
+
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/forensic-org-isolation.integration.test.ts > ForensicOrgIsolation
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/forensic-org-isolation.integration.test.ts (1 test) 231ms
+ ✓ test/forensic-receipt.test.ts (2 tests) 333ms
+ ✓ test/forensic-role-auth.test.ts (6 tests) 51ms
+ ✓ test/forensic-source-envelope.test.ts (1 test) 123ms
+ ✓ test/full-system.integration.test.ts (1 test) 5ms
+ ✓ test/hard-stop-release.test.ts (3 tests) 11ms
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/housekeeping.integration.test.ts > housekeeping (Sprint 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/housekeeping.integration.test.ts (2 tests) 504ms
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 001_baseline (already applied)
+
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 006_sources (already applied)
+
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/ingest.integration.test.ts > ingest
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/ingest.integration.test.ts (4 tests) 429ms
+ ✓ test/input-commitments.test.ts (4 tests) 29ms
+ ✓ test/key-provider-managed.test.ts (3 tests) 146ms
+ ✓ test/key-provider.test.ts (2 tests) 73ms
+ ✓ test/kill-switch.test.ts (1 test) 3ms
+ ✓ test/kms-ed25519.test.ts (10 tests) 106ms
+ ↓ test/migrate.integration.test.ts (1 test | 1 skipped)
+ ✓ test/multi-tenant-pack.e2e.test.ts (3 tests) 66ms
+ ✓ test/no-bare-verified.test.ts (2 tests) 329ms
+ ✓ test/no-console-jargon.test.ts (1 test) 27ms
+ ✓ test/no-institution-names.test.ts (2 tests) 4ms
+ ✓ test/notify-approvers.test.ts (2 tests) 178ms
+ ✓ test/notify-delivery.test.ts (3 tests) 11ms
+ ✓ test/oidc-claim-mapper.test.ts (5 tests) 8ms
+ ✓ test/openapi-smoke.test.ts (2 tests) 7ms
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 001_baseline (already applied)
+
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 006_sources (already applied)
+
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/org-isolation.integration.test.ts > TestOrgIsolation
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/org-isolation.integration.test.ts (2 tests) 251ms
+ ✓ test/pack-apply-overwrite.test.ts (3 tests) 183ms
+ ✓ test/phase5-proof.test.ts (3 tests) 9ms
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 001_baseline (already applied)
+
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 006_sources (already applied)
+
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ❯ test/phase6-enterprise.test.ts (5 tests | 2 skipped) 170ms
+   ✓ Phase 6 RBAC > auditor cannot write policies/org or decide approvals 2ms
+   ✓ Phase 6 RBAC > approver can decide approvals but not mutate policies 0ms
+   ✓ Phase 6 RBAC > admin and owner can write and decide 0ms
+   ↓ Phase 6 legal hold purge > skips purge when org legal hold is on
+   ↓ Phase 6 legal hold purge > does not redact events on per-event legal hold
+ ✓ test/plans.test.ts (2 tests) 7ms
+ ✓ test/platform-email-settings.test.ts (7 tests) 19ms
+ ✓ test/platform.integration.test.ts (3 tests) 4ms
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 006_sources (already applied)
+
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/plausibility.test.ts > plausibility flags raise exceptions (Stage 7)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/plausibility.test.ts (6 tests) 333ms
+ ✓ test/policy-context.integration.test.ts (7 tests) 8ms
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 001_baseline (already applied)
+
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 006_sources (already applied)
+
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/policy-create-rules.test.ts > policy create requires rules
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ❯ test/policy-create-rules.test.ts (1 test | 1 skipped) 180ms
+   ↓ policy create requires rules > returns 422 without rules; 201 with rules
+ ✓ test/production-guards-db.integration.test.ts (4 tests) 141ms
+ ✓ test/production-guards.test.ts (19 tests) 15ms
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 001_baseline (already applied)
+
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 006_sources (already applied)
+
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/provenance.integration.test.ts > provenance: grade changes and case API
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/provenance.integration.test.ts (3 tests) 754ms
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 001_baseline (already applied)
+
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 006_sources (already applied)
+
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/proxy.integration.test.ts > wrapFetch proxy
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/proxy.integration.test.ts (2 tests) 538ms
+ ✓ test/readiness.test.ts (9 tests) 23ms
+ ✓ test/receipt-access-log.test.ts (2 tests) 6ms
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 006_sources (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > receipt key custody and trusted time (integration)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 006_sources (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/receipt-custody-timestamp.integration.test.ts > trusted time queue (integration)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/receipt-custody-timestamp.integration.test.ts (9 tests) 2027ms
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 006_sources (already applied)
+
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/receipt-seq-lock.integration.test.ts > receipt sequence lock (concurrent issue)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/receipt-seq-lock.integration.test.ts (1 test) 632ms
+   ✓ receipt sequence lock (concurrent issue) > assigns distinct seq under concurrent issueForensicReceipt  339ms
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 006_sources (already applied)
+
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/reconciliation.test.ts > reconciliation + exceptions (Stage 4)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/reconciliation.test.ts (15 tests) 1778ms
+ ✓ test/removed-demo-endpoints.test.ts (4 tests) 20ms
+ ✓ test/requester.test.ts (3 tests) 3ms
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 006_sources (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ❯ test/require-signed-events-setting.test.ts (3 tests | 1 failed) 901ms
+   ✓ require_signed_events setting (two-person + seal) > enabling works with one admin and seals a setting_change receipt 87ms
+   × require_signed_events setting (two-person + seal) > disabling creates pending; same admin cannot confirm; second admin confirms and seals 52ms
+     → expected true to be false // Object.is equality
+   ✓ require_signed_events setting (two-person + seal) > sealed event carries require_signed_events_in_force from the org column 184ms
+ ✓ test/resolve-acting-role.test.ts (5 tests) 27ms
+ ✓ test/rfc3161-tsa-client.test.ts (3 tests) 7ms
+ ✓ test/rfc3161.test.ts (2 tests) 5ms
+ ✓ test/risk-approval-pack.test.ts (2 tests) 26ms
+ ✓ test/rule-validate.test.ts (6 tests) 7ms
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 001_baseline (already applied)
+
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 006_sources (already applied)
+
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/seal-key-fallback.test.ts > seal signing key lookup fallback
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/seal-key-fallback.test.ts (1 test) 356ms
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 006_sources (already applied)
+
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/siem.integration.test.ts > SIEM OTel export (Stage 10)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/siem.integration.test.ts (2 tests) 362ms
+ ✓ test/span-grouping.test.ts (1 test) 3ms
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 001_baseline (already applied)
+
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 006_sources (already applied)
+
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/tenant-wipe-coverage.integration.test.ts > tenant wipe coverage
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/tenant-wipe-coverage.integration.test.ts (5 tests) 118ms
+ ✓ test/tier-limits.test.ts (6 tests) 5ms
+ ✓ test/trace-meta.test.ts (2 tests) 5ms
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 006_sources (already applied)
+
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/transparency.integration.test.ts > transparency log (Stage 9 exit)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/transparency.integration.test.ts (3 tests) 267ms
+ ✓ test/trusted-time.test.ts (14 tests) 87ms
+ ✓ test/webhook-catalog.test.ts (2 tests) 3ms
+ ✓ test/webhook-retry.test.ts (3 tests) 5ms
+ ✓ test/witness-label.test.ts (2 tests) 2ms
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 006_sources (already applied)
+
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/witness.integration.test.ts > witness / Merkle (Stage 8 exit)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/witness.integration.test.ts (3 tests) 3557ms
+ ✓ test/wrap-fetch-security.test.ts (3 tests) 17ms
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 006_sources (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ❯ test/source-envelope.test.ts (44 tests | 1 failed) 12447ms
+   ✓ source registry + signed envelope ingest (Stage 1) > valid envelope → 200, source_signed, evidence grade G1, sealed on receipt and event 236ms
+   ✓ source registry + signed envelope ingest (Stage 1) > an envelope posted to /governed/events and /bank/events takes the signed path  303ms
+   ✓ source registry + signed envelope ingest (Stage 1) > gradeForDecision: G1 only when a source signature was verified 1ms
+   ✓ source registry + signed envelope ingest (Stage 1) > source-events needs a valid ingest key 28ms
+   ✓ source registry + signed envelope ingest (Stage 1) > invalid JSON → 400; non-envelope bodies and unsupported versions are refused 16ms
+   ✓ source registry + signed envelope ingest (Stage 1) > known key but missing fields → malformed 30ms
+   ✓ source registry + signed envelope ingest (Stage 1) > valid signature but event is not a decision request → 400, sequence not consumed 243ms
+   ✓ source registry + signed envelope ingest (Stage 1) > forged signature → 401 bad_signature 38ms
+   ✓ source registry + signed envelope ingest (Stage 1) > event changed after signing → 401 event_hash_mismatch 42ms
+   ✓ source registry + signed envelope ingest (Stage 1) > envelope fields changed after signing (seq, ts, nonce) → 401 bad_signature 37ms
+   ✓ source registry + signed envelope ingest (Stage 1) > signed by a different key than the registered one → 401 bad_signature 27ms
+   ✓ source registry + signed envelope ingest (Stage 1) > key registered to another source → 401 key_source_mismatch 36ms
+   ✓ source registry + signed envelope ingest (Stage 1) > unknown key id → 401 unknown_key 20ms
+   ✓ source registry + signed envelope ingest (Stage 1) > a key registered in another organisation is unknown here (org isolation) 178ms
+   ✓ source registry + signed envelope ingest (Stage 1) > revoked key → 401 key_revoked 146ms
+   ✓ source registry + signed envelope ingest (Stage 1) > expired key (valid_to before server receive time) → 401 key_expired 41ms
+   ✓ source registry + signed envelope ingest (Stage 1) > key not yet valid (valid_from after server receive time) → 401 key_not_yet_valid 43ms
+   ✓ source registry + signed envelope ingest (Stage 1) > key revoked at T; event arrives after T claiming ts before T → 401 key_revoked 53ms
+   ✓ source registry + signed envelope ingest (Stage 1) > key expired at T; event arrives after T claiming ts before T → 401 key_expired 38ms
+   ✓ source registry + signed envelope ingest (Stage 1) > envelope ts inside the validity window of a bounded key is accepted 152ms
+   ✓ source registry + signed envelope ingest (Stage 1) > disabled source → 403 source_disabled 71ms
+   ✓ source registry + signed envelope ingest (Stage 1) > rotation: new key works, old key is refused (key_inactive)  369ms
+   ✓ source registry + signed envelope ingest (Stage 1) > timestamp more than 5 minutes off → 400 timestamp_skew (past and future) 167ms
+   ✓ source registry + signed envelope ingest (Stage 1) > AEGIS_SOURCE_TS_SKEW_SEC widens or narrows the window 120ms
+   ✓ source registry + signed envelope ingest (Stage 1) > same seq again → 409 seq_replay; lower seq → 409 seq_replay  350ms
+   ✓ source registry + signed envelope ingest (Stage 1) > nonce reuse → 409 nonce_reused and state does not advance 223ms
+   ✓ source registry + signed envelope ingest (Stage 1) > a nonce is scoped to its source 233ms
+   ✓ source registry + signed envelope ingest (Stage 1) > duplicate delivery returns the stored response and changes nothing 132ms
+   ✓ source registry + signed envelope ingest (Stage 1) > duplicate delivery still answers after the key is revoked 153ms
+   ✓ source registry + signed envelope ingest (Stage 1) > idempotency key reused for a different envelope → 409 idempotency_conflict 120ms
+   ✓ source registry + signed envelope ingest (Stage 1) > Idempotency-Key header must match the envelope 93ms
+   ✓ source registry + signed envelope ingest (Stage 1) > envelope.idempotency_key must equal event.idempotency_key (governed + bank paths) 30ms
+   ✓ source registry + signed envelope ingest (Stage 1) > sequence gap is accepted, recorded, shown in the console, and closed by late arrivals  479ms
+   ✓ source registry + signed envelope ingest (Stage 1) > adjacent sequence numbers record no gap 288ms
+   ✓ source registry + signed envelope ingest (Stage 1) > process() failure rolls back nonce, sequence and idempotency 77ms
+   ✓ source registry + signed envelope ingest (Stage 1) > verifyAndAcceptEnvelope honours an injected clock 47ms
+   ✓ source registry + signed envelope ingest (Stage 1) > unsigned events: accepted by default, rejected when the org requires signed events 263ms
+   ✓ source registry + signed envelope ingest (Stage 1) > require_signed_events defaults to false for ordinary organisations 18ms
+   ✓ source registry + signed envelope ingest (Stage 1) > demo organisations flagged through platform-auth require signed events 94ms
+   ✓ source registry + signed envelope ingest (Stage 1) > console Sources API (admin only) > 401 without a session; 403 for a viewer on every route 66ms
+   ✓ source registry + signed envelope ingest (Stage 1) > console Sources API (admin only) > register → list → rotate → revoke → history  412ms
+   ✓ source registry + signed envelope ingest (Stage 1) > console Sources API (admin only) > validation and conflicts 227ms
+   ✓ source registry + signed envelope ingest (Stage 1) > console Sources API (admin only) > a scheduled key (valid_from in the future) does not retire the current key  326ms
+   × source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting 5698ms
+     → [{"error":"envelope_rejected","code":"seq_replay","message":"This sequence number was already used (or is older than the latest accepted one) for this source."},{"error":"envelope_rejected","code":"unknown_key","message":"No registered key with that key_id exists for this organization."},{"error":"envelope_rejected","code":"unknown_key","message":"No registered key with that key_id exists for this organization."}]: expected [ 409, 401, 401 ] to deeply equal []
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 006_sources (already applied)
+
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/tenant-wipe.integration.test.ts > tenant wipe (migration 020)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/tenant-wipe.integration.test.ts (13 tests) 9090ms
+   ✓ tenant wipe (migration 020) > dry run is the default: reports counts and deletes nothing  636ms
+   ✓ tenant wipe (migration 020) > CLI: no --confirm = dry run; wrong --confirm or missing env = refused, nothing deleted  2645ms
+   ✓ tenant wipe (migration 020) > CLI refuses a customer tenant even with --confirm and the env opt-in  757ms
+   ✓ tenant wipe (migration 020) > the app role cannot call the wipe function or bypass the append-only triggers  362ms
+   ✓ tenant wipe (migration 020) > real wipe via CLI (--confirm + env) removes the demo tenant completely and writes the platform audit row  1534ms
+   ✓ tenant wipe (migration 020) > wipe of the is_test tenant leaves zero rows, keeps the shared account, drops sole-tenant accounts  459ms
+   ✓ tenant wipe (migration 020) > stable ingest key: the same DEMO_BANK_INGEST_KEY survives wipe + re-provision (stored hashed)  362ms
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 001_baseline (already applied)
+
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 006_sources (already applied)
+
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/demo-provision-reprovision.integration.test.ts > demo provision → wipe → provision → seed → login
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/demo-provision-reprovision.integration.test.ts (1 test) 4186ms
+   ✓ demo provision → wipe → provision → seed → login > re-joins existing persona accounts after wipe with no account_exists gap  3918ms
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 006_sources (already applied)
+
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/decision-token.test.ts > decision token + executor confirm (Stage 3)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/decision-token.test.ts (14 tests) 1998ms
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 006_sources (already applied)
+
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/redteam-suite.test.ts > Stage 8 red team suite (fixture)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/redteam-suite.test.ts (10 tests) 642ms
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 006_sources (already applied)
+
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/policy.integration.test.ts > policy engine (Stage 6 exit)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/policy.integration.test.ts (1 test) 507ms
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 001_baseline (already applied)
+
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 006_sources (already applied)
+
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/third-party-facts.test.ts > third-party signed facts (Stage 7)
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/third-party-facts.test.ts (10 tests) 568ms
+ ✓ test/provenance.test.ts (12 tests) 203ms
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 text > renames decision_token / reconciliation_exception / collector_cdc guards
+
+----- 012_wipe_disable_update_guards.sql -----
+-- Tenant wipe only disables triggers named trg_%_append_only.
+-- Stages 3–6 added DELETE guards named *_update_guard / *_match_guard, which
+-- blocked demo:fresh. Rename them so platform_wipe_tenant can switch them off
+-- for disposable is_demo / is_test tenants only.
+
+ALTER TRIGGER trg_decision_token_update_guard
+  ON decision_token
+  RENAME TO trg_decision_token_append_only;
+
+ALTER TRIGGER trg_reconciliation_exception_update_guard
+  ON reconciliation_exception
+  RENAME TO trg_reconciliation_exception_append_only;
+
+ALTER TRIGGER trg_collector_cdc_event_match_guard
+  ON collector_cdc_event
+  RENAME TO trg_collector_cdc_event_append_only;
+
+----- end -----
+
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 001_baseline (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 006_sources (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+ ✓ test/migration-012-wipe-guards.test.ts (4 tests) 286ms
+ ✓ test/approver-binding.test.ts (10 tests) 156ms
+
+ Test Files  6 failed | 99 passed | 1 skipped (106)
+      Tests  2 failed | 571 passed | 7 skipped (580)
+   Start at  09:34:38
+   Duration  114.05s (transform 2.30s, setup 8.32s, collect 23.17s, tests 49.96s, environment 25ms, prepare 12.95s)
+
+undefined
+D:\PROJECTS\salanor\services\aegis-api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command "vitest" not found
+
+stderr | test/proxy.integration.test.ts > wrapFetch proxy > deny rule: zero outbound requests, one deny policy_decision in DB
+[aegis] policy evaluate record failed Error: No Workflow Bridge signing key. Enable bridge on an agent in Console (Agents → Enable Workflow Bridge).
+    at startWorkflowRun (D:\PROJECTS\salanor\services\aegis-api\src\workflows\bridge.ts:393:11)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at recordPolicyGateAsTrace (D:\PROJECTS\salanor\services\aegis-api\src\workflows\bridge.ts:780:19)
+    at Array.postPolicyEvaluate (D:\PROJECTS\salanor\services\aegis-api\src\routes\policy-evaluate.ts:158:24)
+    at Object.evaluateInProcess [as evaluatePolicyFn] (D:\PROJECTS\salanor\services\aegis-api\test\proxy.integration.test.ts:50:15)
+    at resolveDecision (D:\PROJECTS\salanor\sdks\typescript\dist\proxy\wrap-fetch.js:24:20)
+    at wrapFetch (D:\PROJECTS\salanor\sdks\typescript\dist\proxy\wrap-fetch.js:87:24)
+    at D:\PROJECTS\salanor\services\aegis-api\test\proxy.integration.test.ts:144:7
+    at file:///D:/PROJECTS/salanor/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+
+stderr | test/policy.integration.test.ts > policy engine (Stage 6 exit) > activating a new policy version changes proxy behavior without SDK redeploy
+[aegis] policy evaluate record failed Error: No Workflow Bridge signing key. Enable bridge on an agent in Console (Agents → Enable Workflow Bridge).
+    at startWorkflowRun (D:\PROJECTS\salanor\services\aegis-api\src\workflows\bridge.ts:393:11)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at recordPolicyGateAsTrace (D:\PROJECTS\salanor\services\aegis-api\src\workflows\bridge.ts:780:19)
+    at Array.postPolicyEvaluate (D:\PROJECTS\salanor\services\aegis-api\src\routes\policy-evaluate.ts:158:24)
+    at Object.evaluateInProcess [as evaluatePolicyFn] (D:\PROJECTS\salanor\services\aegis-api\test\policy.integration.test.ts:71:15)
+    at resolveDecision (D:\PROJECTS\salanor\sdks\typescript\dist\proxy\wrap-fetch.js:24:20)
+    at wrapFetch (D:\PROJECTS\salanor\sdks\typescript\dist\proxy\wrap-fetch.js:87:24)
+    at D:\PROJECTS\salanor\services\aegis-api\test\policy.integration.test.ts:127:7
+    at file:///D:/PROJECTS/salanor/node_modules/.pnpm/@vitest+runner@3.2.4/node_modules/@vitest/runner/dist/chunk-hooks.js:752:20
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/console.integration.test.ts > console API
+error: insert or update on table "membership" violates foreign key constraint "membership_organization_id_fkey"
+ ❯ ../../node_modules/.pnpm/pg-pool@3.14.0_pg@8.21.0/node_modules/pg-pool/index.js:45:11
+ ❯ insertTestAdmin test/insert-test-admin.ts:30:3
+     28|     [accountId, email, hash],
+     29|   );
+     30|   await client.query(
+       |   ^
+     31|     `INSERT INTO membership (membership_id, account_id, organization_i…
+     32|      VALUES ($1, $2, $3, 'admin', 'active')
+ ❯ test/console.integration.test.ts:58:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/escalate-approve-http.integration.test.ts > escalated approve HTTP (scenario 10 root)
+error: append_only: forensic receipts cannot be deleted
+ ❯ ../../node_modules/.pnpm/pg-pool@3.14.0_pg@8.21.0/node_modules/pg-pool/index.js:45:11
+ ❯ applyIntegrationFixture test/integration-fixture.ts:176:3
+    174|     ]);
+    175|   }
+    176|   await client.query(
+       |   ^
+    177|     `DELETE FROM organization
+    178|      WHERE organization_id = $1 OR slug = 'dev-org'`,
+ ❯ test/escalate-approve-http.integration.test.ts:53:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/phase6-enterprise.test.ts > Phase 6 legal hold purge
+error: append_only: sealed event rows cannot be deleted
+ ❯ ../../node_modules/.pnpm/pg-pool@3.14.0_pg@8.21.0/node_modules/pg-pool/index.js:45:11
+ ❯ applyIntegrationFixture test/integration-fixture.ts:176:3
+    174|     ]);
+    175|   }
+    176|   await client.query(
+       |   ^
+    177|     `DELETE FROM organization
+    178|      WHERE organization_id = $1 OR slug = 'dev-org'`,
+ ❯ test/phase6-enterprise.test.ts:50:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  test/policy-create-rules.test.ts > policy create requires rules
+error: append_only: sealed event rows cannot be deleted
+ ❯ ../../node_modules/.pnpm/pg-pool@3.14.0_pg@8.21.0/node_modules/pg-pool/index.js:45:11
+ ❯ applyIntegrationFixture test/integration-fixture.ts:176:3
+    174|     ]);
+    175|   }
+    176|   await client.query(
+       |   ^
+    177|     `DELETE FROM organization
+    178|      WHERE organization_id = $1 OR slug = 'dev-org'`,
+ ❯ test/policy-create-rules.test.ts:37:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/require-signed-events-setting.test.ts > require_signed_events setting (two-person + seal) > disabling creates pending; same admin cannot confirm; second admin confirms and seals
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/require-signed-events-setting.test.ts:249:47
+    247|       change_id: string;
+    248|     };
+    249|     expect(confirmBody.require_signed_events).toBe(false);
+       |                                               ^
+    250|     expect(confirmBody.sealed).toBe(true);
+    251|     expect(confirmBody.change_id).toBe(pendingBody.change_id);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  test/source-envelope.test.ts > source registry + signed envelope ingest (Stage 1) > 50 parallel ingests from one source: all accepted, no duplicates, contiguous accounting
+AssertionError: [{"error":"envelope_rejected","code":"seq_replay","message":"This sequence number was already used (or is older than the latest accepted one) for this source."},{"error":"envelope_rejected","code":"unknown_key","message":"No registered key with that key_id exists for this organization."},{"error":"envelope_rejected","code":"unknown_key","message":"No registered key with that key_id exists for this organization."}]: expected [ 409, 401, 401 ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   409,
++   401,
++   401,
++ ]
+
+ ❯ test/source-envelope.test.ts:1196:121
+    1194|     );
+    1195|     const statuses = responses.map((r) => r.status);
+    1196|     expect(statuses.filter((s) => s !== 200), JSON.stringify(bodies.fi…
+       |                                                                                                                         ^
+    1197| 
+    1198|     // Every envelope produced its own decision and receipt.
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+
+EXIT=1 ELAPSED_MS=116363

@@ -16,11 +16,10 @@
  *
  * Writes docs/screens/runbook/NN-name.png and prints one PASS/FAIL line per check.
  *
- * Stage 9 — "Lying to Aegis" (DEMO_RUNBOOK §12, ~8 min / 5 beats):
- *   Not fully automated here yet. Present manually, or drive via bank simulator
- *   Red Team + reconcile. This walk prints a SKIP line for that segment so CI
- *   does not pretend the five beats were clicked. Screenshots for provenance
- *   grades belong under docs/TEST_PACK/provenance/ when captured.
+ * Stage 9 — "Lying to Aegis" (DEMO_RUNBOOK §12):
+ *   Automates Red Team beats #5, #11 and honest-limit against the bank simulator
+ *   (Live or Simulation-labelled). Beats that need a full approve→bundle path stay
+ *   console-driven; screenshots live under docs/TEST_PACK/provenance/.
  *
  * Usage: node tools/demo/demo-runbook-walk.mjs
  */
@@ -407,15 +406,16 @@ try {
   await shot(admin, "live-feed-after", "/aegis/live");
 
   // Stage 9 — Lying to Aegis (DEMO_RUNBOOK §12): automate Red Team beats against bank-simulator.
-  const simUrl = (process.env.BANK_SIMULATOR_URL ?? "http://127.0.0.1:4000").replace(
-    /\/+$/,
-    "",
-  );
+  // Reuse top-level simUrl (do not redeclare — TDZ would break earlier story/sim checks).
   console.log(`\n§12 Lying to Aegis — Red Team against ${simUrl}`);
   async function redteam(attackId) {
     const res = await fetch(`${simUrl}/api/redteam/run`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-simulator": "1",
+        ...(simCookie ? { Cookie: simCookie } : {}),
+      },
       body: JSON.stringify({ attack_id: attackId }),
     });
     const body = await res.json().catch(() => ({}));
@@ -426,6 +426,7 @@ try {
     return { res, body, mode };
   }
   try {
+    await simLogin().catch(() => undefined);
     const health = await fetch(`${simUrl}/health`, { signal: AbortSignal.timeout(3000) });
     if (!health.ok) throw new Error(`health ${health.status}`);
     // Beat 2 — altered execution (Red Team #5)
@@ -447,7 +448,11 @@ try {
     // Beat 5 — honest limit
     const b5 = await fetch(`${simUrl}/api/honest-limit`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-simulator": "1",
+        ...(simCookie ? { Cookie: simCookie } : {}),
+      },
       body: "{}",
     });
     const b5body = await b5.json().catch(() => ({}));

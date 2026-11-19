@@ -113,11 +113,18 @@ Docs:
 - `docs/provenance/STAGE_6_REPORT.md` (this file)
 - Updates: `docs/provenance/RECONCILIATION.md`, `docs/PROVENANCE.md`
 
+## Native Postgres attempt (review close-out)
+
+Tried finishing live pgoutput without Docker: no `psql` on PATH for a native instance with
+`wal_level=logical`, `BANK_CORE_DATABASE_URL` unset, and Docker probes unreliable on this host.
+**Status remains Partial** — do not claim Done until a same-engine Postgres with
+`wal_level=logical` runs a real `UPDATE` through the collector loop.
+
 ## Partials / how to finish
 
-1. **pgoutput consume loop** — restart demo Postgres with the logical overlay (or a fresh
-   volume), create publication/slot, finish binary decode + `START_REPLICATION`, add an
-   integration test that performs a real `UPDATE` and asserts a collector event.
+1. **pgoutput consume loop** — run native or compose Postgres with `wal_level=logical`, create
+   publication/slot, finish binary decode + `START_REPLICATION`, add an integration test that
+   performs a real `UPDATE` and asserts a collector event.
 2. **Docker CLI** was unresponsive here; prefer `aegis-collector-pg check` once compose
    works again.
 3. **Value-hash matching** between app attributes and `new_values_hash` is not required

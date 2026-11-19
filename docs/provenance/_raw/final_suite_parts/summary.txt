@@ -1,0 +1,5 @@
+conformance-src1=0
+gitleaks-tree=1
+typecheck-console=0
+typecheck-api=0
+aegis-api-test=1

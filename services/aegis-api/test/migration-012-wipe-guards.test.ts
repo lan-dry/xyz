@@ -27,7 +27,6 @@ describe("migration 012 text", () => {
     expect(text).toContain("trg_collector_cdc_event_match_guard");
     expect(text).toMatch(/is_demo|disposable|wipe/i);
     // Surface the migration text in the test output / report paste.
-    // eslint-disable-next-line no-console
     console.log("\n----- 012_wipe_disable_update_guards.sql -----\n" + text + "\n----- end -----\n");
   });
 });

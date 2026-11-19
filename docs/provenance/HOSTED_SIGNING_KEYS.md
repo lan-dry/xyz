@@ -31,5 +31,9 @@ secrets**, not the repo:
 
 ## Checks
 
-- `.env` / `.env.local` are gitignored; `gitleaks` scans history and the working tree.
-- Conformance vectors that look like keys are allowlisted fixtures, not live secrets.
+- `.env` / `.env.local` / `.env_deploy` are gitignored (not in the current tree).
+- `gitleaks` scans the working tree in CI (`--no-git`). History may still show a retired
+  `.env_deploy` blob from before it was untracked — treat those values as **compromised /
+  rotate**; do not allowlist historical deploy secrets.
+- Conformance vectors and provenance `_raw` / TEST_PACK artifacts that look like `key_id`
+  or UUIDs are allowlisted false positives, not live private keys.
