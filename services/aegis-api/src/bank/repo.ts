@@ -196,8 +196,15 @@ export async function upsertBankCase(
     policy_content_hash?: string | null;
   },
 ): Promise<"inserted" | "updated" | "conflict"> {
-  // SAVEPOINT so a unique violation does not abort the outer transaction (25P02).
-  await client.query("SAVEPOINT sp_upsert_bank_case");
+  // SAVEPOINT only when already in a transaction — otherwise a failed INSERT does
+  // not abort anything and SAVEPOINT itself errors ("can only be used in transaction blocks").
+  const txState = await client.query<{ in_tx: boolean }>(
+    "SELECT txid_current_if_assigned() IS NOT NULL AS in_tx",
+  );
+  const inTx = Boolean(txState.rows[0]?.in_tx);
+  if (inTx) {
+    await client.query("SAVEPOINT sp_upsert_bank_case");
+  }
   try {
     await client.query(
       `INSERT INTO bank_case (
@@ -226,10 +233,14 @@ export async function upsertBankCase(
         row.policy_content_hash ?? null,
       ],
     );
-    await client.query("RELEASE SAVEPOINT sp_upsert_bank_case");
+    if (inTx) {
+      await client.query("RELEASE SAVEPOINT sp_upsert_bank_case");
+    }
     return "inserted";
   } catch (err) {
-    await client.query("ROLLBACK TO SAVEPOINT sp_upsert_bank_case");
+    if (inTx) {
+      await client.query("ROLLBACK TO SAVEPOINT sp_upsert_bank_case");
+    }
     const code = (err as { code?: string }).code;
     if (code !== "23505") throw err;
 
