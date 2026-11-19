@@ -311,7 +311,7 @@ function trustedTimeCheck(ctx: VerifyContext): VerifyCheck {
       const last = byReceipt.get(ordered[ordered.length - 1]!.receipt_id ?? "");
       return {
         id: "trusted_time",
-        label: `Timestamped by ${last?.authority ?? "time authority"} at ${utcText(last?.gen_time_utc)}`,
+        label: `Trusted time: ${last?.authority ?? "time authority"} at ${utcText(last?.gen_time_utc)}`,
         status: "pass",
         detail:
           "An outside time authority (RFC 3161) stamped the record hash. The stamp is stored in the file; check the authority's signature with openssl ts -verify.",

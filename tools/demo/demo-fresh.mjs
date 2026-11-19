@@ -25,7 +25,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -152,6 +152,23 @@ if (dryRun) {
 }
 
 runTool("1/3 wipe Demo Bank", "wipe-tenant", ["--slug", SLUG, "--confirm", SLUG, "--allow-missing"]);
+
+// Connector private keys are kept across wipe, but outbox/delivered state must not be —
+// otherwise seed reuses fixed idempotency keys against a different local event hash.
+{
+  const connectorsDir =
+    process.env.AEGIS_CONNECTORS_DIR?.trim() || join(root, ".data", "connectors");
+  if (existsSync(connectorsDir)) {
+    for (const src of ["src_los", "src_core", "src_pay"]) {
+      const statePath = join(connectorsDir, src, "state");
+      if (existsSync(statePath)) {
+        rmSync(statePath, { recursive: true, force: true });
+        console.log(`  Cleared Connector state: ${statePath}`);
+      }
+    }
+  }
+}
+
 runTool("2/3 re-provision Demo Bank", "provision-demo-tenant");
 runTool("3/3 re-seed history", "seed-history", [], {
   AEGIS_INGEST_KEY: process.env.DEMO_BANK_INGEST_KEY,

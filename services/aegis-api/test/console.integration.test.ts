@@ -52,7 +52,7 @@ describeIfDb("console API", () => {
     await getPool().query(
       `INSERT INTO organization (organization_id, name, slug, onboarding_completed_at)
        VALUES ($1, 'Isolation Test Organization', 'dev-org-b', now())
-       ON CONFLICT (slug) DO NOTHING`,
+       ON CONFLICT (organization_id) DO NOTHING`,
       [INTEGRATION_ORG_B],
     );
     const a = await insertTestAdmin(getPool(), {

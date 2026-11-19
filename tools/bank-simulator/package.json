@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@salanor/aegis": "workspace:*",
+    "@salanor/aegis-connector": "workspace:*",
     "@salanor/aegis-sdk": "workspace:*",
     "pg": "^8.16.0"
   }

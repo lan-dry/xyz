@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const yamlPath = join(root, "openapi/bank-events.openapi.yaml");
+const sourceYamlPath = join(root, "openapi/source-events.openapi.yaml");
 
 describe("OpenAPI bank/governed events spec", () => {
   it("declares versioned paths and schemas", () => {
@@ -18,5 +19,18 @@ describe("OpenAPI bank/governed events spec", () => {
     expect(text).toContain("BankDecisionResponse");
     expect(text).toContain("ValidationError");
     expect(text).toMatch(/allow.*hold.*stop/s);
+  });
+});
+
+describe("OpenAPI source-events spec", () => {
+  it("declares AEGIS-SRC1 ingest path and envelope schemas", () => {
+    const text = readFileSync(sourceYamlPath, "utf8");
+    expect(text).toMatch(/openapi:\s*3/);
+    expect(text).toContain("/source-events");
+    expect(text).toContain("SignedEnvelope");
+    expect(text).toContain("SignedDecisionResponse");
+    expect(text).toContain("EnvelopeRejected");
+    expect(text).toContain("aegis_envelope");
+    expect(text).toContain("source_signed");
   });
 });

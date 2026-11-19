@@ -58,6 +58,18 @@ curl -X POST http://127.0.0.1:8787/events -H 'Content-Type: application/json' -d
 
 `ingest_path` defaults to `/v1/aegis/source-events`. See `packages/aegis-connector/README.md`.
 
+### Demo Bank (local)
+
+`pnpm pilot:provision-demo-tenant` (or `pnpm demo:fresh`) registers `src_los` / `src_core` /
+`src_pay` and writes private keys + config under `.data/connectors/` (gitignored). Then:
+
+```
+pnpm demo:connectors   # LOS :8787, Core :8788, Pay :8789 (needs AEGIS_INGEST_KEY)
+pnpm bank:up           # bank-simulator embeds in-process Connectors; stories are signed
+```
+
+`pnpm pilot:seed-history` also submits through the LOS Connector. Do not commit `.data/`.
+
 ## SDK
 
 ```ts

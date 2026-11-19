@@ -76,6 +76,9 @@ export default function SourcesPage() {
   const [revokeFor, setRevokeFor] = useState<SourceSummary | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
 
+  const [disableFor, setDisableFor] = useState<SourceSummary | null>(null);
+  const [disableReason, setDisableReason] = useState("");
+
   const [historyFor, setHistoryFor] = useState<SourceSummary | null>(null);
 
   const sourcesQuery = useQuery({
@@ -151,6 +154,24 @@ export default function SourcesPage() {
     onSuccess: () => {
       setRevokeFor(null);
       setRevokeReason("");
+      refresh();
+    },
+  });
+
+  const disable = useMutation({
+    mutationFn: (source: SourceSummary) =>
+      consoleApi<{ source: SourceSummary }>(
+        `/sources/${encodeURIComponent(source.source_id)}/disable`,
+        {
+          method: "POST",
+          body: JSON.stringify(
+            disableReason.trim() ? { reason: disableReason.trim() } : {},
+          ),
+        },
+      ),
+    onSuccess: () => {
+      setDisableFor(null);
+      setDisableReason("");
       refresh();
     },
   });
@@ -302,6 +323,19 @@ export default function SourcesPage() {
                                   setRevokeReason("");
                                   revoke.reset();
                                   setRevokeFor(s);
+                                },
+                              },
+                            ]
+                          : []),
+                        ...(s.status === "active"
+                          ? [
+                              {
+                                label: "Disable source",
+                                danger: true,
+                                onClick: () => {
+                                  setDisableReason("");
+                                  disable.reset();
+                                  setDisableFor(s);
                                 },
                               },
                             ]
@@ -527,6 +561,54 @@ export default function SourcesPage() {
           />
         </label>
         {revoke.isError ? <ErrorAlert message={errorText(revoke.error)} /> : null}
+      </Modal>
+
+      {/* Disable source */}
+      <Modal
+        open={Boolean(disableFor)}
+        title="Disable source"
+        description={
+          disableFor
+            ? `Aegis will refuse every new event from ${disableFor.name}. Existing sealed events stay on the ledger. Re-enable is not offered here — register a new source if you need to send again.`
+            : undefined
+        }
+        closeOnOverlayClick={false}
+        onClose={() => {
+          if (!disable.isPending) setDisableFor(null);
+        }}
+        footer={
+          <>
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnSecondary}`}
+              onClick={() => setDisableFor(null)}
+              disabled={disable.isPending}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnDanger}`}
+              disabled={disable.isPending}
+              onClick={() => disableFor && disable.mutate(disableFor)}
+            >
+              {disable.isPending ? "Disabling…" : "Disable source"}
+            </button>
+          </>
+        }
+      >
+        <label className={ui.field}>
+          Reason (optional)
+          <textarea
+            className={ui.input}
+            rows={3}
+            placeholder="For example: system decommissioned"
+            value={disableReason}
+            onChange={(e) => setDisableReason(e.target.value)}
+            autoFocus
+          />
+        </label>
+        {disable.isError ? <ErrorAlert message={errorText(disable.error)} /> : null}
       </Modal>
 
       {/* History */}

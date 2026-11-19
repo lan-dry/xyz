@@ -5,6 +5,7 @@
  *   POST /sources                                 register a source with its first key
  *   POST /sources/:sourceId/keys                  add a key (rotation)
  *   POST /sources/:sourceId/keys/:keyId/revoke    { reason }
+ *   POST /sources/:sourceId/disable               { reason? }
  *   GET  /sources/:sourceId/history
  */
 import { Hono, type Context } from "hono";
@@ -26,6 +27,7 @@ import {
   listSources,
   RegistryError,
   registerSource,
+  disableSource,
   revokeSourceKey,
   type SourceKeyRow,
   type SourceRow,
@@ -273,6 +275,42 @@ sourceRoutes.post(
         metadata: { key_id: keyId, reason },
       });
       return c.json({ key: serializeKey(key) });
+    } catch (err) {
+      const handled = registryErrorResponse(c, err);
+      if (handled) return handled;
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+);
+
+sourceRoutes.post(
+  "/sources/:sourceId/disable",
+  requireConsoleSession,
+  async (c) => {
+    const gate = adminOnly(c);
+    if (gate instanceof Response) return gate;
+    const sourceId = param(c, "sourceId");
+    const body = (await readJson(c)) ?? {};
+    const reason = str(body.reason).trim();
+
+    const client = await getPool().connect();
+    try {
+      const source = await disableSource(client, {
+        organization_id: gate.organizationId,
+        source_id: sourceId,
+        reason: reason || undefined,
+        actor: gate.email,
+      });
+      await auditFromConsoleSession(client, gate, {
+        action: "source.disabled",
+        resourceType: "source",
+        resourceId: sourceId,
+        metadata: reason ? { reason } : {},
+      });
+      const keys = await listSourceKeys(client, gate.organizationId, sourceId);
+      return c.json({ source: serializeSource(source, keys, 0) });
     } catch (err) {
       const handled = registryErrorResponse(c, err);
       if (handled) return handled;

@@ -12,8 +12,14 @@ python verify_envelope.py --envelope envelope.json --public-key <base64>
 
 # run the shared conformance vectors
 python verify_envelope.py --vectors ../../conformance/vectors.json
+
+# verify a real exported evidence bundle (G1 envelopes + registry)
+python verify_bundle.py --bundle fixtures/g1-exported-bundle.json
 ```
 
 Failure reasons match the SDK: `malformed`, `unsupported_version`, `event_hash_mismatch`, `bad_signature`.
+
+`verify_bundle.py` additionally checks receipt sequence continuity and that each
+source key in `source_registry` was valid at the envelope's recorded `ts`.
 
 This is a Python tool, not a pnpm package (no `package.json`).

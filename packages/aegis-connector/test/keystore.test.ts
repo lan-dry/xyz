@@ -53,6 +53,22 @@ describe("keystore", () => {
     await expect(readPrivateKey(path)).rejects.toThrow(/chmod 600/);
   });
 
+  it("documents Windows: POSIX mode bits are not enforced on read", async () => {
+    // On Windows, Node's mode bits are best-effort and NTFS ACLs govern access.
+    // writePrivateKey still requests mode 0600 + chmod; readPrivateKey skips the
+    // group/others check when process.platform === "win32". Operators must restrict
+    // the key path with NTFS ACLs (or encrypt with AEGIS_KEY_PASSPHRASE).
+    const keys = await generateKeyPair();
+    const path = join(dir, "win.key");
+    await writePrivateKey(path, keys.privateKey);
+    expect(Buffer.from(await readPrivateKey(path))).toEqual(Buffer.from(keys.privateKey));
+    if (!posix) {
+      // Mode check is skipped on Windows — even a world-readable-looking file loads.
+      await chmod(path, 0o644).catch(() => undefined);
+      expect(Buffer.from(await readPrivateKey(path))).toEqual(Buffer.from(keys.privateKey));
+    }
+  });
+
   it("rejects garbage files", async () => {
     const path = join(dir, "bad.key");
     await writeFile(path, "not json", { mode: 0o600 });

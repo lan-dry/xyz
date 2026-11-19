@@ -1087,6 +1087,9 @@ importers:
       '@salanor/aegis':
         specifier: workspace:*
         version: link:../../sdks/typescript
+      '@salanor/aegis-connector':
+        specifier: workspace:*
+        version: link:../../packages/aegis-connector
       '@salanor/aegis-sdk':
         specifier: workspace:*
         version: link:../../packages/aegis-sdk
@@ -1105,6 +1108,12 @@ importers:
       '@salanor/aegis':
         specifier: workspace:*
         version: link:../../sdks/typescript
+      '@salanor/aegis-connector':
+        specifier: workspace:*
+        version: link:../../packages/aegis-connector
+      '@salanor/aegis-sdk':
+        specifier: workspace:*
+        version: link:../../packages/aegis-sdk
       '@salanor/db-url':
         specifier: workspace:*
         version: link:../../packages/db-url

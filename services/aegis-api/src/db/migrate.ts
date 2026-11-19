@@ -28,6 +28,10 @@ const MIGRATIONS = [
   { version: "009_reconciliation", file: "009_reconciliation.sql" },
   { version: "010_collector_cdc", file: "010_collector_cdc.sql" },
   { version: "011_stage7_facts", file: "011_stage7_facts.sql" },
+  {
+    version: "012_wipe_disable_update_guards",
+    file: "012_wipe_disable_update_guards.sql",
+  },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {

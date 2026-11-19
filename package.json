@@ -72,6 +72,7 @@
     "bank-simulator": "node tools/bank-simulator/server.mjs",
     "bank:up": "node tools/bank-simulator/bank-up.mjs",
     "bank:down": "node tools/bank-simulator/bank-down.mjs",
+    "demo:connectors": "node tools/demo/demo-connectors.mjs",
     "test:redteam": "node tools/redteam/run.mjs",
     "demo:rehearse": "node tools/demo/demo-rehearse.mjs",
     "demo:screens": "node tools/demo/demo-screens.mjs",

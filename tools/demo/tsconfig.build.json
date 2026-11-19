@@ -19,6 +19,7 @@
   "include": [
     "load-env.mts",
     "demo-tenant-lib.mts",
+    "connector-sources.mts",
     "tenant-wipe-lib.mts",
     "provision-demo-tenant.mts",
     "seed-history.mts",

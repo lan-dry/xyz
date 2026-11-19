@@ -183,7 +183,14 @@ function isUniqueViolation(err: unknown): boolean {
   return (err as { code?: string } | null)?.code === "23505";
 }
 
-/** Registry + time checks that need no sequence state. */
+/**
+ * Registry + time checks that need no sequence state.
+ *
+ * Key validity (valid_from / valid_to / revoked) is judged against **Aegis server
+ * receive time** (`now`), not the source-claimed `envelope.ts`. A revoked or
+ * expired key cannot be laundered by backdating `ts`. Skew still compares
+ * claimed `ts` to `now` so clocks cannot drift unboundedly.
+ */
 function checkKeyAndTime(
   key: SourceKeyRow,
   source: SourceRow,
@@ -194,10 +201,11 @@ function checkKeyAndTime(
   if (source.status !== "active") return reject("source_disabled");
   if (key.status === "revoked") return reject("key_revoked");
   if (key.status !== "active") return reject("key_inactive");
+  const receivedAt = now.getTime();
+  if (receivedAt < key.valid_from.getTime()) return reject("key_not_yet_valid");
+  if (key.valid_to && receivedAt >= key.valid_to.getTime()) return reject("key_expired");
   const ts = Date.parse(envelope.ts);
-  if (ts < key.valid_from.getTime()) return reject("key_not_yet_valid");
-  if (key.valid_to && ts >= key.valid_to.getTime()) return reject("key_expired");
-  if (Math.abs(now.getTime() - ts) > skewSeconds * 1000) {
+  if (Math.abs(receivedAt - ts) > skewSeconds * 1000) {
     return reject("timestamp_skew");
   }
   return null;

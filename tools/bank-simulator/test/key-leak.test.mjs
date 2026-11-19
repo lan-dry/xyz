@@ -43,14 +43,24 @@ function startMockApi() {
         return send(401, { error: "unauthorized", message: "Invalid ingest key" });
       }
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
-      if (req.url === "/v1/aegis/governed/events") {
-        cases.add(body.case_id);
+      // Stage 1b: Connector posts signed envelopes to source-events (also accepted on governed/events).
+      const event =
+        body && body.aegis_envelope === "1" && body.event && typeof body.event === "object"
+          ? body.event
+          : body;
+      if (
+        req.url === "/v1/aegis/source-events" ||
+        req.url === "/v1/aegis/governed/events"
+      ) {
+        cases.add(event.case_id);
         // Adversarial: echo the credential back, as a misbehaving upstream might.
         return send(200, {
           outcome: "allow",
-          event_id: `evt_${body.case_id}`,
+          event_id: `evt_${event.case_id}`,
           plain_summary: "Allowed by the mock.",
           matched_rules: [],
+          source_signed: body?.aegis_envelope === "1",
+          evidence_grade: body?.aegis_envelope === "1" ? "G1" : "G0",
           debug_echo: auth,
         });
       }
@@ -83,6 +93,8 @@ async function startSimulator(extraEnv) {
     PORT: String(port),
     HOST: "127.0.0.1",
     BANK_SIMULATOR_DATA_DIR: dataDir,
+    // Isolate from provisioned .data/connectors keys/state during unit tests.
+    AEGIS_CONNECTORS_DIR: join(dataDir, "connectors-root"),
     AEGIS_CONSOLE_ORIGIN: "http://console.test",
     ...extraEnv,
   });
@@ -233,7 +245,8 @@ describe("bank simulator: key never reaches the browser", () => {
     assert.equal(run.json.outcome, "allow");
     const [call] = run.json.requests;
     assert.equal(call.method, "POST");
-    assert.equal(call.endpoint, `http://127.0.0.1:${mock.port}/v1/aegis/governed/events`);
+    assert.equal(call.endpoint, `http://127.0.0.1:${mock.port}/v1/aegis/source-events`);
+    assert.equal(call.via, "aegis-connector");
     assert.equal(call.payload.actor.id, "agent_credit");
     assert.equal(call.response.status, 200);
     assert.equal(call.headers.Authorization, "Bearer aegis_\u2026****");

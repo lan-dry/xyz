@@ -29,12 +29,18 @@ There is **no** runtime demo mode and **no** time travel.
 ```powershell
 # Needs PLATFORM_BOOTSTRAP_SECRET and uncommitted .demo-tenant-emails.local.json
 pnpm demo:up              # Postgres + normal API + provision + seed Demo Bank
-pnpm bank-simulator       # standalone story driver (real timers)
-pnpm demo:rehearse        # headless PASS/FAIL against normal API + simulator
+pnpm bank:up              # multi-system bank + in-process LOS Connector (signed events)
+pnpm demo:connectors      # optional: standalone Connector HTTP (:8787 LOS, :8788 core, :8789 pay)
+pnpm bank-simulator       # story driver alone (uses Connector keys from .data/connectors/)
+pnpm demo:rehearse        # headless PASS/FAIL against normal API + signed ingest
 pnpm demo:runbook-walk    # click-path + screenshots
 pnpm demo:screens         # Playwright shots → docs/screens/
-pnpm demo:fresh           # wipe → provision → seed (same as hosted refresh)
+pnpm demo:fresh           # wipe → provision (incl. source keys) → seed via Connector
 ```
+
+Demo Bank keeps `require_signed_events=true`. Provision registers `src_los` / `src_core` /
+`src_pay` and stores private keys under `.data/connectors/` (gitignored). Seed history and
+the bank simulator sign through `@salanor/aegis-connector` — never commit those keys.
 
 Also: `tools/demo/demo-up.ps1` / `tools/demo/demo-up.sh`
 

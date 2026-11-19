@@ -36,6 +36,7 @@ import {
   type PersonaKey,
   type TenantFile,
 } from "./demo-tenant-lib.mts";
+import { ensureDemoConnectorSources } from "./connector-sources.mts";
 
 const args = new Set(process.argv.slice(2));
 
@@ -378,24 +379,37 @@ async function main(): Promise<void> {
     await ensureIngestKey(admin);
   }
 
-  step(5, "Banking pack and escalation");
+  step(5, "Signed sources (Connector keys)");
+  // Private keys under .data/connectors/ (gitignored). Public keys registered with Aegis.
+  // Configs omit the ingest bearer unless DEMO_BANK_INGEST_KEY is set; use AEGIS_INGEST_BEARER
+  // when starting Connectors (`pnpm demo:connectors` / bank:up).
+  const connectors = await ensureDemoConnectorSources(admin, file, {
+    ingestKey: stableSecret || process.env.AEGIS_INGEST_KEY?.trim(),
+    log,
+  });
+  log(
+    `Connector data dir: ${connectors.root}  (start with: pnpm demo:connectors  or  pnpm bank:up)`,
+  );
+
+  step(6, "Banking pack and escalation");
   await ensurePack(admin);
 
   if (args.has("--skip-invites")) {
     console.log("\nSkipped invitations (--skip-invites).");
   } else {
-    step(6, "Personas (memberships / invitations)");
+    step(7, "Personas (memberships / invitations)");
     const status = await inviteEveryone(file, organizationId, admin);
     for (const key of PERSONA_KEYS) log(`${key.padEnd(10)} ${status[key]}`);
 
-    step(7, "Bank roles");
+    step(8, "Bank roles");
     await syncBankRoles(admin, file);
   }
 
   console.log(
     `\nDone. Organisation id: ${organizationId}${
       file.console_origin ? `\nConsole: ${file.console_origin}/aegis` : ""
-    }\nNext: pnpm pilot:seed-history   (needs AEGIS_INGEST_KEY from step 4, or DEMO_BANK_INGEST_KEY)\n`,
+    }\nNext: pnpm pilot:seed-history   (needs AEGIS_INGEST_KEY from step 4, or DEMO_BANK_INGEST_KEY)\n` +
+      `Connectors: pnpm demo:connectors   (LOS :8787; keys in ${connectors.root})\n`,
   );
 }
 

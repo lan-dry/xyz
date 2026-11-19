@@ -1,0 +1,171 @@
+openapi: 3.0.3
+info:
+  title: Aegis Source Event API (AEGIS-SRC1)
+  version: 0.1.0
+  description: >
+    Signed source-envelope ingest. The body is an AEGIS-SRC1 envelope; on success
+    the inner business event is evaluated and the full envelope is sealed on the
+    decision. Also accepted on /governed/events and /bank/events when
+    aegis_envelope is "1".
+servers:
+  - url: https://api.example.local/v1/aegis
+    description: Replace with your Aegis base URL
+paths:
+  /source-events:
+    post:
+      operationId: postSourceEvent
+      summary: Submit an AEGIS-SRC1 signed envelope for ingest and policy evaluation
+      security:
+        - ingestBearer: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: >
+            Optional. When present must equal the envelope idempotency_key.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignedEnvelope"
+      responses:
+        "200":
+          description: Decision (source-signed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignedDecisionResponse"
+        "400":
+          description: Malformed envelope or idempotency mismatch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeRejected"
+        "401":
+          description: Missing/invalid ingest key, or key/source auth failure
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AuthError"
+                  - $ref: "#/components/schemas/EnvelopeRejected"
+        "403":
+          description: Source disabled or unsigned events required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeRejected"
+        "409":
+          description: Replay / sequence conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnvelopeRejected"
+components:
+  securitySchemes:
+    ingestBearer:
+      type: http
+      scheme: bearer
+  schemas:
+    SignedEnvelope:
+      type: object
+      required:
+        - aegis_envelope
+        - source_id
+        - key_id
+        - seq
+        - ts
+        - nonce
+        - idempotency_key
+        - event
+        - event_hash
+        - signature
+      properties:
+        aegis_envelope:
+          type: string
+          enum: ["1"]
+        source_id:
+          type: string
+        key_id:
+          type: string
+        seq:
+          type: integer
+          minimum: 1
+        ts:
+          type: string
+          format: date-time
+        nonce:
+          type: string
+          format: uuid
+        idempotency_key:
+          type: string
+        event:
+          type: object
+          additionalProperties: true
+        event_hash:
+          type: string
+          description: hex(SHA-256(JCS(event)))
+        signature:
+          type: string
+          description: base64url Ed25519 over AEGIS-SRC1 signing payload
+    SignedDecisionResponse:
+      type: object
+      required:
+        - case_id
+        - decision_id
+        - receipt_id
+        - outcome
+        - mode
+        - source_signed
+        - evidence_grade
+      properties:
+        case_id:
+          type: string
+        decision_id:
+          type: string
+        receipt_id:
+          type: string
+        outcome:
+          type: string
+          enum: [allow, hold, stop]
+        mode:
+          type: string
+          enum: [enforce, record_only]
+        source_signed:
+          type: boolean
+          enum: [true]
+        evidence_grade:
+          type: string
+          enum: [G1]
+        event_id:
+          type: string
+          nullable: true
+        event_hash:
+          type: string
+          nullable: true
+        sequence_num:
+          type: integer
+          nullable: true
+    EnvelopeRejected:
+      type: object
+      required: [error, code, message]
+      properties:
+        error:
+          type: string
+          enum: [envelope_rejected]
+        code:
+          type: string
+          description: >
+            Examples: bad_signature, key_revoked, key_expired, key_not_yet_valid,
+            source_disabled, replay, seq_gap_conflict, clock_skew, unknown_key,
+            unknown_source, unsigned_required
+        message:
+          type: string
+    AuthError:
+      type: object
+      properties:
+        error:
+          type: string

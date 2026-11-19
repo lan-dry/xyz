@@ -47,6 +47,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { STORIES, getStory } from "./stories.mjs";
 import { SYSTEMS } from "./systems.mjs";
 import { SimulatedConnectors } from "./connectors-sim.mjs";
+import { RealConnectors } from "./real-connectors.mjs";
 import { CoreLedger } from "./core-ledger.mjs";
 import { ATTACKS, HONEST_LIMIT, runAttack } from "./redteam-attacks.mjs";
 
@@ -89,10 +90,18 @@ const refusedDisbursements = [];
 /** case_id → action snapshot queued for disburse after approve */
 const pendingDisburse = new Map();
 
-const connectors = new SimulatedConnectors(join(DATA_DIR, "connectors"), {
+/** Red-team crash/outbox sims (not used for live signed ingest). */
+const simConnectors = new SimulatedConnectors(join(DATA_DIR, "connectors-sim"), {
   apiBase: ENV_CONFIG.apiBase,
   ingestKey: ENV_CONFIG.ingestKey,
 });
+/** Real in-process Aegis Connectors (Stage 1b) — signs via @salanor/aegis-connector. */
+const realConnectors = new RealConnectors(DATA_DIR, {
+  apiBase: ENV_CONFIG.apiBase,
+  ingestKey: ENV_CONFIG.ingestKey,
+});
+/** Alias kept for redteam-attacks.mjs which expects `connectors`. */
+const connectors = simConnectors;
 const coreLedger = new CoreLedger({
   databaseUrl: process.env.BANK_CORE_DATABASE_URL ?? "",
   dataDir: join(DATA_DIR, "ledger"),
@@ -100,6 +109,19 @@ const coreLedger = new CoreLedger({
   confirmFn: async ({ token, params }) => {
     const c = cfg();
     if (!c.configured) return { ok: false, code: "not_configured", reason: "Not configured" };
+    // Prefer Core Connector confirm (source-signs params) when keys are ready.
+    try {
+      const core = await realConnectors.get("core");
+      if (core) {
+        // Use the Connector HTTP confirm path via submit isn't available; post through
+        // the in-process connector's confirm by calling Aegis with a signed envelope
+        // from POST /execute/confirm semantics — fall through to direct confirm below
+        // unless we open listen. Direct confirm still works; Core signing is Partial
+        // unless demo:connectors is up. Loan stories use LOS Connector for G1.
+      }
+    } catch {
+      /* fall through */
+    }
     const res = await postJson("/v1/aegis/executions/confirm", { token, params }, {}, {});
     if (res.status === 200 && res.data?.ok !== false && !res.data?.error) {
       return { ok: true, ...res.data };
@@ -112,7 +134,8 @@ const coreLedger = new CoreLedger({
     };
   },
 });
-await connectors.init();
+await simConnectors.init();
+await realConnectors.init();
 await coreLedger.init();
 // Refresh connector cfg when setup changes — see saveConfig.
 
@@ -360,11 +383,25 @@ async function postJson(path, body, extraHeaders = {}, { calls, keyOverride } = 
   return { status, data };
 }
 
+/** AEGIS-SRC1 rejects floats; turn non-integer numbers into decimal strings. */
+function forSigning(value) {
+  if (value === null || typeof value === "boolean" || typeof value === "string") return value;
+  if (typeof value === "number") return Number.isSafeInteger(value) ? value : String(value);
+  if (Array.isArray(value)) return value.map(forSigning);
+  if (typeof value === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = forSigning(v);
+    return out;
+  }
+  return value;
+}
+
 function buildEvent(story, { decidedWithoutAegis, queuedAt } = {}) {
   const suffix = randomUUID().replace(/-/g, "").slice(0, 10);
   const caseId = `SIM-${suffix.toUpperCase()}`;
   const traceId = `tr_sim_${suffix}`;
-  const idem = `sim-${story.id}-${suffix}`;
+  // AEGIS-SRC1 requires a UUID idempotency_key (envelope + event must match).
+  const idem = randomUUID();
   return {
     caseId,
     traceId,
@@ -376,12 +413,12 @@ function buildEvent(story, { decidedWithoutAegis, queuedAt } = {}) {
       product: story.product,
       emitted_at: queuedAt ?? new Date().toISOString(),
       actor: { type: "system", id: cfg().agentId || story.agent_slug },
-      attributes: {
+      attributes: forSigning({
         ...story.attributes,
         ...(decidedWithoutAegis
           ? { decided_without_aegis: true, queued_at: queuedAt, bank_fallback: "proceed_and_flag" }
           : {}),
-      },
+      }),
       trace_id: traceId,
     },
   };
@@ -502,20 +539,35 @@ async function coreDisburse(input, { calls } = {}) {
   return { status: 200, body: { ok: true, permitted: true, entry, permit: permit.data } };
 }
 
-/** Send one governed event, then raise an approval request for a hold or a hard stop. */
+/**
+ * Send one event through the LOS Aegis Connector (signed AEGIS-SRC1 → source-events),
+ * then raise an approval request for a hold or a hard stop.
+ */
 async function submit(body, steps, calls) {
   const orgId = cfg().orgId;
-  const intake = await postJson(
-    "/v1/aegis/governed/events",
-    body,
-    { "Idempotency-Key": body.idempotency_key },
-    { calls },
-  );
+  const c = cfg();
+  realConnectors.cfg = { apiBase: c.apiBase, ingestKey: c.ingestKey };
+  let intake;
+  try {
+    intake = await realConnectors.submit("los", body, { calls });
+    steps.push("LOS Connector → signed source-events (G1).");
+  } catch (err) {
+    throw new Error(
+      err instanceof Error
+        ? err.message
+        : `Connector submit failed: ${String(err)}`,
+    );
+  }
   if (intake.status !== 200) {
     throw new Error(intake.data?.message ?? intake.data?.error ?? `intake returned ${intake.status}`);
   }
   const decision = intake.data;
-  steps.push(`Governed intake: ${decision.outcome}`);
+  if (!decision || typeof decision !== "object") {
+    throw new Error("Connector delivered but Aegis response body was empty");
+  }
+  steps.push(
+    `Governed intake: ${decision.outcome}${decision.source_signed || decision.evidence_grade === "G1" ? " (source-signed)" : ""}`,
+  );
   const sealed = Boolean(decision.event_id) && !String(decision.event_id).startsWith("evt_gov_");
   let approvalId = null;
   const action = actionFromAttributes(body.attributes);
@@ -662,11 +714,6 @@ async function runStory(storyId) {
   const built = buildEvent(story);
   try {
     const { decision, sealed, approvalId, action } = await submit(built.body, steps, calls);
-    try {
-      await connectors.recordSend("los");
-    } catch {
-      /* ignore */
-    }
     const targetGrade = story.target_grade ?? null;
     if (targetGrade) steps.push(`Target evidence grade for this story: ${targetGrade}.`);
     return {
@@ -895,7 +942,11 @@ async function saveConfig(body) {
   if (ingestKey || keep) next.ingestKey = ingestKey || keep;
   saved = next;
   await persistSaved();
-  connectors.cfg = { apiBase: next.apiBase, ingestKey: next.ingestKey || cfg().ingestKey };
+  const nextCfg = { apiBase: next.apiBase, ingestKey: next.ingestKey || cfg().ingestKey };
+  connectors.cfg = nextCfg;
+  realConnectors.cfg = nextCfg;
+  // Drop open Connectors so the next submit picks up the new bearer / base.
+  await realConnectors.close();
   return { status: 200, body: publicConfig() };
 }
 
@@ -998,11 +1049,19 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/systems") {
-      connectors.cfg = { apiBase: cfg().apiBase, ingestKey: cfg().ingestKey };
+      const live = { apiBase: cfg().apiBase, ingestKey: cfg().ingestKey };
+      connectors.cfg = live;
+      realConnectors.cfg = live;
       return sendJson(res, 200, {
-        systems: connectors.health(),
+        systems: realConnectors.health({
+          connected: Boolean(live.apiBase && live.ingestKey),
+          apiBase: live.apiBase,
+        }),
         core_ledger: coreLedger.status(),
         bureau_url: process.env.DEMO_BUREAU_URL?.trim() || "http://127.0.0.1:4100",
+        connectors_dir:
+          process.env.AEGIS_CONNECTORS_DIR?.trim() ||
+          join(resolve(here, "../.."), ".data", "connectors"),
       });
     }
 

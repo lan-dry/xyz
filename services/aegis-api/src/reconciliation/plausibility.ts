@@ -45,10 +45,6 @@ const VOLUME_MULTIPLIER = 5;
 const VOLUME_WINDOW_HOURS = 1;
 const VOLUME_BASELINE_HOURS = 24;
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return v !== null && typeof v === "object" && !Array.isArray(v);
-}
-
 function readAmount(attributes: Record<string, unknown>): number | null {
   const raw = attributes.amount ?? attributes.amount_rwf ?? attributes.loan_amount;
   if (typeof raw === "number" && Number.isFinite(raw)) return raw;

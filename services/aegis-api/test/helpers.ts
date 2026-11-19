@@ -222,6 +222,25 @@ export async function cleanupIsolationFixtures(
   }
   await client.query(`DELETE FROM signing_key WHERE key_id LIKE 'key-test-%'`);
   await client.query(`DELETE FROM agent WHERE agent_id LIKE 'agent-test-%'`);
+  // Append-only tenant tables (provenance Stages 3–4) block org DELETE unless
+  // cleared under replica role — same pattern as sealed event delete above.
+  await client.query(`SET session_replication_role = replica`);
+  try {
+    await client.query(
+      `DELETE FROM decision_token WHERE organization_id IN ($1, $2)`,
+      [ORG_A_ID, ORG_B_ID],
+    );
+    await client.query(
+      `DELETE FROM reconciliation_exception WHERE organization_id IN ($1, $2)`,
+      [ORG_A_ID, ORG_B_ID],
+    );
+    await client.query(
+      `DELETE FROM forensic_receipt WHERE organization_id IN ($1, $2)`,
+      [ORG_A_ID, ORG_B_ID],
+    );
+  } finally {
+    await client.query(`SET session_replication_role = DEFAULT`);
+  }
   await client.query(
     `DELETE FROM organization WHERE organization_id IN ($1, $2)`,
     [ORG_A_ID, ORG_B_ID],

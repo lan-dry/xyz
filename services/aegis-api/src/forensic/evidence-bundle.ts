@@ -1778,7 +1778,7 @@ export function trustedTimeText(
     return "Trusted time: not stamped by an outside authority (signing time only)";
   }
   if (entry.status === "stamped") {
-    return `Timestamped by ${entry.authority ?? "time authority"} at ${formatUtc(entry.gen_time_utc)}`;
+    return `Trusted time: ${entry.authority ?? "time authority"} at ${formatUtc(entry.gen_time_utc)}`;
   }
   if (entry.status === "invalid") {
     return "Trusted time: stamp does not match this record";

@@ -5,6 +5,9 @@
  * Tries Docker for bank-core Postgres (wal_level=logical). If Docker is
  * unstable or unavailable, continues with an in-memory ledger and reports Partial.
  * Starts: bank-simulator (:4000) and demo-bureau (:4100) as Node processes.
+ * The simulator embeds in-process Aegis Connectors (Stage 1b) using keys under
+ * `.data/connectors/` when provisioned. Optional standalone HTTP Connectors:
+ * `pnpm demo:connectors`.
  */
 import { spawn, execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync, openSync } from "node:fs";

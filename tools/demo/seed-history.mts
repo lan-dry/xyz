@@ -1,11 +1,12 @@
 /**
  * pnpm pilot:seed-history
  *
- * Gives the hosted Demo Bank a believable history: 11 cases sent through the REAL
- * governed intake (ingest key), with holds requested through the real approvals
- * endpoint and decided by the personas' own console sessions. Intake emitted_at
- * and sealed issued_at values are staggered across ~45 prior days; approvals use
- * a historical decided_at hours after each hold (demo org only).
+ * Gives the hosted Demo Bank a believable history: 11 cases signed through the
+ * LOS Aegis Connector (AEGIS-SRC1 → /v1/aegis/source-events), with holds requested
+ * through the real approvals endpoint and decided by the personas' own console
+ * sessions. Intake emitted_at and sealed issued_at values are staggered across
+ * ~45 prior days; approvals use a historical decided_at hours after each hold
+ * (demo org only). Requires provisioned Connector keys (`.data/connectors/`).
  *
  * Idempotent: case ids and idempotency keys are fixed, so a re-run re-sends nothing new
  * and decides only approvals that are still pending.
@@ -19,6 +20,7 @@
  * and .demo-tenant-emails.local.json with a password for the manager and the head
  * (a case whose decider has no password is left pending, and reported).
  */
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -30,6 +32,8 @@ import {
   type PersonaKey,
   type TenantFile,
 } from "./demo-tenant-lib.mts";
+import type { BusinessEvent } from "@salanor/aegis-sdk";
+import { openDemoConnector } from "./connector-sources.mts";
 
 type Story = {
   n: string;
@@ -177,6 +181,32 @@ async function main(): Promise<void> {
 
   const summary: Array<{ n: string; outcome: string; result: string; trace: string }> = [];
 
+  /** Stable UUID from a seed string (AEGIS-SRC1 idempotency_key must be a UUID). */
+  function stableUuid(seed: string): string {
+    const h = createHash("sha256").update(seed).digest();
+    h[6] = (h[6]! & 0x0f) | 0x40;
+    h[8] = (h[8]! & 0x3f) | 0x80;
+    const hex = h.subarray(0, 16).toString("hex");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+  }
+
+  /** AEGIS-SRC1 rejects floats; turn non-integer numbers into decimal strings. */
+  function forSigning(value: unknown): unknown {
+    if (value === null || typeof value === "boolean" || typeof value === "string") return value;
+    if (typeof value === "number") {
+      return Number.isSafeInteger(value) ? value : String(value);
+    }
+    if (Array.isArray(value)) return value.map(forSigning);
+    if (typeof value === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        out[k] = forSigning(v);
+      }
+      return out;
+    }
+    return value;
+  }
+
   /** Production-like bank references (no seedhist / DB-HIST / tr_seedhist). */
   function caseTraceIds(story: Story): { caseId: string; traceId: string; idem: string } {
     const num = Number(story.n);
@@ -191,10 +221,12 @@ async function main(): Promise<void> {
       base = 200;
     }
     const ref = String(base + (Number.isFinite(num) ? num : 0)).padStart(5, "0");
+    const caseId = `${prefix}-${year}-${ref}`;
     return {
-      caseId: `${prefix}-${year}-${ref}`,
+      caseId,
       traceId: `TR-RW-${year}-${ref}`,
-      idem: `${prefix.toLowerCase()}-history-${year}-${ref}-v4`,
+      // v5 bump: SRC1 requires UUID; keep deterministic for idempotent re-seed.
+      idem: stableUuid(`${prefix.toLowerCase()}-history-${year}-${ref}-v5`),
     };
   }
 
@@ -241,34 +273,48 @@ async function main(): Promise<void> {
     return d.toISOString();
   }
 
+  // Sign every history event through the LOS Connector (require_signed_events=true).
+  log("Opening LOS Connector (src_los) for signed ingest…");
+  const { connector: losConnector } = await openDemoConnector("src_los", {
+    apiBase: file.api_base,
+    ingestBearer: key,
+  });
+
+  try {
   for (let i = 0; i < STORIES.length; i++) {
     const story = STORIES[i]!;
     const { caseId, traceId, idem } = caseTraceIds(story);
     const emittedAt = emittedAtForIndex(i, STORIES.length);
     const decidedAt = decidedAtAfterHold(emittedAt, i);
 
-    const intake = await httpJson<Decision & { error?: string }>(
-      `${file.api_base}/v1/aegis/governed/events`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${key}`, "Idempotency-Key": idem },
-        body: {
-          schema_version: 1,
-          case_id: caseId,
-          idempotency_key: idem,
-          event_type: story.event_type,
-          product: story.product,
-          agent_id: agentId(story.agent),
-          emitted_at: emittedAt,
-          actor: { type: "system", id: story.agent },
-          // demo_history stays out of signed attributes; UI badges use case_id pattern.
-          attributes: { ...story.attributes },
-          trace_id: traceId,
-        },
-      },
-    );
-    if (intake.status !== 200) throw new HttpError(intake.status, "governed/events", intake.data);
-    const decision = intake.data;
+    const resolvedAgentId = agentId(story.agent);
+    const eventBody = {
+      schema_version: 1,
+      case_id: caseId,
+      idempotency_key: idem,
+      event_type: story.event_type,
+      product: story.product,
+      ...(resolvedAgentId ? { agent_id: resolvedAgentId } : {}),
+      emitted_at: emittedAt,
+      actor: { type: "system", id: story.agent },
+      // demo_history stays out of signed attributes; UI badges use case_id pattern.
+      attributes: forSigning({ ...story.attributes }) as BusinessEvent,
+      trace_id: traceId,
+    } as BusinessEvent;
+    const submitted = await losConnector.submit(eventBody, idem);
+    if (submitted.status !== "delivered") {
+      throw new HttpError(
+        202,
+        "source-events (connector)",
+        submitted,
+      );
+    }
+    const decision = submitted.receipt as Decision & { error?: string };
+    if (!decision || typeof decision !== "object" || !decision.outcome) {
+      throw new HttpError(502, "source-events (connector)", submitted);
+    }
+    const intake = { status: 200 as const, data: decision };
+    if (intake.status !== 200) throw new HttpError(intake.status, "source-events", intake.data);
     const outcome = decision.outcome;
     let result = outcome === "allow" ? "allowed" : outcome === "stop" ? "stopped (hard stop)" : "held";
 
@@ -328,8 +374,11 @@ async function main(): Promise<void> {
     summary.push({ n: story.n, outcome, result, trace: traceId });
     log(`${caseId}  ${outcome.padEnd(5)} ${result}`);
   }
+  } finally {
+    await losConnector.close();
+  }
 
-  console.log(`\nDone: ${summary.length} cases.`);
+  console.log(`\nDone: ${summary.length} cases (signed via LOS Connector).`);
   if (file.console_origin) {
     console.log(`Open ${file.console_origin}/aegis/traces to browse them.`);
   }

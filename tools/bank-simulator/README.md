@@ -3,17 +3,22 @@
 Standalone multi-system bank test environment against a **hosted or local tenant**
 (Demo Bank / smoke-test). Systems: **LOS** (`src_los`), **Core Banking / Ledger**
 (`src_core`), **Payment Gateway** (`src_pay`), **Credit Bureau** (`src_bureau` via
-`tools/demo-bureau`). Each system has its own key id, sequence and outbox (simulated
-Connector). Staff UI shows systems panels; **Red Team** panel runs attacks #1–18.
+`tools/demo-bureau`). Each system has its own key id and Connector state.
 
-Story buttons still send real events to governed intake
-(`POST /v1/aegis/governed/events`) and raise approvals when held. Core disbursement
-asks Aegis permit / decision-token confirm before money moves; the ledger exports
-JSONL/CSV feeds for reconciliation.
+**Stage 1b:** story buttons send through an in-process **Aegis Connector**
+(`@salanor/aegis-connector`) that signs AEGIS-SRC1 envelopes to
+`POST /v1/aegis/source-events` (works with `require_signed_events=true`). Private
+keys live under `.data/connectors/` (gitignored; written by
+`pnpm pilot:provision-demo-tenant` / `demo:fresh`). Staff UI shows systems panels;
+**Red Team** panel runs attacks #1–18.
+
+Core disbursement asks Aegis permit / decision-token confirm before money moves;
+the ledger exports JSONL/CSV feeds for reconciliation.
 
 ```powershell
 pnpm bank:up          # Postgres (Docker, wal_level=logical) + bureau :4100 + simulator :4000
 pnpm bank:down
+pnpm demo:connectors  # optional: standalone Connector HTTP processes (:8787 LOS, :8788 core, :8789 pay)
 pnpm test:redteam     # fixture suite + live panel when bank:up is running
 ```
 

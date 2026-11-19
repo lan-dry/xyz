@@ -518,7 +518,7 @@ describeIfDb("source registry + signed envelope ingest (Stage 1)", () => {
     expect((await sourceRow(src)).last_seq).toBe(1);
   });
 
-  it("expired key (ts after valid_to) → 401 key_expired", async () => {
+  it("expired key (valid_to before server receive time) → 401 key_expired", async () => {
     const src = await newSource({ validFrom: new Date(Date.now() - 3 * HOUR) });
     await getPool().query(
       `UPDATE source_key SET valid_to = now() - interval '1 hour'
@@ -528,9 +528,47 @@ describeIfDb("source registry + signed envelope ingest (Stage 1)", () => {
     await expectRejected(await ingest(await signed(src, 1)), 401, "key_expired");
   });
 
-  it("key not yet valid (ts before valid_from) → 401 key_not_yet_valid", async () => {
+  it("key not yet valid (valid_from after server receive time) → 401 key_not_yet_valid", async () => {
     const src = await newSource({ validFrom: new Date(Date.now() + HOUR) });
     await expectRejected(await ingest(await signed(src, 1)), 401, "key_not_yet_valid");
+  });
+
+  it("key revoked at T; event arrives after T claiming ts before T → 401 key_revoked", async () => {
+    const src = await newSource({ validFrom: new Date(Date.now() - 3 * HOUR) });
+    const client = await getPool().connect();
+    try {
+      await revokeSourceKey(client, {
+        organization_id: ORG,
+        source_id: src.sourceId,
+        key_id: src.keyId,
+        reason: "revoked at T",
+        actor: "vitest",
+      });
+    } finally {
+      client.release();
+    }
+    // Claim a ts while the key was still valid — receive time is now (after revoke).
+    const claimedPast = new Date(Date.now() - 30 * 60 * 1000);
+    await expectRejected(
+      await ingest(await signed(src, 1, { ts: claimedPast })),
+      401,
+      "key_revoked",
+    );
+  });
+
+  it("key expired at T; event arrives after T claiming ts before T → 401 key_expired", async () => {
+    const src = await newSource({ validFrom: new Date(Date.now() - 5 * HOUR) });
+    await getPool().query(
+      `UPDATE source_key SET valid_to = now() - interval '1 hour'
+       WHERE organization_id = $1 AND key_id = $2`,
+      [ORG, src.keyId],
+    );
+    const claimedPast = new Date(Date.now() - 2 * HOUR); // still inside old validity window
+    await expectRejected(
+      await ingest(await signed(src, 1, { ts: claimedPast })),
+      401,
+      "key_expired",
+    );
   });
 
   it("envelope ts inside the validity window of a bounded key is accepted", async () => {

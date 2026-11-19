@@ -5,9 +5,9 @@
  *
  * There is no demo mode, no demo clock and no /v1/aegis/demo/* route. Every step goes through
  * the same public surface as production:
- *   - cases:      POST /v1/aegis/governed/events (ingest key) with the bank-simulator story
- *                 definitions (tools/bank-simulator/stories.mjs), then POST
- *                 /v1/aegis/approvals/request for holds and hard stops
+ *   - cases:      signed via LOS Aegis Connector → POST /v1/aegis/source-events
+ *                 (bank-simulator story defs), then POST /v1/aegis/approvals/request
+ *                 for holds and hard stops
  *   - decisions:  console approve / reject / release, signed in as the real personas through
  *                 Salanor ID (the officer is refused, the manager and the Head of Compliance
  *                 decide)
@@ -40,7 +40,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SLUG = "demo-bank-rehearsal";
@@ -279,11 +279,22 @@ async function main() {
     (agentsRes.data.agents ?? []).find((a) => a.slug === slug)?.agent_id;
   step("agents provisioned", ["credit-decision", "payments-gateway", "customer-data", "core-banking"].every(agentId));
 
-  // 4. Stories: the standalone bank simulator's definitions, sent through the real intake.
+  // 4. Stories: bank-simulator definitions, signed through the LOS Connector (Stage 1b).
   const { STORIES, getStory } = await import(
     pathToFileURL(join(root, "tools", "bank-simulator", "stories.mjs")).href
   );
   step("bank-simulator stories loaded", Array.isArray(STORIES) && STORIES.length > 0, `${STORIES.length} stories`);
+
+  const { RealConnectors } = await import(
+    pathToFileURL(join(root, "tools", "bank-simulator", "real-connectors.mjs")).href
+  );
+  const losConnectors = new RealConnectors(join(root, ".data", "connectors-rehearsal"), {
+    apiBase,
+    ingestKey,
+    localStateOnly: true, // scratch org — own seq space; still uses provisioned private key
+  });
+  await losConnectors.init();
+  step("LOS Connector ready", true, "src_los");
 
   async function runStory(storyId) {
     const story = getStory(storyId);
@@ -294,29 +305,32 @@ async function main() {
     const suffix = randomBytes(5).toString("hex");
     const caseId = `REH-${suffix.toUpperCase()}`;
     const traceId = `tr_reh_${suffix}`;
-    const idem = `reh-${story.id}-${suffix}`;
-    const intake = await json(`${apiBase}/v1/aegis/governed/events`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${ingestKey}`,
-        "Content-Type": "application/json",
-        "Idempotency-Key": idem,
-      },
-      body: JSON.stringify({
-        schema_version: 1,
-        case_id: caseId,
-        idempotency_key: idem,
-        event_type: story.event_type,
-        product: story.product,
-        agent_id: agentId(story.agent_slug),
-        emitted_at: new Date().toISOString(),
-        actor: { type: "system", id: story.agent_slug },
-        attributes: story.attributes,
-        trace_id: traceId,
-      }),
-    });
+    const idem = randomUUID(); // AEGIS-SRC1 requires a UUID idempotency_key
+    const eventBody = {
+      schema_version: 1,
+      case_id: caseId,
+      idempotency_key: idem,
+      event_type: story.event_type,
+      product: story.product,
+      agent_id: agentId(story.agent_slug),
+      emitted_at: new Date().toISOString(),
+      actor: { type: "system", id: story.agent_slug },
+      attributes: story.attributes,
+      trace_id: traceId,
+    };
+    let intake;
+    try {
+      intake = await losConnectors.submit("los", eventBody);
+    } catch (err) {
+      step(
+        `story ${story.id}`,
+        false,
+        `connector: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
     if (intake.status !== 200) {
-      step(`story ${story.id}`, false, `intake http=${intake.status} ${intake.data.error ?? ""}`);
+      step(`story ${story.id}`, false, `intake http=${intake.status} ${intake.data?.error ?? ""}`);
       return null;
     }
     const decision = intake.data;
@@ -500,6 +514,7 @@ async function main() {
     console.log("SKIP  real-timer escalation (add --with-escalation, or run pnpm demo:prove-escalation-2min)");
   }
 
+  await losConnectors.close().catch(() => undefined);
   console.log(`\nrehearse done — failed=${failed}  (scratch org ${SLUG} = ${orgId}; demo-bank untouched)`);
   process.exit(failed > 0 ? 1 : 0);
 }

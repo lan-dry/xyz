@@ -44,6 +44,7 @@ export const CONSOLE_ROUTE_RULES: RouteRule[] = [
   { method: "POST", path: "/v1/console/sources", anon: 401, allowRoles: ["admin"] },
   { method: "POST", path: "/v1/console/sources/:sourceId/keys", anon: 401, allowRoles: ["admin"] },
   { method: "POST", path: "/v1/console/sources/:sourceId/keys/:keyId/revoke", anon: 401, allowRoles: ["admin"] },
+  { method: "POST", path: "/v1/console/sources/:sourceId/disable", anon: 401, allowRoles: ["admin"] },
   { method: "GET", path: "/v1/console/sources/:sourceId/history", anon: 401, allowRoles: ["admin"] },
   // Stage 4 reconciliation + exceptions
   { method: "GET", path: "/v1/console/exceptions", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"] },

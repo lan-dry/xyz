@@ -1,7 +1,11 @@
 # Stage 2 report: honest labelling (provenance block)
 
-Branch `feature/provenance`. Not committed. `spec/` untouched. Stage 1 is already committed.
+Branch `feature/provenance`. `spec/` untouched.
 Status: **Done, with the Partials listed below.**
+
+Re-check after Stage 1 close-out (2026-11-19): `provenance.test.ts` 12/12,
+`provenance.integration.test.ts` 3/3, `no-bare-verified.test.ts` 2/2. Stamped-time
+wording kept as `Trusted time: …` (aligned with main / `trusted-time.test.ts`).
 
 ## What Stage 2 delivers
 
