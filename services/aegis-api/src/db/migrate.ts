@@ -171,6 +171,14 @@ export async function migrateUp(options?: {
   /** Stop after applying this version (inclusive). */
   throughVersion?: string;
 }): Promise<void> {
+  if (
+    options?.throughVersion &&
+    !MIGRATIONS.some((m) => m.version === options.throughVersion)
+  ) {
+    throw new Error(
+      `migrateUp throughVersion unknown: ${options.throughVersion}`,
+    );
+  }
   await ensureMigrationTable();
   for (const migration of MIGRATIONS) {
     if (await isApplied(migration.version)) {

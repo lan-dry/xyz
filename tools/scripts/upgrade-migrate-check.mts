@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
- * Upgrade check: start from the baseline-tag schema (through 013, before 014),
- * apply forensic migrations through 015, seed forensic receipts, migrate to tip
- * (016+), then verify those receipts with aegis-verify.
+ * Upgrade check: stop at 013 (before 014/015), apply through tip (015), seed
+ * forensic receipts, migrate to tip again (no-op until 016+), then verify.
  *
  * Prefer a fresh empty database (AEGIS_UPGRADE_DATABASE_URL). Scratch DBs whose
  * name contains "upgrade" are dropped and recreated automatically.
@@ -39,14 +38,13 @@ const { getPool, closePool } = await import(
   pathToFileURL(join(root, "services/aegis-api/src/db/pool.js")).href
 );
 
-/** Last migration on `pre-forensic-demo` before forensic bank (014). */
-const BASELINE_TAG_SCHEMA = "013_blog_database_source";
+/** Stop here so 014/015 are the upgrade window under test. */
+const BASELINE_TAG_SCHEMA = "013_db_value_mismatch";
 /**
- * Seed receipts only after receipt_signing_key exists (019). issueForensicReceipt
- * publishes the public key there; seeding at bare 015 broke once custody landed.
- * Still proves: empty DB → baseline@013 → forensic window → tip, with receipts that verify.
+ * Seed after the current tip of the chain (receipt_signing_key is in 001_baseline).
+ * When 016+ land, keep seeding at this version and let the final migrateUp() cover tip.
  */
-const RECEIPT_SCHEMA = "019_receipt_key_custody_trusted_time";
+const RECEIPT_SCHEMA = "015_demo_tenant_ops";
 
 async function recreateUpgradeDbIfNeeded(databaseUrl: string): Promise<void> {
   const u = new URL(databaseUrl);
@@ -103,7 +101,7 @@ async function main() {
 
   try {
     console.log(
-      `migrateUp through ${BASELINE_TAG_SCHEMA} (baseline tag schema, before 014)…`,
+      `migrateUp through ${BASELINE_TAG_SCHEMA} (before 014/015 upgrade window)…`,
     );
     await migrateUp({ throughVersion: BASELINE_TAG_SCHEMA });
 
@@ -119,11 +117,20 @@ async function main() {
         );
         if (
           versions.rows.some((r: { version: string }) =>
-            r.version.startsWith("014"),
+            /^(014|015|01[6-9]|0[2-9])/.test(r.version),
           )
         ) {
           throw new Error(
             "baseline stop failed: 014+ already applied before seed window",
+          );
+        }
+        if (
+          !versions.rows.some(
+            (r: { version: string }) => r.version === BASELINE_TAG_SCHEMA,
+          )
+        ) {
+          throw new Error(
+            `baseline stop failed: ${BASELINE_TAG_SCHEMA} not applied (throughVersion miss?)`,
           );
         }
       } finally {
@@ -131,9 +138,7 @@ async function main() {
       }
     }
 
-    console.log(
-      `migrateUp through ${RECEIPT_SCHEMA} (receipts + receipt_signing_key)…`,
-    );
+    console.log(`migrateUp through ${RECEIPT_SCHEMA} (current tip / seed)…`);
     await migrateUp({ throughVersion: RECEIPT_SCHEMA });
 
     {
@@ -182,14 +187,14 @@ async function main() {
           seededSeqs.push(issued.seq);
         }
         console.log(
-          `seeded receipts at ${RECEIPT_SCHEMA} (after baseline@013): seq=${seededSeqs.join(",")}`,
+          `seeded receipts at ${RECEIPT_SCHEMA} (after baseline@${BASELINE_TAG_SCHEMA}): seq=${seededSeqs.join(",")}`,
         );
       } finally {
         client.release();
       }
     }
 
-    console.log("migrateUp to current tip (016+)…");
+    console.log("migrateUp to current tip…");
     await migrateUp();
 
     const verifyClient = await pool.connect();
@@ -260,7 +265,7 @@ async function main() {
       console.log("aegis-verify (in-process):", JSON.stringify(verified));
       if (!verified.ok) {
         throw new Error(
-          `aegis-verify failed on receipts seeded after baseline@013: ${JSON.stringify(verified.findings)}`,
+          `aegis-verify failed on receipts seeded after baseline@${BASELINE_TAG_SCHEMA}: ${JSON.stringify(verified.findings)}`,
         );
       }
       const cli = resolve(root, "tools/aegis-verify/cli.mts");
@@ -293,7 +298,7 @@ async function main() {
         console.log(`${table}: ${n.rows[0].n}`);
       }
       console.log(
-        "PASS: upgrade migrate check completed (baseline@013→019 seed→tip→verify)",
+        `PASS: upgrade migrate check completed (baseline@${BASELINE_TAG_SCHEMA}→${RECEIPT_SCHEMA} seed→tip→verify)`,
       );
     } finally {
       verifyClient.release();
