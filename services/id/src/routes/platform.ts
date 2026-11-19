@@ -255,17 +255,38 @@ function runDemoCli(
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   // ID service lives at services/id; repo root is three levels up from routes/.
   const repoRoot = resolvePath(import.meta.dirname, "../../../..");
-  const script = resolvePath(repoRoot, scriptRel);
+  // Prefer compiled JS (Railway id image); fall back to tsx for local `pnpm --filter id dev`.
+  const distMjs = resolvePath(
+    repoRoot,
+    scriptRel
+      .replace(/^tools\/demo\//, "tools/demo/dist/")
+      .replace(/\.mts$/, ".mjs"),
+  );
+  const sourceMts = resolvePath(repoRoot, scriptRel);
+  const useDist = existsSync(distMjs);
+  if (!useDist && !existsSync(sourceMts)) {
+    return Promise.resolve({
+      code: 1,
+      stdout: "",
+      stderr:
+        `Demo CLI missing: ${distMjs} (and ${sourceMts}). ` +
+        "Rebuild the id image with tools/demo, or run provision from the aegis-api shell / laptop.",
+    });
+  }
+  const cmd = useDist
+    ? process.execPath
+    : process.platform === "win32"
+      ? "pnpm.cmd"
+      : "pnpm";
+  const cmdArgs = useDist
+    ? [distMjs, ...args]
+    : ["exec", "tsx", sourceMts, ...args];
   return new Promise((resolve) => {
-    const child = spawn(
-      process.platform === "win32" ? "pnpm.cmd" : "pnpm",
-      ["exec", "tsx", script, ...args],
-      {
-        cwd: repoRoot,
-        env: { ...process.env, ...env },
-        shell: process.platform === "win32",
-      },
-    );
+    const child = spawn(cmd, cmdArgs, {
+      cwd: repoRoot,
+      env: { ...process.env, ...env },
+      shell: process.platform === "win32",
+    });
     let stdout = "";
     let stderr = "";
     child.stdout?.on("data", (d) => {
@@ -273,6 +294,13 @@ function runDemoCli(
     });
     child.stderr?.on("data", (d) => {
       stderr += String(d);
+    });
+    child.on("error", (err) => {
+      resolve({
+        code: 1,
+        stdout,
+        stderr: `${stderr}\nspawn failed: ${err.message}`.trim(),
+      });
     });
     child.on("close", (code) => {
       resolve({ code: code ?? 1, stdout, stderr });
@@ -402,6 +430,21 @@ platformRoutes.post("/demo-tenants/populate", async (c) => {
   const name =
     (body.name ?? "").trim() ||
     (slug === "redteam-lab" ? "Red Team Lab" : slug === "demo-bank" ? "Demo Bank" : slug);
+  const tenantFile = process.env.DEMO_TENANT_FILE?.trim();
+  if (!tenantFile || !existsSync(tenantFile)) {
+    return c.json(
+      {
+        ok: false,
+        action: "populate",
+        slug,
+        error:
+          "DEMO_TENANT_FILE is not set (or missing) on salanor-id. " +
+          "Point it at a tenant JSON on the service, or provision from the aegis-api shell / laptop " +
+          "(docs/DEPLOY_PRODUCTION.md §10).",
+      },
+      503,
+    );
+  }
   const client = await getPool().connect();
   try {
     await client.query("BEGIN");
