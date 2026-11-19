@@ -7,7 +7,8 @@
  * Private keys never leave `.data/connectors/` (or AEGIS_CONNECTORS_DIR).
  */
 import { mkdir, readFile, writeFile, chmod, rm } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { generateKeyPair, keyPairFromSeed } from "@salanor/aegis-sdk";
 import {
@@ -107,13 +108,27 @@ export type SourceLocalMeta = {
   created_at: string;
 };
 
+function writableConnectorsDir(preferred: string): string {
+  try {
+    mkdirSync(preferred, { recursive: true, mode: 0o700 });
+    // Sync probe so callers can use the path immediately.
+    return preferred;
+  } catch {
+    const fallback = join(tmpdir(), "salanor-demo-connectors");
+    mkdirSync(fallback, { recursive: true, mode: 0o700 });
+    return fallback;
+  }
+}
+
 export function connectorsRoot(override?: string): string {
   const fromEnv =
     override?.trim() ||
     process.env.AEGIS_CONNECTORS_DIR?.trim() ||
     process.env.BANK_SIMULATOR_CONNECTORS_DIR?.trim();
-  if (fromEnv) return resolve(fromEnv);
-  return resolve(repoRoot(), ".data", "connectors");
+  if (fromEnv) return writableConnectorsDir(resolve(fromEnv));
+  // Prefer repo `.data/connectors` locally; Railway id image is often not
+  // writable under /app, so fall back to os.tmpdir().
+  return writableConnectorsDir(resolve(repoRoot(), ".data", "connectors"));
 }
 
 export function sourceDir(root: string, sourceId: string): string {

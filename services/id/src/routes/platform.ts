@@ -353,6 +353,11 @@ function demoPopulateCliEnv(
   tenantFilePath: string | undefined,
   ingestKey: string,
 ): Record<string, string | undefined> {
+  // Railway salanor-id runs as `node` and often cannot mkdir under /app; keep
+  // connector private keys in tmp for Ops Populate / seed-history.
+  const connectorsDir =
+    process.env.AEGIS_CONNECTORS_DIR?.trim() ||
+    joinPath(tmpdir(), "salanor-demo-connectors");
   return {
     DEMO_ORG_SLUG: slug,
     DEMO_ORG_NAME: name,
@@ -362,6 +367,7 @@ function demoPopulateCliEnv(
     ...(tenantFilePath ? { DEMO_TENANT_FILE: tenantFilePath } : {}),
     AEGIS_INGEST_KEY: ingestKey,
     DEMO_BANK_INGEST_KEY: ingestKey,
+    AEGIS_CONNECTORS_DIR: connectorsDir,
   };
 }
 
