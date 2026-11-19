@@ -1,5 +1,5 @@
 # Exact path allowlists for known fixtures + pattern allowlists where needed.
-# Historical .env_deploy secrets are NOT allowlisted — rotate them.
+# No directory free-pass for test/ or _raw/. Historical .env_deploy secrets are NOT allowlisted — rotate them.
 title = "salanor"
 
 [extend]
@@ -11,16 +11,16 @@ paths = [
   '''conformance[/\\]vectors\.json''',
   '''sdks[/\\]conformance[/\\]vectors[/\\]aegis-src1-v1\.json''',
   '''docs[/\\]TEST_PACK[/\\]provenance[/\\]bundles[/\\]g1-exported-bundle\.json''',
-  '''tools[/\\]independent-verify[/\\]fixtures[/\\]''',
+  '''tools[/\\]independent-verify[/\\]fixtures[/\\]g1-exported-bundle\.json''',
   '''tools[/\\]independent-verify[/\\]write-g1-fixture\.mjs''',
   '''services[/\\]aegis-api[/\\]scripts[/\\]write-g1-bundle-fixture\.mts''',
+  '''services[/\\]insurance-api[/\\]test[/\\]platform\.integration\.test\.ts''',
   '''\.demo-tenant-emails\.local\.example\.json''',
   '''(^|[/\\])\.env\.example$''',
   '''apps[/\\]pilot-agent[/\\]\.env\.example''',
   '''examples[/\\].+[/\\]\.env\.example''',
   '''docs[/\\]AEGIS_GOVERNANCE_BRIDGE_MVP\.md''',
   '''docs[/\\]provenance[/\\]SIGNING\.md''',
-  '''docs[/\\]provenance[/\\]_raw[/\\]''',
   '''docs[/\\]provenance[/\\]_raw_bank_''',
   '''tools[/\\]scripts[/\\]upgrade-migrate-check\.mts''',
   '''services[/\\]aegis-api[/\\]src[/\\]demo[/\\]live-scenarios-extended\.ts''',
@@ -28,12 +28,9 @@ paths = [
   '''services[/\\]aegis-api[/\\]src[/\\]crypto[/\\]key-provider\.ts''',
   '''packages[/\\].+[/\\]kms-ed25519\.ts''',
   '''packages[/\\].+[/\\]key-provider\.ts''',
-  '''services[/\\]aegis-api[/\\]test[/\\]''',
-  '''services[/\\]insurance-api[/\\]test[/\\]''',
   '''tools[/\\]demo[/\\]connector-sources\.mts''',
   '''tools[/\\]bank-simulator[/\\]redteam-live\.mjs''',
   '''docs[/\\]provenance[/\\]INTEGRATION\.md''',
-  '''packages[/\\]aegis-connector[/\\]''',
   '''(^|[/\\])node_modules([/\\]|$)''',
   '''(^|[/\\])\.next([/\\]|$)''',
   '''(^|[/\\])\.nx([/\\]|$)''',
