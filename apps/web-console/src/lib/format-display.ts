@@ -2,8 +2,6 @@
  * Bank-facing display helpers: Africa/Kigali 24h times (UTC on hover) and RWF amounts.
  */
 
-import { isBankDemoProfile } from "./ui-profile";
-
 const KIGALI = "Africa/Kigali";
 
 /** `15-11-2026 14:32` in Africa/Kigali, 24-hour clock. */
@@ -31,23 +29,17 @@ export function formatUtc(iso: string | Date): string {
 }
 
 /**
- * Kigali 24h (`DD-MM-YYYY HH:mm`) in the bank_demo profile, browser locale elsewhere.
- * Pair with `title={formatUtc(iso)}` / ConsoleTime so UTC shows on hover.
+ * Always `DD-MM-YYYY HH:mm` (24-hour). Pair with `title={formatUtc(iso)}` / ConsoleTime
+ * so UTC shows on hover.
  */
 export function formatConsoleTime(iso: string | Date, withSeconds = false): string {
-  if (isBankDemoProfile()) return formatKigali(iso, withSeconds);
-  const d = typeof iso === "string" ? new Date(iso) : iso;
-  return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleString();
+  return formatKigali(iso, withSeconds);
 }
 
-/** Date-only: `DD-MM-YYYY` in bank_demo, locale date elsewhere. */
+/** Date-only: always `DD-MM-YYYY`. */
 export function formatConsoleDate(iso: string | Date): string {
-  if (isBankDemoProfile()) {
-    const full = formatKigali(iso, false);
-    return full.split(" ")[0] ?? full;
-  }
-  const d = typeof iso === "string" ? new Date(iso) : iso;
-  return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString();
+  const full = formatKigali(iso, false);
+  return full.split(" ")[0] ?? full;
 }
 
 /**

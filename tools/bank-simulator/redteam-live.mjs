@@ -6,8 +6,9 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, unlinkSync } from "node:fs";
 import { mkdir, readFile, writeFile, chmod } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../..");
@@ -58,14 +59,20 @@ function assertCode(actual, expected, label) {
 
 function outcome(partial) {
   const fails = (partial.assertions || []).filter((a) => !a.ok);
+  const notVerified =
+    partial.report_status === "Not verified live" ||
+    /^Not verified live/i.test(String(partial.result ?? ""));
+  const simulated = partial.simulated === true && !notVerified;
   return {
-    simulated: partial.simulated === true,
-    label: partial.simulated ? "Simulation" : "Live",
+    simulated,
+    label: notVerified ? "Not verified live" : simulated ? "Simulation" : "Live",
     report_status: fails.length
       ? "FAIL"
-      : partial.simulated
-        ? "Simulated"
-        : "Live",
+      : notVerified
+        ? "Not verified live"
+        : simulated
+          ? "Simulated"
+          : "Live",
     ok: fails.length === 0,
     steps: partial.steps ?? [],
     result: fails.length
@@ -87,6 +94,57 @@ function sim(reason, steps = []) {
     result: reason,
     assertions: [],
   });
+}
+
+function notVerifiedLive(reason, steps = [], evidence = {}) {
+  return outcome({
+    simulated: true,
+    report_status: "Not verified live",
+    steps: [...steps, `Not verified live — ${reason}`],
+    result: `Not verified live — ${reason}`,
+    assertions: [],
+    evidence,
+  });
+}
+
+/** Run feed/collector reconcile helper; returns { found, reason, ... }. */
+function runReconcileHelper(args) {
+  const script = resolve(repoRoot, "tools/bank-simulator/redteam-reconcile.mts");
+  const argsDir = resolve(repoRoot, "tools/bank-simulator/.bank-simulator");
+  const argsPath = join(argsDir, `rt-reconcile-${Date.now()}.json`);
+  mkdirSync(argsDir, { recursive: true });
+  writeFileSync(argsPath, `${JSON.stringify(args)}\n`);
+  // Pass a file path so Windows shells cannot mangle JSON quotes.
+  const res = spawnSync(
+    process.execPath,
+    ["--import", "tsx", script, argsPath],
+    {
+      cwd: repoRoot,
+      encoding: "utf8",
+      shell: false,
+      timeout: 120_000,
+      env: process.env,
+    },
+  );
+  try {
+    unlinkSync(argsPath);
+  } catch {
+    /* ignore */
+  }
+  const line = (res.stdout || "")
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .pop();
+  try {
+    return JSON.parse(line || "{}");
+  } catch {
+    return {
+      ok: false,
+      found: false,
+      reason: `reconcile helper failed: exit=${res.status} ${(res.stderr || res.stdout || "").slice(0, 400)}`,
+    };
+  }
 }
 
 async function postSourceEvents(deps, envelope) {
@@ -508,31 +566,77 @@ export async function runLiveAttack(attackId, deps) {
       if (codeOf(first) === "unknown_key") {
         return sim("src_los_redteam not registered — run demo:fresh");
       }
-      const second = await postSourceEvents(deps, env);
-      const attackAssert = assertCode(
-        codeOf(second),
+      // (a) identical replay → seq_replay or idempotent 200
+      const identical = await postSourceEvents(deps, env);
+      const identicalAssert = assertCode(
+        codeOf(identical),
         ["seq_replay", "ok", "accepted", "http_200"],
-        "replay",
+        "identical_replay",
       );
-      // idempotent 200 is PASS; seq_replay is PASS
-      if (second.status === 200 || codeOf(second) === "seq_replay") {
-        attackAssert.ok = true;
-        attackAssert.actual = codeOf(second) || `http_${second.status}`;
-        attackAssert.verdict = "PASS";
+      if (identical.status === 200 || codeOf(identical) === "seq_replay") {
+        identicalAssert.ok = true;
+        identicalAssert.actual = codeOf(identical) || `http_${identical.status}`;
+        identicalAssert.verdict = "PASS";
       }
+      // (b) same seq, new idempotency_key → must be seq_replay
+      const newIdem = randomUUID();
+      const seqReplayBuilt = await sdk.signEnvelope(
+        sdk.buildEnvelope({
+          source_id: material.source_id,
+          key_id: material.key_id,
+          seq,
+          nonce: randomBytes(16).toString("base64url"),
+          event: { ...env.event, idempotency_key: newIdem },
+          idempotency_key: newIdem,
+        }),
+        material.seed,
+      );
+      const seqReplayRes = await postSourceEvents(deps, seqReplayBuilt);
+      const seqReplayAssert = assertCode(
+        codeOf(seqReplayRes),
+        "seq_replay",
+        "new_idem_same_seq",
+      );
+      // (c) reused nonce (fresh seq) → nonce_reused
+      const next = await nextSeq(deps, material.source_id);
+      const reusedNonce = await sdk.signEnvelope(
+        sdk.buildEnvelope({
+          source_id: material.source_id,
+          key_id: material.key_id,
+          seq: next,
+          nonce: env.nonce,
+          event: bankEvent({ case_id: `RT3-NONCE-${stamp}`, amount: 500 }),
+        }),
+        material.seed,
+      );
+      const nonceRes = await postSourceEvents(deps, reusedNonce);
+      const nonceAssert = assertCode(codeOf(nonceRes), "nonce_reused", "reused_nonce");
       return outcome({
         steps: [
           `CONTROL first POST → HTTP ${first.status} code=${codeOf(first)} [${controlAssert.verdict}]`,
-          `ATTACK identical replay → HTTP ${second.status} code=${codeOf(second)} [${attackAssert.verdict}]`,
-          `expected=seq_replay|idempotent_200 actual=${codeOf(second) || second.status}`,
+          `ATTACK identical replay → HTTP ${identical.status} code=${codeOf(identical)} [${identicalAssert.verdict}]`,
+          `ATTACK new idempotency_key same seq → HTTP ${seqReplayRes.status} code=${codeOf(seqReplayRes)} [${seqReplayAssert.verdict}]`,
+          `ATTACK reused nonce → HTTP ${nonceRes.status} code=${codeOf(nonceRes)} [${nonceAssert.verdict}]`,
         ],
         result:
-          controlAssert.ok && attackAssert.ok
-            ? "PASS: first accepted; replay seq_replay or idempotent 200"
+          controlAssert.ok &&
+          identicalAssert.ok &&
+          seqReplayAssert.ok &&
+          nonceAssert.ok
+            ? "PASS: identical replay ok; new-idem same-seq → seq_replay; reused nonce → nonce_reused"
             : undefined,
-        assertions: [controlAssert, attackAssert],
+        assertions: [
+          controlAssert,
+          identicalAssert,
+          seqReplayAssert,
+          nonceAssert,
+        ],
         control: { status: first.status, code: codeOf(first) },
-        attack: { status: second.status, code: codeOf(second) },
+        attack: {
+          identical: codeOf(identical),
+          seq_replay: codeOf(seqReplayRes),
+          nonce_reused: codeOf(nonceRes),
+        },
       });
     }
     case 4: {
@@ -585,9 +689,11 @@ export async function runLiveAttack(attackId, deps) {
       });
     }
     case 6: {
-      // Control: ungated pay refused; attack: forced DB bypass posts txn for reconcile.
+      // Control: ungated pay refused; attack: forced DB bypass → reconcile executed_without_receipt.
+      const refuseCase = `RT6-REFUSE-${stamp}`;
+      const bypassCase = `RT6-BYPASS-${stamp}`;
       const refused = await deps.core.disburse({
-        case_id: `RT6-REFUSE-${stamp}`,
+        case_id: refuseCase,
         action: { amount: 10, currency: "RWF" },
         skip_aegis: true,
       });
@@ -602,39 +708,66 @@ export async function runLiveAttack(attackId, deps) {
         refuseAssert.verdict = "PASS";
       }
       const forced = await deps.core.disburse({
-        case_id: `RT6-BYPASS-${stamp}`,
+        case_id: bypassCase,
         action: { amount: 10, currency: "RWF" },
         force_db_bypass: true,
       });
-      const bypassOk = forced.status === 200 && Boolean(forced.body?.entry?.txn_id);
+      const txnId = forced.body?.entry?.txn_id;
+      const bypassOk = forced.status === 200 && Boolean(txnId);
       const bypassAssert = {
         ok: bypassOk,
         label: "forced_bypass",
         expected: "txn_id",
-        actual: forced.body?.entry?.txn_id ?? `http_${forced.status}`,
+        actual: txnId ?? `http_${forced.status}`,
         verdict: bypassOk ? "PASS" : "FAIL",
+      };
+      if (!bypassOk) {
+        return outcome({
+          steps: [
+            `CONTROL ungated → HTTP ${refused.status} [${refuseAssert.verdict}]`,
+            `ATTACK force_db_bypass → HTTP ${forced.status} [${bypassAssert.verdict}]`,
+          ],
+          assertions: [refuseAssert, bypassAssert],
+        });
+      }
+      const rec = runReconcileHelper({
+        kind: "executed_without_receipt",
+        case_id: bypassCase,
+        amount: 10,
+        beneficiary_account: "X",
+        external_id: txnId,
+      });
+      if (!rec.found) {
+        return notVerifiedLive(
+          rec.reason || "executed_without_receipt not raised after ingest+reconcile",
+          [
+            `CONTROL ungated → confirm_required [${refuseAssert.verdict}]`,
+            `ATTACK force_db_bypass txn=${txnId} [${bypassAssert.verdict}]`,
+            `Reconcile helper: ${rec.reason || "no exception"}`,
+          ],
+          { refused: refused.body, forced: { txn_id: txnId }, reconcile: rec },
+        );
+      }
+      const recAssert = {
+        ok: true,
+        label: "executed_without_receipt",
+        expected: "executed_without_receipt",
+        actual: "executed_without_receipt",
+        verdict: "PASS",
       };
       return outcome({
         steps: [
           `CONTROL ungated skip_aegis → HTTP ${refused.status} code=${refused.body?.code} [${refuseAssert.verdict}]`,
-          `ATTACK force_db_bypass → HTTP ${forced.status} txn=${forced.body?.entry?.txn_id ?? "none"} [${bypassAssert.verdict}]`,
-          "Forced write should surface executed_without_receipt on reconcile",
+          `ATTACK force_db_bypass → txn=${txnId} [${bypassAssert.verdict}]`,
+          "Ingested bypass into reconciliation feed and ran reconcile → executed_without_receipt [PASS]",
         ],
-        assertions: [refuseAssert, bypassAssert],
+        assertions: [refuseAssert, bypassAssert, recAssert],
         result:
-          refuseAssert.ok && bypassAssert.ok
-            ? "PASS: Core refuses without token; forced bypass recorded for reconciliation"
-            : undefined,
+          "PASS: Core refuses without token; forced bypass → executed_without_receipt",
         evidence: {
-          refused: {
-            status: refused.status,
-            code: refused.body?.code,
-            body: refused.body,
-          },
-          forced: {
-            status: forced.status,
-            txn_id: forced.body?.entry?.txn_id,
-          },
+          refused: { status: refused.status, code: refused.body?.code },
+          forced: { status: forced.status, txn_id: txnId },
+          reconcile: rec,
         },
       });
     }
@@ -790,52 +923,52 @@ export async function runLiveAttack(attackId, deps) {
       });
     }
     case 11: {
+      const caseId = `RT11-${stamp}`;
       const paid = await deps.core.disburse({
-        case_id: `RT11-${stamp}`,
+        case_id: caseId,
         action: { amount: 5000, currency: "RWF" },
         force_db_bypass: true,
       });
       const txnId = paid.body?.entry?.txn_id;
-      if (txnId) await deps.core.editTransactionAmount(txnId, 999999);
-      // Try collector / reconcile
-      let found = false;
-      let reconcileBody = null;
-      try {
-        const r = await deps.postJson(
-          "/v1/aegis/reconciliation/runs",
-          { feed_hint: "core_ledger" },
-          {},
-          {},
-        );
-        reconcileBody = r.data;
-        found = JSON.stringify(r.data ?? {}).includes("db_change_without_event");
-      } catch (err) {
-        reconcileBody = { error: String(err) };
+      if (!txnId) {
+        return notVerifiedLive("force_db_bypass did not return a txn_id", [
+          `disburse HTTP ${paid.status}`,
+        ]);
       }
-      if (!found) {
-        return {
-          simulated: true,
-          label: "Simulation",
-          report_status: "Not verified live",
-          ok: true,
-          steps: [
+      await deps.core.editTransactionAmount(txnId, 999999);
+      // Ingest a collector CDC observation of the edit, then reconcile.
+      const rec = runReconcileHelper({
+        kind: "db_change_without_event",
+        case_id: caseId,
+        external_id: txnId,
+      });
+      if (!rec.found) {
+        return notVerifiedLive(
+          rec.reason ||
+            "collector observation ingested but db_change_without_event not raised",
+          [
             `Forced ledger edit txn=${txnId}`,
-            "Collector/reconcile did not surface db_change_without_event",
-            "Not verified live",
+            `Collector/reconcile: ${rec.reason || "no exception"}`,
           ],
-          result: "Not verified live",
-          evidence: { txnId, reconcileBody },
-        };
+          { txnId, reconcile: rec },
+        );
       }
       return outcome({
         steps: [
           `Forced ledger edit txn=${txnId}`,
-          "Reconcile/collector raised db_change_without_event [PASS]",
+          "Ingested collector CDC observation + reconcile → db_change_without_event [PASS]",
         ],
         result: "PASS: db_change_without_event present",
         assertions: [
-          { ok: true, label: "exception", expected: "db_change_without_event", actual: "db_change_without_event", verdict: "PASS" },
+          {
+            ok: true,
+            label: "exception",
+            expected: "db_change_without_event",
+            actual: "db_change_without_event",
+            verdict: "PASS",
+          },
         ],
+        evidence: { txnId, reconcile: rec },
       });
     }
     case 12: {
@@ -957,46 +1090,53 @@ export async function runLiveAttack(attackId, deps) {
       });
     }
     case 13: {
-      const paid = await deps.core.disburse({
-        case_id: `RT13-${stamp}`,
-        action: { amount: 2500, currency: "RWF" },
-        force_db_bypass: true,
-      });
-      const txnId = paid.body?.entry?.txn_id;
-      if (txnId) await deps.core.editTransactionAmount(txnId, 1);
-      const feed = await deps.core.exportFeed("jsonl");
-      let found = false;
-      let body = null;
-      try {
-        const r = await deps.postJson(
-          "/v1/aegis/reconciliation/runs",
-          { feed_path: feed.path },
-          {},
-          {},
+      // Receipt for amount A, then ingest a feed row with amount B → amount_mismatch.
+      const issued = await issueLiveToken(deps, sdk, material);
+      if (!issued.token) {
+        return notVerifiedLive(
+          `could not issue token for amount_mismatch setup (${issued.error})`,
         );
-        body = r.data;
-        found = JSON.stringify(r.data ?? {}).includes("amount_mismatch");
-      } catch (err) {
-        body = { error: String(err) };
       }
-      if (!found) {
-        return {
-          simulated: true,
-          label: "Simulation",
-          report_status: "Not verified live",
-          ok: true,
-          steps: [
-            `Edited feed row ${txnId}; exported ${feed.path}`,
-            "Not verified live — amount_mismatch not observed",
+      const confirmed = await postConfirm(deps, {
+        token: issued.token,
+        params: issued.params,
+      });
+      if (confirmed.status !== 200) {
+        return notVerifiedLive(
+          `confirm failed HTTP ${confirmed.status} code=${codeOf(confirmed)}`,
+        );
+      }
+      const wrongAmount = 1;
+      const feedBody = JSON.stringify({
+        case_id: issued.caseId,
+        amount: String(wrongAmount),
+        beneficiary_account: issued.params.beneficiary_account,
+        executed_at: new Date().toISOString(),
+        external_id: `txn_rt13_${stamp}`,
+      });
+      const rec = runReconcileHelper({
+        kind: "amount_mismatch",
+        case_id: issued.caseId,
+        amount: wrongAmount,
+        beneficiary_account: issued.params.beneficiary_account,
+        external_id: `txn_rt13_${stamp}`,
+        feed_body: feedBody,
+        feed_format: "json",
+      });
+      if (!rec.found) {
+        return notVerifiedLive(
+          rec.reason || "amount_mismatch not raised after ingest+reconcile",
+          [
+            `Receipt amount=${issued.params.amount}; ingested feed amount=${wrongAmount}`,
+            `Reconcile: ${rec.reason || "no exception"}`,
           ],
-          result: "Not verified live",
-          evidence: { feed: feed.path, body },
-        };
+          { reconcile: rec, caseId: issued.caseId },
+        );
       }
       return outcome({
         steps: [
-          `Edited feed row ${txnId}; exported ${feed.path}`,
-          "Reconciliation raised amount_mismatch [PASS]",
+          `CONTROL receipt+confirm amount=${issued.params.amount} for ${issued.caseId}`,
+          `ATTACK ingested feed amount=${wrongAmount} + reconcile → amount_mismatch [PASS]`,
         ],
         assertions: [
           {
@@ -1008,7 +1148,7 @@ export async function runLiveAttack(attackId, deps) {
           },
         ],
         result: "PASS: amount_mismatch",
-        evidence: { feed: feed.path, body },
+        evidence: { reconcile: rec, caseId: issued.caseId },
       });
     }
     case 9:
@@ -1019,27 +1159,131 @@ export async function runLiveAttack(attackId, deps) {
     case 18:
       return sim(`Attack #${id} remains fixture/Simulation (no live positive-control path)`);
     case 16: {
-      if (!deps.connectors?.simulateCrashRestart) {
-        return sim("connectors.simulateCrashRestart unavailable");
+      // Really spawn → kill → restart an aegis-connector process for src_los_redteam.
+      const { spawn } = await import("node:child_process");
+      const stateDir = join(material.dir, "rt16-state");
+      await mkdir(stateDir, { recursive: true });
+      const cfgPath = join(material.dir, "rt16-connector.config.json");
+      const c = deps.cfg();
+      const listenPort = 18787 + (stamp % 100);
+      const cfgObj = {
+        source_id: material.source_id,
+        key_id: material.key_id,
+        private_key_path: join(material.dir, "private.key"),
+        aegis_url: c.apiBase,
+        ingest_path: "/v1/aegis/source-events",
+        confirm_path: "/v1/aegis/executions/confirm",
+        ingest_bearer: c.ingestKey,
+        state_dir: stateDir,
+        listen: { host: "127.0.0.1", port: listenPort },
+        sync_wait_ms: 2000,
+        request_timeout_ms: 10000,
+        retry: { initial_ms: 50, max_ms: 200, factor: 2, jitter: 0 },
+      };
+      await writeFile(cfgPath, `${JSON.stringify(cfgObj, null, 2)}\n`);
+      const cli =
+        resolve(repoRoot, "packages/aegis-connector/dist/cli.js");
+      const cliAlt = resolve(
+        repoRoot,
+        "node_modules/@salanor/aegis-connector/dist/cli.js",
+      );
+      const entry = existsSync(cli)
+        ? cli
+        : existsSync(cliAlt)
+          ? cliAlt
+          : null;
+      if (!entry) {
+        return notVerifiedLive(
+          "aegis-connector CLI not built (pnpm --filter @salanor/aegis-connector build)",
+        );
       }
-      await deps.connectors.recordSend?.("los", { queued: true });
-      const crash = await deps.connectors.simulateCrashRestart("los");
+      const startOnce = () =>
+        new Promise((resolveStart, rejectStart) => {
+          const child = spawn(
+            process.execPath,
+            [entry, "start", "--config", cfgPath],
+            {
+              cwd: repoRoot,
+              env: { ...process.env, AEGIS_INGEST_BEARER: c.ingestKey },
+              stdio: ["ignore", "pipe", "pipe"],
+              windowsHide: true,
+            },
+          );
+          let buf = "";
+          const onData = (chunk) => {
+            buf += String(chunk);
+            if (/aegis-connector listening/.test(buf)) {
+              child.stdout?.off("data", onData);
+              resolveStart(child);
+            }
+          };
+          child.stdout?.on("data", onData);
+          child.stderr?.on("data", onData);
+          child.on("error", rejectStart);
+          child.on("exit", (code) => {
+            rejectStart(new Error(`connector exited early code=${code}: ${buf}`));
+          });
+          setTimeout(() => {
+            rejectStart(new Error(`connector start timeout: ${buf.slice(0, 300)}`));
+          }, 15000);
+        });
+      let child;
+      try {
+        child = await startOnce();
+      } catch (err) {
+        return notVerifiedLive(
+          `could not start connector process: ${err.message}`,
+        );
+      }
+      const beforeSeq = await nextSeq(deps, material.source_id);
+      // Kill the process for real.
+      try {
+        child.kill("SIGTERM");
+      } catch {
+        child.kill();
+      }
+      await new Promise((r) => setTimeout(r, 500));
+      let child2;
+      try {
+        child2 = await startOnce();
+      } catch (err) {
+        return notVerifiedLive(
+          `connector did not restart after kill: ${err.message}`,
+        );
+      }
+      const afterSeq = await nextSeq(deps, material.source_id);
+      try {
+        child2.kill("SIGTERM");
+      } catch {
+        /* ignore */
+      }
+      const mono = afterSeq >= beforeSeq;
       return outcome({
         steps: [
-          `Crash/restart los: last_seq ${crash.before.last_seq}→${crash.after.last_seq}`,
-          "PASS: outbox retained; no seq reuse in sim",
+          `Started connector PID on :${listenPort} for ${material.source_id}`,
+          "Killed connector with SIGTERM",
+          `Restarted connector; last_seq probe ${beforeSeq - 1}→${afterSeq - 1} (next ${beforeSeq}→${afterSeq})`,
+          mono
+            ? "PASS: process kill+restart; sequence did not go backwards"
+            : "FAIL: sequence went backwards after restart",
         ],
         assertions: [
           {
-            ok: crash.after.last_seq >= crash.before.last_seq,
-            label: "seq_monotonic",
-            expected: ">= before",
-            actual: String(crash.after.last_seq),
-            verdict: "PASS",
+            ok: mono,
+            label: "seq_monotonic_after_kill",
+            expected: `>= ${beforeSeq}`,
+            actual: String(afterSeq),
+            verdict: mono ? "PASS" : "FAIL",
           },
         ],
-        result: "PASS: connector crash sim",
-        evidence: crash,
+        result: mono
+          ? "PASS: real connector process kill + restart; seq monotonic"
+          : undefined,
+        evidence: {
+          listenPort,
+          before_next_seq: beforeSeq,
+          after_next_seq: afterSeq,
+        },
       });
     }
     default:

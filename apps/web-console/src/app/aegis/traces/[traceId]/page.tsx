@@ -253,7 +253,10 @@ export default function TraceDetailPage() {
 
           <CaseFourAnswersPanel answers={story.fourAnswers} />
 
-          <ProvenancePanel provenance={caseSummary?.provenance} />
+          <ProvenancePanel
+            provenance={caseSummary?.provenance}
+            approvalNotNeeded={Boolean(story.noApprovalNeeded)}
+          />
 
           <p
             style={{
@@ -399,9 +402,9 @@ export default function TraceDetailPage() {
                 <OutcomeChip chip={story.outcome.chip} kind={story.outcome.kind} />
               </p>
               <p style={{ margin: 0, fontSize: "0.875rem", lineHeight: 1.5 }}>
-                {story.bankDecision ??
-                  story.policyReason ??
-                  story.fourAnswers.whyAllowed.detail}
+                {story.fourAnswers.whyAllowed.detail ||
+                  story.policyReason ||
+                  story.bankDecision}
               </p>
               {story.ruleIds.length > 0 ? (
                 <p

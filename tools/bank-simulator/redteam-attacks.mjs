@@ -37,7 +37,8 @@ export const ATTACKS = [
     id: 3,
     title: "Replay of a valid old event",
     attacker_gains: "Re-submit an old approved event to trigger a second pay-out.",
-    expected: "Rejected (sequence and nonce / seq_replay).",
+    expected:
+      "Identical replay: seq_replay or idempotent 200; new idempotency_key same seq → seq_replay; reused nonce → nonce_reused.",
     mode: "live",
     coverage: "both",
   },

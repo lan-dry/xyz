@@ -53,9 +53,12 @@ export function RecordAndSourceLines({
 export function ProvenancePanel({
   provenance,
   title = "Where this data came from",
+  approvalNotNeeded = false,
 }: {
   provenance: CaseProvenance | null | undefined;
   title?: string;
+  /** Auto-allowed cases: show "not needed" instead of "no" for approver_bound. */
+  approvalNotNeeded?: boolean;
 }) {
   if (!provenance) return null;
   const risen = provenance.current_grade !== provenance.grade_at_seal;
@@ -129,10 +132,14 @@ export function ProvenancePanel({
               {item.met ? "✓" : "–"}
             </span>
             <span>
-              {item.label}
-              <span style={{ color: "var(--console-fg-subtle)" }}>
-                {item.met ? " · yes" : " · no"}
-              </span>
+              {item.id === "approver_bound" && !item.met && approvalNotNeeded
+                ? "Approver: not needed"
+                : item.label}
+              {item.id === "approver_bound" && !item.met && approvalNotNeeded ? null : (
+                <span style={{ color: "var(--console-fg-subtle)" }}>
+                  {item.met ? " · yes" : " · no"}
+                </span>
+              )}
             </span>
           </li>
         ))}

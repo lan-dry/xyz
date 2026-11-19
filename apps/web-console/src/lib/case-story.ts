@@ -675,8 +675,8 @@ export function buildCaseStory(
     bankDecision = describeDecision(input);
     if (bankOutcome === "allow" && !str(bp.would_have)) {
       const allowLabel = formatRuleLabel(decidedBy, "allow");
-      noApprovalNeeded = `No approval needed: allowed automatically${
-        allowLabel ? ` by rule ${allowLabel}` : " by policy"
+      noApprovalNeeded = `Approver: not needed${
+        allowLabel ? ` — allowed automatically by rule ${allowLabel}` : " — allowed automatically by policy"
       }.`;
     }
   }
@@ -789,15 +789,10 @@ export function buildCaseStory(
       ? `Based on ${contextBits.join(", ")}.`
       : "";
 
+  // Do not repeat the page title (headline / bankDecision) in "Why was it allowed".
   let whyDetail: string;
-  if (bankDecision && !flagLine) {
-    whyDetail = [
-      bankDecision,
-      c.approver && c.approvalDecision === "approved" && !/Approved by/.test(bankDecision)
-        ? `Approved by ${approverShown}.`
-        : null,
-      waitingForPerson && !c.approver ? "No decision yet." : null,
-    ]
+  if (noApprovalNeeded) {
+    whyDetail = [noApprovalNeeded, contextLine.trim() || null]
       .filter(Boolean)
       .join(" ");
   } else if (c.denied) {
@@ -817,8 +812,10 @@ export function buildCaseStory(
       .join(" ");
   } else if (flagLine) {
     whyDetail = endSentence(c.ruleReason ?? "Recorded for review.");
+  } else if (c.ruleReason) {
+    whyDetail = endSentence(c.ruleReason);
   } else {
-    whyDetail = endSentence(c.ruleReason ?? "A rule allowed this.");
+    whyDetail = "A rule allowed this.";
   }
 
   const whatDetail = [
@@ -837,15 +834,41 @@ export function buildCaseStory(
     },
     who: {
       title: "Who did it, and for whom?",
-      detail: [
-        `Agent: ${meta.agentName?.trim() || meta.agentId}.`,
-        c.reference ? `Reference: ${c.reference}.` : null,
-        c.ticketId && c.orderId && c.ticketId !== c.orderId
-          ? `Order: ${c.orderId}.`
-          : null,
-      ]
-        .filter(Boolean)
-        .join(" "),
+      detail: (() => {
+        const srcName =
+          meta.provenance?.source?.source_name?.trim() ||
+          meta.provenance?.source?.source_id?.trim() ||
+          null;
+        const attrs = bankAttributes;
+        const customer =
+          (attrs && (str(attrs.customer_ref) || str(attrs.customer_id) || str(attrs.customer_name))) ||
+          c.subject ||
+          null;
+        const beneficiary =
+          (attrs &&
+            (str(attrs.beneficiary_account) ||
+              str(attrs.beneficiary) ||
+              str(attrs.beneficiary_name))) ||
+          null;
+        const forWhom = customer
+          ? `For customer ${customer}.`
+          : beneficiary
+            ? `For beneficiary ${beneficiary}.`
+            : c.reference
+              ? `Reference: ${c.reference}.`
+              : null;
+        return [
+          srcName
+            ? `Signed by source system ${srcName}.`
+            : `Agent: ${meta.agentName?.trim() || meta.agentId}.`,
+          forWhom,
+          !forWhom && c.ticketId && c.orderId && c.ticketId !== c.orderId
+            ? `Order: ${c.orderId}.`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" ");
+      })(),
     },
     whyAllowed: {
       title: "Why was it allowed, and who approved?",
