@@ -1,7 +1,10 @@
 import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type { SignedEnvelope } from "@salanor/aegis-sdk";
 import { appendLineDurable, atomicWriteFile } from "./fsutil.js";
+
+/** In-process open state dirs. Survives PID reuse on Docker/Railway (often PID 1). */
+const openStateDirs = new Set<string>();
 
 export interface DeliveredRecord {
   seq: number;
@@ -82,11 +85,16 @@ export class ConnectorState {
   }
 
   static async open(dir: string, sourceId: string): Promise<ConnectorState> {
-    const state = new ConnectorState(dir, sourceId);
+    const absDir = resolve(dir);
+    if (openStateDirs.has(absDir)) {
+      throw new Error(`State directory ${absDir} is already open in this process`);
+    }
+    const state = new ConnectorState(absDir, sourceId);
     await mkdir(state.outboxDir, { recursive: true, mode: 0o700 });
     await state.acquireLock();
     try {
       await state.load();
+      openStateDirs.add(absDir);
     } catch (err) {
       await state.releaseLock();
       throw err;
@@ -200,11 +208,11 @@ export class ConnectorState {
           throw err;
         }
         const pid = Number.parseInt(await readFile(this.lockPath, "utf8").catch(() => ""), 10);
+        // Live other process → refuse. Same PID is usually a stale lock after
+        // container restart (Railway/Docker often reuse PID 1); reclaim unless
+        // openStateDirs already tracks a live open (checked in open()).
         if (Number.isInteger(pid) && pid !== process.pid && isProcessAlive(pid)) {
           throw new Error(`State directory ${this.dir} is locked by running process ${pid}`);
-        }
-        if (pid === process.pid) {
-          throw new Error(`State directory ${this.dir} is already open in this process`);
         }
         await unlink(this.lockPath).catch(() => undefined);
       }
@@ -213,6 +221,7 @@ export class ConnectorState {
   }
 
   private async releaseLock(): Promise<void> {
+    openStateDirs.delete(this.dir);
     await unlink(this.lockPath).catch(() => undefined);
   }
 
