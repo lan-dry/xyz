@@ -9,6 +9,7 @@
 import { Hono } from "hono";
 import {
   acknowledgeException,
+  countExceptions,
   ExceptionStatusError,
   getException,
   listExceptionNotes,
@@ -58,8 +59,23 @@ exceptionRoutes.get("/exceptions", requireConsoleSession, async (c) => {
     statusRaw === "all"
       ? statusRaw
       : "all";
-  const rows = await listExceptions(getPool(), orgId, { status });
-  return c.json({ exceptions: rows.map(serialize) });
+  const pageRaw = Number.parseInt(c.req.query("page") ?? "1", 10);
+  const limitRaw = Number.parseInt(c.req.query("limit") ?? "25", 10);
+  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+  const limit = Number.isFinite(limitRaw)
+    ? Math.min(Math.max(limitRaw, 1), 100)
+    : 25;
+  const offset = (page - 1) * limit;
+  const [total, rows] = await Promise.all([
+    countExceptions(getPool(), orgId, { status }),
+    listExceptions(getPool(), orgId, { status, limit, offset }),
+  ]);
+  return c.json({
+    exceptions: rows.map(serialize),
+    total,
+    page,
+    limit,
+  });
 });
 
 exceptionRoutes.get(

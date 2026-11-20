@@ -85,6 +85,13 @@ async function listCaseReceipts(
   }));
 }
 
+/**
+ * Governance-derived attrs land on the receipt for policy/explainability, but the
+ * core ledger does not (and should not) re-send them on /execution/permit. Strip
+ * them so permit binds on the executable action only (amount, beneficiary, …).
+ */
+const NON_EXECUTABLE_BIND_KEYS = new Set(["segment", "customer_on_file"]);
+
 function sealedActionSnapshot(body: Record<string, unknown>): Record<string, unknown> {
   const attrs =
     body.attributes && typeof body.attributes === "object" && !Array.isArray(body.attributes)
@@ -96,10 +103,14 @@ function sealedActionSnapshot(body: Record<string, unknown>): Record<string, unk
       ? (approvals[0] as Record<string, unknown>)
       : null;
   // Prefer attributes sealed on the receipt; fall back to approval record fields.
-  return actionSnapshotFromPayload({
+  const snap = actionSnapshotFromPayload({
     ...attrs,
     ...(firstApproval ?? {}),
   });
+  for (const key of NON_EXECUTABLE_BIND_KEYS) {
+    delete snap[key];
+  }
+  return snap;
 }
 
 /**

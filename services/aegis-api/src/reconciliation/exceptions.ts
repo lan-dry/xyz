@@ -161,21 +161,38 @@ export async function raiseManualException(
   return exception;
 }
 
+export async function countExceptions(
+  client: Db,
+  organizationId: string,
+  opts?: { status?: ExceptionStatus | "all" },
+): Promise<number> {
+  const status = opts?.status && opts.status !== "all" ? opts.status : null;
+  const r = await client.query<{ n: string }>(
+    `SELECT count(*)::text AS n
+       FROM reconciliation_exception
+      WHERE organization_id = $1
+        AND ($2::text IS NULL OR status = $2)`,
+    [organizationId, status],
+  );
+  return Number.parseInt(r.rows[0]?.n ?? "0", 10) || 0;
+}
+
 export async function listExceptions(
   client: Db,
   organizationId: string,
-  opts?: { status?: ExceptionStatus | "all"; limit?: number },
+  opts?: { status?: ExceptionStatus | "all"; limit?: number; offset?: number },
 ): Promise<ExceptionRow[]> {
   const status = opts?.status && opts.status !== "all" ? opts.status : null;
   const limit = Math.min(Math.max(opts?.limit ?? 200, 1), 1000);
+  const offset = Math.max(opts?.offset ?? 0, 0);
   const r = await client.query<ExceptionRow>(
     `SELECT *
        FROM reconciliation_exception
       WHERE organization_id = $1
         AND ($2::text IS NULL OR status = $2)
       ORDER BY first_seen_at DESC
-      LIMIT $3`,
-    [organizationId, status, limit],
+      LIMIT $3 OFFSET $4`,
+    [organizationId, status, limit, offset],
   );
   return r.rows;
 }

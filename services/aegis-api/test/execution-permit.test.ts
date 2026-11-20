@@ -132,6 +132,34 @@ describe("evaluateExecutionPermit", () => {
     expect(r.code).toBe("digest_mismatch");
   });
 
+  it("ignores derived segment on the receipt when matching the ledger action", async () => {
+    const client = fakeClient([
+      {
+        receipt_id: "rcpt_allow",
+        receipt_hash: "sha256:a",
+        case_id: caseId,
+        outcome: "allow",
+        seq: 1,
+        body: {
+          attributes: {
+            amount: 1_200_000,
+            currency: "RWF",
+            beneficiary_account: "ACCT-DEMO-001",
+            segment: "retail",
+            product: "retail_loan",
+          },
+        },
+      },
+    ]);
+    const r = await evaluateExecutionPermit(client as never, org, {
+      case_id: caseId,
+      // Core ledger sends executable fields only — not governance-derived segment.
+      action: { amount: 1_200_000, currency: "RWF" },
+    });
+    expect(r.permitted).toBe(true);
+    expect(r.code).toBe("permitted");
+  });
+
   it("denies declined and stop", async () => {
     for (const outcome of ["declined", "stop"] as const) {
       const client = fakeClient([

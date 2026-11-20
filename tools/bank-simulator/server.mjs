@@ -449,12 +449,18 @@ function actionFromAttributes(attrs) {
     "amount_usd",
     "currency",
     "beneficiary",
+    "beneficiary_account",
     "expected_beneficiary",
     "merchant_id",
     "order_id",
     "customer_email",
+    "product",
   ]) {
     if (a[key] != null && a[key] !== "") out[key] = a[key];
+  }
+  // Permit digests bind on `beneficiary`; packs seal `beneficiary_account`.
+  if (out.beneficiary == null && out.beneficiary_account != null) {
+    out.beneficiary = out.beneficiary_account;
   }
   return out;
 }

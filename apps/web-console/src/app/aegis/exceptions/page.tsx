@@ -11,6 +11,7 @@ import { ConsoleTime } from "@/components/console/console-time";
 import { Modal } from "@/components/console/modal";
 import {
   ConsolePage,
+  ConsolePagination,
   ErrorAlert,
   LoadingBlock,
   PageHeader,
@@ -35,9 +36,13 @@ type ExceptionRow = {
 
 type StatusFilter = "all" | "open" | "acknowledged" | "resolved";
 
+const PAGE_SIZES = [10, 25, 50, 100] as const;
+
 export default function ExceptionsPage() {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<StatusFilter>("open");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [actionFor, setActionFor] = useState<{
     row: ExceptionRow;
     action: "acknowledge" | "resolve";
@@ -45,11 +50,15 @@ export default function ExceptionsPage() {
   const [note, setNote] = useState("");
 
   const listQuery = useQuery({
-    queryKey: ["console", "exceptions", status],
+    queryKey: ["console", "exceptions", status, page, limit],
     queryFn: () =>
-      consoleApi<{ exceptions: ExceptionRow[]; error?: string }>(
-        `/exceptions?status=${status}`,
-      ),
+      consoleApi<{
+        exceptions: ExceptionRow[];
+        total?: number;
+        page?: number;
+        limit?: number;
+        error?: string;
+      }>(`/exceptions?status=${status}&page=${page}&limit=${limit}`),
   });
 
   const mutation = useMutation({
@@ -72,6 +81,7 @@ export default function ExceptionsPage() {
   });
 
   const exceptions = listQuery.data?.exceptions ?? [];
+  const total = listQuery.data?.total ?? exceptions.length;
   const errorMessage = useMemo(() => {
     if (listQuery.error instanceof ApiError) return listQuery.error.message;
     if (listQuery.error) return "Failed to load exceptions.";
@@ -87,7 +97,10 @@ export default function ExceptionsPage() {
           <select
             className={ui.select}
             value={status}
-            onChange={(e) => setStatus(e.target.value as StatusFilter)}
+            onChange={(e) => {
+              setStatus(e.target.value as StatusFilter);
+              setPage(1);
+            }}
             aria-label="Filter by status"
           >
             <option value="open">Open</option>
@@ -101,7 +114,7 @@ export default function ExceptionsPage() {
       {listQuery.isPending ? <LoadingBlock /> : null}
       {errorMessage ? <ErrorAlert message={errorMessage} /> : null}
 
-      {!listQuery.isPending && !listQuery.error && exceptions.length === 0 ? (
+      {!listQuery.isPending && !listQuery.error && total === 0 ? (
         <EmptyStatePanel
           mark={<AegisMark />}
           title="No exceptions"
@@ -115,96 +128,110 @@ export default function ExceptionsPage() {
       ) : null}
 
       {exceptions.length > 0 ? (
-        <div className={ui.tableWrap}>
-          <table className={ui.table}>
-            <thead>
-              <tr>
-                <th>Exception</th>
-                <th>Severity</th>
-                <th>Source</th>
-                <th>Case</th>
-                <th>First seen</th>
-                <th>Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {exceptions.map((ex) => (
-                <tr key={ex.exception_id}>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{ex.title}</div>
-                    <p className={ui.cardHint} style={{ margin: "0.25rem 0 0" }}>
-                      {ex.kind}
-                      {ex.kind === "db_value_mismatch" &&
-                      typeof (ex.detail as { contradicted_at?: unknown } | null)
-                        ?.contradicted_at === "string" ? (
-                        <>
-                          {" "}
-                          · contradicted on{" "}
-                          {String(
-                            (ex.detail as { contradicted_at: string }).contradicted_at,
-                          )
-                            .replace("T", " ")
-                            .replace(/\.\d{3}Z$/, " UTC")}
-                        </>
-                      ) : null}
-                    </p>
-                  </td>
-                  <td>
-                    <StatusBadge status={ex.severity} />
-                  </td>
-                  <td>{ex.source_name ?? "-"}</td>
-                  <td>
-                    {ex.case_id ? (
-                      <Link
-                        href={`/aegis/traces?q=${encodeURIComponent(ex.case_id)}`}
-                        className={ui.tableLink}
-                      >
-                        {ex.case_id}
-                      </Link>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td>
-                    <ConsoleTime iso={ex.first_seen_at} />
-                  </td>
-                  <td>
-                    <StatusBadge status={ex.status} />
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-                      {ex.status === "open" ? (
-                        <button
-                          type="button"
-                          className={`${ui.btn} ${ui.btnSecondary}`}
-                          onClick={() => {
-                            setNote("");
-                            setActionFor({ row: ex, action: "acknowledge" });
-                          }}
-                        >
-                          Acknowledge
-                        </button>
-                      ) : null}
-                      {ex.status !== "resolved" ? (
-                        <button
-                          type="button"
-                          className={`${ui.btn} ${ui.btnPrimary}`}
-                          onClick={() => {
-                            setNote("");
-                            setActionFor({ row: ex, action: "resolve" });
-                          }}
-                        >
-                          Resolve
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
+        <>
+          <div className={ui.tableWrap}>
+            <table className={ui.table}>
+              <thead>
+                <tr>
+                  <th>Exception</th>
+                  <th>Severity</th>
+                  <th>Source</th>
+                  <th>Case</th>
+                  <th>First seen</th>
+                  <th>Status</th>
+                  <th />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {exceptions.map((ex) => (
+                  <tr key={ex.exception_id}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{ex.title}</div>
+                      <p className={ui.cardHint} style={{ margin: "0.25rem 0 0" }}>
+                        {ex.kind}
+                        {ex.kind === "db_value_mismatch" &&
+                        typeof (ex.detail as { contradicted_at?: unknown } | null)
+                          ?.contradicted_at === "string" ? (
+                          <>
+                            {" "}
+                            · contradicted on{" "}
+                            {String(
+                              (ex.detail as { contradicted_at: string }).contradicted_at,
+                            )
+                              .replace("T", " ")
+                              .replace(/\.\d{3}Z$/, " UTC")}
+                          </>
+                        ) : null}
+                      </p>
+                    </td>
+                    <td>
+                      <StatusBadge status={ex.severity} />
+                    </td>
+                    <td>{ex.source_name ?? "-"}</td>
+                    <td>
+                      {ex.case_id ? (
+                        <Link
+                          href={`/aegis/traces?q=${encodeURIComponent(ex.case_id)}`}
+                          className={ui.tableLink}
+                        >
+                          {ex.case_id}
+                        </Link>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>
+                      <ConsoleTime iso={ex.first_seen_at} />
+                    </td>
+                    <td>
+                      <StatusBadge status={ex.status} />
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                        {ex.status === "open" ? (
+                          <button
+                            type="button"
+                            className={`${ui.btn} ${ui.btnSecondary}`}
+                            onClick={() => {
+                              setNote("");
+                              setActionFor({ row: ex, action: "acknowledge" });
+                            }}
+                          >
+                            Acknowledge
+                          </button>
+                        ) : null}
+                        {ex.status !== "resolved" ? (
+                          <button
+                            type="button"
+                            className={`${ui.btn} ${ui.btnPrimary}`}
+                            onClick={() => {
+                              setNote("");
+                              setActionFor({ row: ex, action: "resolve" });
+                            }}
+                          >
+                            Resolve
+                          </button>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ConsolePagination
+            total={total}
+            limit={limit}
+            page={page}
+            onPageChange={setPage}
+            onLimitChange={(n) => {
+              setLimit(n);
+              setPage(1);
+            }}
+            noun="exception"
+            pageSizes={[...PAGE_SIZES]}
+          />
+        </>
       ) : null}
 
       <Modal
