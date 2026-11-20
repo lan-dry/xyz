@@ -79,6 +79,8 @@ export class RealConnectors {
     this.cfg = cfg;
     /** @type {Map<string, import('@salanor/aegis-connector').Connector>} */
     this.connectors = new Map();
+    /** @type {Map<string, Promise<import('@salanor/aegis-connector').Connector|null>>} */
+    this.opening = new Map();
     /** @type {Map<string, LocalKeyMaterial>} */
     this.keys = new Map();
     this.ready = false;
@@ -166,34 +168,46 @@ export class RealConnectors {
    * @param {string} id
    */
   async get(id) {
-    const existing = this.connectors.get(id);
-    if (existing) return existing;
     const sys = SYSTEMS.find((s) => s.id === id || s.source_id === id);
     if (!sys || sys.external) return null;
-    const material = this.keys.get(sys.id);
-    if (!material) return null;
-    const apiBase = (this.cfg.apiBase ?? "").trim().replace(/\/+$/, "");
-    const ingestKey = (this.cfg.ingestKey ?? "").trim();
-    if (!apiBase || !ingestKey) {
-      throw new Error("Connector needs apiBase and ingestKey (configure Setup or env)");
+    const existing = this.connectors.get(sys.id);
+    if (existing) return existing;
+    const inflight = this.opening.get(sys.id);
+    if (inflight) return inflight;
+
+    const openPromise = (async () => {
+      const material = this.keys.get(sys.id);
+      if (!material) return null;
+      const apiBase = (this.cfg.apiBase ?? "").trim().replace(/\/+$/, "");
+      const ingestKey = (this.cfg.ingestKey ?? "").trim();
+      if (!apiBase || !ingestKey) {
+        throw new Error("Connector needs apiBase and ingestKey (configure Setup or env)");
+      }
+      const conn = await loadConnectorPkg();
+      const connector = await conn.createConnector({
+        source_id: material.source_id,
+        key_id: material.key_id,
+        private_key_path: material.private_key_path,
+        aegis_url: apiBase,
+        ingest_path: "/v1/aegis/source-events",
+        confirm_path: "/v1/aegis/executions/confirm",
+        ingest_bearer: ingestKey,
+        state_dir: material.state_dir,
+        listen: { host: "127.0.0.1", port: SOURCE_PORTS[sys.source_id] ?? 0 },
+        sync_wait_ms: 8_000,
+        request_timeout_ms: 15_000,
+        retry: { initial_ms: 400, max_ms: 8_000, factor: 2, jitter: 0.1 },
+      });
+      this.connectors.set(sys.id, connector);
+      return connector;
+    })();
+
+    this.opening.set(sys.id, openPromise);
+    try {
+      return await openPromise;
+    } finally {
+      this.opening.delete(sys.id);
     }
-    const conn = await loadConnectorPkg();
-    const connector = await conn.createConnector({
-      source_id: material.source_id,
-      key_id: material.key_id,
-      private_key_path: material.private_key_path,
-      aegis_url: apiBase,
-      ingest_path: "/v1/aegis/source-events",
-      confirm_path: "/v1/aegis/executions/confirm",
-      ingest_bearer: ingestKey,
-      state_dir: material.state_dir,
-      listen: { host: "127.0.0.1", port: SOURCE_PORTS[sys.source_id] ?? 0 },
-      sync_wait_ms: 8_000,
-      request_timeout_ms: 15_000,
-      retry: { initial_ms: 400, max_ms: 8_000, factor: 2, jitter: 0.1 },
-    });
-    this.connectors.set(sys.id, connector);
-    return connector;
   }
 
   /**
@@ -242,6 +256,7 @@ export class RealConnectors {
   }
 
   async close() {
+    this.opening.clear();
     for (const [id, c] of this.connectors) {
       try {
         await c.close();
