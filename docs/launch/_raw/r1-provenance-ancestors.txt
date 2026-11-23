@@ -1,0 +1,50 @@
+﻿recorded_at=2026-11-23T11:16:08.6077855+02:00
+origin/main=ce820d2765e60692d1b2e5b0ff293d6af06b8cc2
+feature/launch-gate-0-1 HEAD=f3dbfe0d758830b3ab4a0d9b79b6153eb0c615a4
+
+=== feature/provenance ===
+tip=6850ce1717397893d6e26f52ec461f084fb3c22b
+command: git merge-base --is-ancestor 6850ce1717397893d6e26f52ec461f084fb3c22b origin/main
+exit_code=0
+result=YES tip is ancestor of origin/main (fully contained by SHA)
+origin/feature/provenance=absent (branch not on origin)
+
+=== fix/provenance-followup ===
+tip=9b7f7e8fb2a3b605f012edb484c073df1de0defe
+command: git merge-base --is-ancestor 9b7f7e8fb2a3b605f012edb484c073df1de0defe origin/main
+exit_code=0
+result=YES tip is ancestor of origin/main (fully contained by SHA)
+origin/fix/provenance-followup=absent (branch not on origin)
+
+=== feature/provenance-g3-kms ===
+tip=32fd82caaa1ff7bf189f07cba0d7a70f88343e37
+command: git merge-base --is-ancestor 32fd82caaa1ff7bf189f07cba0d7a70f88343e37 origin/main
+exit_code=1
+result=NO tip is NOT an ancestor of origin/main
+commits_not_in_main:
+32fd82c Serialize bank-simulator Connector open to avoid state-dir lock races.
+a4352ba Restore full bank-simulator UI: Setup, systems, Red Team, and all stories.
+c39f4c0 Write Ops demo connector keys under tmp when /app is not writable.
+481d228 Prefer personas.admin and optional ingest_key from Ops tenant JSON.
+502cddc Mint an ingest key during Ops Populate when none is configured.
+076b138 Make Ops Populate idempotent when demo-bank already exists.
+205ae70 Let Ops Demo data paste tenant JSON like local emails file.
+eece181 Fix production Ops Populate 502 on salanor-id.
+7ede820 Build aegis-connector before demo-tools in Railway images.
+diff_stat_vs_main (merge-base triple-dot):
+ .demo-tenant-emails.local.example.json             |   3 +-
+ .gitignore                                         |   3 +
+ .../src/app/(ops)/demo-tenants/page.tsx            |  56 ++-
+ deploy/docker/Dockerfile.aegis-api                 |   1 +
+ deploy/docker/Dockerfile.bank-simulator            |   6 +-
+ deploy/docker/Dockerfile.salanor-id                |  17 +-
+ services/id/src/routes/platform.ts                 | 384 ++++++++++++++++++---
+ tools/bank-simulator/page.html                     | 315 ++++++++++++++++-
+ tools/bank-simulator/real-connectors.mjs           |  65 ++--
+ tools/demo/connector-sources.mts                   |  21 +-
+ tools/demo/demo-tenant-lib.mts                     |  12 +
+ tools/demo/provision-demo-tenant.mts               |  12 +-
+ tools/demo/seed-history.mts                        |  17 +-
+ 13 files changed, 804 insertions(+), 108 deletions(-)
+origin/feature/provenance-g3-kms=32fd82caaa1ff7bf189f07cba0d7a70f88343e37
+

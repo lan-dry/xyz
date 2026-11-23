@@ -1,0 +1,24 @@
+recorded_at=2026-11-23T11:21:25+02:00
+command=pnpm test:redteam
+full_log=docs/launch/_raw/r1-redteam.txt
+
+=== bank-simulator unit (part of test:redteam) ===
+tests=21 pass=19 fail=2
+failures:
+- POST /api/honest-limit returns G1 label (got undefined !== 'G1')
+- runAttack #6 and #16 (actual: 'Aegis API / ingest key not configured')
+
+=== aegis-api redteam-suite.test.ts ===
+Test Files 1 passed
+Tests 10 passed (10)
+
+=== live stack / redteam-lab tenant ===
+status=Partial
+reason=live stack not up (health HTTP 404 on BANK_SIMULATOR_URL http://127.0.0.1:4000)
+redteam-lab tenant attacks=NOT RUN (requires pnpm bank:up + provisioned redteam-lab + API)
+
+founder_next:
+1. pnpm bank:up
+2. Ensure redteam-lab tenant provisioned with ingest key
+3. REDTEAM_ORGANIZATION_ID=<redteam-lab org uuid> pnpm test:redteam
+4. Attach new log under docs/launch/_raw/r1-redteam-lab-live.txt

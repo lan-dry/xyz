@@ -1,0 +1,18 @@
+recorded_at=2026-11-23T11:21:40+02:00
+command=pnpm demo:runbook-walk
+full_log=docs/launch/_raw/r1-demo-runbook-walk.txt
+
+result=FAILED (stack not ready)
+
+observed:
+- Console sign-in pages returned about:blank / chrome-error (console not serving expected app on CONSOLE_ORIGIN)
+- Simulator at :4000 reachable but requires BANK_SIMULATOR_PASS
+- Aegis API connect ECONNREFUSED 127.0.0.1:8088
+
+PASS lines seen: no Simulator in production-style nav; quiet Demo tag; standalone simulator page reachable
+FAIL lines: all persona sign-ins; Rules/Cases/Reports/Access log/Delegations nav; story runs; held approval
+
+founder_next:
+1. Start full stack: aegis-api (:8088 or configured), id, console (:3000), bank simulator with matching BANK_SIMULATOR_PASS
+2. DEMO_TENANT_FILE / .demo-tenant-emails.local.json with Demo Bank personas
+3. Re-run: pnpm demo:runbook-walk | tee docs/launch/_raw/r1-demo-runbook-walk.txt

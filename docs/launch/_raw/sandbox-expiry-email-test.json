@@ -1,8 +1,8 @@
 {
   "ok": true,
-  "at": "2026-11-23T09:03:36.259Z",
+  "at": "2026-11-23T09:20:03.692Z",
   "summary": {
-    "due": 1,
+    "due": 2,
     "emails": [
       {
         "organization_id": "f1f41ae2-cf70-4cb0-bfe3-e1ee08c205f7",
@@ -12,20 +12,30 @@
         "subject": "Your Salanor sandbox (sbx-exp-mwt1gk3u) expires in 7 days",
         "text": "Your sandbox \"sbx-exp-mwt1gk3u\" expires on 2026-11-28T09:03:36.138Z. Extend it from Ops or Reset my sandbox in the console. Synthetic data only.",
         "delivered": "captured",
-        "at": "2026-11-23T09:03:36.247Z"
+        "at": "2026-11-23T09:20:03.674Z"
+      },
+      {
+        "organization_id": "e3ef3b6e-efc8-4c4b-8501-e492aa0f049c",
+        "slug": "sbx-exp-mwt21q0v",
+        "action": "email_7d",
+        "to": "admin-sbx-exp-mwt21q0v@example-bank.test",
+        "subject": "Your Salanor sandbox (sbx-exp-mwt21q0v) expires in 7 days",
+        "text": "Your sandbox \"sbx-exp-mwt21q0v\" expires on 2026-11-28T09:20:03.583Z. Extend it from Ops or Reset my sandbox in the console. Synthetic data only.",
+        "delivered": "captured",
+        "at": "2026-11-23T09:20:03.674Z"
       }
     ],
     "read_only": [],
     "archived": []
   },
   "sample_capture": {
-    "organization_id": "f1f41ae2-cf70-4cb0-bfe3-e1ee08c205f7",
-    "slug": "sbx-exp-mwt1gk3u",
+    "organization_id": "e3ef3b6e-efc8-4c4b-8501-e492aa0f049c",
+    "slug": "sbx-exp-mwt21q0v",
     "action": "email_7d",
-    "to": "admin-sbx-exp-mwt1gk3u@example-bank.test",
-    "subject": "Your Salanor sandbox (sbx-exp-mwt1gk3u) expires in 7 days",
-    "text": "Your sandbox \"sbx-exp-mwt1gk3u\" expires on 2026-11-28T09:03:36.138Z. Extend it from Ops or Reset my sandbox in the console. Synthetic data only.",
+    "to": "admin-sbx-exp-mwt21q0v@example-bank.test",
+    "subject": "Your Salanor sandbox (sbx-exp-mwt21q0v) expires in 7 days",
+    "text": "Your sandbox \"sbx-exp-mwt21q0v\" expires on 2026-11-28T09:20:03.583Z. Extend it from Ops or Reset my sandbox in the console. Synthetic data only.",
     "delivered": "captured",
-    "at": "2026-11-23T09:03:36.247Z"
+    "at": "2026-11-23T09:20:03.674Z"
   }
 }

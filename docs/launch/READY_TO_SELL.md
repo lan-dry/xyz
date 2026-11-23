@@ -2,7 +2,7 @@
 
 | # | Item | Status | Evidence |
 |---|------|--------|----------|
-| 1 | Single launch branch / provenance merged | **Verified** | `STAGE_0_REPORT.md` |
+| 1 | Single launch branch / provenance merged | **Partly verified** | `STAGE_0_REPORT.md` + `r1-provenance-ancestors.txt` (g3-kms tip **not** ancestor; empty+demo migrate logs live; full suite/runbook/redteam-lab not green) |
 | 2 | Tenant isolation tests in CI path | **Verified** | `tenant-isolation.test.ts` in quality-gate aegis-api suite |
 | 3 | Rate limits + clear 429 + usage page | **Partly verified** | rate-limit helpers + `/aegis/usage`; not all quota 429 paths live-smoked |
 | 4 | Staging promote gate | **Not verified** | Script exists; staging stack not smoked |
