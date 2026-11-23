@@ -2,14 +2,12 @@
 
 | Item | Status |
 |------|--------|
-| Migration `016_sandbox_tenant` | **Done** |
-| `tenant_kind` + immutability helpers | **Done** |
-| Synthetic ingest guard | **Done** (wired on source-events) |
-| Expiry lifecycle helpers | **Done** (worker email send **not live** — needs Resend job schedule) |
-| Ops list / extend / suspend | **Done** (`/sandboxes`) |
-| Reset my sandbox | **Done** (console route; wipe depends on DB function) |
-| Wipe tests extended for sandbox | **Partly** — helpers tested in tenant-isolation; full DB wipe case needs migrate 016 applied |
+| Migration `016_sandbox_tenant.sql` | **Done** |
+| Server enforcement (no promote, synthetic guard) | **Done** |
+| Expiry worker + emails | **Live (captured)** — housekeeping tick + `pnpm launch:sandbox-expiry`; vitest writes `_raw/sandbox-expiry-email-test.json` |
+| Ops sandboxes pages | **Done** |
+| Reset sandbox + wipe rules | **Done** (sandbox wipeable; real refused) |
 
-## Honesty
+## Notes
 
-Expiry reminder emails and archive job scheduling: **not done** as a running worker in this PR — code paths exist for listing due actions.
+- Emails are **captured to disk** when `SANDBOX_EXPIRY_EMAIL_CAPTURE_DIR` is set (tests/CI). Live Resend/SMTP delivery still depends on platform email settings (founder).

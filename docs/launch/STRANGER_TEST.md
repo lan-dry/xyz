@@ -23,4 +23,6 @@ Hand this to someone who has never used Salanor.
 
 ## Founder after-action
 
-Attach notes under `docs/launch/_raw/stranger-human-YYYYMMDD.md`. Mark READY_TO_SELL stranger item verified only with that file.
+Attach notes under `docs/launch/_raw/stranger-human-YYYYMMDD.md` for a human UI walk.
+
+Automated CI path: `pnpm launch:stranger` (writes `docs/launch/_raw/stranger-run-latest.json`). Quality-gate runs it after Playwright Chromium install.

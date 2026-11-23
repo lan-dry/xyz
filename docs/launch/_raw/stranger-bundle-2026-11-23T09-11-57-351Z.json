@@ -1,0 +1,279 @@
+{
+  "bundle_type": "aegis_evidence_bundle",
+  "schema_version": 1,
+  "generated_at_utc": "2026-11-23T09:11:57.610Z",
+  "organization_id": "bf670145-c29e-40a4-83f8-356da09b3d36",
+  "case_id": "SBX-STR-MWT1RAY8",
+  "trace_id": "tr_stranger_mwt1ray8",
+  "receipts": [
+    {
+      "seq": 1,
+      "mode": "enforce",
+      "flags": {
+        "provisional": true
+      },
+      "key_id": "receipt_local_2026",
+      "policy": {
+        "version": 0,
+        "policy_id": "pol_none",
+        "content_hash": null
+      },
+      "case_id": "SBX-STR-MWT1RAY8",
+      "outcome": "allow",
+      "product": "retail_loan",
+      "sig_alg": "ed25519",
+      "timeline": [
+        {
+          "at": "2026-11-23T09:11:57.488Z",
+          "type": "decision",
+          "reason": "no matching rule (default allow)",
+          "outcome": "allow"
+        }
+      ],
+      "issued_at": "2026-11-23T09:11:57.488Z",
+      "prev_hash": null,
+      "attributes": {
+        "aegis": {
+          "channel": "unknown",
+          "product": "retail_loan",
+          "segment": "retail_standard",
+          "velocity": null,
+          "time_of_day": "business_hours",
+          "customer_key": null,
+          "new_beneficiary": false,
+          "model_score_label": "asserted by source",
+          "hold_plain_english": null,
+          "segment_limit_name": "Retail Standard",
+          "beneficiary_country": null,
+          "projected_daily_count": 1,
+          "projected_daily_amount": 1200000,
+          "segment_daily_limit_rwf": 25000000,
+          "segment_daily_count_limit": 5,
+          "exceeds_segment_daily_count": false,
+          "exceeds_segment_daily_amount": false,
+          "counts_only_activity_reported_to_aegis": true
+        },
+        "amount": 1200000,
+        "channel": "unknown",
+        "segment": "retail_standard",
+        "currency": "RWF",
+        "time_of_day": "business_hours",
+        "applicant_name": "Stranger Applicant",
+        "new_beneficiary": false,
+        "beneficiary_account": "ACCT-DEMO-001",
+        "beneficiary_country": null,
+        "require_signed_events_in_force": false
+      },
+      "event_type": "loan_decision",
+      "provenance": {
+        "checks": {
+          "reconciled": false,
+          "source_signed": false,
+          "approver_bound": false,
+          "execution_matched": false,
+          "independently_captured": false
+        },
+        "source_id": "ingest_key:b411508a-ba4a-46f5-9252-1acf01b6c044",
+        "limitations": "Aegis proves when this record was made and that it has not changed since. It does not check that the data is accurate. Fields marked as asserted by the source are the source's own claim.",
+        "recorded_at": "2026-11-23T09:11:57.523Z",
+        "source_name": "Sender using ingest key b411508a-ba4a-46f5-9252-1acf01b6c044",
+        "grade_at_seal": "G0",
+        "source_key_id": null,
+        "authentication": "bearer_key",
+        "evidence_grade": "G0",
+        "schema_version": 1,
+        "field_assertions": {
+          "aegis": "asserted_by_source",
+          "amount": "asserted_by_source",
+          "policy": "derived_by_aegis",
+          "channel": "asserted_by_source",
+          "outcome": "derived_by_aegis",
+          "segment": "asserted_by_source",
+          "currency": "asserted_by_source",
+          "time_of_day": "asserted_by_source",
+          "matched_rules": "derived_by_aegis",
+          "plain_summary": "derived_by_aegis",
+          "applicant_name": "asserted_by_source",
+          "decision_basis": "derived_by_aegis",
+          "new_beneficiary": "asserted_by_source",
+          "beneficiary_account": "asserted_by_source",
+          "beneficiary_country": "asserted_by_source"
+        }
+      },
+      "receipt_id": "rcpt_3c2b737c8f8d4f50",
+      "decision_id": "dec_b919ea24b0b24446",
+      "receipt_hash": "sha256:2e459558cf3fedcc256b83391621abefc2ac20a05618c6235a5659c8f8b92735",
+      "matched_rules": [],
+      "plain_summary": "Loan disbursement of RWF 1,200,000 was allowed automatically. No human approval was needed. Policy v0.",
+      "sealed_events": [
+        {
+          "event_id": "evt_gov_137d3317d9804cb1",
+          "event_hash": "sha256:261590f28467b5d67b025c6cdfae45693838f9e50b5f1924e551fea4b0aab502",
+          "sequence_num": 1
+        }
+      ],
+      "sig_value_b64": "gowRk+lLbRQAWWa4FAKK478WSr6u0I8n8X0c4bGGbIrFmFQ9pnGBz5TMaoTgcn9G4L5oL4f+UVRdXBeFWtsLDA==",
+      "decision_basis": {
+        "matched": [],
+        "outcome": "allow",
+        "explanation": "Allowed under rule policy. No human approval was needed.",
+        "decided_by_rule_id": null
+      },
+      "schema_version": 1,
+      "organization_id": "bf670145-c29e-40a4-83f8-356da09b3d36"
+    }
+  ],
+  "sealed_events": [
+    {
+      "event_id": "evt_gov_137d3317d9804cb1",
+      "event_hash": "sha256:261590f28467b5d67b025c6cdfae45693838f9e50b5f1924e551fea4b0aab502",
+      "sequence_num": 1,
+      "provisional": true
+    }
+  ],
+  "keys": {
+    "receipt_local_2026": "GcunqAxaV2sQlu2PD8L0j+cnmULl5OroVcHPV7lF9cY="
+  },
+  "key_fingerprints": {
+    "receipt_local_2026": "sha256:71fab2bcf7df40f035a29fc7b79da500d9a80ff4afbf3cd23956c2f0b21e4c68"
+  },
+  "key_custody": {
+    "receipt_local_2026": {
+      "custody": "software",
+      "label": "Key custody: software key (demo tenant)",
+      "status": "active"
+    }
+  },
+  "trusted_time": [
+    {
+      "receipt_id": "rcpt_3c2b737c8f8d4f50",
+      "status": "pending",
+      "authority": null,
+      "gen_time_utc": null,
+      "tsa_url": null,
+      "message_hash": "sha256:2e459558cf3fedcc256b83391621abefc2ac20a05618c6235a5659c8f8b92735",
+      "token_b64": null
+    }
+  ],
+  "subset": true,
+  "evidence": [
+    {
+      "receipt_id": "rcpt_3c2b737c8f8d4f50",
+      "seq": 1,
+      "prev_hash": null,
+      "receipt_hash": "sha256:2e459558cf3fedcc256b83391621abefc2ac20a05618c6235a5659c8f8b92735",
+      "event_hash": "sha256:261590f28467b5d67b025c6cdfae45693838f9e50b5f1924e551fea4b0aab502",
+      "event_id": "evt_gov_137d3317d9804cb1",
+      "event_seq": 1,
+      "canonical_payload": "{\"attributes\":{\"aegis\":{\"beneficiary_country\":null,\"channel\":\"unknown\",\"counts_only_activity_reported_to_aegis\":true,\"customer_key\":null,\"exceeds_segment_daily_amount\":false,\"exceeds_segment_daily_count\":false,\"hold_plain_english\":null,\"model_score_label\":\"asserted by source\",\"new_beneficiary\":false,\"product\":\"retail_loan\",\"projected_daily_amount\":1200000,\"projected_daily_count\":1,\"segment\":\"retail_standard\",\"segment_daily_count_limit\":5,\"segment_daily_limit_rwf\":25000000,\"segment_limit_name\":\"Retail Standard\",\"time_of_day\":\"business_hours\",\"velocity\":null},\"amount\":1200000,\"applicant_name\":\"Stranger Applicant\",\"beneficiary_account\":\"ACCT-DEMO-001\",\"beneficiary_country\":null,\"channel\":\"unknown\",\"currency\":\"RWF\",\"new_beneficiary\":false,\"require_signed_events_in_force\":false,\"segment\":\"retail_standard\",\"time_of_day\":\"business_hours\"},\"case_id\":\"SBX-STR-MWT1RAY8\",\"decision_basis\":{\"decided_by_rule_id\":null,\"explanation\":\"Allowed under rule policy. No human approval was needed.\",\"matched\":[],\"outcome\":\"allow\"},\"decision_id\":\"dec_b919ea24b0b24446\",\"event_type\":\"loan_decision\",\"flags\":{\"provisional\":true},\"issued_at\":\"2026-11-23T09:11:57.488Z\",\"key_id\":\"receipt_local_2026\",\"matched_rules\":[],\"mode\":\"enforce\",\"organization_id\":\"bf670145-c29e-40a4-83f8-356da09b3d36\",\"outcome\":\"allow\",\"plain_summary\":\"Loan disbursement of RWF 1,200,000 was allowed automatically. No human approval was needed. Policy v0.\",\"policy\":{\"content_hash\":null,\"policy_id\":\"pol_none\",\"version\":0},\"prev_hash\":null,\"product\":\"retail_loan\",\"provenance\":{\"authentication\":\"bearer_key\",\"checks\":{\"approver_bound\":false,\"execution_matched\":false,\"independently_captured\":false,\"reconciled\":false,\"source_signed\":false},\"evidence_grade\":\"G0\",\"field_assertions\":{\"aegis\":\"asserted_by_source\",\"amount\":\"asserted_by_source\",\"applicant_name\":\"asserted_by_source\",\"beneficiary_account\":\"asserted_by_source\",\"beneficiary_country\":\"asserted_by_source\",\"channel\":\"asserted_by_source\",\"currency\":\"asserted_by_source\",\"decision_basis\":\"derived_by_aegis\",\"matched_rules\":\"derived_by_aegis\",\"new_beneficiary\":\"asserted_by_source\",\"outcome\":\"derived_by_aegis\",\"plain_summary\":\"derived_by_aegis\",\"policy\":\"derived_by_aegis\",\"segment\":\"asserted_by_source\",\"time_of_day\":\"asserted_by_source\"},\"grade_at_seal\":\"G0\",\"limitations\":\"Aegis proves when this record was made and that it has not changed since. It does not check that the data is accurate. Fields marked as asserted by the source are the source's own claim.\",\"recorded_at\":\"2026-11-23T09:11:57.523Z\",\"schema_version\":1,\"source_id\":\"ingest_key:b411508a-ba4a-46f5-9252-1acf01b6c044\",\"source_key_id\":null,\"source_name\":\"Sender using ingest key b411508a-ba4a-46f5-9252-1acf01b6c044\"},\"receipt_id\":\"rcpt_3c2b737c8f8d4f50\",\"schema_version\":1,\"sealed_events\":[{\"event_hash\":\"sha256:261590f28467b5d67b025c6cdfae45693838f9e50b5f1924e551fea4b0aab502\",\"event_id\":\"evt_gov_137d3317d9804cb1\",\"sequence_num\":1}],\"seq\":1,\"timeline\":[{\"at\":\"2026-11-23T09:11:57.488Z\",\"outcome\":\"allow\",\"reason\":\"no matching rule (default allow)\",\"type\":\"decision\"}]}",
+      "sig_alg": "ed25519",
+      "sig_value_b64": "gowRk+lLbRQAWWa4FAKK478WSr6u0I8n8X0c4bGGbIrFmFQ9pnGBz5TMaoTgcn9G4L5oL4f+UVRdXBeFWtsLDA==",
+      "key_id": "receipt_local_2026",
+      "public_key_b64": "GcunqAxaV2sQlu2PD8L0j+cnmULl5OroVcHPV7lF9cY=",
+      "public_key_fingerprint": "sha256:71fab2bcf7df40f035a29fc7b79da500d9a80ff4afbf3cd23956c2f0b21e4c68",
+      "issued_at_utc": "2026-11-23T09:11:57.488Z",
+      "event_emitted_at_utc": null,
+      "outcome": "allow",
+      "policy": {
+        "version": 0,
+        "policy_id": "pol_none",
+        "content_hash": null
+      },
+      "matched_rules": [],
+      "decision_basis": {
+        "matched": [],
+        "outcome": "allow",
+        "explanation": "Allowed under rule policy. No human approval was needed.",
+        "decided_by_rule_id": null
+      },
+      "plain_summary": "Loan disbursement of RWF 1,200,000 was allowed automatically. No human approval was needed. Policy v0.",
+      "who_approved": "No approval needed: allowed automatically by policy.",
+      "provenance": {
+        "has_block": true,
+        "legacy": false,
+        "grade_at_seal": "G0",
+        "authentication": "bearer_key",
+        "source_id": "ingest_key:b411508a-ba4a-46f5-9252-1acf01b6c044",
+        "source_name": "Sender using ingest key b411508a-ba4a-46f5-9252-1acf01b6c044",
+        "recorded_at": "2026-11-23T09:11:57.523Z"
+      }
+    }
+  ],
+  "approvals": [],
+  "witness": null,
+  "provenance": {
+    "schema_version": 1,
+    "legacy": false,
+    "source": {
+      "source_id": "ingest_key:b411508a-ba4a-46f5-9252-1acf01b6c044",
+      "source_name": "Sender using ingest key b411508a-ba4a-46f5-9252-1acf01b6c044",
+      "key_id": null,
+      "authentication": "bearer_key"
+    },
+    "grade_at_seal": "G0",
+    "current_grade": "G0",
+    "grade_changes": [],
+    "checks": {
+      "source_signed": false,
+      "approver_bound": false,
+      "execution_matched": false,
+      "reconciled": false,
+      "independently_captured": false
+    },
+    "checklist": [
+      {
+        "id": "source_signed",
+        "label": "Signed by the source system with its own key",
+        "met": false
+      },
+      {
+        "id": "approver_bound",
+        "label": "Approver identity bound to the decision",
+        "met": false
+      },
+      {
+        "id": "execution_matched",
+        "label": "What was carried out matched what was approved",
+        "met": false
+      },
+      {
+        "id": "reconciled",
+        "label": "Reconciled against another record",
+        "met": false
+      },
+      {
+        "id": "independently_captured",
+        "label": "Captured independently of the source",
+        "met": false
+      }
+    ],
+    "field_assertions": {
+      "aegis": "asserted_by_source",
+      "amount": "asserted_by_source",
+      "policy": "derived_by_aegis",
+      "channel": "asserted_by_source",
+      "outcome": "derived_by_aegis",
+      "segment": "asserted_by_source",
+      "currency": "asserted_by_source",
+      "time_of_day": "asserted_by_source",
+      "matched_rules": "derived_by_aegis",
+      "plain_summary": "derived_by_aegis",
+      "applicant_name": "asserted_by_source",
+      "decision_basis": "derived_by_aegis",
+      "new_beneficiary": "asserted_by_source",
+      "beneficiary_account": "asserted_by_source",
+      "beneficiary_country": "asserted_by_source"
+    },
+    "limitations": "Aegis proves when this record was made and that it has not changed since. It does not check that the data is accurate. Fields marked as asserted by the source are the source's own claim.",
+    "recorded_at": "2026-11-23T09:11:57.523Z",
+    "headline": "Data sent by Sender using ingest key b411508a-ba4a-46f5-9252-1acf01b6c044 with an ingest key; the sender did not sign it. Aegis proves it was recorded at 2026-11-23 09:11 UTC and has not changed since. Aegis does not check that the data is accurate. (grade G0).",
+    "record_line": "Record intact: signed and unchanged since 2026-11-23 09:11 UTC",
+    "source_line": "Source of the data: G0. Sent by Sender using ingest key b411508a-ba4a-46f5-9252-1acf01b6c044 with an ingest key; the sender did not sign it. Aegis does not check that the data is accurate.",
+    "source_line_short": "G0 · asserted by Sender using ingest key b411508a-ba4a-46f5-9252-1acf01b6c044"
+  },
+  "how_to_verify": "Check this file without trusting Aegis. For each receipt, take canonical_payload, compute SHA-256 and compare it with receipt_hash (prefixed sha256:). Then verify the Ed25519 signature (sig_value_b64) over SHA-256 of the text \"AEGIS-RECEIPT1\\n<key_id>\\n<canonical_payload>\" using the public key listed under keys (compare its fingerprint with the one you were given out of band). Receipts with consecutive seq numbers must link: prev_hash of the next equals receipt_hash of the previous. When witness[] status is included, recompute Merkle inclusion offline: the leaf is the event hash; each node is SHA-256 of the left hex string concatenated with the right hex string; walk merkle_path to root_hash, then verify root_sig_value_b64 over SHA-256(UTF-8 of lowercase root_hash) and check the RFC 3161 token imprint equals the root hash. Or run the aegis-verify tool on this file, or drop it on the Verify page. Changing any byte of the facts makes verification fail.",
+  "export_check": {
+    "ok": true,
+    "findings": []
+  }
+}

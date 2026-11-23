@@ -87,6 +87,23 @@ jobs:
       - name: aegis-api full test suite
         run: pnpm --filter aegis-api test
 
+      - name: Install Playwright Chromium (stranger HTTP request API)
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Gate 1 quickstarts (fresh sandbox)
+        run: pnpm launch:quickstarts
+
+      - name: Gate 1 stranger path (request → approve → ingest → auditor)
+        run: pnpm launch:stranger
+
+      - name: Upload launch artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: launch-raw
+          path: docs/launch/_raw/
+          if-no-files-found: warn
+
       # Empty DB -> baseline schema (through 013) -> seeded receipts -> tip -> aegis-verify.
       # Uses its own scratch database (name contains "upgrade", dropped and recreated by the script).
       - name: Upgrade-from-baseline migration check

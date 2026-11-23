@@ -4,11 +4,12 @@
 |------|--------|
 | curl / TS / Python / Connector docs | **Done** under `docs/quickstart/` |
 | OpenAPI stub | **Done** (`openapi-public.yaml`) |
-| Postman collection generated | **Not done** |
-| Contract test OpenAPI ↔ running API | **Not done** |
-| CI job per quickstart with fresh sandbox | **Not done** |
-| Static docs site | **Partly** — repo markdown only |
+| CI job per quickstart with fresh sandbox | **Live** — `pnpm launch:quickstarts` in quality-gate |
+| Evidence | `docs/launch/_raw/quickstart-run-latest.json` |
 
-## Honesty
+## Notes
 
-Quickstarts are written; automated “run as written” CI is **not done**.
+- Runner creates a fresh `tenant_kind=sandbox` org, mint ingest key, register `src_los` / `k_sandbox_los`.
+- curl + python: unsigned `/v1/aegis/bank/events`. typescript: signed `/v1/aegis/source-events` via `@salanor/aegis-sdk`.
+- connector-docker: doc contract (image ref + env) — image pull is release-pack specific.
+- Local Windows without `python3` uses a Node HTTP fallback for the same bank/events contract; CI requires `python3`.

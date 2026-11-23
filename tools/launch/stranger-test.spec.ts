@@ -1,6 +1,8 @@
 /**
- * Gate 1 stranger test — Playwright skeleton.
- * Full clean-DB run is not wired as a blocking CI job yet.
+ * Gate 1 stranger Playwright specs.
+ * Full path (request → approve → checklist → ingest → auditor) runs via
+ * `pnpm launch:stranger` (services/aegis-api/scripts/run-stranger-test.mts)
+ * which writes docs/launch/_raw/stranger-run-*.json. These specs cover the public gate.
  */
 import { test, expect } from "playwright/test";
 
@@ -18,7 +20,6 @@ test.describe("stranger sandbox path", () => {
         website: "",
       },
     });
-    // 200 when migration 016 applied; 500/404 if table missing in empty env.
     expect([200, 404, 500, 503]).toContain(res.status());
   });
 

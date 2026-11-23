@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   AlertTriangle,
+  BarChart3,
   Bot,
   FileCheck,
   GitBranch,
@@ -58,6 +59,7 @@ export const AEGIS_NAV: ConsoleNavItem[] = [
   { href: "/aegis/exceptions", label: "Exceptions", icon: AlertTriangle },
   { href: "/aegis/evidence", label: t("nav.evidence", "Evidence"), icon: FileCheck },
   { href: "/aegis/integrations", label: "Integrations", icon: Plug },
+  { href: "/aegis/usage", label: "Usage", icon: BarChart3 },
   { href: "/aegis/settings", label: t("nav.settings", "Settings"), icon: Settings },
 ];
 

@@ -95,6 +95,9 @@
     "smoke:production": "node tools/smoke/smoke-production.mjs",
     "launch:release-staging": "node scripts/release-staging.mjs",
     "launch:restore-check": "node scripts/launch-restore-check.mjs",
+    "launch:quickstarts": "pnpm --filter aegis-api exec tsx scripts/run-quickstarts.mts",
+    "launch:stranger": "pnpm --filter aegis-api exec tsx scripts/run-stranger-test.mts",
+    "launch:sandbox-expiry": "pnpm --filter aegis-api exec tsx src/tenants/sandbox-lifecycle-cli.ts",
     "smoke:openapi-clients": "node tools/generated-clients/smoke.mjs",
     "compliance:worker": "pnpm --filter aegis-api compliance:worker",
     "build": "nx run-many -t build --all"

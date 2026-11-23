@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "at": "2026-11-23T09:03:36.259Z",
+  "summary": {
+    "due": 1,
+    "emails": [
+      {
+        "organization_id": "f1f41ae2-cf70-4cb0-bfe3-e1ee08c205f7",
+        "slug": "sbx-exp-mwt1gk3u",
+        "action": "email_7d",
+        "to": "admin-sbx-exp-mwt1gk3u@example-bank.test",
+        "subject": "Your Salanor sandbox (sbx-exp-mwt1gk3u) expires in 7 days",
+        "text": "Your sandbox \"sbx-exp-mwt1gk3u\" expires on 2026-11-28T09:03:36.138Z. Extend it from Ops or Reset my sandbox in the console. Synthetic data only.",
+        "delivered": "captured",
+        "at": "2026-11-23T09:03:36.247Z"
+      }
+    ],
+    "read_only": [],
+    "archived": []
+  },
+  "sample_capture": {
+    "organization_id": "f1f41ae2-cf70-4cb0-bfe3-e1ee08c205f7",
+    "slug": "sbx-exp-mwt1gk3u",
+    "action": "email_7d",
+    "to": "admin-sbx-exp-mwt1gk3u@example-bank.test",
+    "subject": "Your Salanor sandbox (sbx-exp-mwt1gk3u) expires in 7 days",
+    "text": "Your sandbox \"sbx-exp-mwt1gk3u\" expires on 2026-11-28T09:03:36.138Z. Extend it from Ops or Reset my sandbox in the console. Synthetic data only.",
+    "delivered": "captured",
+    "at": "2026-11-23T09:03:36.247Z"
+  }
+}

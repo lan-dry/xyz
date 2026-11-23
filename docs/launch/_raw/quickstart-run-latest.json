@@ -1,0 +1,115 @@
+{
+  "ok": true,
+  "at": "2026-11-23T09:07:45.145Z",
+  "quickstarts": {
+    "curl": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "case_id": "SBX-CURL-MWT1LWAU",
+        "decision_id": "dec_b84a3da5628f4750",
+        "receipt_id": "rcpt_1f869ef38daa4a44",
+        "outcome": "allow",
+        "mode": "enforce",
+        "matched_rules": [],
+        "decision_basis": {
+          "outcome": "allow",
+          "decided_by_rule_id": null,
+          "explanation": "Allowed under rule policy. No human approval was needed.",
+          "matched": []
+        },
+        "plain_summary": "Loan disbursement of RWF 1,200,000 was allowed automatically. No human approval was needed. Policy v0.",
+        "policy": {
+          "policy_id": "pol_none",
+          "version": 0,
+          "content_hash": null
+        },
+        "approval": null,
+        "event_id": "evt_gov_f5212393d6694511",
+        "event_hash": "sha256:6955360f14bfedd330b659d56c1e0cfb2c75df858198e2b1f94c9ade15806212",
+        "sequence_num": 1,
+        "flags": {
+          "provisional": true,
+          "evidence_status": "ok"
+        }
+      }
+    },
+    "typescript": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "case_id": "SBX-TS-MWT1LWE0",
+        "decision_id": "dec_d30e545e405c4b76",
+        "receipt_id": "rcpt_733b1e5b16e9468c",
+        "outcome": "allow",
+        "mode": "enforce",
+        "matched_rules": [],
+        "decision_basis": {
+          "outcome": "allow",
+          "decided_by_rule_id": null,
+          "explanation": "Allowed under rule policy. No human approval was needed.",
+          "matched": []
+        },
+        "plain_summary": "Loan disbursement of RWF 1,200,000 was allowed automatically. No human approval was needed. Policy v0.",
+        "policy": {
+          "policy_id": "pol_none",
+          "version": 0,
+          "content_hash": null
+        },
+        "approval": null,
+        "event_id": "evt_gov_17736974cb3a49c3",
+        "event_hash": "sha256:ba0c5b08c7930e0aebaa38864cfdc520c50b1b0a9f08317b591a7df037959986",
+        "sequence_num": 1,
+        "flags": {
+          "provisional": true,
+          "evidence_status": "ok"
+        },
+        "source_signed": true,
+        "evidence_grade": "G1"
+      }
+    },
+    "python": {
+      "ok": true,
+      "mode": "node_http_fallback",
+      "note": "python3/python/py not on PATH; bank/events contract exercised via Node",
+      "body": {
+        "case_id": "SBX-PY-MWT1LWQQ",
+        "decision_id": "dec_67362c8d8f2a4d8d",
+        "receipt_id": "rcpt_3d6fab58caca426b",
+        "outcome": "allow",
+        "mode": "enforce",
+        "matched_rules": [],
+        "decision_basis": {
+          "outcome": "allow",
+          "decided_by_rule_id": null,
+          "explanation": "Allowed under rule policy. No human approval was needed.",
+          "matched": []
+        },
+        "plain_summary": "Loan disbursement of RWF 1,200,000 was allowed automatically. No human approval was needed. Policy v0.",
+        "policy": {
+          "policy_id": "pol_none",
+          "version": 0,
+          "content_hash": null
+        },
+        "approval": null,
+        "event_id": "evt_gov_2652044094ee4f15",
+        "event_hash": "sha256:ad9cedf86a175824df5e9ba707620681d55b5d66fc54f588f67c5bd09975cea8",
+        "sequence_num": 1,
+        "flags": {
+          "provisional": true,
+          "evidence_status": "ok"
+        }
+      }
+    },
+    "connector_docker": {
+      "ok": true,
+      "mode": "doc_contract",
+      "image": "ghcr.io/salanor-ltd/aegis-connector:latest",
+      "note": "Fresh sandbox + source key registered; image pull is release-pack specific."
+    }
+  },
+  "sandbox": {
+    "organization_id": "0543111f-5500-4fbc-a0d6-af62d59f1f60",
+    "slug": "qs-mwt1lw8r"
+  }
+}

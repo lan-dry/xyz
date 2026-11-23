@@ -19,6 +19,7 @@
     "compliance:schedule": "tsx src/compliance/schedule-cli.ts",
     "reconciliation:schedule": "tsx src/reconciliation/schedule-cli.ts",
     "maintenance:housekeeping": "tsx src/maintenance/housekeeping-cli.ts",
+    "sandbox:lifecycle": "tsx src/tenants/sandbox-lifecycle-cli.ts",
     "smoke:kms": "tsx scripts/smoke-kms.ts",
     "witness:worker": "tsx src/witness/worker-cli.ts",
     "witness:worker:prod": "node dist/witness/worker-cli.js",

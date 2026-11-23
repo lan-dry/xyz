@@ -11,6 +11,10 @@ import {
   purgeExpiredForOrganization,
   type RetentionPurgeResult,
 } from "./retention-purge.js";
+import {
+  runSandboxLifecycleTick,
+  type SandboxLifecycleTickSummary,
+} from "../tenants/sandbox-expiry-emails.js";
 
 export type HousekeepingResult = {
   organization_id: string;
@@ -18,6 +22,11 @@ export type HousekeepingResult = {
   stale_traces_failed: number;
   escalated_approvals: number;
   retention_purge: RetentionPurgeResult;
+};
+
+export type GlobalHousekeepingResult = {
+  organizations: HousekeepingResult[];
+  sandbox_lifecycle: SandboxLifecycleTickSummary;
 };
 
 /** Expire pending approvals and fail orphaned open traces per org governance settings. */
@@ -93,7 +102,7 @@ export async function runOrganizationHousekeeping(
 
 export async function runGlobalHousekeeping(
   client: pg.Pool | pg.PoolClient,
-): Promise<HousekeepingResult[]> {
+): Promise<GlobalHousekeepingResult> {
   const orgs = await client.query<{ organization_id: string }>(
     `SELECT organization_id FROM organization WHERE active = true`,
   );
@@ -101,5 +110,6 @@ export async function runGlobalHousekeeping(
   for (const org of orgs.rows) {
     results.push(await runOrganizationHousekeeping(client, org.organization_id));
   }
-  return results;
+  const sandbox_lifecycle = await runSandboxLifecycleTick(client);
+  return { organizations: results, sandbox_lifecycle };
 }

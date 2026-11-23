@@ -32,16 +32,27 @@ const startedAt = new Date();
 
 try {
   const results = await runGlobalHousekeeping(pool);
+  const orgs = results.organizations;
   const summary = {
-    organizations: results.length,
-    expired_approvals: results.reduce((n, r) => n + r.expired_approvals, 0),
-    stale_traces_failed: results.reduce((n, r) => n + r.stale_traces_failed, 0),
-    results,
+    organizations: orgs.length,
+    expired_approvals: orgs.reduce((n, r) => n + r.expired_approvals, 0),
+    stale_traces_failed: orgs.reduce((n, r) => n + r.stale_traces_failed, 0),
+    sandbox_lifecycle: results.sandbox_lifecycle,
+    results: orgs,
   };
+  const lifecycleBusy =
+    results.sandbox_lifecycle.due > 0 ||
+    results.sandbox_lifecycle.emails.length > 0 ||
+    results.sandbox_lifecycle.read_only.length > 0 ||
+    results.sandbox_lifecycle.archived.length > 0;
   await recordWorkerRunResult(pool, {
     workerName: "housekeeping",
     status:
-      summary.expired_approvals > 0 || summary.stale_traces_failed > 0 ? "ok" : "skipped",
+      summary.expired_approvals > 0 ||
+      summary.stale_traces_failed > 0 ||
+      lifecycleBusy
+        ? "ok"
+        : "skipped",
     startedAt,
     summary,
   });

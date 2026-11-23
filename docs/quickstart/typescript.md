@@ -5,12 +5,17 @@ pnpm add @salanor/aegis-sdk
 ```
 
 ```ts
-import { generateKeyPair, signEnvelope } from "@salanor/aegis-sdk";
+import {
+  buildEnvelope,
+  generateKeyPair,
+  signEnvelope,
+} from "@salanor/aegis-sdk";
 
 const api = process.env.AEGIS_API_BASE!;
 const ingest = process.env.AEGIS_INGEST_KEY!;
 // Register publicKeyB64 under Sources in the console (sandbox key id).
 const { privateKey, publicKeyB64 } = await generateKeyPair();
+console.log("Register this public key:", publicKeyB64);
 
 const event = {
   schema_version: 1,
@@ -28,13 +33,13 @@ const event = {
   trace_id: `tr_ts_${Date.now()}`,
 };
 
-const envelope = await signEnvelope({
+const unsigned = buildEnvelope({
   source_id: "src_los",
   key_id: "k_sandbox_los",
-  private_key: privateKey,
-  event,
   seq: 1,
+  event,
 });
+const envelope = await signEnvelope(unsigned, privateKey);
 
 const res = await fetch(`${api}/v1/aegis/source-events`, {
   method: "POST",
@@ -47,4 +52,4 @@ const res = await fetch(`${api}/v1/aegis/source-events`, {
 console.log(await res.json());
 ```
 
-Then download a bundle from the case and run `pnpm aegis-verify`.
+Then download a bundle from the case and run `pnpm aegis-verify <bundle.json>`.
