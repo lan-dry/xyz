@@ -1,0 +1,80 @@
+﻿
+ RUN  v3.2.4 D:/PROJECTS/salanor/services/aegis-api
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 text > renames decision_token / reconciliation_exception / collector_cdc guards
+
+----- 012_wipe_disable_update_guards.sql -----
+-- Tenant wipe only disables triggers named trg_%_append_only.
+-- Stages 3ÔÇô6 added DELETE guards named *_update_guard / *_match_guard, which
+-- blocked demo:fresh. Rename them so platform_wipe_tenant can switch them off
+-- for disposable is_demo / is_test tenants only.
+
+ALTER TRIGGER trg_decision_token_update_guard
+  ON decision_token
+  RENAME TO trg_decision_token_append_only;
+
+ALTER TRIGGER trg_reconciliation_exception_update_guard
+  ON reconciliation_exception
+  RENAME TO trg_reconciliation_exception_append_only;
+
+ALTER TRIGGER trg_collector_cdc_event_match_guard
+  ON collector_cdc_event
+  RENAME TO trg_collector_cdc_event_append_only;
+
+----- end -----
+
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 001_baseline (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 002_witness_root_timestamp (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 003_region_and_field_vault (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 004_wipe_include_sensitive_field_vault (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 005_forensic_receipt_outcome_declined_released (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 006_sources (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 007_evidence_grade_change (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 008_decision_token (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 009_reconciliation (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 010_collector_cdc (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 011_stage7_facts (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 012_wipe_disable_update_guards (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 013_db_value_mismatch (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 014_velocity_indexes (already applied)
+
+stdout | test/migration-012-wipe-guards.test.ts > migration 012 wipe safety + audit
+migrate: skip 015_demo_tenant_ops (already applied)
+
+ Ô£ô test/migration-012-wipe-guards.test.ts (4 tests) 260ms
+ Ô£ô test/console-route-auth-matrix.test.ts (56 tests) 57ms
+ Ô£ô test/execution-permit.test.ts (7 tests) 5ms
+
+ Test Files  3 passed (3)
+      Tests  67 passed (67)
+   Start at  10:38:43
+   Duration  4.25s (transform 1.25s, setup 237ms, collect 2.87s, tests 323ms, environment 1ms, prepare 307ms)
+

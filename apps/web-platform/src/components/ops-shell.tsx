@@ -53,6 +53,8 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/", label: "Overview", icon: LayoutDashboard },
       { href: "/provision", label: "Provision org", icon: UserPlus },
       { href: "/demo-tenants", label: "Demo data", icon: Building2 },
+      { href: "/sandboxes", label: "Sandboxes", icon: Building2 },
+      { href: "/access-requests", label: "Access requests", icon: Inbox },
       { href: "/organizations", label: "Organizations", icon: Building2 },
       { href: "/accounts", label: "Accounts", icon: Users },
       { href: "/team", label: "Platform team", icon: Shield },

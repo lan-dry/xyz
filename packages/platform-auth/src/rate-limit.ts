@@ -38,7 +38,12 @@ export function getClientIp(headers: {
 
 export function rateLimitResponse(retryAfterSec: number): Response {
   return new Response(
-    JSON.stringify({ error: "Too many requests", code: "rate_limited" }),
+    JSON.stringify({
+      error: "Too many requests",
+      code: "rate_limited",
+      message: `You have hit a rate limit. Wait about ${retryAfterSec} seconds, then try again.`,
+      retry_after_sec: retryAfterSec,
+    }),
     {
       status: 429,
       headers: {
@@ -53,12 +58,30 @@ export function ingestRateLimitKey(ip: string): string {
   return `ingest:${ip}`;
 }
 
+/** Per-tenant ingest quota (events per minute). */
+export function orgIngestRateLimitKey(organizationId: string): string {
+  return `ingest:org:${organizationId}`;
+}
+
+export function exportRateLimitKey(organizationId: string): string {
+  return `export:org:${organizationId}`;
+}
+
+export function signupRateLimitKey(ip: string): string {
+  return `signup:ip:${ip}`;
+}
+
 export function loginRateLimitKey(ip: string): string {
   return `login:${ip}`;
 }
 
 export function oauthRateLimitKey(ip: string): string {
   return `oauth:${ip}`;
+}
+
+/** Max JSON body size for ingest (bytes). Default 256 KiB. */
+export function maxIngestBodyBytes(): number {
+  return readRateLimitEnv("INGEST_MAX_BODY_BYTES", 256 * 1024);
 }
 
 export function readRateLimitEnv(

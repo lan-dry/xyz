@@ -11,6 +11,7 @@ import {
   ui,
 } from "@/components/console/console-ui";
 import { consoleApi } from "@/lib/api";
+import { SandboxChecklist } from "./checklist";
 
 type WorkflowChoice = "refunds" | "payouts" | "kyc";
 
@@ -115,6 +116,8 @@ export default function GetStartedPage() {
         title="Get started"
         subtitle="First sealed case in under 15 minutes. Sample payments only: your bank systems stay untouched."
       />
+
+      <SandboxChecklist />
 
       <p
         className={`${ui.alert} ${ui.alertInfo}`}

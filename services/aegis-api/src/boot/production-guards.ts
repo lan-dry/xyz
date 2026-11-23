@@ -206,6 +206,13 @@ export async function evaluateProductionGuards(
       );
     }
   } else {
+    // Gate 0: REQUIRE_MANAGED_KEY refuses software keys for any non-demo boot path.
+    if (env.REQUIRE_MANAGED_KEY?.trim() === "true") {
+      fail(
+        "managed_key_required",
+        "REQUIRE_MANAGED_KEY=true: set AEGIS_RECEIPT_KMS_KEY_ID; software keys are refused for non-demo tenants",
+      );
+    }
     // Plan B only: software key, and only with the explicit interim flag.
     if (!interim) {
       fail(

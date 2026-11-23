@@ -991,6 +991,168 @@ platformRoutes.post("/demo-tenants/reset", async (c) => {
   }
 });
 
+/** Gate 1: list sandbox tenants + usage. */
+platformRoutes.get("/sandboxes", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:read");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const r = await getPool().query<{
+    organization_id: string;
+    name: string;
+    slug: string;
+    sandbox_expires_at: Date | null;
+    sandbox_extensions: number;
+    sandbox_archived_at: Date | null;
+    event_quota_daily: number | null;
+    created_at: Date;
+  }>(
+    `SELECT organization_id, name, slug, sandbox_expires_at, sandbox_extensions,
+            sandbox_archived_at, event_quota_daily, created_at
+       FROM organization
+      WHERE tenant_kind = 'sandbox'
+      ORDER BY created_at DESC
+      LIMIT 200`,
+  );
+  return c.json({
+    sandboxes: r.rows.map((row) => ({
+      ...row,
+      sandbox_expires_at: row.sandbox_expires_at?.toISOString() ?? null,
+      sandbox_archived_at: row.sandbox_archived_at?.toISOString() ?? null,
+      created_at: row.created_at.toISOString(),
+    })),
+  });
+});
+
+platformRoutes.post("/sandboxes/:organizationId/extend", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:orgs.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const organizationId = c.req.param("organizationId");
+  const actor = access.staff?.email ?? "platform";
+  const r = await getPool().query(
+    `UPDATE organization
+        SET sandbox_expires_at = COALESCE(sandbox_expires_at, now()) + interval '30 days',
+            sandbox_extensions = sandbox_extensions + 1,
+            sandbox_read_only_until = NULL
+      WHERE organization_id = $1 AND tenant_kind = 'sandbox'
+      RETURNING organization_id, sandbox_expires_at, sandbox_extensions`,
+    [organizationId],
+  );
+  if (!r.rows[0]) return c.json({ error: "Not a sandbox" }, 404);
+  await getPool().query(
+    `INSERT INTO platform_sandbox_audit (organization_id, action, actor, detail)
+     VALUES ($1, 'extend', $2, '{}'::jsonb)`,
+    [organizationId, actor],
+  );
+  return c.json({
+    ok: true,
+    sandbox_expires_at: r.rows[0].sandbox_expires_at?.toISOString?.() ?? r.rows[0].sandbox_expires_at,
+    sandbox_extensions: r.rows[0].sandbox_extensions,
+  });
+});
+
+platformRoutes.post("/sandboxes/:organizationId/suspend", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:orgs.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const organizationId = c.req.param("organizationId");
+  const actor = access.staff?.email ?? "platform";
+  await getPool().query(
+    `UPDATE organization SET active = false WHERE organization_id = $1 AND tenant_kind = 'sandbox'`,
+    [organizationId],
+  );
+  await getPool().query(
+    `INSERT INTO platform_sandbox_audit (organization_id, action, actor, detail)
+     VALUES ($1, 'suspend', $2, '{}'::jsonb)`,
+    [organizationId, actor],
+  );
+  return c.json({ ok: true });
+});
+
+platformRoutes.get("/access-requests", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:read");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const status = c.req.query("status")?.trim() || "pending";
+  const r = await getPool().query(
+    `SELECT request_id, work_email, company, role_title, country, use_case, org_type,
+            status, created_at, decided_at, decided_by
+       FROM sandbox_access_request
+      WHERE ($1::text = 'all' OR status = $1)
+      ORDER BY created_at DESC
+      LIMIT 200`,
+    [status],
+  );
+  return c.json({
+    requests: r.rows.map((row) => ({
+      ...row,
+      created_at: row.created_at.toISOString(),
+      decided_at: row.decided_at?.toISOString() ?? null,
+    })),
+  });
+});
+
+platformRoutes.post("/access-requests/:requestId/approve", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:orgs.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const requestId = c.req.param("requestId");
+  const actor = access.staff?.email ?? "platform";
+  const req = await getPool().query(
+    `SELECT * FROM sandbox_access_request WHERE request_id = $1 AND status = 'pending'`,
+    [requestId],
+  );
+  if (!req.rows[0]) return c.json({ error: "Not found or already decided" }, 404);
+  const row = req.rows[0];
+  const slugBase = String(row.company)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40) || "sandbox";
+  const slug = `${slugBase}-sb-${Date.now().toString(36)}`;
+  const org = await getPool().query<{ organization_id: string }>(
+    `INSERT INTO organization (name, slug, plan, region, topology, tenant_kind, is_test,
+        sandbox_expires_at, event_quota_daily, storage_quota_mb)
+     VALUES ($1, $2, 'free', 'eu-west', 'cloud', 'sandbox', true,
+        now() + interval '30 days', 5000, 512)
+     RETURNING organization_id`,
+    [String(row.company).slice(0, 120), slug],
+  );
+  const organizationId = org.rows[0]!.organization_id;
+  await getPool().query(
+    `UPDATE sandbox_access_request
+        SET status = 'approved', decided_at = now(), decided_by = $2,
+            created_organization_id = $3
+      WHERE request_id = $1`,
+    [requestId, actor, organizationId],
+  );
+  await getPool().query(
+    `INSERT INTO platform_sandbox_audit (organization_id, action, actor, detail)
+     VALUES ($1, 'approve_access', $2, $3::jsonb)`,
+    [organizationId, actor, JSON.stringify({ request_id: requestId, email: row.work_email })],
+  );
+  return c.json({
+    ok: true,
+    organization_id: organizationId,
+    slug,
+    message:
+      "Sandbox organisation created. Send the invite email from Ops or the console (Resend).",
+  });
+});
+
+platformRoutes.post("/access-requests/:requestId/reject", async (c) => {
+  const access = await requirePlatformPermission(c, "platform:orgs.write");
+  if (!access.ok) return c.json({ error: access.error }, 403);
+  const requestId = c.req.param("requestId");
+  const actor = access.staff?.email ?? "platform";
+  const body = (await c.req.json().catch(() => ({}))) as { note?: string };
+  const r = await getPool().query(
+    `UPDATE sandbox_access_request
+        SET status = 'rejected', decided_at = now(), decided_by = $2,
+            decision_note = $3
+      WHERE request_id = $1 AND status = 'pending'
+      RETURNING request_id`,
+    [requestId, actor, body.note?.trim() || "Not a fit for the sandbox programme right now."],
+  );
+  if (!r.rows[0]) return c.json({ error: "Not found or already decided" }, 404);
+  return c.json({ ok: true });
+});
+
 platformRoutes.get("/organizations/:organizationId", async (c) => {
   const access = await requirePlatformPermission(c, "platform:read");
   if (!access.ok) return c.json({ error: access.error }, 403);

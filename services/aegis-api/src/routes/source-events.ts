@@ -102,6 +102,19 @@ export async function postSourceEvent(c: Context): Promise<Response> {
     return c.json({ error: "Missing or invalid Authorization" }, 401);
   }
 
+  const maxBytes = Number(process.env.INGEST_MAX_BODY_BYTES ?? 256 * 1024);
+  const contentLength = Number(c.req.header("content-length") ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    return c.json(
+      {
+        error: "payload_too_large",
+        code: "body_too_large",
+        message: `Request body exceeds the ${maxBytes} byte limit.`,
+      },
+      413,
+    );
+  }
+
   let body: unknown;
   try {
     body = await c.req.json();
@@ -142,6 +155,50 @@ export async function ingestSignedEnvelope(
     const auth = await resolveIngestKey(client, token);
     if (!auth) {
       return c.json({ error: "Invalid API key" }, 401);
+    }
+
+    const orgKind = await client.query<{
+      tenant_kind: string;
+      sandbox_archived_at: Date | null;
+      sandbox_read_only_until: Date | null;
+    }>(
+      `SELECT COALESCE(tenant_kind, 'real') AS tenant_kind,
+              sandbox_archived_at, sandbox_read_only_until
+         FROM organization WHERE organization_id = $1`,
+      [auth.organizationId],
+    );
+    const org = orgKind.rows[0];
+    if (org?.sandbox_archived_at) {
+      return c.json(
+        {
+          error: "sandbox_archived",
+          message: "This sandbox has been archived and no longer accepts events.",
+        },
+        403,
+      );
+    }
+    if (
+      org?.sandbox_read_only_until &&
+      new Date(org.sandbox_read_only_until).getTime() > Date.now()
+    ) {
+      return c.json(
+        {
+          error: "sandbox_read_only",
+          message:
+            "This sandbox is past its expiry date and is read-only for a short grace period.",
+        },
+        403,
+      );
+    }
+    if (org?.tenant_kind === "sandbox") {
+      const { rejectNonSyntheticPayload } = await import("../tenants/synthetic-guard.js");
+      const syn = rejectNonSyntheticPayload(body);
+      if (syn) {
+        return c.json(
+          { error: syn.code, code: syn.code, message: syn.message, field: syn.field },
+          422,
+        );
+      }
     }
 
     const result = await verifyAndAcceptEnvelope<SignedDecisionResponse>(

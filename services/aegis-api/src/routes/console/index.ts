@@ -92,6 +92,7 @@ import { demoTenantRoutes } from "./demo-tenant.js";
 import { sourceRoutes } from "./sources.js";
 import { exceptionRoutes } from "./exceptions.js";
 import { reconciliationRoutes } from "./reconciliation.js";
+import { sandboxConsoleRoutes } from "./sandbox.js";
 import { getOverviewMetrics } from "../../repo/overview.js";
 
 const LEGACY_SESSION_COOKIE = "aegis_session";
@@ -258,6 +259,7 @@ consoleRoutes.route("/", demoTenantRoutes);
 consoleRoutes.route("/", sourceRoutes);
 consoleRoutes.route("/", exceptionRoutes);
 consoleRoutes.route("/", reconciliationRoutes);
+consoleRoutes.route("/", sandboxConsoleRoutes);
 
 consoleRoutes.post("/auth/login", async (c) => {
   const ip = getClientIp(c.req.raw.headers);

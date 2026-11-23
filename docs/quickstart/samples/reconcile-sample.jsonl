@@ -1,0 +1,2 @@
+{"external_id":"pay_sample_1","case_id":"SBX-CURL-001","amount":1200000,"currency":"RWF","beneficiary_account":"ACCT-DEMO-001"}
+{"external_id":"pay_sample_2","case_id":"SBX-TS-001","amount":1200000,"currency":"RWF","beneficiary_account":"ACCT-DEMO-001"}

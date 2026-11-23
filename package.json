@@ -93,6 +93,8 @@
     "generate:openapi-clients": "node tools/generated-clients/generate.mjs",
     "smoke:kms": "pnpm --filter aegis-api smoke:kms",
     "smoke:production": "node tools/smoke/smoke-production.mjs",
+    "launch:release-staging": "node scripts/release-staging.mjs",
+    "launch:restore-check": "node scripts/launch-restore-check.mjs",
     "smoke:openapi-clients": "node tools/generated-clients/smoke.mjs",
     "compliance:worker": "pnpm --filter aegis-api compliance:worker",
     "build": "nx run-many -t build --all"

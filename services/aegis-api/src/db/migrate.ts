@@ -35,6 +35,7 @@ const MIGRATIONS = [
   { version: "013_db_value_mismatch", file: "013_db_value_mismatch.sql" },
   { version: "014_velocity_indexes", file: "014_velocity_indexes.sql" },
   { version: "015_demo_tenant_ops", file: "015_demo_tenant_ops.sql" },
+  { version: "016_sandbox_tenant", file: "016_sandbox_tenant.sql" },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {

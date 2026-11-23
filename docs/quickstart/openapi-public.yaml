@@ -1,0 +1,65 @@
+openapi: 3.0.3
+info:
+  title: Salanor Aegis public API (sandbox)
+  version: "1"
+  description: >
+    Public ingest and access-request surfaces. Authenticate ingest with a bearer ingest key.
+servers:
+  - url: https://api.salanor.com
+paths:
+  /ready:
+    get:
+      summary: Readiness
+      responses:
+        "200":
+          description: Ready
+        "503":
+          description: Not ready
+  /v1/public/access-request:
+    post:
+      summary: Request a sandbox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [work_email, company, role, country, use_case]
+              properties:
+                work_email: { type: string }
+                company: { type: string }
+                role: { type: string }
+                country: { type: string }
+                use_case: { type: string }
+                org_type: { type: string }
+                website: { type: string, description: Honeypot — leave empty }
+      responses:
+        "200":
+          description: Queued
+        "422":
+          description: Validation error
+  /v1/aegis/bank/events:
+    post:
+      summary: Ingest a bank decision event (G0 unless signed elsewhere)
+      security:
+        - ingestBearer: []
+      responses:
+        "200":
+          description: Decision
+        "401":
+          description: Invalid key
+  /v1/aegis/source-events:
+    post:
+      summary: Ingest a source-signed envelope (G1)
+      security:
+        - ingestBearer: []
+      responses:
+        "200":
+          description: Accepted
+        "401":
+          description: Rejected
+components:
+  securitySchemes:
+    ingestBearer:
+      type: http
+      scheme: bearer

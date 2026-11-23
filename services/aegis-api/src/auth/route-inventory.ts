@@ -59,6 +59,10 @@ export const CONSOLE_ROUTE_RULES: RouteRule[] = [
   { method: "GET", path: "/v1/console/reconciliation/runs/:runId", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"] },
   { method: "GET", path: "/v1/console/reconciliation/runs/:runId/report.json", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"], receiptAccessLog: true },
   { method: "GET", path: "/v1/console/reconciliation/runs/:runId/report.pdf", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"], receiptAccessLog: true },
+  // Gate 1 sandbox
+  { method: "GET", path: "/v1/console/sandbox/status", anon: 401, allowRoles: ["viewer", "auditor", "approver", "engineer", "admin", "owner"] },
+  { method: "POST", path: "/v1/console/sandbox/reset", anon: 401, allowRoles: ["admin", "owner"] },
+  { method: "POST", path: "/v1/console/sandbox/test-events", anon: 401, allowRoles: ["admin", "owner"] },
 ];
 
 export const AEGIS_ROUTE_RULES: RouteRule[] = [

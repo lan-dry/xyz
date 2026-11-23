@@ -1,5 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Hono } from "hono";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+  readRateLimitEnv,
+  signupRateLimitKey,
+} from "@salanor/platform-auth";
 import { getPool } from "../../db/pool.js";
 import {
   DEMO_BANK_SLUG,
@@ -33,6 +40,82 @@ import { verifyPublicVerificationBundle } from "../../transparency/verify-public
 export const publicRoutes = new Hono();
 
 const MAX_BUNDLE_BYTES = 2 * 1024 * 1024;
+
+const PERSONAL_EMAIL_DOMAINS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "hotmail.com",
+  "outlook.com",
+  "icloud.com",
+  "proton.me",
+  "protonmail.com",
+  "aol.com",
+  "mail.com",
+]);
+
+/**
+ * Gate 1: request access to a sandbox. Personal email domains refused.
+ * Honeypot field `website` must be empty. Rate-limited per IP.
+ */
+publicRoutes.post("/access-request", async (c) => {
+  const ip = getClientIp(c.req.raw.headers);
+  const limit = readRateLimitEnv("SIGNUP_RATE_LIMIT_PER_IP_PER_DAY", 10);
+  const rl = checkRateLimit(signupRateLimitKey(ip), {
+    limit,
+    windowMs: 24 * 60 * 60_000,
+  });
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSec);
+
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  if (typeof body.website === "string" && body.website.trim()) {
+    // Honeypot filled — pretend success.
+    return c.json({ ok: true });
+  }
+  const workEmail = String(body.work_email ?? "").trim().toLowerCase();
+  const company = String(body.company ?? "").trim();
+  const roleTitle = String(body.role ?? body.role_title ?? "").trim();
+  const country = String(body.country ?? "").trim();
+  const useCase = String(body.use_case ?? "").trim();
+  const orgType = String(body.org_type ?? "").trim() || null;
+  if (!workEmail || !company || !roleTitle || !country || !useCase) {
+    return c.json(
+      {
+        error: "validation_error",
+        message: "Work email, company, role, country and use case are required.",
+      },
+      422,
+    );
+  }
+  const domain = workEmail.split("@")[1] ?? "";
+  if (!domain.includes(".") || PERSONAL_EMAIL_DOMAINS.has(domain)) {
+    return c.json(
+      {
+        error: "work_email_required",
+        message: "Use a work email address. Personal email domains are not accepted for sandbox access.",
+      },
+      422,
+    );
+  }
+  const mode = (process.env.SIGNUP_MODE ?? "approval").trim().toLowerCase();
+  if (mode !== "approval" && mode !== "open") {
+    return c.json({ error: "signup_disabled", message: "Sign-up is not open right now." }, 403);
+  }
+  const ipHash = createHash("sha256").update(`signup:${ip}`).digest("hex").slice(0, 32);
+  await getPool().query(
+    `INSERT INTO sandbox_access_request
+       (work_email, company, role_title, country, use_case, org_type, ip_hash)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [workEmail, company, roleTitle, country, useCase, orgType, ipHash],
+  );
+  return c.json({
+    ok: true,
+    message:
+      mode === "open"
+        ? "Request received. Check your email to verify and sign in."
+        : "Request received. We will email you when your sandbox is ready.",
+  });
+});
 
 /**
  * Stateless check of a dropped evidence bundle. No login and no database:
