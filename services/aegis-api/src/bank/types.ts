@@ -31,6 +31,8 @@ export type BankDecisionResponse = {
   case_id: string;
   decision_id: string;
   receipt_id: string;
+  /** Correlation id used for the sealed APS event / console case. */
+  trace_id?: string;
   outcome: BankOutcome;
   mode: "enforce" | "record_only";
   /** Present when mode is record_only and outcome would have blocked. */
