@@ -1,6 +1,7 @@
 /**
  * Seal a governed decision as an APS-1 event (D1 — one chain of truth).
- * Requires an active agent signing key for the organization.
+ * Requires the exact agent from the request and an active Workflow Bridge key.
+ * Never falls back to another agent or org key.
  */
 import { randomUUID } from "node:crypto";
 import type { ApsEvent } from "@salanor/aegis";
@@ -8,6 +9,7 @@ import type pg from "pg";
 import { signApsEventWithKey } from "../crypto/signing-provider.js";
 import { persistSignedEvent } from "../ingest/persist.js";
 import { getSigningKeyMaterial } from "../repo/signing-keys.js";
+import type { BankEvent } from "./types.js";
 import type { BankOutcome } from "./outcome.js";
 import { fromBankOutcome } from "./outcome.js";
 
@@ -40,14 +42,31 @@ export type SealDecisionResult = {
   sequence_num: number;
 };
 
-async function lookupSignableAgentKey(
+/**
+ * Agent used to seal a governed event. Prefer actor.id when it is an `agt_…`
+ * id; otherwise accept top-level agent_id when it is also an `agt_…` id.
+ * Slugs (e.g. credit-decision) are ignored — sealing never looks up by slug.
+ */
+export function resolveSealAgentId(
+  event: Pick<BankEvent, "agent_id" | "actor">,
+): string | undefined {
+  const fromActor = event.actor?.id?.trim();
+  if (fromActor?.startsWith("agt_")) return fromActor;
+  const fromField = event.agent_id?.trim();
+  if (fromField?.startsWith("agt_")) return fromField;
+  return undefined;
+}
+
+/**
+ * Load the Workflow Bridge signing key for this exact agent in the org.
+ * No fallback to Default / oldest / any other agent.
+ */
+async function lookupBridgeKeyForAgent(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
-  preferredAgentId?: string | null,
+  agentId: string,
+  preferredKeyId?: string | null,
 ): Promise<{ agent_id: string; key_id: string } | null> {
-  // Prefer keys that can actually sign server-side (bridge ciphertext, KMS, or
-  // local/dev). Preferred agent first; fall back to any org agent so a missing
-  // preferred-agent key never forces provisional evt_gov_ citations.
   const result = await client.query<{ agent_id: string; key_id: string }>(
     `SELECT a.agent_id, sk.key_id
      FROM agent a
@@ -55,21 +74,17 @@ async function lookupSignableAgentKey(
        ON sk.agent_id = a.agent_id
       AND sk.organization_id = a.organization_id
       AND sk.revoked = false
+      AND sk.bridge_enabled = true
+      AND sk.private_key_ciphertext IS NOT NULL
       AND sk.valid_from <= now()
       AND (sk.valid_until IS NULL OR sk.valid_until > now())
      WHERE a.organization_id = $1
+       AND a.agent_id = $2
        AND a.active = true
-       AND ($2::text IS NULL OR a.agent_id = $2)
-       AND (
-         sk.private_key_ciphertext IS NOT NULL
-         OR lower(COALESCE(sk.kms_provider, 'dev')) IN ('dev', 'aws', 'gcp', 'vault')
-       )
-     ORDER BY
-       CASE WHEN $2::text IS NOT NULL AND a.agent_id = $2 THEN 0 ELSE 1 END,
-       CASE WHEN sk.private_key_ciphertext IS NOT NULL THEN 0 ELSE 1 END,
-       sk.valid_from DESC NULLS LAST
+       AND ($3::text IS NULL OR sk.key_id = $3)
+     ORDER BY sk.created_at DESC
      LIMIT 1`,
-    [organizationId, preferredAgentId ?? null],
+    [organizationId, agentId, preferredKeyId ?? null],
   );
   return result.rows[0] ?? null;
 }
@@ -77,31 +92,17 @@ async function lookupSignableAgentKey(
 async function resolveAgentKey(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
-  preferredAgentId?: string,
+  agentId?: string,
   preferredKeyId?: string,
 ): Promise<{ agent_id: string; key_id: string } | null> {
-  if (preferredAgentId && preferredKeyId) {
-    const preferred = await client.query<{ agent_id: string; key_id: string }>(
-      `SELECT a.agent_id, sk.key_id
-       FROM agent a
-       JOIN signing_key sk
-         ON sk.agent_id = a.agent_id
-        AND sk.organization_id = a.organization_id
-        AND sk.key_id = $3
-        AND sk.revoked = false
-       WHERE a.organization_id = $1
-         AND a.agent_id = $2
-         AND a.active = true
-       LIMIT 1`,
-      [organizationId, preferredAgentId, preferredKeyId],
-    );
-    if (preferred.rows[0]) return preferred.rows[0];
-  }
-  const forPreferred = preferredAgentId
-    ? await lookupSignableAgentKey(client, organizationId, preferredAgentId)
-    : null;
-  if (forPreferred) return forPreferred;
-  return lookupSignableAgentKey(client, organizationId, null);
+  // Exact agent only — never pick Default / oldest / first key in the org.
+  if (!agentId?.trim()) return null;
+  return lookupBridgeKeyForAgent(
+    client,
+    organizationId,
+    agentId.trim(),
+    preferredKeyId,
+  );
 }
 
 export async function sealGovernedDecision(
@@ -121,7 +122,7 @@ export async function sealGovernedDecision(
     input.organization_id,
     resolved.key_id,
   );
-  if (!keyMaterial) return null;
+  if (!keyMaterial?.private_key_ciphertext) return null;
 
   const policyDecision = fromBankOutcome(input.outcome);
   const event: ApsEvent = {
@@ -136,7 +137,12 @@ export async function sealGovernedDecision(
     actor_principal: "aegis.governed.decide",
     action_kind: "policy_decision",
     policy_decision: policyDecision,
-    policy_id: input.policy_id ?? undefined,
+    // pol_none is a placeholder when the org has no active policy — never write it
+    // (event.policy_id has an FK to policy).
+    policy_id:
+      input.policy_id && input.policy_id !== "pol_none"
+        ? input.policy_id
+        : undefined,
     tool_name: input.tool_name,
     payload: {
       case_id: input.case_id,

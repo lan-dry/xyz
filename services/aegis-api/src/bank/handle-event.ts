@@ -7,7 +7,7 @@ import { applyFieldPolicy } from "./field-policy.js";
 import { evaluateBankEvent } from "./evaluate.js";
 import { deriveGovernanceAttributes } from "./derive-governance.js";
 import { policyContentHash } from "./policy-hash.js";
-import { sealGovernedDecision } from "./seal-decision.js";
+import { resolveSealAgentId, sealGovernedDecision } from "./seal-decision.js";
 import { storeMaskedFieldClears } from "./sensitive-field-vault.js";
 import {
   findCaseByIdempotency,
@@ -42,6 +42,8 @@ import { raisePlausibilityFlags } from "../reconciliation/plausibility.js";
 import { nowIso } from "../time/clock.js";
 import { issueDecisionToken } from "../execution/decision-token.js";
 import { resolveExecutionConfigForCase } from "../execution/workflow-config.js";
+import { deriveApprovalMetadata } from "./approval-context.js";
+import { createApprovalRequest } from "../repo/approvals.js";
 
 /** UI/seed labelling only — never seal into the forensic receipt body. */
 function attributesForSeal(
@@ -268,10 +270,11 @@ export async function handleBankEvent(
           require_signed_events_in_force: requireSignedEventsInForce,
         },
         matched_rules: matched,
-        policy_id: policyId,
-        policy_version: policyVersion,
+        policy_id: policyId === "pol_none" ? null : policyId,
+        policy_version: primary ? policyVersion : null,
         policy_content_hash: contentHash,
-        agent_id: event.agent_id,
+        // Exact agt_… from actor.id (or agent_id); never slug / org-wide fallback.
+        agent_id: resolveSealAgentId(event),
         idempotency_key: event.idempotency_key,
         emitted_at: event.emitted_at,
       });
@@ -283,9 +286,11 @@ export async function handleBankEvent(
     } catch (err) {
       // Fall through to provisional citation. Log so demo/ops can see seal races
       // (duplicate sequence) vs missing signing material.
+      const pgErr = err as { code?: string; detail?: string; constraint?: string };
       console.error(
         "[governed] APS seal failed; issuing provisional citation",
         err instanceof Error ? err.message : err,
+        pgErr.code ? `(code=${pgErr.code} constraint=${pgErr.constraint ?? ""} detail=${pgErr.detail ?? ""})` : "",
       );
       // persistSignedEvent / key lookup may have aborted this transaction. Without a
       // fresh BEGIN, provisional citation + upsertBankCase fail with 25P02 and the
@@ -577,6 +582,46 @@ export async function handleBankEvent(
     }
   }
 
+  let holdApprovalId: string | null = null;
+  if (
+    evalResult.outcome === "hold" &&
+    evalResult.mode === "enforce" &&
+    eventId &&
+    "query" in client
+  ) {
+    try {
+      const created = await createApprovalRequest(client as pg.PoolClient, {
+        organizationId,
+        eventId,
+        traceId,
+        toolName,
+        deferred: {
+          url: "aegis://approvals/pending",
+          method: "GET",
+        },
+      });
+      holdApprovalId = created.approval_id;
+      const derived = await deriveApprovalMetadata(
+        client as pg.PoolClient,
+        organizationId,
+        eventId,
+      );
+      if (Object.keys(derived).length > 0) {
+        await client.query(
+          `UPDATE approval
+              SET metadata = COALESCE(metadata, '{}'::jsonb) || $3::jsonb
+            WHERE approval_id = $1 AND organization_id = $2`,
+          [holdApprovalId, organizationId, JSON.stringify(derived)],
+        );
+      }
+    } catch (err) {
+      console.error(
+        "[governed] could not open console approval for hold",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   let decisionToken: Record<string, unknown> | undefined;
   if (evalResult.outcome === "allow" && evalResult.mode === "enforce") {
     try {
@@ -616,6 +661,7 @@ export async function handleBankEvent(
     case_id: event.case_id,
     decision_id: decisionId,
     receipt_id: receiptId,
+    trace_id: traceId,
     outcome: evalResult.outcome,
     mode: evalResult.mode,
     would_have: evalResult.would_have,
@@ -631,7 +677,7 @@ export async function handleBankEvent(
       evalResult.outcome === "hold"
         ? {
             required_roles: evalResult.required_roles,
-            approval_id: null,
+            approval_id: holdApprovalId,
           }
         : null,
     event_id: eventId,

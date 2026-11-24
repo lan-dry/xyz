@@ -694,6 +694,7 @@ write if the sessions, the slug, the ingest key prefix or the simulator's organi
 | `SMOKE_API_BASE` | `https://api.salanor.com` | N |
 | `SMOKE_ID_BASE` | `https://id.salanor.com` (default: the API base) | N |
 | `SMOKE_INGEST_KEY` | smoke tenant ingest key | **Y** |
+| `SMOKE_AGENT_ID` | `agt_…` agent on the smoke tenant with Workflow Bridge enabled (sent as `actor.id`) | N |
 | `SMOKE_ORG_SLUG` | default `smoke-test`; must contain `smoke` | N |
 | `SMOKE_OFFICER_EMAIL` / `_PASSWORD` | `credit_officer` member | email N / password **Y** |
 | `SMOKE_MANAGER_EMAIL` / `_PASSWORD` | `credit_manager` member | email N / password **Y** |

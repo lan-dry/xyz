@@ -25,6 +25,7 @@
  * Environment (names only; values are never printed):
  *   SMOKE_API_BASE            Aegis API origin, e.g. https://api.salanor.com            required
  *   SMOKE_INGEST_KEY          ingest key of the smoke tenant                             required
+ *   SMOKE_AGENT_ID            agent id (agt_…) with Workflow Bridge for sealing          required
  *   SMOKE_OFFICER_EMAIL / SMOKE_OFFICER_PASSWORD   a credit_officer member               required
  *   SMOKE_MANAGER_EMAIL / SMOKE_MANAGER_PASSWORD   a credit_manager member               required
  *   SMOKE_ID_BASE             Salanor ID origin (default: SMOKE_API_BASE)
@@ -58,6 +59,7 @@ const RUN = randomUUID().replace(/-/g, "").slice(0, 8);
 const need = [
   "SMOKE_API_BASE",
   "SMOKE_INGEST_KEY",
+  "SMOKE_AGENT_ID",
   "SMOKE_OFFICER_EMAIL",
   "SMOKE_OFFICER_PASSWORD",
   "SMOKE_MANAGER_EMAIL",
@@ -74,6 +76,14 @@ const trim = (s) => (s ?? "").trim();
 const API = trim(env.SMOKE_API_BASE).replace(/\/+$/, "");
 const ID = (trim(env.SMOKE_ID_BASE) || API).replace(/\/+$/, "");
 const INGEST_KEY = trim(env.SMOKE_INGEST_KEY);
+const AGENT_ID = trim(env.SMOKE_AGENT_ID);
+if (!AGENT_ID.startsWith("agt_")) {
+  console.error(
+    `SMOKE_AGENT_ID must be an agent id starting with "agt_" (got "${AGENT_ID}"). ` +
+      "Use the Credit Decision (or other) agent id from the smoke-test org, with Workflow Bridge enabled.",
+  );
+  process.exit(2);
+}
 const ORG_SLUG = trim(env.SMOKE_ORG_SLUG) || "smoke-test";
 const ORG_HINT = trim(env.SMOKE_ORGANIZATION_ID);
 const ESCALATE_ROLE = trim(env.SMOKE_ESCALATE_ROLE) || "head_of_compliance";
@@ -238,7 +248,8 @@ async function intake(story, label) {
     event_type: story.event_type,
     product: story.product,
     emitted_at: new Date().toISOString(),
-    actor: { type: "system", id: story.agent_slug },
+    // Exact agent id so intake seals with that agent's Workflow Bridge key (not a slug).
+    actor: { type: "system", id: AGENT_ID },
     attributes: { ...story.attributes },
     trace_id: traceId,
   };
@@ -432,6 +443,14 @@ async function main() {
     allowCase = await intake(storyById("loan_within_limit"), "allow");
     expect(allowCase.decision.outcome === "allow", `outcome=${allowCase.decision.outcome}, expected allow`);
     expect(allowCase.decision.event_id, "no sealed event_id (agent signing key / bridge missing?)");
+    expect(
+      !allowCase.decision.flags?.provisional,
+      "provisional citation — SMOKE_AGENT_ID must exist on the smoke tenant with Workflow Bridge enabled",
+    );
+    expect(
+      !String(allowCase.decision.event_id).startsWith("evt_gov_"),
+      "provisional evt_gov_ id — sealing did not use the agent bridge key",
+    );
     return `rule=${(allowCase.decision.matched_rules ?? []).map((r) => r.rule_id).join(",") || "-"}`;
   });
 
