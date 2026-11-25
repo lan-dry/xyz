@@ -20,6 +20,128 @@ type Residency = {
   note: string;
 };
 
+type RequireSignedState = {
+  require_signed_events: boolean;
+  pending_change: {
+    change_id: string;
+    from_value: boolean;
+    to_value: boolean;
+    requested_by: string;
+    created_at: string;
+  } | null;
+};
+
+function RequireSignedEventsCard({ isAdmin }: { isAdmin: boolean }) {
+  const queryClient = useQueryClient();
+  const stateQuery = useQuery({
+    queryKey: ["console", "require-signed-events"],
+    queryFn: () => consoleApi<RequireSignedState>("/organization/require-signed-events"),
+  });
+  const profileQuery = useQuery({
+    queryKey: ["console", "organization", "profile"],
+    queryFn: () =>
+      consoleApi<{
+        organization: {
+          is_test?: boolean;
+          require_signed_events?: boolean;
+        };
+      }>("/organization/profile"),
+  });
+  const toggle = useMutation({
+    mutationFn: (enabled: boolean) =>
+      consoleApi<{
+        require_signed_events: boolean;
+        unchanged?: boolean;
+        pending_confirmation?: boolean;
+        message?: string;
+        sealed?: boolean;
+        error?: string;
+      }>("/organization/require-signed-events", {
+        method: "POST",
+        body: JSON.stringify({ enabled }),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["console", "require-signed-events"] });
+      void queryClient.invalidateQueries({ queryKey: ["console", "organization", "profile"] });
+    },
+  });
+
+  const on = stateQuery.data?.require_signed_events === true;
+  const pending = stateQuery.data?.pending_change;
+  const isTest = profileQuery.data?.organization.is_test === true;
+
+  return (
+    <section className={settings.settingCard}>
+      <h2>Require signed events</h2>
+      <p>
+        When on, this organisation only accepts events wrapped in a signed source envelope
+        (Connector or SDK). Unsigned ingest keys are rejected.
+      </p>
+      {stateQuery.isLoading ? <p className={ui.muted}>Loading…</p> : null}
+      {stateQuery.isError ? (
+        <ErrorAlert message={(stateQuery.error as Error).message} />
+      ) : null}
+      {stateQuery.data ? (
+        <>
+          <p style={{ margin: "0 0 0.75rem", fontWeight: 600 }}>
+            {on ? "On — signed envelopes required" : "Off — unsigned ingest allowed"}
+          </p>
+          {pending ? (
+            <p className={ui.muted} style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem" }}>
+              Disable requested. A second distinct admin must confirm to turn this off.
+            </p>
+          ) : null}
+          {!isTest && on ? (
+            <p className={ui.muted} style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem" }}>
+              Turning off needs two admins (four-eyes). Turning on applies immediately and is sealed.
+            </p>
+          ) : null}
+          {isTest ? (
+            <p className={ui.muted} style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem" }}>
+              Test organisation: a single admin may turn this on or off.
+            </p>
+          ) : null}
+          {isAdmin ? (
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              disabled={toggle.isPending}
+              onClick={() => toggle.mutate(!on)}
+            >
+              {toggle.isPending
+                ? "Updating…"
+                : on
+                  ? pending
+                    ? "Confirm disable (second admin)"
+                    : "Turn off"
+                  : "Turn on"}
+            </button>
+          ) : (
+            <p className={ui.muted} style={{ fontSize: "0.8125rem" }}>
+              Only admins can change this setting.
+            </p>
+          )}
+          {toggle.isError ? (
+            <ErrorAlert message={(toggle.error as Error).message} />
+          ) : null}
+          {toggle.isSuccess && toggle.data.pending_confirmation ? (
+            <p className={ui.muted} style={{ marginTop: "0.75rem", fontSize: "0.8125rem" }}>
+              {toggle.data.message ??
+                "Disable requested. Ask another admin to confirm."}
+            </p>
+          ) : null}
+          {toggle.isSuccess && !toggle.data.pending_confirmation && !toggle.data.unchanged ? (
+            <p className={ui.muted} style={{ marginTop: "0.75rem", fontSize: "0.8125rem" }}>
+              Updated
+              {toggle.data.sealed ? " and sealed." : "."}
+            </p>
+          ) : null}
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 function ResidencyLegalHold({ isAdmin }: { isAdmin: boolean }) {
   const queryClient = useQueryClient();
   const residencyQuery = useQuery({
@@ -325,6 +447,10 @@ export default function OrganizationSettingsPage() {
           </p>
           <ResidencyLegalHold isAdmin={Boolean(isAdmin)} />
         </section>
+      </div>
+
+      <div className={settings.settingsSectionGrid}>
+        <RequireSignedEventsCard isAdmin={Boolean(isAdmin)} />
       </div>
 
       <div className={settings.settingsSectionGrid}>

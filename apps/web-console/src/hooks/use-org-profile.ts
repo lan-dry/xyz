@@ -10,6 +10,9 @@ export type OrgProfile = {
   slug: string;
   /** A hosted demo tenant (cosmetic: quiet tag, no plan badge, no Production/Sandbox switch). */
   is_demo: boolean;
+  /** Smoke / lab tenant — unsigned ingest allowed; single admin may disable signed-events. */
+  is_test?: boolean;
+  require_signed_events?: boolean;
 };
 
 /** Profile of the signed-in organisation. `isDemo` is false until known. */
