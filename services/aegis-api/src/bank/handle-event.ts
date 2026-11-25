@@ -589,6 +589,10 @@ export async function handleBankEvent(
     eventId &&
     "query" in client
   ) {
+    // SAVEPOINT: approval open must not abort the outer txn (seal + case).
+    // A failed open used to leave the txn aborted; COMMIT then quietly rolled
+    // back the sealed hold event while still returning outcome=hold.
+    await (client as pg.PoolClient).query("SAVEPOINT governed_hold_approval");
     try {
       const created = await createApprovalRequest(client as pg.PoolClient, {
         organizationId,
@@ -614,7 +618,14 @@ export async function handleBankEvent(
           [holdApprovalId, organizationId, JSON.stringify(derived)],
         );
       }
+      await (client as pg.PoolClient).query(
+        "RELEASE SAVEPOINT governed_hold_approval",
+      );
     } catch (err) {
+      await (client as pg.PoolClient)
+        .query("ROLLBACK TO SAVEPOINT governed_hold_approval")
+        .catch(() => undefined);
+      holdApprovalId = null;
       console.error(
         "[governed] could not open console approval for hold",
         err instanceof Error ? err.message : err,

@@ -1,4 +1,4 @@
-import { digestHex, signEvent, type ApsEvent } from "@salanor/aegis";
+import { signEvent, type ApsEvent } from "@salanor/aegis";
 import type pg from "pg";
 import { decryptBridgePrivateKey } from "./bridge-key-vault.js";
 
@@ -122,17 +122,17 @@ export async function patchSignedEventPayload(
     privateKeyB64,
     keyId: row.key_id,
   });
-  const eventHash = digestHex(signed as unknown as Record<string, unknown>, row.key_id);
-
+  // Do not update event_hash: trg_event_append_only forbids changing the hash
+  // chain. Payload + sig refresh is allowed (same as retention redaction). A
+  // prior hash update aborted the outer governed hold txn and rolled back the
+  // sealed event — smoke saw outcome=hold with approval_id null and no row.
   await client.query(
     `UPDATE event
      SET payload = $1::jsonb,
-         event_hash = $2,
-         sig_value_b64 = $3
-     WHERE organization_id = $4 AND event_id = $5`,
+         sig_value_b64 = $2
+     WHERE organization_id = $3 AND event_id = $4`,
     [
       JSON.stringify(signed.payload),
-      eventHash,
       signed.sig_value_b64,
       params.organizationId,
       params.eventId,

@@ -65,42 +65,51 @@ export async function postApprovalRequest(c: Context): Promise<Response> {
       return c.json({ error: "Organization mismatch" }, 403);
     }
 
-    const created = await createApprovalRequest(client, {
-      organizationId: body.organization_id,
-      eventId: body.event_id,
-      traceId: body.trace_id,
-      toolName: body.tool_name,
-      deferred: {
-        url: body.deferred.url,
-        method: body.deferred.method ?? "GET",
-      },
-    });
-
-    // Governed (bank) decisions: derive the required role / fields / escalation window
-    // server-side from the sealed decision + the org's active rules. The caller cannot
-    // choose the role. Non-bank events derive nothing and are unaffected.
+    // BEGIN so createApprovalRequest's SAVEPOINT works (autocommit rejects it).
+    await client.query("BEGIN");
+    let created: { approval_id: string };
     try {
-      const derived = await deriveApprovalMetadata(
-        client,
-        body.organization_id,
-        body.event_id,
-      );
-      if (Object.keys(derived).length > 0) {
-        await client.query(
-          `UPDATE approval
-              SET metadata = COALESCE(metadata, '{}'::jsonb) || $3::jsonb
-            WHERE approval_id = $1 AND organization_id = $2`,
-          [created.approval_id, body.organization_id, JSON.stringify(derived)],
+      created = await createApprovalRequest(client, {
+        organizationId: body.organization_id,
+        eventId: body.event_id,
+        traceId: body.trace_id,
+        toolName: body.tool_name,
+        deferred: {
+          url: body.deferred.url,
+          method: body.deferred.method ?? "GET",
+        },
+      });
+
+      // Governed (bank) decisions: derive the required role / fields / escalation window
+      // server-side from the sealed decision + the org's active rules. The caller cannot
+      // choose the role. Non-bank events derive nothing and are unaffected.
+      try {
+        const derived = await deriveApprovalMetadata(
+          client,
+          body.organization_id,
+          body.event_id,
+        );
+        if (Object.keys(derived).length > 0) {
+          await client.query(
+            `UPDATE approval
+                SET metadata = COALESCE(metadata, '{}'::jsonb) || $3::jsonb
+              WHERE approval_id = $1 AND organization_id = $2`,
+            [created.approval_id, body.organization_id, JSON.stringify(derived)],
+          );
+        }
+      } catch (err) {
+        console.error(
+          "[approvals] could not derive approval metadata",
+          err instanceof Error ? err.message : err,
         );
       }
+      await client.query("COMMIT");
     } catch (err) {
-      console.error(
-        "[approvals] could not derive approval metadata",
-        err instanceof Error ? err.message : err,
-      );
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw err;
     }
 
-    notifyApprovalPending(client, {
+    notifyApprovalPending(getPool(), {
       organizationId: body.organization_id,
       approvalId: created.approval_id,
       toolName: body.tool_name,
