@@ -94,7 +94,11 @@ export default function UsagePage() {
         subtitle="This organisation’s event, key, and member counters for the current period. Caps come from your plan."
       />
       {query.isError ? (
-        <ErrorAlert error={query.error} />
+        <ErrorAlert
+          message={
+            query.error instanceof Error ? query.error.message : "Could not load usage."
+          }
+        />
       ) : !usage ? (
         <p className={ui.muted}>Loading usage…</p>
       ) : (
