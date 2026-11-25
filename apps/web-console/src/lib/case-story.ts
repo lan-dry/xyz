@@ -10,10 +10,12 @@ import {
 } from "./outcome-vocab";
 import {
   actionLabel,
+  decidedByLine,
   describeDecision,
   formatApprover,
   formatRoleLabel,
   formatRuleLabel,
+  RECORD_ONLY_DECISION_LINE,
   type DescribeDecisionInput,
 } from "./describe-decision";
 import type { CaseApprover, CaseProvenance } from "./types";
@@ -79,6 +81,8 @@ export type CaseStory = {
   reference: string | null;
   /** Plain sentence for bank cases (describeDecision); null for non-bank cases. */
   bankDecision: string | null;
+  /** Rule name, person, or "Record only — no decision". */
+  decidedBy: string;
   /** Rule ids that decided the case. */
   ruleIds: string[];
   /** Allowed automatically: "No approval needed: allowed automatically by rule X". */
@@ -105,6 +109,7 @@ export type CaseSummaryMeta = {
   rules?: string[];
   /** Rule that drove the outcome (the hold rule, not the AUTH-RL allow). */
   decided_by_rule_id?: string | null;
+  mode?: string | null;
   /** Approve/decline votes with display names (emails stay in Technical details). */
   approvers?: CaseApprover[];
   /** Screen label for who requested the action. */
@@ -669,6 +674,7 @@ export function buildCaseStory(
     displayAmount != null ? moneyFmt(displayAmount, displayCurrency) : null;
 
   let bankDecision: string | null = null;
+  let decidedByLineText: string | null = null;
   let noApprovalNeeded: string | null = null;
   /** "Jean Mutabazi · Credit Manager" when the summary names the approver, else the raw actor. */
   let approverShown: string | null = c.approver;
@@ -710,7 +716,8 @@ export function buildCaseStory(
     null;
   if (bp) {
     const bankOutcome = str(bp.outcome) ?? "allow";
-    const approved = c.approvalDecision === "approved";
+    const released = c.approvalDecision === "released";
+    const approved = c.approvalDecision === "approved" || released;
     const declined =
       c.approvalDecision === "rejected" ||
       c.approvalDecision === "denied" ||
@@ -722,7 +729,7 @@ export function buildCaseStory(
       votes.find((a) =>
         declined
           ? ["rejected", "declined", "denied"].includes(a.decision)
-          : a.decision === "approved",
+          : a.decision === "approved" || a.decision === "released",
       ) ??
       null;
     const approverName = vote?.name ?? (vote ? formatRoleLabel(vote.role) : null) ?? c.approver;
@@ -737,13 +744,16 @@ export function buildCaseStory(
         : null) ??
       ruleIds[0] ??
       null;
+    const humanRelease =
+      approved && (bankOutcome === "hold" || bankOutcome === "stop");
     const input: DescribeDecisionInput = {
-      outcome:
-        bankOutcome === "hold" && declined
-          ? "declined"
-          : bankOutcome === "hold" && approved
-            ? "released"
-            : bankOutcome,
+      outcome: declined
+        ? "declined"
+        : humanRelease
+          ? "released"
+          : bankOutcome,
+      fraud_block_override:
+        humanRelease && /(^|_)FRD-/.test(decidedBy ?? ""),
       product: str(bp.product) ?? meta.summary?.product ?? null,
       event_type: str(bp.event_type) ?? meta.summary?.event_type ?? null,
       amount: displayAmount,
@@ -764,12 +774,32 @@ export function buildCaseStory(
       would_have: str(bp.would_have),
     };
     bankDecision = describeDecision(input);
+    decidedByLineText = decidedByLine(input);
     if (bankOutcome === "allow" && !str(bp.would_have)) {
       const allowLabel = formatRuleLabel(decidedBy, "allow");
       noApprovalNeeded = `Approver: not needed${
         allowLabel ? ` - allowed automatically by rule ${allowLabel}` : " - allowed automatically by policy"
       }.`;
     }
+  }
+  if (!decidedByLineText) {
+    const summaryMode = meta.summary?.mode;
+    decidedByLineText = decidedByLine({
+      mode: summaryMode,
+      outcome:
+        c.approvalDecision === "rejected" ||
+        c.approvalDecision === "declined" ||
+        c.approvalDecision === "denied"
+          ? "declined"
+          : c.approvalDecision === "released" || approverShown
+            ? "released"
+            : "allow",
+      decided_by_rule_id: meta.summary?.decided_by_rule_id ?? ruleIds[0] ?? null,
+      approver_name: approverShown,
+      fraud_block_override:
+        c.approvalDecision === "released" &&
+        /(^|_)FRD-/.test(meta.summary?.decided_by_rule_id ?? ruleIds[0] ?? ""),
+    });
   }
   const dataSeen = collectDataSeen(bankAttributes, c.evaluationContext, c.dataTouched);
   const waitingForPerson =
@@ -1018,6 +1048,7 @@ export function buildCaseStory(
     amountDisplay,
     reference: c.reference,
     bankDecision,
+    decidedBy: decidedByLineText ?? RECORD_ONLY_DECISION_LINE,
     ruleIds,
     noApprovalNeeded,
     dataSeen,

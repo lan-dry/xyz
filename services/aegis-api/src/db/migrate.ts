@@ -36,6 +36,10 @@ const MIGRATIONS = [
   { version: "014_velocity_indexes", file: "014_velocity_indexes.sql" },
   { version: "015_demo_tenant_ops", file: "015_demo_tenant_ops.sql" },
   { version: "016_sandbox_tenant", file: "016_sandbox_tenant.sql" },
+  { version: "017_sandbox_wipe_coverage", file: "017_sandbox_wipe_coverage.sql" },
+  { version: "018_record_only_default", file: "018_record_only_default.sql" },
+  { version: "019_sandbox_source_secret", file: "019_sandbox_source_secret.sql" },
+  { version: "020_sandbox_reset", file: "020_sandbox_reset.sql" },
 ] as const;
 
 async function ensureMigrationTable(): Promise<void> {
@@ -133,6 +137,15 @@ export async function ensureOrganizationSettingChangeTable(
   );
   if (hasInputCopy.rows[0]?.exists && !next.includes("input_commitment_copy")) {
     missing.push("input_commitment_copy");
+  }
+  const hasSandboxAudit = await pool.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'platform_sandbox_audit'
+     ) AS exists`,
+  );
+  if (hasSandboxAudit.rows[0]?.exists && !next.includes("platform_sandbox_audit")) {
+    missing.push("platform_sandbox_audit");
   }
   if (missing.length > 0) {
     // Insert before source_* tables when present; otherwise append.

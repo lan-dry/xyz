@@ -1,19 +1,14 @@
 {
-  "aps_version": "0.1",
-  "event_id": "550e8400-e29b-41d4-a716-446655440001",
-  "recorded_at": "2026-05-16T12:00:01.000Z",
-  "action": "decision.record",
-  "subject": { "type": "workflow_step", "id": "credit-approval" },
-  "context": {
-    "inputs": {},
+  "schema_version": 1,
+  "event_id": "evt_550e8400e29b41d4a716446655440001",
+  "organization_id": "local-demo",
+  "trace_id": "trc_missing_actor",
+  "agent_id": "agent:rules-engine",
+  "key_id": "key:local-demo",
+  "emitted_at": "2026-05-16T12:00:01.000Z",
+  "action_kind": "decision",
+  "policy_decision": "deny",
+  "payload": {
     "outcome": { "decision": "deny" }
-  },
-  "signature": {
-    "alg": "local-placeholder",
-    "value": "placeholder:0000000000000000000000000000000000000000000000000000000000000000"
-  },
-  "chain": {
-    "prev_event_hash": null,
-    "event_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
   }
 }

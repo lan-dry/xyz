@@ -10,6 +10,14 @@ import { PolicyRuleValidationError, validatePolicyRules } from "../bank/rule-val
 import { executionConfigFromPackWorkflow } from "../execution/workflow-config.js";
 import { loadDemoPack, packMatrixRows, packRoles } from "./load.js";
 
+/**
+ * Omitted record_only means record-only (new tenants).
+ * Explicit false keeps decision mode — demo.banking sets false so stories still hold and stop.
+ */
+export function packWorkflowRecordOnly(wf: { record_only?: boolean }): boolean {
+  return wf.record_only !== false;
+}
+
 export type ApplyPackOptions = {
   /**
    * Escalation config copied onto human-approval obligations of held rules
@@ -203,7 +211,7 @@ export async function applyDemoPack(
           orgId,
           wf.name,
           desc,
-          Boolean(wf.record_only),
+          packWorkflowRecordOnly(wf),
           JSON.stringify(executionConfig),
         ],
       );
@@ -218,7 +226,7 @@ export async function applyDemoPack(
           orgId,
           wf.name,
           desc,
-          Boolean(wf.record_only),
+          packWorkflowRecordOnly(wf),
           JSON.stringify(executionConfig),
         ],
       );

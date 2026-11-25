@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { eventDigest } from "./canonical.js";
 import type { ApsEvent } from "./types.js";
 
 export function readEvents(path: string): ApsEvent[] {
@@ -30,9 +31,17 @@ export function appendEvent(path: string, event: ApsEvent): void {
   appendFileSync(path, `${JSON.stringify(event)}\n`, "utf8");
 }
 
+export function lastEventId(events: ApsEvent[]): string | null {
+  if (events.length === 0) {
+    return null;
+  }
+  return events[events.length - 1]!.event_id;
+}
+
+/** @deprecated Prefer lastEventId; digest is recomputed from the event body. */
 export function lastEventHash(events: ApsEvent[]): string | null {
   if (events.length === 0) {
     return null;
   }
-  return events[events.length - 1]!.chain.event_hash;
+  return eventDigest(events[events.length - 1]!);
 }

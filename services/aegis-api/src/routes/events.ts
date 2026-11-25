@@ -24,6 +24,8 @@ import {
   IngestValidationError,
   parseApsEvent,
 } from "../ingest/validate.js";
+import { enforceOrgIngestControls } from "../limits/tenant-limits.js";
+import { blockSandboxIngest } from "../tenants/synthetic-guard.js";
 
 function bearerToken(authorization: string | undefined): string | null {
   if (!authorization?.startsWith("Bearer ")) {
@@ -74,6 +76,32 @@ export async function postEvent(c: Context): Promise<Response> {
     const auth = await resolveIngestKey(client, token);
     if (!auth) {
       return c.json({ error: "Invalid API key" }, 401);
+    }
+
+    const blocked = await enforceOrgIngestControls(client, auth.organizationId);
+    if (blocked) return blocked;
+
+    const orgGate = await client.query<{
+      tenant_kind: string;
+      sandbox_archived_at: Date | null;
+      sandbox_read_only_until: Date | null;
+    }>(
+      `SELECT COALESCE(tenant_kind, 'real') AS tenant_kind,
+              sandbox_archived_at, sandbox_read_only_until
+         FROM organization WHERE organization_id = $1`,
+      [auth.organizationId],
+    );
+    const synthetic = blockSandboxIngest(orgGate.rows[0], body);
+    if (synthetic) {
+      return c.json(
+        {
+          error: synthetic.error,
+          code: synthetic.code,
+          message: synthetic.message,
+          field: synthetic.field,
+        },
+        synthetic.status,
+      );
     }
 
     try {

@@ -2,15 +2,28 @@ import { canonicalize, sha256Hex } from "./canonical.js";
 import { readEvents } from "./store.js";
 import type { ApsEvent, ReplayResult, ReplayStep } from "./types.js";
 
-const TIER_A_ACTIONS = new Set(["decision.record"]);
+const TIER_A_KINDS = new Set(["decision", "policy_decision"]);
+
+function subjectFromPayload(event: ApsEvent): { type: string; id: string } {
+  const subject = event.payload?.subject;
+  if (
+    subject &&
+    typeof subject === "object" &&
+    typeof (subject as { type?: unknown }).type === "string" &&
+    typeof (subject as { id?: unknown }).id === "string"
+  ) {
+    return subject as { type: string; id: string };
+  }
+  return { type: "event", id: event.event_id };
+}
 
 function reconstructTierA(event: ApsEvent): ReplayStep["reconstructed"] {
-  const ctx = event.context;
+  const payload = event.payload ?? {};
   return {
-    inputs: structuredClone(ctx.inputs ?? {}),
-    model: ctx.model as Record<string, unknown> | undefined,
-    policy: ctx.policy as Record<string, unknown> | undefined,
-    outcome: structuredClone(ctx.outcome ?? {}),
+    inputs: structuredClone((payload.inputs as Record<string, unknown>) ?? {}),
+    model: payload.model as Record<string, unknown> | undefined,
+    policy: payload.policy as Record<string, unknown> | undefined,
+    outcome: structuredClone((payload.outcome as Record<string, unknown>) ?? {}),
   };
 }
 
@@ -22,13 +35,13 @@ export function replay(storePath: string, traceId = "local"): ReplayResult {
   const steps: ReplayStep[] = [];
 
   for (const event of events) {
-    if (!TIER_A_ACTIONS.has(event.action)) {
+    if (!TIER_A_KINDS.has(event.action_kind)) {
       continue;
     }
     steps.push({
       event_id: event.event_id,
-      action: event.action,
-      subject: event.subject,
+      action: event.action_kind,
+      subject: subjectFromPayload(event),
       tier: "A",
       reconstructed: reconstructTierA(event),
     });

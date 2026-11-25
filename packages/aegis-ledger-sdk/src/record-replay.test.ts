@@ -14,42 +14,51 @@ const DEMO_CLOCK = [
 ] as const;
 
 const DEMO_IDS = [
-  "11111111-1111-4111-8111-111111111101",
-  "11111111-1111-4111-8111-111111111102",
-  "11111111-1111-4111-8111-111111111103",
+  "evt_11111111111141118111111111101",
+  "evt_11111111111141118111111111102",
+  "evt_11111111111141118111111111103",
+] as const;
+
+const DEMO_TRACES = [
+  "trc_tier_a_demo_01",
+  "trc_tier_a_demo_02",
+  "trc_tier_a_demo_03",
 ] as const;
 
 function runDeterministicDemo(storePath: string) {
   const scenarios = [
     {
-      subject: { type: "workflow_step", id: "credit-approval" },
-      context: {
+      payload: {
+        subject: { type: "workflow_step", id: "credit-approval" },
         inputs: { amount_usd: 12000, credit_score: 710 },
         model: { id: "rules-v1", version: "1.0.0" },
         policy: { id: "credit-policy", version: "2026-01" },
         evidence: [],
         outcome: { decision: "approve", confidence: 0.92 },
       },
+      policy_decision: "allow" as const,
     },
     {
-      subject: { type: "workflow_step", id: "credit-approval" },
-      context: {
+      payload: {
+        subject: { type: "workflow_step", id: "credit-approval" },
         inputs: { amount_usd: 45000, credit_score: 640 },
         model: { id: "rules-v1", version: "1.0.0" },
         policy: { id: "credit-policy", version: "2026-01" },
         evidence: [],
         outcome: { decision: "review", confidence: 0.61 },
       },
+      policy_decision: "allow_with_obligation" as const,
     },
     {
-      subject: { type: "workflow_step", id: "fraud-screen" },
-      context: {
+      payload: {
+        subject: { type: "workflow_step", id: "fraud-screen" },
         inputs: { velocity_24h: 9 },
         model: { id: "fraud-heuristics", version: "2.1.0" },
         policy: { id: "fraud-policy", version: "2026-02" },
         evidence: [{ ref: "device:fingerprint-x" }],
         outcome: { decision: "deny", confidence: 0.88 },
       },
+      policy_decision: "deny" as const,
     },
   ] as const;
 
@@ -57,12 +66,19 @@ function runDeterministicDemo(storePath: string) {
     record(
       storePath,
       {
-        tenant_id: "local-demo",
-        actor: { id: "agent:rules-engine", type: "software_agent" },
-        action: "decision.record",
+        organization_id: "local-demo",
+        agent_id: "agent:rules-engine",
+        key_id: "key:local-demo",
+        actor_type: "agent",
+        actor_principal: "agent:rules-engine",
+        action_kind: "decision",
         ...scenarios[i]!,
       },
-      { recorded_at: DEMO_CLOCK[i], event_id: DEMO_IDS[i] },
+      {
+        emitted_at: DEMO_CLOCK[i],
+        event_id: DEMO_IDS[i],
+        trace_id: DEMO_TRACES[i],
+      },
     );
   }
 

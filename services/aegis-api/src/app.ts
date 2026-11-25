@@ -1,5 +1,5 @@
 import { captureException } from "@salanor/observability";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import {
@@ -30,6 +30,10 @@ import {
 } from "./routes/workflows.js";
 import { publicRoutes } from "./routes/public/index.js";
 import { pingDatabase } from "./db/pool.js";
+import { maybeNotifyOpsAlerts } from "./health/alerts.js";
+import { recordApiError, recordHttp5xx } from "./health/error-counters.js";
+import { collectMetrics } from "./health/metrics.js";
+import { requireOpsMetricsAuth } from "./health/ops-auth.js";
 import { buildReadiness } from "./health/readiness.js";
 
 const consoleOrigin = process.env.CONSOLE_ORIGIN ?? "http://localhost:3000";
@@ -39,6 +43,8 @@ export function createApp(): Hono {
   const app = new Hono();
 
   app.onError((err, c) => {
+    recordApiError();
+    recordHttp5xx();
     captureException(err, { path: c.req.path, service: "aegis-api" });
     return c.json({ error: "Internal server error" }, 500);
   });
@@ -52,6 +58,11 @@ export function createApp(): Hono {
       crossOriginResourcePolicy: "same-site",
     }),
   );
+
+  app.use("*", async (c, next) => {
+    await next();
+    if (c.res.status >= 500) recordHttp5xx();
+  });
 
   app.use(
     "/v1/console/*",
@@ -81,9 +92,22 @@ export function createApp(): Hono {
    * reachability and receipt-signing-key reachability. See health/readiness.ts.
    */
   app.get("/ready", async (c) => {
-    const { httpStatus, body } = await buildReadiness();
-    return c.json(body, httpStatus);
+    const result = await buildReadiness();
+    void maybeNotifyOpsAlerts(result).catch((err) => {
+      console.error("[ops-alert] notify failed", err);
+    });
+    return c.json(result.body, result.httpStatus);
   });
+
+  const opsStatus = async (c: Context) => {
+    const { readiness, body } = await collectMetrics();
+    void maybeNotifyOpsAlerts(readiness).catch((err) => {
+      console.error("[ops-alert] notify failed", err);
+    });
+    return c.json(body);
+  };
+  app.get("/metrics", requireOpsMetricsAuth, opsStatus);
+  app.get("/v1/ops/status", requireOpsMetricsAuth, opsStatus);
 
   app.route("/v1/console", consoleRoutes);
   app.route("/v1/public", publicRoutes);

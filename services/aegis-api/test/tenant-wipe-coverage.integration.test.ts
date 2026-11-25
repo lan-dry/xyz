@@ -31,6 +31,8 @@ const KNOWN_GLOBAL_TABLES = [
   "blog_engagement_events", "receipt_signing_key", "schema_migration", "platform_tenant_wipe_audit",
   "account", "account_oauth", "password_reset_token", "email_verification_token",
   "policy_rule", "organization",
+  // Platform intake form; created_organization_id is ON DELETE SET NULL (migration 017).
+  "sandbox_access_request",
 ];
 
 describeIfDb("tenant wipe coverage", () => {
@@ -158,6 +160,9 @@ describeIfDb("tenant wipe coverage", () => {
       "contact_messages.organization",
       "organization_sso.workos_organization_id",
       "platform_tenant_wipe_audit.tenant_organization_id",
+      // Sandbox access intake (platform-global); org pointer cleared on tenant wipe.
+      "sandbox_access_request.created_organization_id",
+      "sandbox_access_request.org_type",
     ]);
     const unexpected = odd.filter((o) => !allowed.has(`${o.table_name}.${o.column_name}`));
     expect(unexpected, JSON.stringify(unexpected)).toEqual([]);

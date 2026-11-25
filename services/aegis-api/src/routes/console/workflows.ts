@@ -27,6 +27,7 @@ function serializeWorkflow(
     policy_ids: row.policy_ids,
     external_ref: row.external_ref,
     fail_mode: row.fail_mode,
+    record_only: row.record_only,
     created_at: row.created_at.toISOString(),
     updated_at: row.updated_at.toISOString(),
     coverage_pct: scores?.coverage_pct ?? null,

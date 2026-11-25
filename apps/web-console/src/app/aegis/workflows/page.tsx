@@ -29,6 +29,7 @@ type WorkflowRow = {
   environment: string;
   agent_id: string | null;
   policy_ids: string[];
+  record_only?: boolean;
   coverage_pct: number | null;
   evidence_readiness_pct: number | null;
 };
@@ -115,8 +116,9 @@ export default function WorkflowsPage() {
         title="Workflows"
         subtitle={
           <>
-            Governed units for <strong>{environmentLabel(environment)}</strong>. Each
-            workflow links an agent and policies when configured.
+            Governed units for <strong>{environmentLabel(environment)}</strong>. New
+            workflows start in record-only mode. Demo Bank workflows stay in decision
+            mode so those stories can still hold and stop.
           </>
         }
         actions={
@@ -164,6 +166,7 @@ export default function WorkflowsPage() {
             <thead>
               <tr>
                 <th>Workflow</th>
+                <th>Mode</th>
                 <th>Linked agent</th>
                 <th>Linked policies</th>
                 {workflows.some((w) => w.agent_id && w.policy_ids.length > 0) ? (
@@ -199,6 +202,11 @@ export default function WorkflowsPage() {
                         </p>
                       ) : null}
                     </td>
+                    <td>
+                      {w.record_only === false
+                        ? "Decisions on"
+                        : "Record only — no decision"}
+                    </td>
                     <td className="mono" style={{ fontSize: "0.8125rem" }}>
                       {w.agent_id ?? "Not linked"}
                     </td>
@@ -223,7 +231,7 @@ export default function WorkflowsPage() {
       <Modal
         open={createOpen}
         title="New workflow"
-        description="Name a governed path for this environment. Names must be unique within the environment."
+        description="Name a governed path for this environment. It starts in record-only mode: cases are stored and not enforced. Names must be unique within the environment."
         onClose={() => setCreateOpen(false)}
         closeOnOverlayClick={false}
         footer={

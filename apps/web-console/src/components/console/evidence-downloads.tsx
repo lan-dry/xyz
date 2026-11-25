@@ -1,8 +1,10 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { ApiError, consoleDownload } from "@/lib/api";
+import { useTenantCopy } from "@/lib/tenant-copy";
 
 import { ui } from "./console-ui";
 
@@ -26,6 +28,8 @@ export function EvidenceDownloads({
   showSummary?: boolean;
   showCaptions?: boolean;
 }) {
+  const copy = useTenantCopy();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState<"bundle" | "pdf" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const slug = (caseId || traceId).replace(/[^A-Za-z0-9_.-]+/g, "_").slice(0, 48);
@@ -37,6 +41,7 @@ export function EvidenceDownloads({
     try {
       if (kind === "bundle") {
         await consoleDownload(`/traces/${encoded}/evidence-bundle`, `evidence-bundle-${slug}.json`);
+        void queryClient.invalidateQueries({ queryKey: ["console", "sandbox", "status"] });
       } else {
         await consoleDownload(`/traces/${encoded}/evidence-bundle.pdf`, `evidence-${slug}.pdf`);
       }
@@ -75,9 +80,9 @@ export function EvidenceDownloads({
           className={`${ui.btn} ${ui.btnPrimary}`}
           onClick={() => void download("bundle")}
           disabled={busy !== null}
-          title="Signed receipts that verify offline"
+          title={copy.tooltip_download_evidence}
         >
-          {busy === "bundle" ? "Preparing…" : "Download evidence bundle"}
+          {busy === "bundle" ? "Preparing…" : "Download evidence"}
         </button>
         <button
           type="button"

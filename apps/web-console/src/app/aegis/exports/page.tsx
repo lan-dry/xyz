@@ -29,6 +29,10 @@ import {
   ui,
 } from "@/components/console/console-ui";
 import { consoleApi, consoleDownload } from "@/lib/api";
+import { idApi } from "@/lib/id-api";
+import { canManageOrg } from "@/lib/org-roles";
+import { useTenantCopy } from "@/lib/tenant-copy";
+import type { MeResponse } from "@/lib/types";
 
 import styles from "./exports.module.css";
 
@@ -74,6 +78,7 @@ function bundleLabel(value: string): string {
 }
 
 export default function ExportsPage() {
+  const copy = useTenantCopy();
   const queryClient = useQueryClient();
   const [bundleType, setBundleType] = useState<string>("combined");
   const [runNow, setRunNow] = useState(true);
@@ -83,6 +88,12 @@ export default function ExportsPage() {
   const [scheduleDay, setScheduleDay] = useState(1);
   const [scheduleSaved, setScheduleSaved] = useState(false);
   const [helpPanel, setHelpPanel] = useState<ExportHelpSection | null>(null);
+
+  const meQuery = useQuery({
+    queryKey: ["id", "me"],
+    queryFn: () => idApi<MeResponse>("/auth/me"),
+  });
+  const canManageExports = canManageOrg(meQuery.data?.user?.role);
 
   const exportsQuery = useQuery({
     queryKey: ["console", "compliance-exports"],
@@ -191,12 +202,13 @@ export default function ExportsPage() {
     <ConsolePage>
       <PageHeader
         title="Evidence"
-        subtitle="Evidence archive for a period, and a Risk Approval Pack for sign-off."
+        subtitle="Download sealed receipts for auditors. This is not live monitoring — it is the proof file."
         actions={
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
             <button
               type="button"
               className={`${ui.btn} ${ui.btnPrimary}`}
+              title={copy.tooltip_download_evidence}
               onClick={async () => {
                 try {
                   const day = new Date().toISOString().slice(0, 10);
@@ -260,6 +272,7 @@ export default function ExportsPage() {
       ) : null}
 
       <div className={styles.layout}>
+        {canManageExports ? (
         <div className={styles.actionsGrid}>
           <section className={`${ui.card} ${ui.cardPad} ${styles.actionCard}`}>
             <h2 className={ui.panelTitle}>
@@ -307,9 +320,10 @@ export default function ExportsPage() {
                 type="button"
                 className={`${ui.btn} ${ui.btnPrimary} ${styles.fullWidthBtn}`}
                 disabled={createExport.isPending}
+                title={copy.tooltip_download_evidence}
                 onClick={() => createExport.mutate()}
               >
-                {createExport.isPending ? "Generating…" : "Create export"}
+                {createExport.isPending ? "Generating…" : copy.exports_empty_action}
               </button>
             </div>
           </section>
@@ -414,6 +428,11 @@ export default function ExportsPage() {
             </form>
           </section>
         </div>
+        ) : (
+          <p className={ui.muted} style={{ marginBottom: "1rem" }}>
+            You can download ready evidence packs. Creating and scheduling exports is admin-only.
+          </p>
+        )}
 
         <section className={`${ui.card} ${ui.cardPad} ${styles.historySection}`}>
           <div className={styles.historyHeader}>
@@ -432,20 +451,27 @@ export default function ExportsPage() {
           {!loading && exports.length === 0 ? (
             <EmptyStatePanel
               icon={FileArchive}
-              title="Create your first evidence pack"
-              description="Export a downloadable ZIP of sealed receipts for auditors. Start with a one-time Evidence pack above, or turn on the monthly schedule."
+              title={copy.exports_empty_title}
+              description={
+                canManageExports
+                  ? copy.exports_empty_body
+                  : "Ask an admin to create an evidence pack. You can download ready packs here, or open a case and download its evidence bundle."
+              }
               action={
+                canManageExports ? (
                 <button
                   type="button"
                   className={`${ui.btn} ${ui.btnPrimary}`}
+                  title={copy.tooltip_download_evidence}
                   onClick={() => {
                     setBundleType("combined");
                     setRunNow(true);
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                 >
-                  Prepare an export
+                  {copy.exports_empty_action}
                 </button>
+                ) : undefined
               }
             />
           ) : null}
@@ -453,6 +479,7 @@ export default function ExportsPage() {
           {exports.length > 0 ? (
             <ExportTable
               exports={exports}
+              canManage={canManageExports}
               onDownload={(row) => downloadExport.mutate(row)}
               onDelete={(row) => {
                 if (
@@ -480,12 +507,14 @@ export default function ExportsPage() {
 
 function ExportTable({
   exports,
+  canManage,
   onDownload,
   onDelete,
   downloadingId,
   deletingId,
 }: {
   exports: ComplianceExport[];
+  canManage: boolean;
   onDownload: (row: ComplianceExport) => void;
   onDelete: (row: ComplianceExport) => void;
   downloadingId: string | null | undefined;
@@ -553,17 +582,19 @@ function ExportTable({
                       {row.status}
                     </span>
                   )}
-                  <button
-                    type="button"
-                    className={`${ui.btn} ${ui.btnSecondary}`}
-                    disabled={deletingId === row.export_id}
-                    onClick={() => onDelete(row)}
-                    aria-label={`Delete ${row.export_id}`}
-                    title="Delete export"
-                  >
-                    <Trash2 size={14} aria-hidden />
-                    {deletingId === row.export_id ? "…" : "Delete"}
-                  </button>
+                  {canManage ? (
+                    <button
+                      type="button"
+                      className={`${ui.btn} ${ui.btnSecondary}`}
+                      disabled={deletingId === row.export_id}
+                      onClick={() => onDelete(row)}
+                      aria-label={`Delete ${row.export_id}`}
+                      title="Delete export"
+                    >
+                      <Trash2 size={14} aria-hidden />
+                      {deletingId === row.export_id ? "…" : "Delete"}
+                    </button>
+                  ) : null}
                 </div>
               </td>
             </tr>

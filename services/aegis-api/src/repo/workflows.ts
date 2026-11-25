@@ -11,6 +11,8 @@ export type GovernedWorkflow = {
   policy_ids: string[];
   external_ref: string | null;
   fail_mode: "fail_closed" | "fail_open_buffer";
+  /** New workflows record only. Demo packs set this false so stories still decide. */
+  record_only: boolean;
   created_at: Date;
   updated_at: Date;
 };
@@ -51,6 +53,7 @@ export async function listWorkflows(
     ...row,
     policy_ids: parsePolicyIds(row.policy_ids),
     fail_mode: parseFailMode((row as { fail_mode?: string }).fail_mode),
+    record_only: Boolean((row as { record_only?: boolean }).record_only),
   }));
 }
 
@@ -70,6 +73,7 @@ export async function getWorkflow(
     ...row,
     policy_ids: parsePolicyIds(row.policy_ids),
     fail_mode: parseFailMode(row.fail_mode),
+    record_only: Boolean(row.record_only),
   };
 }
 
@@ -91,8 +95,8 @@ export async function createWorkflow(
   const result = await client.query(
     `INSERT INTO governed_workflow (
        workflow_id, organization_id, environment, name, description,
-       agent_id, policy_ids, external_ref, fail_mode
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)
+       agent_id, policy_ids, external_ref, fail_mode, record_only
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, true)
      RETURNING *`,
     [
       workflowId,
@@ -111,6 +115,7 @@ export async function createWorkflow(
     ...row,
     policy_ids: parsePolicyIds(row.policy_ids),
     fail_mode: parseFailMode(row.fail_mode),
+    record_only: Boolean(row.record_only),
   };
 }
 
@@ -166,6 +171,7 @@ export async function updateWorkflow(
     ...row,
     policy_ids: parsePolicyIds(row.policy_ids),
     fail_mode: parseFailMode(row.fail_mode),
+    record_only: Boolean(row.record_only),
   };
 }
 

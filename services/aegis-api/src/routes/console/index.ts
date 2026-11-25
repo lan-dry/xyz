@@ -8,6 +8,7 @@ import {
   auditAuthLoginFailed,
   auditAuthLoginSuccess,
   auditAuthLogout,
+  canManageIngestKeys,
   createSession,
   deleteSession,
   getAccountPlatformRole,
@@ -93,6 +94,7 @@ import { sourceRoutes } from "./sources.js";
 import { exceptionRoutes } from "./exceptions.js";
 import { reconciliationRoutes } from "./reconciliation.js";
 import { sandboxConsoleRoutes } from "./sandbox.js";
+import { markOnboardingStep } from "../../tenants/onboarding-checklist.js";
 import { getOverviewMetrics } from "../../repo/overview.js";
 
 const LEGACY_SESSION_COOKIE = "aegis_session";
@@ -504,6 +506,9 @@ consoleRoutes.get("/traces/:traceId", requireConsoleSession, async (c) => {
     eventsBySpan.set(e.span_id, list);
   }
   const spanTree = buildSpanTree(spanRows, eventsBySpan);
+  if (serialized.some((e) => Boolean(e.event_hash))) {
+    await markOnboardingStep(pool, orgId, "see_sealed");
+  }
   const spanGroups = groupEventsIntoSpans(
     serialized.map((e) => ({
       event_id: e.event_id,
@@ -602,8 +607,11 @@ consoleRoutes.get("/audit-logs", requireConsoleSession, async (c) => {
 });
 
 consoleRoutes.get("/ingest-keys", requireConsoleSession, async (c) => {
-  const orgId = c.get("consoleSession").organizationId;
-  const keys = await listIngestKeys(getPool(), orgId);
+  const session = c.get("consoleSession");
+  if (!canManageIngestKeys(session, session.organizationId)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  const keys = await listIngestKeys(getPool(), session.organizationId);
   return c.json({
     keys: keys.map((k) => ({
       key_id: k.key_id,
@@ -619,7 +627,7 @@ consoleRoutes.get("/ingest-keys", requireConsoleSession, async (c) => {
 
 consoleRoutes.post("/ingest-keys", requireConsoleSession, async (c) => {
   const session = c.get("consoleSession");
-  if (session.role !== "admin") {
+  if (!canManageIngestKeys(session, session.organizationId)) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -657,6 +665,7 @@ consoleRoutes.post("/ingest-keys", requireConsoleSession, async (c) => {
     resourceId: row.key_id,
     metadata: { name: row.name, key_prefix: row.key_prefix },
   });
+  await markOnboardingStep(pool, session.organizationId, "create_api_key");
   return c.json(
     {
       key: {
@@ -673,7 +682,7 @@ consoleRoutes.post("/ingest-keys", requireConsoleSession, async (c) => {
 
 consoleRoutes.patch("/ingest-keys/:keyId", requireConsoleSession, async (c) => {
   const session = c.get("consoleSession");
-  if (session.role !== "admin") {
+  if (!canManageIngestKeys(session, session.organizationId)) {
     return c.json({ error: "Forbidden" }, 403);
   }
   const keyId = c.req.param("keyId");
@@ -719,7 +728,7 @@ consoleRoutes.patch("/ingest-keys/:keyId", requireConsoleSession, async (c) => {
 
 consoleRoutes.delete("/ingest-keys/:keyId", requireConsoleSession, async (c) => {
   const session = c.get("consoleSession");
-  if (session.role !== "admin") {
+  if (!canManageIngestKeys(session, session.organizationId)) {
     return c.json({ error: "Forbidden" }, 403);
   }
   const keyId = c.req.param("keyId");

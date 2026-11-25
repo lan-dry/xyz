@@ -22,6 +22,7 @@ import {
 import { ConsoleTime } from "@/components/console/console-time";
 import { useCaseSummaries } from "@/hooks/use-case-summaries";
 import { consoleApi } from "@/lib/api";
+import { emptyActionHref, useTenantCopy } from "@/lib/tenant-copy";
 import {
   approverDisplay,
   productFromSummary,
@@ -36,6 +37,7 @@ import {
 import { formatApprover } from "@/lib/describe-decision";
 import { formatMoney } from "@/lib/format-display";
 import { idApi } from "@/lib/id-api";
+import { canDecideApprovals } from "@/lib/org-roles";
 import { toolActionPlain } from "@/lib/outcome-vocab";
 import type { CaseSummary, MeResponse } from "@/lib/types";
 import { isBankDemoProfile } from "@/lib/ui-profile";
@@ -214,6 +216,7 @@ function ApprovalCard({
       ["approved", "rejected", "declined", "released"].includes(v.decision),
     ) ?? null;
   const titleId = `approval-title-${a.approval_id}`;
+  const copy = useTenantCopy();
 
   return (
     <article
@@ -537,6 +540,7 @@ function ApprovalCard({
           <div
             className={ui.formRow}
             style={{ alignSelf: "flex-start", flexWrap: "wrap" }}
+            title={copy.tooltip_approve}
           >
             {onViewDetails ? (
               <button
@@ -588,6 +592,7 @@ function ApprovalCard({
                 onClick={onApprove}
                 disabled={busy}
                 aria-label={`Approve ${title}`}
+                title={copy.tooltip_approve}
               >
                 Approve
               </button>
@@ -611,6 +616,7 @@ function ApprovalCard({
 }
 
 export default function ApprovalsPage() {
+  const copy = useTenantCopy();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const focusId = searchParams.get("focus");
@@ -652,8 +658,7 @@ export default function ApprovalsPage() {
   });
   const bankMode = isBankDemoProfile();
   const role = meQuery.data?.user?.role?.trim().toLowerCase();
-  const canApprove =
-    role === "admin" || role === "owner" || role === "approver";
+  const canApprove = canDecideApprovals(role);
 
   useEffect(() => {
     setEnvironment(readConsoleEnvironment());
@@ -779,6 +784,7 @@ export default function ApprovalsPage() {
       }
       void queryClient.invalidateQueries({ queryKey: ["console", "approvals"] });
       void queryClient.invalidateQueries({ queryKey: ["console", "traces"] });
+      void queryClient.invalidateQueries({ queryKey: ["console", "sandbox", "status"] });
     },
     onSettled: () => {
       setActingId(null);
@@ -816,6 +822,7 @@ export default function ApprovalsPage() {
       setDecidedIds((prev) => new Set(prev).add(approvalId));
       void queryClient.invalidateQueries({ queryKey: ["console", "approvals"] });
       void queryClient.invalidateQueries({ queryKey: ["console", "traces"] });
+      void queryClient.invalidateQueries({ queryKey: ["console", "sandbox", "status"] });
     },
     onSettled: () => {
       setActingId(null);
@@ -957,14 +964,7 @@ export default function ApprovalsPage() {
     <ConsolePage>
       <PageHeader
         title="Approvals"
-        subtitle={
-          <>
-            When a rule says <strong>{bankMode ? "Needs approval" : "Ask a person"}</strong>,
-            cases waiting for a person appear here. You have up to{" "}
-            <strong>{ttlHours} hours</strong> to Approve or Decline. Admins can get Slack or
-            email notify under Settings → Governance.
-          </>
-        }
+        subtitle={`Cases waiting for a person when a rule says “${bankMode ? "Needs approval" : "Ask a person"}”. You have up to ${ttlHours} hours to decide.`}
       />
 
       <div className={ui.statStrip}>
@@ -1039,15 +1039,20 @@ export default function ApprovalsPage() {
           {isEmptyPending ? (
             <EmptyStatePanel
               mark={<AegisMark />}
-              title="No pending approvals"
-              description={
-                bankMode
-                  ? "When a rule says a case needs approval, it waits here until an authorised approver approves or declines it. Admins receive email alerts when notifications are enabled."
-                  : "When a policy requires approval, the trace blocks here until an operator approves or rejects. Admins receive email alerts when notifications are enabled."
-              }
+              title={copy.approvals_empty_title}
+              description={copy.approvals_empty_body}
               action={
-                <Link href="/aegis/traces" className={`${ui.btn} ${ui.btnSecondary}`}>
-                  View cases
+                <Link
+                  href={emptyActionHref(copy.approvals_empty_action)}
+                  className={`${ui.btn} ${ui.btnPrimary}`}
+                  title={
+                    copy.approvals_empty_action.includes("held") ||
+                    copy.approvals_empty_action.includes("test")
+                      ? copy.tooltip_test_event
+                      : undefined
+                  }
+                >
+                  {copy.approvals_empty_action}
                 </Link>
               }
             />
@@ -1149,7 +1154,7 @@ export default function ApprovalsPage() {
           {history.length === 0 && !historyQuery.isLoading ? (
             <EmptyStatePanel
               title="No approval history yet"
-              description="Approved, rejected, and expired decisions appear here with who decided and when."
+              description={copy.approvals_history_empty}
             />
           ) : null}
           {history.map((a) => (

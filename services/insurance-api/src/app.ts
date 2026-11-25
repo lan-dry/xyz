@@ -96,4 +96,14 @@ consoleRoutes.get("/overview", requireConsoleSession, async (c) => {
   }
 });
 
+app.get("/v1/insurance/policies", requireConsoleSession, async (c) => {
+  const session = c.get("consoleSession");
+  return c.json({
+    product: "insurance",
+    organization_id: session.organizationId,
+    policies: [],
+    scaffold: true,
+  });
+});
+
 app.route("/v1/insurance/console", consoleRoutes);

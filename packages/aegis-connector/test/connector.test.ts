@@ -207,4 +207,55 @@ describe("sequence ownership", () => {
     expect(acceptedSeqs).toEqual([1, 2, 3, 4]);
     expect(new Set(acceptedSeqs).size).toBe(4);
   });
+
+  it("demo catch-up adopts a remote gap once, then a later gap stays an ownership conflict", async () => {
+    await h.cleanup();
+    h = await makeHarness({ demo_seq_catchup: true, sync_wait_ms: 1500 });
+    h.aegis.mode = "seq_gate";
+    h.aegis.tenantKind = "demo";
+    h.aegis.lastSeqBySource.set("src_test", 5);
+    const lines: string[] = [];
+    const orig = console.log;
+    console.log = (...args: unknown[]) => {
+      lines.push(args.map(String).join(" "));
+    };
+    try {
+      const { base, connector } = await h.start();
+      expect(lines).toContain("Synced local sequence to remote (was 0, now 5). Continuing.");
+      const first = await post(base, "/events", { from: "demo", n: 1 });
+      expect(first.status).toBe(200);
+      expect(await first.json()).toMatchObject({ status: "delivered", seq: 6 });
+
+      h.aegis.lastSeqBySource.set("src_test", 20);
+      const clash = await post(base, "/events", { from: "demo", clash: true });
+      expect([200, 202]).toContain(clash.status);
+      expect(String(connector.health().last_error ?? "")).toMatch(/seq ownership conflict/i);
+      expect(lines.filter((l) => l.startsWith("Synced local sequence to remote"))).toHaveLength(1);
+    } finally {
+      console.log = orig;
+    }
+  });
+
+  it("does not catch up a real tenant even when demo_seq_catchup is set", async () => {
+    await h.cleanup();
+    h = await makeHarness({ demo_seq_catchup: true, sync_wait_ms: 1500 });
+    h.aegis.mode = "seq_gate";
+    h.aegis.tenantKind = "real";
+    h.aegis.lastSeqBySource.set("src_test", 5);
+    const lines: string[] = [];
+    const orig = console.log;
+    console.log = (...args: unknown[]) => {
+      lines.push(args.map(String).join(" "));
+    };
+    try {
+      const { base, connector } = await h.start();
+      const first = await post(base, "/events", { from: "real", n: 1 });
+      expect([200, 202]).toContain(first.status);
+      expect(String(connector.health().last_error ?? "")).toMatch(/seq ownership conflict/i);
+      expect(lines.some((l) => l.includes("Synced local sequence to remote"))).toBe(false);
+      expect(h.aegis.accepted).toHaveLength(0);
+    } finally {
+      console.log = orig;
+    }
+  });
 });

@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type pg from "pg";
 import {
   getPlatformEmailSettings,
+  isDeliverableMailbox,
+  isOutboundEmailEnabled,
   PlatformEmailSettingsError,
   resolvePlatformEmailConfig,
   resolvePlatformEmailDelivery,
@@ -50,13 +52,42 @@ const SMTP_PASS = "smtp-app-password-xyz";
 describe("platform email settings (SMTP + Resend)", () => {
   beforeEach(() => {
     process.env.AEGIS_BRIDGE_MASTER_KEY = "m".repeat(40);
+    process.env.AEGIS_EMAIL_ENABLED = "1";
     delete process.env.RESEND_API_KEY;
     delete process.env.INVITE_EMAIL_FROM;
+    delete process.env.AEGIS_EMAIL_ALLOW_DEMO_RECIPIENTS;
   });
   afterEach(() => {
     vi.restoreAllMocks();
     delete process.env.RESEND_API_KEY;
     delete process.env.INVITE_EMAIL_FROM;
+    delete process.env.AEGIS_EMAIL_ENABLED;
+    delete process.env.AEGIS_EMAIL_ALLOW_DEMO_RECIPIENTS;
+  });
+
+  it("does not resolve a provider unless email is explicitly enabled or production", async () => {
+    const prevNode = process.env.NODE_ENV;
+    const prevAegis = process.env.AEGIS_ENV;
+    delete process.env.AEGIS_EMAIL_ENABLED;
+    delete process.env.NODE_ENV;
+    delete process.env.AEGIS_ENV;
+    process.env.RESEND_API_KEY = "re_env_key_000000000000";
+    const { client } = fakeClient();
+    try {
+      const off = await resolvePlatformEmailDelivery(client);
+      expect(off.mode).toBe("none");
+      expect(off.apiKey).toBeNull();
+      expect(isOutboundEmailEnabled()).toBe(false);
+      expect(isDeliverableMailbox("officer@demo.test")).toBe(false);
+      expect(isDeliverableMailbox("ada@bank.example")).toBe(true);
+      process.env.NODE_ENV = "production";
+      expect(isOutboundEmailEnabled()).toBe(true);
+    } finally {
+      if (prevNode === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = prevNode;
+      if (prevAegis === undefined) delete process.env.AEGIS_ENV;
+      else process.env.AEGIS_ENV = prevAegis;
+    }
   });
 
   it("stores the Resend key encrypted and never serialises it", async () => {

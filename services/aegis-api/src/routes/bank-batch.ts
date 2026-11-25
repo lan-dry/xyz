@@ -14,7 +14,10 @@ import {
 import { handleBankEvent } from "../bank/handle-event.js";
 import type { BankEvent } from "../bank/types.js";
 import { getPool } from "../db/pool.js";
+import { enforceOrgIngestControls } from "../limits/tenant-limits.js";
 import { organizationRequiresSignedEvents } from "../sources/registry.js";
+import { markOnboardingStep } from "../tenants/onboarding-checklist.js";
+import { blockSandboxIngest } from "../tenants/synthetic-guard.js";
 import { signedEventsRequiredBody } from "./bank-events.js";
 
 function bearerToken(authorization: string | undefined): string | null {
@@ -105,9 +108,38 @@ export async function postBankEventBatch(c: Context): Promise<Response> {
       return c.json({ error: "Invalid API key" }, 401);
     }
 
+    // Dry run does not store events, so the sandbox quota does not apply.
+    const blocked = await enforceOrgIngestControls(client, auth.organizationId, {
+      enforceQuota: !dryRun,
+    });
+    if (blocked) return blocked;
+
     // Batch imports are unsigned; a dry run only reports, so only committing is refused.
     if (!dryRun && (await organizationRequiresSignedEvents(client, auth.organizationId))) {
       return c.json(signedEventsRequiredBody(), 400);
+    }
+
+    const orgGate = await client.query<{
+      tenant_kind: string;
+      sandbox_archived_at: Date | null;
+      sandbox_read_only_until: Date | null;
+    }>(
+      `SELECT COALESCE(tenant_kind, 'real') AS tenant_kind,
+              sandbox_archived_at, sandbox_read_only_until
+         FROM organization WHERE organization_id = $1`,
+      [auth.organizationId],
+    );
+    const synthetic = blockSandboxIngest(orgGate.rows[0], { text, defaults: body.defaults });
+    if (synthetic) {
+      return c.json(
+        {
+          error: synthetic.error,
+          code: synthetic.code,
+          message: synthetic.message,
+          field: synthetic.field,
+        },
+        synthetic.status,
+      );
     }
 
     const report = await runBatchImport(text, format, mapping, {
@@ -122,6 +154,9 @@ export async function postBankEventBatch(c: Context): Promise<Response> {
             }),
     });
 
+    if (!dryRun && report.committed_rows > 0) {
+      await markOnboardingStep(client, auth.organizationId, "send_first_event");
+    }
     return c.json(report, 200);
   } finally {
     client.release();

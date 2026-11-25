@@ -1,4 +1,8 @@
-import { resolvePlatformEmailDelivery } from "@salanor/platform-auth";
+import {
+  isDeliverableMailbox,
+  isOutboundEmailEnabled,
+  resolvePlatformEmailDelivery,
+} from "@salanor/platform-auth";
 import nodemailer from "nodemailer";
 
 import { getPool } from "../db/pool.js";
@@ -15,6 +19,26 @@ export class EmailDeliveryError extends Error {
     super(message);
     this.name = "EmailDeliveryError";
   }
+}
+
+function isEmailNotConfigured(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = (err as { code?: unknown }).code;
+  return code === "email_not_configured";
+}
+
+/** One-line log when mail is intentionally off; full error only for real send failures. */
+export function logEmailDeliveryFailure(prefix: string, err: unknown): void {
+  if (isEmailNotConfigured(err)) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : "Transactional email is off or the recipient is not deliverable.";
+    console.log(`${prefix}: skipped (${message})`);
+    return;
+  }
+  const summary = err instanceof Error ? err.message : String(err);
+  console.error(`${prefix}: ${summary}`);
 }
 
 /**
@@ -152,6 +176,12 @@ async function sendViaSmtp(
 export async function sendTransactionalEmail(
   input: SendEmailInput,
 ): Promise<void> {
+  if (!isOutboundEmailEnabled() || !isDeliverableMailbox(input.to)) {
+    throw new EmailDeliveryError(
+      "email_not_configured",
+      "Transactional email is off. Set AEGIS_EMAIL_ENABLED=1 to send, and use a real inbox (demo.test and example.com are never delivered).",
+    );
+  }
   let orgDelivery: OrgEmailDelivery | null = null;
   if (input.organizationId) {
     orgDelivery = await resolveOrgEmailDelivery(input.organizationId);

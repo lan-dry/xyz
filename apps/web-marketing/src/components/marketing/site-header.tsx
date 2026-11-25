@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useId, useState } from "react";
 
 import { ConsoleNavLink } from "./console-nav-link";
-import { contactUrl, docsUrl } from "@/lib/site-urls";
+import { docsUrl } from "@/lib/site-urls";
 
 import btn from "./buttons.module.css";
 import { DocsDropdown, type DocsNavItem } from "./docs-dropdown";
@@ -86,9 +86,9 @@ export function SiteHeader() {
 
         <div className={styles.right}>
           <ConsoleNavLink />
-          <a href={contactUrl()} className={`${btn.btnPrimary} ${btn.btnPrimaryNav}`}>
-            Get access
-          </a>
+          <Link href="/request-access" className={`${btn.btnPrimary} ${btn.btnPrimaryNav}`}>
+            Request access
+          </Link>
           <button
             type="button"
             className={styles.menuBtn}
@@ -123,9 +123,9 @@ export function SiteHeader() {
         </ul>
         <div className={styles.mobileCtas}>
           <ConsoleNavLink className={btn.btnGhost} onClick={closeAll} />
-          <a href={contactUrl()} className={btn.btnPrimary} onClick={closeAll}>
-            Get access
-          </a>
+          <Link href="/request-access" className={btn.btnPrimary} onClick={closeAll}>
+            Request access
+          </Link>
         </div>
       </div>
     </>

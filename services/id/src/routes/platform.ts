@@ -38,6 +38,9 @@ import {
   platformEnsureOrganizationMember,
   requireConfirmSlug,
   InviteError,
+  createOrganizationInvitation,
+  generateInviteToken,
+  hashInviteToken,
   resolvePlatformStaffSession,
   SALANOR_SESSION_COOKIE,
   sessionHasPlatformPermission,
@@ -57,8 +60,11 @@ import { join as joinPath, resolve as resolvePath } from "node:path";
 import pg from "pg";
 import {
   EmailDeliveryError,
+  logEmailDeliveryFailure,
   sendTransactionalEmail,
 } from "../email/email-delivery.js";
+import { sendAccessRequestRejectionEmail } from "../email/send-access-request-rejection.js";
+import { sendSandboxInviteEmail } from "../email/send-sandbox-invite.js";
 import { getPool } from "../db/pool.js";
 import {
   listContactLeads,
@@ -67,6 +73,85 @@ import {
 } from "../lib/contact-leads.js";
 
 export const platformRoutes = new Hono();
+
+/** Aegis sandbox invites land on the console (not Stoa workspace). */
+function sandboxInviteAcceptOrigin(): string {
+  return (
+    process.env.CONSOLE_ORIGIN?.replace(/\/$/, "") ??
+    process.env.STOA_WORKSPACE_ORIGIN?.replace(/\/$/, "") ??
+    "http://localhost:3000"
+  );
+}
+
+/** First admin invite for a new sandbox. Email failure still returns the URL. */
+async function inviteSandboxAdmin(input: {
+  organizationId: string;
+  organizationName: string;
+  email: string;
+  invitedByEmail: string;
+}): Promise<{
+  invitation_id: string | null;
+  invite_url: string | null;
+  email_delivered: boolean;
+  invite_error: string | null;
+}> {
+  const token = generateInviteToken();
+  const email = input.email.trim().toLowerCase();
+  try {
+    let created: { invitation_id: string; expires_at: Date };
+    try {
+      created = await createOrganizationInvitation(getPool(), {
+        organizationId: input.organizationId,
+        email,
+        role: "admin",
+        invitedByMembershipId: null,
+        token,
+      });
+    } catch (err) {
+      if (!(err instanceof PlanLimitError)) throw err;
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const inserted = await getPool().query<{ invitation_id: string; expires_at: Date }>(
+        `INSERT INTO organization_invitation (
+           organization_id, email, role, token_hash, invited_by, expires_at
+         ) VALUES ($1, $2, 'admin', $3, NULL, $4)
+         RETURNING invitation_id, expires_at`,
+        [input.organizationId, email, hashInviteToken(token), expiresAt],
+      );
+      created = inserted.rows[0]!;
+    }
+    const inviteUrl = `${sandboxInviteAcceptOrigin()}/invite?token=${encodeURIComponent(token)}`;
+    let emailDelivered = false;
+    try {
+      await sendSandboxInviteEmail({
+        to: email,
+        inviteUrl,
+        organizationName: input.organizationName,
+        invitedByEmail: input.invitedByEmail,
+        organizationId: input.organizationId,
+      });
+      emailDelivered = true;
+    } catch (emailErr) {
+      logEmailDeliveryFailure("[id] sandbox admin invite email", emailErr);
+    }
+    return {
+      invitation_id: created.invitation_id,
+      invite_url: inviteUrl,
+      email_delivered: emailDelivered,
+      invite_error: emailDelivered
+        ? null
+        : "Invitation created. Email is off, so share the invite URL.",
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[id] sandbox admin invite", err);
+    return {
+      invitation_id: null,
+      invite_url: null,
+      email_delivered: false,
+      invite_error: message,
+    };
+  }
+}
 
 function platformSecretOk(c: { req: { header: (n: string) => string | undefined } }): boolean {
   const expected = process.env.PLATFORM_BOOTSTRAP_SECRET?.trim();
@@ -1107,13 +1192,32 @@ platformRoutes.post("/access-requests/:requestId/approve", async (c) => {
   const slug = `${slugBase}-sb-${Date.now().toString(36)}`;
   const org = await getPool().query<{ organization_id: string }>(
     `INSERT INTO organization (name, slug, plan, region, topology, tenant_kind, is_test,
-        sandbox_expires_at, event_quota_daily, storage_quota_mb)
+        sandbox_expires_at, event_quota_daily, storage_quota_mb, onboarding_completed_at)
      VALUES ($1, $2, 'free', 'eu-west', 'cloud', 'sandbox', true,
-        now() + interval '30 days', 5000, 512)
+        now() + interval '30 days', 5000, 512, now())
      RETURNING organization_id`,
     [String(row.company).slice(0, 120), slug],
   );
   const organizationId = org.rows[0]!.organization_id;
+  // Seed starter banking pack so held / override / split scenarios behave as named.
+  try {
+    const { ensureSandboxStarterPack } = await import(
+      "../../../aegis-api/src/tenants/sandbox-starter-pack.js"
+    );
+    const client = await getPool().connect();
+    try {
+      await client.query("BEGIN");
+      await ensureSandboxStarterPack(client, organizationId, { force: true });
+      await client.query("COMMIT");
+    } catch (packErr) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      console.error("[id] sandbox starter pack seed failed", packErr);
+    } finally {
+      client.release();
+    }
+  } catch (packImportErr) {
+    console.error("[id] sandbox starter pack import failed", packImportErr);
+  }
   await getPool().query(
     `UPDATE sandbox_access_request
         SET status = 'approved', decided_at = now(), decided_by = $2,
@@ -1121,17 +1225,39 @@ platformRoutes.post("/access-requests/:requestId/approve", async (c) => {
       WHERE request_id = $1`,
     [requestId, actor, organizationId],
   );
+  const invite = await inviteSandboxAdmin({
+    organizationId,
+    organizationName: String(row.company).slice(0, 120),
+    email: String(row.work_email),
+    invitedByEmail: actor,
+  });
   await getPool().query(
     `INSERT INTO platform_sandbox_audit (organization_id, action, actor, detail)
      VALUES ($1, 'approve_access', $2, $3::jsonb)`,
-    [organizationId, actor, JSON.stringify({ request_id: requestId, email: row.work_email })],
+    [
+      organizationId,
+      actor,
+      JSON.stringify({
+        request_id: requestId,
+        email: row.work_email,
+        invitation_id: invite.invitation_id,
+        email_delivered: invite.email_delivered,
+      }),
+    ],
   );
   return c.json({
     ok: true,
     organization_id: organizationId,
     slug,
-    message:
-      "Sandbox organisation created. Send the invite email from Ops or the console (Resend).",
+    invitation_id: invite.invitation_id,
+    invite_url: invite.invite_url,
+    email_delivered: invite.email_delivered,
+    message: invite.email_delivered
+      ? "Sandbox created and admin invite emailed."
+      : invite.invite_url
+        ? "Sandbox created. Invite is ready; email was not sent."
+        : "Sandbox created, but the admin invite could not be created.",
+    ...(invite.invite_error ? { invite_error: invite.invite_error } : {}),
   });
 });
 
@@ -1141,16 +1267,40 @@ platformRoutes.post("/access-requests/:requestId/reject", async (c) => {
   const requestId = c.req.param("requestId");
   const actor = access.staff?.email ?? "platform";
   const body = (await c.req.json().catch(() => ({}))) as { note?: string };
-  const r = await getPool().query(
+  const note =
+    body.note?.trim() || "Not a fit for the sandbox programme right now.";
+  const r = await getPool().query<{
+    request_id: string;
+    work_email: string;
+    company: string;
+  }>(
     `UPDATE sandbox_access_request
         SET status = 'rejected', decided_at = now(), decided_by = $2,
             decision_note = $3
       WHERE request_id = $1 AND status = 'pending'
-      RETURNING request_id`,
-    [requestId, actor, body.note?.trim() || "Not a fit for the sandbox programme right now."],
+      RETURNING request_id, work_email, company`,
+    [requestId, actor, note],
   );
   if (!r.rows[0]) return c.json({ error: "Not found or already decided" }, 404);
-  return c.json({ ok: true });
+  const row = r.rows[0];
+  let emailDelivered = false;
+  try {
+    await sendAccessRequestRejectionEmail({
+      to: String(row.work_email),
+      company: String(row.company),
+      note,
+    });
+    emailDelivered = true;
+  } catch (emailErr) {
+    logEmailDeliveryFailure("[id] access-request rejection email", emailErr);
+  }
+  return c.json({
+    ok: true,
+    email_delivered: emailDelivered,
+    message: emailDelivered
+      ? "Request rejected and email sent."
+      : "Request rejected. Rejection email was not sent.",
+  });
 });
 
 platformRoutes.get("/organizations/:organizationId", async (c) => {

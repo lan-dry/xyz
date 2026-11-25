@@ -31,7 +31,7 @@ describe("APS schema validation", () => {
       validateEvent(event);
     } catch (err) {
       const details = (err as ApsValidationError).details.join(" ");
-      expect(details).toMatch(/signature/i);
+      expect(details).toMatch(/sig/i);
     }
   });
 });

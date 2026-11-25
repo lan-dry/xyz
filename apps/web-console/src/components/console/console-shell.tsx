@@ -14,6 +14,7 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 
 import { isNavActive, navForProfile, type ConsoleNavItem } from "@/lib/console-nav";
+import { canManageOrg } from "@/lib/org-roles";
 import { isBankDemoProfile } from "@/lib/ui-profile";
 import {
   applyConsoleTheme,
@@ -31,6 +32,7 @@ import {
 import { VISIBLE_PLATFORM_PRODUCTS } from "@/lib/products";
 import { docsUrl, MARKETING_URL, PLATFORM_URL } from "@/lib/site-urls";
 import { consoleApi } from "@/lib/api";
+import { useSandboxStatus } from "@/lib/tenant-copy";
 import type { ConsoleImpersonation, ConsoleOrganization, ConsoleUser } from "@/lib/types";
 
 import { SalanorLogo } from "@/components/salanor-logo";
@@ -108,6 +110,8 @@ export function ConsoleShell({
     enabled: product === "aegis",
   });
   const pendingCount = pendingApprovalsQuery.data?.approvals?.length ?? 0;
+  const sandboxStatus = useSandboxStatus();
+  const sandbox = sandboxStatus.data?.is_sandbox === true ? sandboxStatus.data : null;
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(SIDEBAR_KEY) === "1");
@@ -189,7 +193,8 @@ export function ConsoleShell({
         <div className={shell.sidebarScroll}>
           <nav className={shell.nav} aria-label={`${productTitle} navigation`}>
             {navItems
-              .filter((item) => !item.adminOnly || user.role === "admin")
+              .filter((item) => !item.adminOnly || canManageOrg(user.role))
+              .filter((item) => !item.sandboxOnly || sandbox != null)
               .map((item) => {
               const Icon = item.icon;
               const active = isNavActive(pathname, item.href);
@@ -332,6 +337,16 @@ export function ConsoleShell({
             </button>
           </div>
         </header>
+        {sandbox ? (
+          <div className={shell.sandboxBanner} role="status">
+            {sandbox.banner ?? "Sandbox · synthetic data only"}
+            {sandbox.days_remaining != null
+              ? sandbox.days_remaining === 0
+                ? " · expires today"
+                : ` · ${sandbox.days_remaining} day${sandbox.days_remaining === 1 ? "" : "s"} left`
+              : null}
+          </div>
+        ) : null}
         {impersonation ? (
           <div className={shell.impersonationBanner} role="status">
             <div>

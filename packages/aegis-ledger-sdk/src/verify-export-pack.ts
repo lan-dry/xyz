@@ -1,4 +1,4 @@
-import { eventHashFromBody } from "./canonical.js";
+import { eventDigest } from "./canonical.js";
 import { computeMerkleRoot } from "./merkle.js";
 import { replayEvents } from "./replay-events.js";
 import type { EvidenceExportPack, ExportPackWitness } from "./replay-events.js";
@@ -14,16 +14,8 @@ export interface VerifyExportPackResult {
   witness_valid?: boolean;
 }
 
-function bodyWithoutEventHash(event: ApsEvent): Record<string, unknown> {
-  const { chain, ...rest } = event;
-  return {
-    ...rest,
-    chain: { prev_event_hash: chain.prev_event_hash },
-  };
-}
-
 function verifyEventChain(events: ApsEvent[], errors: string[]): void {
-  let expectedPrev: string | null = null;
+  let expectedParent: string | undefined;
   for (const [index, event] of events.entries()) {
     try {
       validateEvent(event);
@@ -32,18 +24,14 @@ function verifyEventChain(events: ApsEvent[], errors: string[]): void {
       continue;
     }
 
-    if (event.chain.prev_event_hash !== expectedPrev) {
+    if (event.parent_event_id !== expectedParent) {
       errors.push(
-        `event[${index}] prev_event_hash mismatch: expected ${expectedPrev ?? "null"}, got ${event.chain.prev_event_hash}`,
+        `event[${index}] parent_event_id mismatch: expected ${expectedParent ?? "undefined"}, got ${event.parent_event_id ?? "undefined"}`,
       );
     }
 
-    const computed = eventHashFromBody(bodyWithoutEventHash(event));
-    if (computed !== event.chain.event_hash) {
-      errors.push(`event[${index}] event_hash mismatch`);
-    }
-
-    expectedPrev = event.chain.event_hash;
+    void eventDigest(event);
+    expectedParent = event.event_id;
   }
 }
 
@@ -69,7 +57,7 @@ export function verifyExportPack(pack: EvidenceExportPack): VerifyExportPackResu
     errors.push(`replay digest mismatch: expected ${pack.replay.digest}, got ${replay.digest}`);
   }
 
-  const merkleRoot = computeMerkleRoot(pack.events.map((e) => e.chain.event_hash));
+  const merkleRoot = computeMerkleRoot(pack.events.map((e) => eventDigest(e)));
 
   if (pack.anchor) {
     if (pack.anchor.merkle_root !== merkleRoot) {

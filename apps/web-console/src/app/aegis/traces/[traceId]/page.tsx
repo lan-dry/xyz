@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import {
   BackLink,
@@ -55,6 +55,7 @@ export default function TraceDetailPage() {
   const [revealError, setRevealError] = useState<string | null>(null);
   const [dataSeenOpen, setDataSeenOpen] = useState(false);
 
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ["console", "trace", traceId],
     queryFn: () =>
@@ -65,6 +66,11 @@ export default function TraceDetailPage() {
         span_tree: SpanTreeNode[];
       }>(`/traces/${encodeURIComponent(traceId)}`),
   });
+
+  useEffect(() => {
+    if (!data?.events?.some((e) => Boolean(e.event_hash))) return;
+    void queryClient.invalidateQueries({ queryKey: ["console", "sandbox", "status"] });
+  }, [data, queryClient]);
 
   const meQuery = useQuery({
     queryKey: ["id", "me"],
@@ -458,6 +464,15 @@ export default function TraceDetailPage() {
                   story.policyReason ||
                   story.bankDecision}
               </p>
+              <p
+                style={{
+                  margin: "0.65rem 0 0",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                }}
+              >
+                {story.decidedBy}
+              </p>
               {story.ruleIds.length > 0 ? (
                 <p
                   style={{
@@ -511,16 +526,16 @@ export default function TraceDetailPage() {
               ) : null}
               {story.approver ? (
                 <p style={{ margin: 0, fontSize: "0.875rem" }}>
-                  {story.approvalDecision === "rejected" ? "Declined" : "Approved"} by{" "}
-                  <strong>{story.approver}</strong>
+                  <strong>{story.decidedBy}</strong>
                   {story.approvalAt ? (
                     <>
                       {" "}
-                      at <ConsoleTime iso={story.approvalAt} />
+                      · <ConsoleTime iso={story.approvalAt} />
                     </>
                   ) : null}
-                  .
                 </p>
+              ) : story.decidedBy.startsWith("Record only") ? (
+                <p style={{ margin: 0, fontSize: "0.875rem" }}>{story.decidedBy}</p>
               ) : story.noApprovalNeeded ? (
                 <p style={{ margin: 0, fontSize: "0.875rem" }}>{story.noApprovalNeeded}</p>
               ) : story.waitingForPerson || data.trace.pending_approval ? (

@@ -46,7 +46,10 @@ describe("segment × product limits + pack rules", () => {
     const vel = pack.rules.find((r) => r.rule_id === "VEL-SEG-DAY");
     const ben = pack.rules.find((r) => r.rule_id === "BEN-NEW-OFF");
     const frd = pack.rules.find((r) => r.rule_id === "FRD-SCORE-RET");
+    const chn = pack.rules.find((r) => r.rule_id === "CHN-AGT");
     expect(vel?.conditions?.expr).toBeTruthy();
+    expect(chn?.conditions?.expr).toBeTruthy();
+    expect(JSON.stringify(chn?.conditions)).toMatch(/aegis\.channel/);
     expect(ben?.conditions?.expr).toBeTruthy();
     expect(frd?.conditions?.hard_stop).toBe(true);
     expect(JSON.stringify(vel?.conditions)).toMatch(/"or"/);
@@ -162,6 +165,67 @@ describe("segment × product limits + pack rules", () => {
     });
     expect(result.outcome).toBe("hold");
     expect(result.decision_basis.decided_by_rule_id).toBe("BEN-NEW-OFF");
+  });
+
+  it("agent or USSD off-hours above 5M holds CHN-AGT", () => {
+    const result = evaluateBankEvent({
+      policy_id: "pol_gov",
+      combine: "all_matching",
+      rules: pack.rules.map((r) => ({
+        ...r,
+        policy_id: "pol_gov",
+        obligations: r.obligations,
+      })),
+      tool_name: "governed.action",
+      attributes: {
+        amount: 6_000_000,
+        currency: "RWF",
+        product: "payment_transfer",
+        aegis: {
+          channel: "agent",
+          time_of_day: "off_hours",
+          new_beneficiary: false,
+          exceeds_segment_daily_amount: false,
+          exceeds_segment_daily_count: false,
+          segment: "retail_standard",
+        },
+      },
+      matrix_rows: matrix.filter((m) => m.product === "payment_transfer"),
+      ladder,
+      product: "payment_transfer",
+    });
+    expect(result.outcome).toBe("hold");
+    expect(result.matched_rules.some((m) => m.rule_id === "CHN-AGT")).toBe(true);
+  });
+
+  it("branch channel does not match CHN-AGT", () => {
+    const result = evaluateBankEvent({
+      policy_id: "pol_gov",
+      combine: "all_matching",
+      rules: pack.rules.map((r) => ({
+        ...r,
+        policy_id: "pol_gov",
+        obligations: r.obligations,
+      })),
+      tool_name: "governed.action",
+      attributes: {
+        amount: 6_000_000,
+        currency: "RWF",
+        product: "payment_transfer",
+        aegis: {
+          channel: "branch",
+          time_of_day: "off_hours",
+          new_beneficiary: false,
+          exceeds_segment_daily_amount: false,
+          exceeds_segment_daily_count: false,
+          segment: "retail_standard",
+        },
+      },
+      matrix_rows: matrix.filter((m) => m.product === "payment_transfer"),
+      ladder,
+      product: "payment_transfer",
+    });
+    expect(result.matched_rules.some((m) => m.rule_id === "CHN-AGT")).toBe(false);
   });
 
   it("fraud score 0.94 on retail_standard hard-stops FRD-SCORE-RET", () => {

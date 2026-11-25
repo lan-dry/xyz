@@ -10,7 +10,11 @@ import { resolveIngestKey } from "../auth/ingest-key.js";
 import { handleBankEvent } from "../bank/handle-event.js";
 import { BankValidationError, parseBankEvent } from "../bank/validate.js";
 import { getPool } from "../db/pool.js";
+import { enforceOrgIngestControls } from "../limits/tenant-limits.js";
 import { organizationRequiresSignedEvents } from "../sources/registry.js";
+import { markOnboardingStep } from "../tenants/onboarding-checklist.js";
+import { ensureSandboxSigningAgent } from "../tenants/sandbox-signing.js";
+import { blockSandboxIngest } from "../tenants/synthetic-guard.js";
 import { ingestSignedEnvelope, isEnvelopeBody } from "./source-events.js";
 
 /** 400 body for unsigned events sent to an organisation that requires signed events. */
@@ -102,12 +106,41 @@ export async function postBankEvent(c: Context): Promise<Response> {
       return c.json({ error: "Invalid API key" }, 401);
     }
 
+    const blocked = await enforceOrgIngestControls(client, auth.organizationId);
+    if (blocked) return blocked;
+
     if (await organizationRequiresSignedEvents(client, auth.organizationId)) {
       return c.json(signedEventsRequiredBody(), 400);
     }
 
+    const orgGate = await client.query<{
+      tenant_kind: string;
+      sandbox_archived_at: Date | null;
+      sandbox_read_only_until: Date | null;
+    }>(
+      `SELECT COALESCE(tenant_kind, 'real') AS tenant_kind,
+              sandbox_archived_at, sandbox_read_only_until
+         FROM organization WHERE organization_id = $1`,
+      [auth.organizationId],
+    );
+    const synthetic = blockSandboxIngest(orgGate.rows[0], body);
+    if (synthetic) {
+      return c.json(
+        {
+          error: synthetic.error,
+          code: synthetic.code,
+          message: synthetic.message,
+          field: synthetic.field,
+        },
+        synthetic.status,
+      );
+    }
+
     await client.query("BEGIN");
     try {
+      if (orgGate.rows[0]?.tenant_kind === "sandbox") {
+        await ensureSandboxSigningAgent(client, auth.organizationId);
+      }
       // A bank system replaying events it decided under its own fallback while Aegis was
       // unreachable says so (attributes.decided_without_aegis). That only ever makes the
       // receipt more conservative ("decided without Aegis"); it can never relax a rule.
@@ -116,6 +149,7 @@ export async function postBankEvent(c: Context): Promise<Response> {
         ingestKeyId: auth.keyId,
       });
       await client.query("COMMIT");
+      await markOnboardingStep(client, auth.organizationId, "send_first_event");
       return c.json(decision, 200);
     } catch (err) {
       await client.query("ROLLBACK");

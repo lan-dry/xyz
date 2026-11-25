@@ -197,6 +197,7 @@ export class RealConnectors {
         sync_wait_ms: 8_000,
         request_timeout_ms: 15_000,
         retry: { initial_ms: 400, max_ms: 8_000, factor: 2, jitter: 0.1 },
+        demo_seq_catchup: true,
       });
       this.connectors.set(sys.id, connector);
       return connector;

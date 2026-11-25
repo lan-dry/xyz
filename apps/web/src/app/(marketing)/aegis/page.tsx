@@ -15,7 +15,7 @@ export default function AegisPage() {
         ledger your auditors can replay end-to-end.
       </p>
       <div className="mt-8 flex flex-wrap gap-4">
-        <Link href="/contact" className="rounded bg-teal px-4 py-2 text-bone no-underline hover:opacity-90">
+        <Link href="/request-access" className="rounded bg-teal px-4 py-2 text-bone no-underline hover:opacity-90">
           Request access
         </Link>
         <Link href="/aegis/docs" className="rounded border border-ink/20 px-4 py-2 text-ink no-underline hover:bg-ink/5">

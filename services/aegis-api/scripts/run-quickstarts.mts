@@ -302,6 +302,32 @@ with urllib.request.urlopen(req) as resp:
   console.log("OK connector-docker (doc contract)");
 }
 
+{
+  const collectionPath = resolve(root, "docs/quickstart/salanor-sandbox.postman_collection.json");
+  const feedPath = resolve(root, "docs/quickstart/samples/sample-feed.jsonl");
+  const collection = JSON.parse(readFileSync(collectionPath, "utf8")) as {
+    item?: Array<{ request?: { url?: string } }>;
+  };
+  const urls = (collection.item ?? []).map((item) => item.request?.url ?? "").join("\n");
+  const feed = readFileSync(feedPath, "utf8");
+  const ok =
+    urls.includes("/v1/public/access-request") &&
+    urls.includes("/v1/aegis/bank/events") &&
+    urls.includes("/v1/public/evidence-bundle/verify") &&
+    feed.includes("ACCT-DEMO-001") &&
+    feed.includes("split_payment");
+  if (!ok) fail("postman", { urls: urls.slice(0, 500) });
+  results.quickstarts = {
+    ...(results.quickstarts as object),
+    postman: {
+      ok: true,
+      mode: "collection_contract",
+      file: "docs/quickstart/salanor-sandbox.postman_collection.json",
+    },
+  };
+  console.log("OK postman collection");
+}
+
 const artifact = resolve(outDir, `quickstart-run-${stamp}.json`);
 const latest = resolve(outDir, "quickstart-run-latest.json");
 const payload = { ok: true, ...results };

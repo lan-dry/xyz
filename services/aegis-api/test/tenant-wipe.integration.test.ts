@@ -551,10 +551,30 @@ describeIfDb("tenant wipe (migration 020)", () => {
     // Forensic evidence bundle: rebuilt from the DB after the wipe, then verified with no DB at all.
     const bundleAfter = await loadEvidenceBundle(getPool(), keep.orgId, keep.traceId);
     expect(bundleAfter).not.toBeNull();
-    // Identical to the bundle built before the wipe (only the wall-clock export stamp differs).
+    // Identical to the bundle built before the wipe. Wall-clock export stamp and
+    // TSA stamp fields can race (pending → stamped) while the wipe runs; those
+    // are not wipe side-effects.
     const stable = (b: unknown) => {
       const o = JSON.parse(JSON.stringify(b)) as Record<string, unknown>;
       delete o.generated_at_utc;
+      const scrub = (node: unknown): void => {
+        if (!node || typeof node !== "object") return;
+        if (Array.isArray(node)) {
+          for (const item of node) scrub(item);
+          return;
+        }
+        const rec = node as Record<string, unknown>;
+        if (rec.timestamp && typeof rec.timestamp === "object") {
+          const ts = rec.timestamp as Record<string, unknown>;
+          delete ts.authority;
+          delete ts.gen_time_utc;
+          delete ts.status;
+          delete ts.token_b64;
+          delete ts.tsa_url;
+        }
+        for (const value of Object.values(rec)) scrub(value);
+      };
+      scrub(o);
       return o;
     };
     expect(stable(bundleAfter)).toEqual(stable(keepBundleBefore));

@@ -10,5 +10,10 @@ export default defineConfig({
   },
   test: {
     include: ["test/**/*.test.ts"],
+    // Windows + vitest forks/tinypool has flaked under Nx parallel load;
+    // threads + single worker keeps sequence tests deterministic.
+    pool: "threads",
+    maxWorkers: 1,
+    fileParallelism: false,
   },
 });

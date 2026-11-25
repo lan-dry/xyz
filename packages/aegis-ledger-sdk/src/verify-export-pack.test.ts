@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { eventDigest } from "./canonical.js";
 import { computeMerkleRoot } from "./merkle.js";
 import { record } from "./record.js";
 import { buildEvidenceExportPack } from "./replay-events.js";
@@ -16,15 +17,23 @@ function oneValidEvent() {
     const { event } = record(
       storePath,
       {
-        tenant_id: "t",
-        actor: { id: "a", type: "software_agent" },
-        action: "decision.record",
-        subject: { type: "step", id: "s" },
-        context: { inputs: {}, outcome: { ok: true } },
+        organization_id: "t",
+        agent_id: "agent:a",
+        key_id: "key:a",
+        actor_type: "agent",
+        actor_principal: "a",
+        action_kind: "decision",
+        policy_decision: "allow",
+        payload: {
+          subject: { type: "step", id: "s" },
+          inputs: {},
+          outcome: { ok: true },
+        },
       },
       {
-        event_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
-        recorded_at: "2026-05-16T12:00:00.000Z",
+        event_id: "evt_dddddddddddd4ddd8ddddddddddddd",
+        emitted_at: "2026-05-16T12:00:00.000Z",
+        trace_id: "trc_verify_one",
       },
     );
     return event;
@@ -36,7 +45,7 @@ function oneValidEvent() {
 describe("verifyExportPack", () => {
   it("accepts a valid export pack with anchor", () => {
     const event = oneValidEvent();
-    const merkleRoot = computeMerkleRoot([event.chain.event_hash]);
+    const merkleRoot = computeMerkleRoot([eventDigest(event)]);
     const pack = buildEvidenceExportPack({
       traceId: "trace-verify",
       events: [event],
@@ -81,7 +90,7 @@ describe("verifyExportPack", () => {
 
   it("validates Tier-C witness block on anchored export", () => {
     const event = oneValidEvent();
-    const merkleRoot = computeMerkleRoot([event.chain.event_hash]);
+    const merkleRoot = computeMerkleRoot([eventDigest(event)]);
     const pack = buildEvidenceExportPack({
       traceId: "trace-witness",
       events: [event],
@@ -101,7 +110,7 @@ describe("verifyExportPack", () => {
 
   it("rejects witness merkle_root mismatch", () => {
     const event = oneValidEvent();
-    const merkleRoot = computeMerkleRoot([event.chain.event_hash]);
+    const merkleRoot = computeMerkleRoot([eventDigest(event)]);
     const pack = buildEvidenceExportPack({
       traceId: "trace-bad-witness",
       events: [event],

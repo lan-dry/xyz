@@ -105,7 +105,7 @@ export async function createConnector(
   const url = ingestUrl(config);
   const doFetch = deps.fetch ?? fetch;
 
-  async function fetchLastSeq(): Promise<number> {
+  async function fetchLastSeqInfo(): Promise<{ last_seq: number; tenant_kind?: string }> {
     const response = await doFetch(lastSeqUrl(config), {
       method: "GET",
       headers: {
@@ -126,15 +126,41 @@ export async function createConnector(
         `Failed to read remote last_seq (HTTP ${response.status}): ${JSON.stringify(body).slice(0, 200)}`,
       );
     }
-    const last =
-      typeof body === "object" && body !== null
-        ? (body as Record<string, unknown>).last_seq
-        : undefined;
+    const record =
+      typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+    const last = record.last_seq;
     if (typeof last !== "number" || !Number.isSafeInteger(last) || last < 0) {
       throw new Error(`Invalid last_seq response: ${JSON.stringify(body).slice(0, 200)}`);
     }
-    return last;
+    const tenant_kind = typeof record.tenant_kind === "string" ? record.tenant_kind : undefined;
+    return { last_seq: last, tenant_kind };
   }
+
+  async function fetchLastSeq(): Promise<number> {
+    return (await fetchLastSeqInfo()).last_seq;
+  }
+
+  /** One successful last-seq read. Later gaps stay ownership conflicts. */
+  let demoCatchupDone = false;
+  async function catchUpDemoSeq(): Promise<void> {
+    if (!config.demo_seq_catchup || demoCatchupDone) return;
+    let info: { last_seq: number; tenant_kind?: string };
+    try {
+      info = await fetchLastSeqInfo();
+    } catch {
+      return;
+    }
+    demoCatchupDone = true;
+    if (info.tenant_kind !== "demo" && info.tenant_kind !== "sandbox") return;
+    const local = state.lastSeq;
+    if (local >= info.last_seq) return;
+    await state.syncFromRemoteLastSeq(info.last_seq);
+    console.log(
+      `Synced local sequence to remote (was ${local}, now ${info.last_seq}). Continuing.`,
+    );
+  }
+
+  await catchUpDemoSeq();
 
   const sender = new OutboxSender({
     state,
@@ -188,6 +214,7 @@ export async function createConnector(
 
     // seq assignment + signing + durable enqueue are serialised: a seq is never reused.
     const queued = await mutex.run(async () => {
+      await catchUpDemoSeq();
       if (idem) {
         const existing = state.findByIdempotencyKey(idem);
         if (existing) {

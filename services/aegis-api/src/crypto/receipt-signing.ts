@@ -47,7 +47,7 @@ export function custodyLabel(custody: KeyCustody | string | null | undefined): s
     case "software_interim":
       return "Key custody: software key (interim)";
     case "software":
-      return "Key custody: software key (demo tenant)";
+      return "Key custody: software key (non-production)";
     default:
       return "Key custody: unknown";
   }

@@ -25,4 +25,29 @@ Hand this to someone who has never used Salanor.
 
 Attach notes under `docs/launch/_raw/stranger-human-YYYYMMDD.md` for a human UI walk.
 
-Automated CI path: `pnpm launch:stranger` (writes `docs/launch/_raw/stranger-run-latest.json`). Quality-gate runs it after Playwright Chromium install.
+## Automated path (CI / local)
+
+```bash
+pnpm launch:stranger
+```
+
+Release blocker in **quality-gate**. Covers:
+
+1. Public access-request (work email)
+2. Ops approve → invite URL
+3. `signup-accept` (set password — no SQL bypass)
+4. Create API key, Test sender (routine + held), open sealed receipt, approve held
+5. Download evidence bundle + `aegis-verify`
+6. Invite colleague (auditor)
+7. Checklist auto-ticks (all six flags)
+8. Reset sandbox → checklist cleared → reseed
+
+Writes `docs/launch/_raw/stranger-run-latest.json`. Exit 1 on any critical step failure.
+
+Optional Chromium smoke (local): omit `STRANGER_SKIP_BROWSER` or set `CONSOLE_URL` to a running console. CI sets `STRANGER_SKIP_BROWSER=1` so the API path stays fast and deterministic.
+
+Optional public-gate Playwright smoke (needs live API):
+
+```bash
+pnpm exec playwright test -c playwright.stranger.config.ts
+```

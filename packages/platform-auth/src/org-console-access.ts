@@ -16,11 +16,33 @@ export const ORG_CONSOLE_WRITE_ROLES = new Set(["admin", "owner"]);
 /** Roles that may decide Ask-a-person approvals (not policies). */
 export const ORG_APPROVER_ROLES = new Set(["admin", "owner", "approver"]);
 
+/**
+ * Roles an admin can invite into a sandbox tenant.
+ * Product surface for prospects: Admin, Approver, Auditor.
+ */
+export const SANDBOX_INVITE_ROLES = new Set([
+  "admin",
+  "approver",
+  "auditor",
+]);
+
 export function normalizeOrgRole(role: string): string {
   const r = role.trim().toLowerCase();
   // Phase 6 product name; DB still accepts engineer.
   if (r === "developer") return "engineer";
   return r;
+}
+
+/** Create / rename / revoke ingest API keys — same as org write. */
+export function canManageIngestKeys(
+  session: ConsoleSession,
+  organizationId: string,
+): boolean {
+  return canWriteOrgConsole(session, organizationId);
+}
+
+export function isSandboxInviteRole(role: string): boolean {
+  return SANDBOX_INVITE_ROLES.has(normalizeOrgRole(role));
 }
 
 export function canReadOrgConsole(

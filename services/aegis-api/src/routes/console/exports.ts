@@ -1,5 +1,5 @@
 import { readFile, unlink } from "node:fs/promises";
-import { Hono } from "hono";
+import { Hono, type Context, type Next } from "hono";
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import { getPool } from "../../db/pool.js";
 import { runComplianceExport } from "../../compliance/worker.js";
@@ -23,8 +23,10 @@ import {
 import {
   assertCanCreateComplianceExport,
   assertCanUseComplianceSchedule,
+  canWriteOrgConsole,
   PlanLimitError,
 } from "@salanor/platform-auth";
+import { refuseExportRateLimit } from "../../limits/tenant-limits.js";
 
 function serializeExport(row: {
   export_id: string;
@@ -56,94 +58,109 @@ function serializeExport(row: {
 
 export const exportRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
+/** Create and download share one hourly budget. Listing stays unlimited so the page can poll. */
+async function enforceExportRateLimit(
+  c: Context<{ Variables: ConsoleVariables }>,
+  next: Next,
+): Promise<Response | void> {
+  const blocked = refuseExportRateLimit(c.get("consoleSession").organizationId);
+  if (blocked) return blocked;
+  await next();
+}
+
 exportRoutes.get("/compliance/exports", requireConsoleSession, async (c) => {
   const orgId = c.get("consoleSession").organizationId;
   const exports = await listComplianceExports(getPool(), orgId);
   return c.json({ exports: exports.map(serializeExport) });
 });
 
-exportRoutes.post("/compliance/exports", requireConsoleSession, async (c) => {
-  const session = c.get("consoleSession");
-  if (session.role !== "admin") {
-    return c.json({ error: "Forbidden" }, 403);
-  }
+exportRoutes.post(
+  "/compliance/exports",
+  requireConsoleSession,
+  enforceExportRateLimit,
+  async (c) => {
+    const session = c.get("consoleSession");
+    if (!canWriteOrgConsole(session, session.organizationId)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
 
-  let body: {
-    bundle_type?: string;
-    period_start?: string;
-    period_end?: string;
-    run_now?: boolean;
-  };
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: "Invalid JSON" }, 422);
-  }
+    let body: {
+      bundle_type?: string;
+      period_start?: string;
+      period_end?: string;
+      run_now?: boolean;
+    };
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Invalid JSON" }, 422);
+    }
 
-  const bundleType = body.bundle_type?.trim();
-  if (!bundleType || !isValidBundleType(bundleType)) {
-    return c.json(
-      {
-        error:
-          "bundle_type must be soc2, eu_ai_act, nist_ai_rmf, bnr_local, or combined",
-      },
-      422,
-    );
-  }
-
-  if (!body.period_start || !body.period_end) {
-    return c.json({ error: "period_start and period_end required" }, 422);
-  }
-
-  const periodStart = new Date(body.period_start);
-  const periodEnd = new Date(body.period_end);
-  if (
-    Number.isNaN(periodStart.getTime()) ||
-    Number.isNaN(periodEnd.getTime())
-  ) {
-    return c.json({ error: "Invalid date range" }, 422);
-  }
-
-  const pool = getPool();
-  try {
-    await assertCanCreateComplianceExport(pool, session.organizationId);
-  } catch (error) {
-    if (error instanceof PlanLimitError) {
+    const bundleType = body.bundle_type?.trim();
+    if (!bundleType || !isValidBundleType(bundleType)) {
       return c.json(
-        { error: error.message, code: error.code },
-        error.httpStatus as 402 | 403 | 404,
+        {
+          error:
+            "bundle_type must be soc2, eu_ai_act, nist_ai_rmf, bnr_local, or combined",
+        },
+        422,
       );
     }
-    throw error;
-  }
 
-  const row = await createComplianceExport(pool, {
-    organizationId: session.organizationId,
-    requestedBy: session.userId,
-    bundleType,
-    periodStart,
-    periodEnd,
-  });
+    if (!body.period_start || !body.period_end) {
+      return c.json({ error: "period_start and period_end required" }, 422);
+    }
 
-  await auditFromConsoleSession(pool, session, {
-    action: "compliance.export.created",
-    resourceType: "compliance_export",
-    resourceId: row.export_id,
-    metadata: { bundle_type: bundleType },
-  });
+    const periodStart = new Date(body.period_start);
+    const periodEnd = new Date(body.period_end);
+    if (
+      Number.isNaN(periodStart.getTime()) ||
+      Number.isNaN(periodEnd.getTime())
+    ) {
+      return c.json({ error: "Invalid date range" }, 422);
+    }
 
-  if (body.run_now !== false) {
-    await runComplianceExport(pool, row.export_id);
-    const updated = await getComplianceExport(
-      pool,
-      session.organizationId,
-      row.export_id,
-    );
-    return c.json({ export: serializeExport(updated ?? row) }, 201);
-  }
+    const pool = getPool();
+    try {
+      await assertCanCreateComplianceExport(pool, session.organizationId);
+    } catch (error) {
+      if (error instanceof PlanLimitError) {
+        return c.json(
+          { error: error.message, code: error.code },
+          error.httpStatus as 402 | 403 | 404,
+        );
+      }
+      throw error;
+    }
 
-  return c.json({ export: serializeExport(row) }, 201);
-});
+    const row = await createComplianceExport(pool, {
+      organizationId: session.organizationId,
+      requestedBy: session.userId,
+      bundleType,
+      periodStart,
+      periodEnd,
+    });
+
+    await auditFromConsoleSession(pool, session, {
+      action: "compliance.export.created",
+      resourceType: "compliance_export",
+      resourceId: row.export_id,
+      metadata: { bundle_type: bundleType },
+    });
+
+    if (body.run_now !== false) {
+      await runComplianceExport(pool, row.export_id);
+      const updated = await getComplianceExport(
+        pool,
+        session.organizationId,
+        row.export_id,
+      );
+      return c.json({ export: serializeExport(updated ?? row) }, 201);
+    }
+
+    return c.json({ export: serializeExport(row) }, 201);
+  },
+);
 
 exportRoutes.get(
   "/compliance/exports/:exportId",
@@ -167,7 +184,7 @@ exportRoutes.delete(
   requireConsoleSession,
   async (c) => {
     const session = c.get("consoleSession");
-    if (session.role !== "admin") {
+    if (!canWriteOrgConsole(session, session.organizationId)) {
       return c.json({ error: "Forbidden" }, 403);
     }
     const exportId = c.req.param("exportId");
@@ -201,6 +218,7 @@ exportRoutes.delete(
 exportRoutes.get(
   "/compliance/exports/:exportId/download",
   requireConsoleSession,
+  enforceExportRateLimit,
   async (c) => {
     const session = c.get("consoleSession");
     const orgId = session.organizationId;
@@ -269,7 +287,7 @@ exportRoutes.get("/compliance/schedule", requireConsoleSession, async (c) => {
 
 exportRoutes.put("/compliance/schedule", requireConsoleSession, async (c) => {
   const session = c.get("consoleSession");
-  if (session.role !== "admin") {
+  if (!canWriteOrgConsole(session, session.organizationId)) {
     return c.json({ error: "Forbidden" }, 403);
   }
 

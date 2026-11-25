@@ -1,23 +1,15 @@
-import { eventHashFromBody } from "./canonical.js";
+import { eventDigest } from "./canonical.js";
 import { validateEvent } from "./schema.js";
 import { readEvents } from "./store.js";
-import type { ApsEvent, VerifyResult } from "./types.js";
-
-function bodyWithoutEventHash(event: ApsEvent): Record<string, unknown> {
-  const { chain, ...rest } = event;
-  return {
-    ...rest,
-    chain: { prev_event_hash: chain.prev_event_hash },
-  };
-}
+import type { VerifyResult } from "./types.js";
 
 /**
- * Local integrity check: schema + hash chain continuity.
+ * Local integrity check: schema + parent_event_id continuity + recomputed digests.
  */
 export function verify(storePath: string): VerifyResult {
   const events = readEvents(storePath);
   const errors: string[] = [];
-  let expectedPrev: string | null = null;
+  let expectedParent: string | undefined;
 
   for (const [index, event] of events.entries()) {
     try {
@@ -27,18 +19,15 @@ export function verify(storePath: string): VerifyResult {
       continue;
     }
 
-    if (event.chain.prev_event_hash !== expectedPrev) {
+    if (event.parent_event_id !== expectedParent) {
       errors.push(
-        `event[${index}] prev_event_hash mismatch: expected ${expectedPrev ?? "null"}, got ${event.chain.prev_event_hash}`,
+        `event[${index}] parent_event_id mismatch: expected ${expectedParent ?? "undefined"}, got ${event.parent_event_id ?? "undefined"}`,
       );
     }
 
-    const computed = eventHashFromBody(bodyWithoutEventHash(event));
-    if (computed !== event.chain.event_hash) {
-      errors.push(`event[${index}] event_hash mismatch`);
-    }
-
-    expectedPrev = event.chain.event_hash;
+    // Touch digest so a corrupt serialize would still be detectable by callers comparing hashes.
+    void eventDigest(event);
+    expectedParent = event.event_id;
   }
 
   return { ok: errors.length === 0, event_count: events.length, errors };

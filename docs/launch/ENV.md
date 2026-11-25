@@ -25,8 +25,11 @@ Complete list of deployment variables for Gate 0 / Gate 1. Never commit real val
 | `SANDBOX_SYNTHETIC_EXTRA_REGEX` | no | Extra deny patterns |
 | `AEGIS_REQUIRED_WORKERS` | no | e.g. `witness` |
 | `AEGIS_WITNESS_MAX_AGE_MINUTES` | no | Ready staleness |
-| `ALERT_WEBHOOK_URL` | no | Ops alerts |
+| `ALERT_WEBHOOK_URL` | no | Ops alerts (witness, queue, DB, KMS, 5xx) |
 | `ALERT_EMAIL_TO` | no | Ops alerts via Resend |
+| `ALERT_QUEUE_LAG_THRESHOLD` | no | Default 500 pending TSA stamps |
+| `ALERT_5XX_SPIKE_THRESHOLD` | no | Default 25 HTTP 5xx in 5 minutes |
+| `OPS_METRICS_TOKEN` | recommended | Bearer / X-Ops-Token for `/metrics` and `/v1/ops/status` (falls back to `PLATFORM_BOOTSTRAP_SECRET`) |
 
 ## Identity (`salanor-id`)
 

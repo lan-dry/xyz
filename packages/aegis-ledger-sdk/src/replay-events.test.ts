@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { readEvents } from "./store.js";
+import type { ApsEvent } from "./types.js";
 
 describe("replayEvents", () => {
   it("matches file-based replay digest", () => {
@@ -15,18 +16,23 @@ describe("replayEvents", () => {
       record(
         storePath,
         {
-          tenant_id: "t",
-          actor: { id: "a", type: "software_agent" },
-          action: "decision.record",
-          subject: { type: "step", id: "s" },
-          context: {
+          organization_id: "t",
+          agent_id: "agent:a",
+          key_id: "key:a",
+          actor_type: "agent",
+          actor_principal: "a",
+          action_kind: "decision",
+          policy_decision: "allow",
+          payload: {
+            subject: { type: "step", id: "s" },
             inputs: { x: 1 },
             outcome: { ok: true },
           },
         },
         {
-          event_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-          recorded_at: "2026-05-16T12:00:00.000Z",
+          event_id: "evt_aaaaaaaaaaaa4aaa8aaaaaaaaaaaaa",
+          emitted_at: "2026-05-16T12:00:00.000Z",
+          trace_id: "trc_replay_file",
         },
       );
       const events = readEvents(storePath);
@@ -39,18 +45,20 @@ describe("replayEvents", () => {
   });
 
   it("builds export pack", () => {
-    const events = [
+    const events: ApsEvent[] = [
       {
-        aps_version: "0.1" as const,
-        event_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-        recorded_at: "2026-05-16T12:00:00.000Z",
-        tenant_id: "t",
-        actor: { id: "a", type: "software_agent" },
-        action: "decision.record",
-        subject: { type: "step", id: "s" },
-        context: { inputs: {}, outcome: { ok: true } },
-        signature: { alg: "local-placeholder" as const, value: "placeholder:00" },
-        chain: { prev_event_hash: null, event_hash: "sha256:deadbeef" },
+        schema_version: 1,
+        event_id: "evt_bbbbbbbbbbbb4bbb8bbbbbbbbbbbbb",
+        organization_id: "t",
+        trace_id: "trc_export_pack",
+        agent_id: "agent:a",
+        key_id: "key:a",
+        emitted_at: "2026-05-16T12:00:00.000Z",
+        actor_type: "agent",
+        actor_principal: "a",
+        action_kind: "decision",
+        policy_decision: "allow",
+        payload: { subject: { type: "step", id: "s" }, inputs: {}, outcome: { ok: true } },
       },
     ];
     const pack = buildEvidenceExportPack({ traceId: "trace-1", events });

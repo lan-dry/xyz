@@ -45,13 +45,23 @@ const PERSONAL_EMAIL_DOMAINS = new Set([
   "gmail.com",
   "googlemail.com",
   "yahoo.com",
+  "yahoo.co.uk",
   "hotmail.com",
+  "hotmail.co.uk",
   "outlook.com",
+  "live.com",
+  "msn.com",
   "icloud.com",
+  "me.com",
+  "mac.com",
   "proton.me",
   "protonmail.com",
   "aol.com",
   "mail.com",
+  "gmx.com",
+  "gmx.net",
+  "yandex.com",
+  "yandex.ru",
 ]);
 
 /**

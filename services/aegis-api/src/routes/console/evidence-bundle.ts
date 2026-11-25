@@ -15,6 +15,7 @@ import {
   requireConsoleSession,
   type ConsoleVariables,
 } from "../../middleware/console-session.js";
+import { markOnboardingStep } from "../../tenants/onboarding-checklist.js";
 
 export const evidenceBundleRoutes = new Hono<{ Variables: ConsoleVariables }>();
 
@@ -43,6 +44,7 @@ evidenceBundleRoutes.get(
       );
     }
     await recordAccess(session, bundle, "download_bundle");
+    await markOnboardingStep(pool, session.organizationId, "verify_bundle");
 
     return new Response(JSON.stringify(bundle, null, 2), {
       status: 200,

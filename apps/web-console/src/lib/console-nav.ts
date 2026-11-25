@@ -5,11 +5,13 @@ import {
   BarChart3,
   Bot,
   FileCheck,
+  FlaskConical,
   GitBranch,
   KeyRound,
   LayoutDashboard,
   Plug,
   Radio,
+  Rss,
   ScrollText,
   Search,
   Settings,
@@ -30,15 +32,26 @@ export type ConsoleNavItem = {
   external?: boolean;
   /** Only shown to organisation admins. */
   adminOnly?: boolean;
+  /** Only shown when the active org is a sandbox tenant. */
+  sandboxOnly?: boolean;
 };
 
 /**
  * Default (production-style) nav. Includes Rules, Cases (with search), Reports,
  * Access log and Delegations. In-console simulator removed - use standalone bank-simulator.
  */
+/** Sandbox-only one-click synthetic event sender. Hidden on real/demo orgs. */
+export const TEST_SENDER_NAV_ITEM: ConsoleNavItem = {
+  href: "/aegis/test-events",
+  label: "Test sender",
+  icon: FlaskConical,
+  sandboxOnly: true,
+};
+
 export const AEGIS_NAV: ConsoleNavItem[] = [
   { href: "/aegis", label: t("nav.overview", "Overview"), icon: LayoutDashboard },
   { href: "/aegis/live", label: t("nav.live", "Live feed"), icon: Activity },
+  TEST_SENDER_NAV_ITEM,
   { href: "/aegis/approvals", label: t("nav.approvals", "Approvals"), icon: UserCheck, badgeKey: "approvals" },
   { href: "/aegis/policies", label: "Rules", icon: Shield },
   { href: "/aegis/delegations", label: "Delegations", icon: Users },
@@ -52,13 +65,14 @@ export const AEGIS_NAV: ConsoleNavItem[] = [
   },
   { href: "/aegis/logs", label: "Access log", icon: ScrollText },
   { href: "/aegis/agents", label: t("nav.agents", "Agents"), icon: Bot },
-  { href: "/aegis/keys", label: "API keys", icon: KeyRound },
+  { href: "/aegis/keys", label: "API keys", icon: KeyRound, adminOnly: true },
   { href: "/aegis/sources", label: "Sources", icon: Radio, adminOnly: true },
   { href: "/aegis/workflows", label: t("nav.workflows", "Workflows"), icon: GitBranch },
   { href: "/aegis/incidents", label: "Incidents", icon: AlertTriangle },
   { href: "/aegis/exceptions", label: "Exceptions", icon: AlertTriangle },
+  { href: "/aegis/feeds", label: "Feeds", icon: Rss },
   { href: "/aegis/evidence", label: t("nav.evidence", "Evidence"), icon: FileCheck },
-  { href: "/aegis/integrations", label: "Integrations", icon: Plug },
+  { href: "/aegis/integrations", label: "Integrations", icon: Plug, adminOnly: true },
   { href: "/aegis/usage", label: "Usage", icon: BarChart3 },
   { href: "/aegis/settings", label: t("nav.settings", "Settings"), icon: Settings },
 ];
@@ -67,6 +81,7 @@ export const AEGIS_NAV: ConsoleNavItem[] = [
 export const BANK_DEMO_NAV: ConsoleNavItem[] = [
   { href: "/aegis", label: t("nav.overview", "Overview"), icon: LayoutDashboard },
   { href: "/aegis/live", label: t("nav.live", "Live feed"), icon: Activity },
+  TEST_SENDER_NAV_ITEM,
   { href: "/aegis/approvals", label: t("nav.approvals", "Approvals"), icon: UserCheck, badgeKey: "approvals" },
   { href: "/aegis/policies", label: "Rules", icon: Shield },
   { href: "/aegis/delegations", label: "Delegations", icon: Users },
@@ -80,6 +95,7 @@ export const BANK_DEMO_NAV: ConsoleNavItem[] = [
   },
   { href: "/aegis/logs", label: "Access log", icon: ScrollText },
   { href: "/aegis/exceptions", label: "Exceptions", icon: AlertTriangle },
+  { href: "/aegis/feeds", label: "Feeds", icon: Rss },
   { href: "/aegis/sources", label: "Sources", icon: Radio, adminOnly: true },
 ];
 

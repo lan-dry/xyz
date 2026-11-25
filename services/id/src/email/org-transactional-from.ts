@@ -58,10 +58,20 @@ export async function resolveOrgEmailDelivery(
   if (!pool) {
     return null;
   }
-  const row = await pool.query<{ settings: unknown }>(
-    `SELECT settings FROM stoa_tenant WHERE platform_organization_id = $1`,
-    [platformOrganizationId],
-  );
+  let row: { rows: Array<{ settings: unknown }> };
+  try {
+    row = await pool.query<{ settings: unknown }>(
+      `SELECT settings FROM stoa_tenant WHERE platform_organization_id = $1`,
+      [platformOrganizationId],
+    );
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    // Local stacks often have no Stoa database; treat as no org override.
+    if (code === "3D000" || code === "42P01") {
+      return null;
+    }
+    throw err;
+  }
   const obj = readEmailObject(row.rows[0]?.settings);
   if (!obj) {
     return null;

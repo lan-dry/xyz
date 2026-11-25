@@ -102,6 +102,9 @@ export async function createApprovalRequest(
       deferred_request: params.deferred,
       obligation_tool: params.toolName,
     };
+    // SAVEPOINT so an append-only refusal does not abort an outer BEGIN
+    // (e.g. source-events / bank hold path that opens the approval in-process).
+    await client.query("SAVEPOINT approval_deferred_patch");
     try {
       const resigned = await patchSignedEventPayload(client, {
         organizationId: params.organizationId,
@@ -113,7 +116,11 @@ export async function createApprovalRequest(
           `[approvals] deferred_request not on event ${params.eventId} and bridge resign unavailable; leaving seal intact`,
         );
       }
+      await client.query("RELEASE SAVEPOINT approval_deferred_patch");
     } catch (err) {
+      await client
+        .query("ROLLBACK TO SAVEPOINT approval_deferred_patch")
+        .catch(() => undefined);
       // Sealed forensic events cannot have identity/hash fields rewritten
       // (append-only trigger). Leave the seal intact; the approval row still stands.
       const msg = err instanceof Error ? err.message : String(err);

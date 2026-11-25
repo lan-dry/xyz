@@ -400,7 +400,8 @@ export async function createOrganizationInvitation(
     organizationId: string;
     email: string;
     role: OrgRole;
-    invitedByMembershipId: string;
+    /** Null when Ops creates the first admin invite (no membership yet). */
+    invitedByMembershipId: string | null;
     token: string;
   },
 ): Promise<{ invitation_id: string; expires_at: Date }> {

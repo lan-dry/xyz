@@ -167,7 +167,11 @@ export async function persistSignedEvent(
         event.parent_event_id ?? null,
         event.agent_id,
         event.key_id,
-        event.policy_id && event.policy_id !== "none" ? event.policy_id : null,
+        event.policy_id &&
+        event.policy_id !== "none" &&
+        event.policy_id !== "pol_none"
+          ? event.policy_id
+          : null,
         event.schema_version,
         sequenceNum,
         prevEventHash,
@@ -221,9 +225,14 @@ export async function persistSignedEvent(
       replayed: false,
     };
   } finally {
-    await client.query(`SELECT pg_advisory_unlock(hashtext($1), hashtext($2))`, [
-      event.organization_id,
-      event.agent_id,
-    ]);
+    // Never let unlock replace the real failure (Postgres 25P02 on a dead txn).
+    try {
+      await client.query(
+        `SELECT pg_advisory_unlock(hashtext($1), hashtext($2))`,
+        [event.organization_id, event.agent_id],
+      );
+    } catch {
+      /* keep the original error */
+    }
   }
 }

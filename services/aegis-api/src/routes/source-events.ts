@@ -15,6 +15,10 @@ import {
   readRateLimitEnv,
 } from "@salanor/platform-auth";
 import { resolveIngestKey } from "../auth/ingest-key.js";
+import {
+  enforceSandboxQuota,
+  refuseOrgIngestRateLimit,
+} from "../limits/tenant-limits.js";
 import { handleBankEvent } from "../bank/handle-event.js";
 import type { BankDecisionResponse } from "../bank/types.js";
 import { BankValidationError, parseBankEvent } from "../bank/validate.js";
@@ -22,6 +26,8 @@ import { getPool } from "../db/pool.js";
 import { SOURCE_SIGNED_GRADE } from "../sources/grade.js";
 import { getSource } from "../sources/registry.js";
 import { verifyAndAcceptEnvelope } from "../sources/verify-and-accept.js";
+import { markOnboardingStep } from "../tenants/onboarding-checklist.js";
+import { blockSandboxIngest } from "../tenants/synthetic-guard.js";
 
 export type SignedDecisionResponse = BankDecisionResponse & {
   source_signed: true;
@@ -73,11 +79,23 @@ export async function getSourceLastSeq(c: Context): Promise<Response> {
     if (!source) {
       return c.json({ error: "not_found", code: "unknown_source" }, 404);
     }
+    const org = await client.query<{ tenant_kind: string }>(
+      `SELECT CASE
+          WHEN tenant_kind IN ('demo', 'sandbox', 'real') THEN tenant_kind
+          WHEN is_demo THEN 'demo'
+          WHEN is_test THEN 'sandbox'
+          ELSE 'real'
+        END AS tenant_kind
+       FROM organization
+       WHERE organization_id = $1`,
+      [auth.organizationId],
+    );
     return c.json(
       {
         source_id: source.source_id,
         last_seq: source.last_seq,
         status: source.status,
+        tenant_kind: org.rows[0]?.tenant_kind ?? "real",
       },
       200,
     );
@@ -157,6 +175,9 @@ export async function ingestSignedEnvelope(
       return c.json({ error: "Invalid API key" }, 401);
     }
 
+    const limited = refuseOrgIngestRateLimit(auth.organizationId);
+    if (limited) return limited;
+
     const orgKind = await client.query<{
       tenant_kind: string;
       sandbox_archived_at: Date | null;
@@ -168,38 +189,21 @@ export async function ingestSignedEnvelope(
       [auth.organizationId],
     );
     const org = orgKind.rows[0];
-    if (org?.sandbox_archived_at) {
+    const blocked = blockSandboxIngest(org, body);
+    if (blocked) {
       return c.json(
         {
-          error: "sandbox_archived",
-          message: "This sandbox has been archived and no longer accepts events.",
+          error: blocked.error,
+          code: blocked.code,
+          message: blocked.message,
+          field: blocked.field,
         },
-        403,
+        blocked.status,
       );
     }
-    if (
-      org?.sandbox_read_only_until &&
-      new Date(org.sandbox_read_only_until).getTime() > Date.now()
-    ) {
-      return c.json(
-        {
-          error: "sandbox_read_only",
-          message:
-            "This sandbox is past its expiry date and is read-only for a short grace period.",
-        },
-        403,
-      );
-    }
-    if (org?.tenant_kind === "sandbox") {
-      const { rejectNonSyntheticPayload } = await import("../tenants/synthetic-guard.js");
-      const syn = rejectNonSyntheticPayload(body);
-      if (syn) {
-        return c.json(
-          { error: syn.code, code: syn.code, message: syn.message, field: syn.field },
-          422,
-        );
-      }
-    }
+
+    const quota = await enforceSandboxQuota(client, auth.organizationId);
+    if (quota) return quota;
 
     const result = await verifyAndAcceptEnvelope<SignedDecisionResponse>(
       client,
@@ -237,6 +241,7 @@ export async function ingestSignedEnvelope(
         result.status,
       );
     }
+    await markOnboardingStep(client, auth.organizationId, "send_first_event");
     return c.json(result.response, 200);
   } catch (err) {
     if (err instanceof BankValidationError) {

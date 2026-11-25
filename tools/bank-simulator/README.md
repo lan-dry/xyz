@@ -12,6 +12,12 @@ keys live under `.data/connectors/` (gitignored; written by
 `pnpm pilot:provision-demo-tenant` / `demo:fresh`). Staff UI shows systems panels;
 **Red Team** panel runs attacks #1–18.
 
+On the first successful connection to a demo or sandbox tenant, if the local
+sequence is behind the tenant's, the connector adopts the remote value and logs
+`Synced local sequence to remote (was X, now Y). Continuing.` The first story
+then continues. A later sequence clash is still refused. A real tenant is never
+auto-synced.
+
 Core disbursement asks Aegis permit / decision-token confirm before money moves;
 the ledger exports JSONL/CSV feeds for reconciliation.
 

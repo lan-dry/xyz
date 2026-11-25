@@ -18,16 +18,15 @@ import {
   ui,
 } from "@/components/console/console-ui";
 import { idApi } from "@/lib/id-api";
+import {
+  canManageOrg,
+  REAL_INVITE_ROLE_OPTIONS,
+  SANDBOX_INVITE_ROLE_OPTIONS,
+  type InviteRoleOption,
+} from "@/lib/org-roles";
+import { useSandboxStatus, useTenantCopy } from "@/lib/tenant-copy";
 import type { MeResponse, OrgInvitation, OrgMember } from "@/lib/types";
 
-const ROLES = [
-  "owner",
-  "admin",
-  "approver",
-  "engineer",
-  "auditor",
-  "viewer",
-] as const;
 const MEMBER_PAGE_SIZES = [25, 50, 100] as const;
 
 type InviteLinkResult = {
@@ -39,6 +38,7 @@ type InviteLinkResult = {
 
 /** Members management UI - rendered inside Settings so Organization / Members / Billing tabs stay visible. */
 export function MembersView() {
+  const copy = useTenantCopy();
   const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
@@ -55,7 +55,7 @@ export function MembersView() {
   }, [searchParams]);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<(typeof ROLES)[number]>("engineer");
+  const [role, setRole] = useState<InviteRoleOption["value"]>("approver");
   const [lastInvite, setLastInvite] = useState<InviteLinkResult | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{
     membershipId: string;
@@ -66,10 +66,15 @@ export function MembersView() {
     queryKey: ["id", "me"],
     queryFn: () => idApi<MeResponse>("/auth/me"),
   });
+  const sandboxStatus = useSandboxStatus();
 
   const orgId = meQuery.data?.organization?.organization_id;
   const myMembershipId = meQuery.data?.user?.user_id;
-  const isAdmin = meQuery.data?.user?.role === "admin";
+  const isAdmin = canManageOrg(meQuery.data?.user?.role);
+  const isSandbox = sandboxStatus.data?.is_sandbox === true;
+  const roleOptions = isSandbox
+    ? SANDBOX_INVITE_ROLE_OPTIONS
+    : REAL_INVITE_ROLE_OPTIONS;
 
   const membersQuery = useQuery({
     queryKey: ["id", "members", orgId, page, limit],
@@ -98,6 +103,7 @@ export function MembersView() {
       setEmail("");
       setInviteOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["id", "invitations", orgId] });
+      void queryClient.invalidateQueries({ queryKey: ["console", "sandbox", "status"] });
     },
   });
 
@@ -194,14 +200,18 @@ export function MembersView() {
       {resendInvite.isError ? (
         <ErrorAlert message={(resendInvite.error as Error).message} />
       ) : null}
-      <div className={ui.toolbar} style={{ justifyContent: "flex-end", marginTop: 0 }}>
+      <div className={ui.toolbar} style={{ justifyContent: "flex-end", marginTop: 0, alignItems: "center", gap: "0.75rem" }}>
+        <span className={ui.muted} style={{ fontSize: "0.8125rem", maxWidth: "22rem" }}>
+          {copy.tooltip_invite}
+        </span>
         <button
           type="button"
           className={`${ui.btn} ${ui.btnPrimary}`}
+          title={copy.tooltip_invite}
           onClick={() => setInviteOpen(true)}
         >
           <Plus size={16} aria-hidden />
-          Invite member
+          {copy.members_empty_action}
         </button>
       </div>
 
@@ -261,16 +271,17 @@ export function MembersView() {
         ) : members.length === 0 ? (
           <EmptyStatePanel
             icon={Users}
-            title="You're the first member"
-            description="Invite colleagues by email. They'll create an account when they accept: no prior Salanor login required."
+            title={copy.members_empty_title}
+            description={copy.members_empty_body}
             action={
               <button
                 type="button"
                 className={`${ui.btn} ${ui.btnPrimary}`}
+                title={copy.tooltip_invite}
                 onClick={() => setInviteOpen(true)}
               >
                 <Plus size={16} aria-hidden />
-                Invite member
+                {copy.members_empty_action}
               </button>
             }
           />
@@ -319,11 +330,14 @@ export function MembersView() {
                           })
                         }
                       >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {r}
+                        {roleOptions.map((r) => (
+                          <option key={r.value} value={r.value}>
+                            {r.label}
                           </option>
                         ))}
+                        {!roleOptions.some((r) => r.value === m.role) ? (
+                          <option value={m.role}>{m.role}</option>
+                        ) : null}
                       </select>
                     </td>
                     <td>
@@ -398,15 +412,16 @@ export function MembersView() {
           <EmptyStatePanel
             icon={Mail}
             title="No pending invitations"
-            description="Invitations expire after 7 days. Send one to onboard someone who doesn't have a Salanor account yet."
+            description={copy.members_empty_body}
             action={
               <button
                 type="button"
                 className={`${ui.btn} ${ui.btnPrimary}`}
+                title={copy.tooltip_invite}
                 onClick={() => setInviteOpen(true)}
               >
                 <Plus size={16} aria-hidden />
-                Invite member
+                {copy.members_empty_action}
               </button>
             }
           />
@@ -519,14 +534,19 @@ export function MembersView() {
           <select
             className={ui.input}
             value={role}
-            onChange={(e) => setRole(e.target.value as (typeof ROLES)[number])}
+            onChange={(e) =>
+              setRole(e.target.value as InviteRoleOption["value"])
+            }
           >
-            {ROLES.map((r) => (
-              <option key={r} value={r}>
-                {r}
+            {roleOptions.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
               </option>
             ))}
           </select>
+          <span className={ui.muted} style={{ display: "block", marginTop: "0.35rem" }}>
+            {roleOptions.find((r) => r.value === role)?.hint}
+          </span>
         </label>
         {inviteMember.isError ? (
           <ErrorAlert message={(inviteMember.error as Error).message} />

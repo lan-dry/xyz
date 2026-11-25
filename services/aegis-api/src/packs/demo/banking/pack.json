@@ -3,7 +3,7 @@
   "name": "Demo banking pack (illustrative retail lending)",
   "demo_only": true,
   "sector": "banking",
-  "version": 4,
+  "version": 6,
   "combine": "all_matching",
   "currencies": [
     "RWF"
@@ -187,6 +187,26 @@
       }
     },
     {
+      "rule_id": "CHN-AGT",
+      "tool_pattern": "governed.action",
+      "decision": "allow_with_obligation",
+      "priority": 45,
+      "conditions": {
+        "expr": {
+          "and": [
+            { "in": ["aegis.channel", ["agent", "ussd"]] },
+            { "gte": ["amount", 5000000] },
+            { "eq": ["aegis.time_of_day", "off_hours"] }
+          ]
+        }
+      },
+      "obligations": {
+        "kind": "human_approval",
+        "required_role": "credit_manager",
+        "required_fields": ["reason_code", "comment"]
+      }
+    },
+    {
       "rule_id": "FRD-SCORE-RET",
       "tool_pattern": "governed.action",
       "decision": "deny",
@@ -274,6 +294,48 @@
           "callback_verified"
         ]
       }
+    },
+    {
+      "rule_id": "PAY-OVERRIDE",
+      "tool_pattern": "governed.action",
+      "decision": "allow_with_obligation",
+      "priority": 80,
+      "conditions": {
+        "expr": { "eq": ["requested_override", true] }
+      },
+      "obligations": {
+        "kind": "human_approval",
+        "required_role": "credit_manager",
+        "required_fields": ["reason_code", "comment"]
+      }
+    },
+    {
+      "rule_id": "PAY-ALTER",
+      "tool_pattern": "governed.action",
+      "decision": "allow_with_obligation",
+      "priority": 82,
+      "conditions": {
+        "expr": { "eq": ["payment_altered", true] }
+      },
+      "obligations": {
+        "kind": "human_approval",
+        "required_role": "credit_manager",
+        "required_fields": ["reason_code", "comment"]
+      }
+    },
+    {
+      "rule_id": "PAY-SPLIT",
+      "tool_pattern": "governed.action",
+      "decision": "allow_with_obligation",
+      "priority": 83,
+      "conditions": {
+        "expr": { "eq": ["split_payment", true] }
+      },
+      "obligations": {
+        "kind": "human_approval",
+        "required_role": "credit_manager",
+        "required_fields": ["reason_code", "comment"]
+      }
     }
   ],
   "workflows": [
@@ -325,9 +387,13 @@
       "AUTH-XFER-2": "Above transfer officer limit",
       "VEL-SEG-DAY": "Segment daily limit (Aegis-reported)",
       "BEN-NEW-OFF": "New beneficiary off-hours",
+      "CHN-AGT": "Agent or USSD off-hours",
       "FRD-SCORE-RET": "Retail fraud score hard stop",
       "LN-07": "High model score requires Credit Manager",
       "PAY-03": "Payment callback verification",
+      "PAY-OVERRIDE": "Requested override",
+      "PAY-ALTER": "Altered payment",
+      "PAY-SPLIT": "Split payment",
       "SANC-01": "Sanctions / PEP hard stop"
     },
     "role_labels": {

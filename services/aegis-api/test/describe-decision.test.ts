@@ -1,10 +1,12 @@
 ﻿import { describe, expect, it } from "vitest";
 import {
   actionLabel,
+  decidedByLine,
   dedupeRuleLabels,
   describeDecision,
   formatApprover,
   formatRuleLabel,
+  RECORD_ONLY_DECISION_LINE,
 } from "../src/bank/describe-decision.js";
 
 describe("describeDecision", () => {
@@ -72,6 +74,50 @@ describe("describeDecision", () => {
     expect(text).toMatch(/Jean Mutabazi/);
     expect(text).toMatch(/15 Nov 2026 at 18:21 UTC/);
     expect(text).toMatch(/Within manager band/);
+  });
+
+  it("names a fraud-score release as a fraud override", () => {
+    const text = describeDecision({
+      outcome: "released",
+      product: "payment_transfer",
+      event_type: "payment_transfer",
+      amount: 3_500_000,
+      currency: "RWF",
+      decided_by_rule_id: "FRD-SCORE-RET",
+      required_role: "fraud_analyst",
+      approver_name: "Aline Uwase",
+      approver_role: "fraud_analyst",
+      approved_at: "2026-11-15T18:21:00.000Z",
+      approval_reason: "Customer confirmed the transfer",
+      fraud_block_override: true,
+    });
+    expect(text).toMatch(/Fraud override by Aline Uwase · Fraud Analyst/);
+    expect(text).toMatch(/FRD-SCORE-RET · Retail fraud score hard stop/);
+    expect(text).not.toMatch(/Approved by/);
+    expect(decidedByLine({
+      outcome: "released",
+      decided_by_rule_id: "pol_pack_demo_banking_3b9f7043_FRD-SCORE-RET",
+      approver_name: "Aline Uwase",
+      approver_role: "fraud_analyst",
+      fraud_block_override: true,
+    })).toBe("Decided by Aline Uwase · Fraud Analyst (fraud override)");
+  });
+
+  it("record-only line does not invent a decision", () => {
+    expect(
+      decidedByLine({
+        outcome: "allow",
+        mode: "record_only",
+        decided_by_rule_id: "LN-07",
+        would_have: "hold",
+      }),
+    ).toBe(RECORD_ONLY_DECISION_LINE);
+    expect(
+      decidedByLine({
+        outcome: "allow",
+        decided_by_rule_id: "AUTH-RL-1",
+      }),
+    ).toBe("Decided by AUTH-RL-1 · Within officer limit");
   });
 
   it("never says allowed automatically when a human approver is present (A4)", () => {

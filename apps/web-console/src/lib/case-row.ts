@@ -5,6 +5,7 @@
 
 import {
   actionLabel,
+  decidedByLine,
   dedupeRuleLabels,
   describeDecision,
   formatApprover,
@@ -28,11 +29,13 @@ export function approverDisplay(a: CaseApprover): string {
   return actingFor ? `${who}, acting for ${actingFor}` : who;
 }
 
-/** The decisive vote: a decline wins, else the latest approval. */
+/** The decisive vote: a decline wins, else the latest approval or fraud release. */
 function decisiveApprover(s: CaseSummary): CaseApprover | null {
   const declined = s.approvers.find((a) => DECLINE_DECISIONS.has(a.decision));
   if (declined) return declined;
-  const approved = s.approvers.filter((a) => a.decision === "approved");
+  const approved = s.approvers.filter(
+    (a) => a.decision === "approved" || a.decision === "released",
+  );
   return approved[approved.length - 1] ?? null;
 }
 
@@ -106,15 +109,49 @@ export function chipFromSummary(s: CaseSummary | undefined): RowChip | null {
   return { chip: s.outcome, kind: "neutral" };
 }
 
+/** "Decided by …" or "Record only — no decision". Null until the case summary loads. */
+export function decidedByFromSummary(s: CaseSummary | undefined): string | null {
+  if (!s?.outcome && s?.mode !== "record_only") return null;
+  if (!s) return null;
+  const decisive =
+    s.outcome === "hold" || s.outcome === "stop" ? decisiveApprover(s) : null;
+  const declined = decisive ? DECLINE_DECISIONS.has(decisive.decision) : false;
+  const ruleId = decidingRuleId(s);
+  const human = Boolean(decisive);
+  return decidedByLine({
+    mode: s.mode,
+    outcome: !decisive
+      ? (s.outcome ?? "allow")
+      : declined
+        ? "declined"
+        : "released",
+    decided_by_rule_id: ruleId,
+    approver_name: decisive?.name?.trim() || (decisive ? formatRoleLabel(decisive.role) : null),
+    approver_role: decisive?.name ? decisive.role : null,
+    fraud_block_override:
+      human && !declined && Boolean(ruleId && /(^|_)FRD-/.test(ruleId)),
+  });
+}
+
 /** One plain sentence: what this case was and what happened. */
 export function whatFromSummary(s: CaseSummary | undefined): string | null {
   if (!s?.outcome) return null;
-  const decisive = s.outcome === "hold" ? decisiveApprover(s) : null;
+  const decisive =
+    s.outcome === "hold" || s.outcome === "stop" ? decisiveApprover(s) : null;
   const declined = decisive ? DECLINE_DECISIONS.has(decisive.decision) : false;
   const outcome =
-    s.outcome === "hold" && decisive ? (declined ? "declined" : "released") : s.outcome;
+    decisive && (s.outcome === "hold" || s.outcome === "stop")
+      ? declined
+        ? "declined"
+        : "released"
+      : s.outcome;
+  const ruleId = decidingRuleId(s);
   return describeDecision({
     outcome,
+    fraud_block_override:
+      Boolean(decisive) &&
+      !declined &&
+      Boolean(ruleId && /(^|_)FRD-/.test(ruleId)),
     product: s.product,
     event_type: s.event_type,
     amount: s.amount,

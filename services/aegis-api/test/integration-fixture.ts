@@ -151,16 +151,23 @@ export async function applyIntegrationFixture(
     await client.query(`DELETE FROM trace WHERE organization_id = $1`, [
       INTEGRATION_ORG_A,
     ]);
+    await client
+      .query(`DELETE FROM platform_sandbox_audit WHERE organization_id = $1`, [
+        INTEGRATION_ORG_A,
+      ])
+      .catch((err: unknown) => {
+        if ((err as { code?: string } | null)?.code !== "42P01") throw err;
+      });
   } finally {
     await client.query(`SET session_replication_role = DEFAULT`);
   }
 
   // 2) Normal FK-enforced cleanup so CASCADE actually runs (policies, keys, …).
-  // workflow_run historically lacked ON DELETE CASCADE — clear explicitly.
+  // Must NOT delete organization under replica — orphan policies would survive and
+  // break deny rules (see file header).
   await client.query(`DELETE FROM workflow_run WHERE organization_id = $1`, [
     INTEGRATION_ORG_A,
   ]);
-  // Source registry (migration 006) has no ON DELETE CASCADE to organization.
   for (const table of [
     "source_envelope_idempotency",
     "source_sequence_gap",

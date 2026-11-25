@@ -20,6 +20,50 @@ const IV_LEN = 12;
 
 export const DEFAULT_INVITE_FROM = "Salanor <invites@notifications.salanor.com>";
 
+/**
+ * Outbound mail is off unless this process is production, or the operator set
+ * AEGIS_EMAIL_ENABLED=1 in the shell. A RESEND_API_KEY in `.env` is not enough:
+ * local demo, seed, and tests must not spend the provider quota.
+ */
+export function isOutboundEmailEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const flag = env.AEGIS_EMAIL_ENABLED?.trim().toLowerCase();
+  if (flag === "1" || flag === "true" || flag === "yes") return true;
+  if (flag === "0" || flag === "false" || flag === "no") return false;
+  const node = (env.NODE_ENV || "").trim().toLowerCase();
+  const aegis = (env.AEGIS_ENV || "").trim().toLowerCase();
+  return node === "production" || aegis === "production";
+}
+
+/** Domains that are not real inboxes. Sending them still consumes provider quota. */
+const NON_DELIVERABLE_DOMAIN = new Set([
+  "demo.test",
+  "example.com",
+  "example.org",
+  "example.net",
+  "localhost",
+  "invalid",
+  "test",
+  "local",
+]);
+
+export function isDeliverableMailbox(
+  address: string,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const allow = env.AEGIS_EMAIL_ALLOW_DEMO_RECIPIENTS?.trim().toLowerCase();
+  if (allow === "1" || allow === "true" || allow === "yes") return true;
+  const domain = address.trim().toLowerCase().split("@")[1] ?? "";
+  if (!domain || domain.includes(" ") || NON_DELIVERABLE_DOMAIN.has(domain)) return false;
+  return !(
+    domain.endsWith(".test") ||
+    domain.endsWith(".invalid") ||
+    domain.endsWith(".localhost") ||
+    domain.endsWith(".local")
+  );
+}
+
 export type PlatformEmailDeliveryMode = "platform" | "smtp";
 
 export class PlatformEmailSettingsError extends Error {
@@ -384,6 +428,15 @@ export type ResolvedPlatformEmailConfig = {
 export async function resolvePlatformEmailDelivery(
   client: pg.Pool | pg.PoolClient | null,
 ): Promise<ResolvedPlatformEmailDelivery> {
+  if (!isOutboundEmailEnabled()) {
+    return {
+      mode: "none",
+      from: process.env.INVITE_EMAIL_FROM?.trim() || DEFAULT_INVITE_FROM,
+      apiKey: null,
+      keySource: "none",
+      smtp: null,
+    };
+  }
   let row: Row | null = null;
   if (client) {
     try {

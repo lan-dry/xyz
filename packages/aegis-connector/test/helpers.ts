@@ -17,6 +17,8 @@ export interface FakeAegis {
   /** Last accepted seq per source_id (seq accounting). */
   lastSeqBySource: Map<string, number>;
   mode: "ok" | "down" | "error500" | "unauthorized" | "seq_gate";
+  /** When set, GET last-seq includes tenant_kind (demo | sandbox | real). */
+  tenantKind?: string;
 }
 
 export function fakeAegis(): FakeAegis {
@@ -42,6 +44,7 @@ export function fakeAegis(): FakeAegis {
             source_id: sourceId,
             last_seq: fake.lastSeqBySource.get(sourceId) ?? 0,
             status: "active",
+            ...(fake.tenantKind ? { tenant_kind: fake.tenantKind } : {}),
           }),
           { status: 200, headers: { "content-type": "application/json" } },
         );

@@ -43,6 +43,9 @@ coverage/
 tmp/
 services/*/tmp/
 
+# Playwright browsers (install to D: when C: is full: PLAYWRIGHT_BROWSERS_PATH=.tools/playwright)
+.tools/playwright/
+
 # go (future services)
 bin/
 .neon
@@ -55,3 +58,4 @@ bin/
 .demo-tenant-*.prod.json
 !.demo-tenant-emails.local.example.json
 .bank-simulator/
+.vercel

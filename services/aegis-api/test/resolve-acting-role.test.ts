@@ -42,11 +42,11 @@ describe("A1 role labels", () => {
 });
 
 describe("A6 custody label", () => {
-  it("labels software keys as demo tenant, never development", () => {
+  it("labels software keys as non-production, never demo tenant", () => {
     expect(custodyLabel("software")).toBe(
-      "Key custody: software key (demo tenant)",
+      "Key custody: software key (non-production)",
     );
-    expect(custodyLabel("software")).not.toMatch(/development/i);
+    expect(custodyLabel("software")).not.toMatch(/demo tenant/i);
     expect(custodyLabel("software_interim")).toBe(
       "Key custody: software key (interim)",
     );

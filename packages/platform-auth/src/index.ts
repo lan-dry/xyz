@@ -111,13 +111,16 @@ export {
 } from "./console-audit.js";
 export {
   canDecideApprovals,
+  canManageIngestKeys,
   canReadOrgConsole,
   canWriteOrgConsole,
   isOrgConsoleReadOnly,
+  isSandboxInviteRole,
   normalizeOrgRole,
   ORG_APPROVER_ROLES,
   ORG_CONSOLE_READ_ROLES,
   ORG_CONSOLE_WRITE_ROLES,
+  SANDBOX_INVITE_ROLES,
 } from "./org-console-access.js";
 export {
   acceptInvitation,
@@ -175,6 +178,8 @@ export {
   isPlatformEmailDeliveryConfigured,
   isPlatformEmailKeyStored,
   isPlatformEmailMasterKeyConfigured,
+  isDeliverableMailbox,
+  isOutboundEmailEnabled,
   resolvePlatformEmailConfig,
   resolvePlatformEmailDelivery,
   savePlatformEmailSettings,

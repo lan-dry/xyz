@@ -13,7 +13,10 @@ import {
 } from "@salanor/platform-auth";
 import { resolveIngestKey } from "../auth/ingest-key.js";
 import { getPool } from "../db/pool.js";
+import { enforceOrgIngestControls } from "../limits/tenant-limits.js";
 import { verifyAndAcceptEnvelope } from "../sources/verify-and-accept.js";
+import { markOnboardingStep } from "../tenants/onboarding-checklist.js";
+import { blockSandboxIngest } from "../tenants/synthetic-guard.js";
 
 function bearerToken(authorization: string | undefined): string | null {
   if (!authorization?.startsWith("Bearer ")) return null;
@@ -60,6 +63,32 @@ export async function postCollectorEvent(c: Context): Promise<Response> {
     const auth = await resolveIngestKey(client, token);
     if (!auth) {
       return c.json({ error: "Invalid API key" }, 401);
+    }
+
+    const blocked = await enforceOrgIngestControls(client, auth.organizationId);
+    if (blocked) return blocked;
+
+    const orgGate = await client.query<{
+      tenant_kind: string;
+      sandbox_archived_at: Date | null;
+      sandbox_read_only_until: Date | null;
+    }>(
+      `SELECT COALESCE(tenant_kind, 'real') AS tenant_kind,
+              sandbox_archived_at, sandbox_read_only_until
+         FROM organization WHERE organization_id = $1`,
+      [auth.organizationId],
+    );
+    const synthetic = blockSandboxIngest(orgGate.rows[0], body);
+    if (synthetic) {
+      return c.json(
+        {
+          error: synthetic.error,
+          code: synthetic.code,
+          message: synthetic.message,
+          field: synthetic.field,
+        },
+        synthetic.status,
+      );
     }
 
     const result = await verifyAndAcceptEnvelope(
@@ -200,6 +229,7 @@ export async function postCollectorEvent(c: Context): Promise<Response> {
         (bodyOut.status ?? 400) as 400 | 403,
       );
     }
+    await markOnboardingStep(client, auth.organizationId, "send_first_event");
     return c.json(
       {
         ok: true,

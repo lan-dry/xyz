@@ -1,6 +1,6 @@
 import type pg from "pg";
 import nodemailer from "nodemailer";
-import { resolvePlatformEmailDelivery } from "@salanor/platform-auth";
+import { isDeliverableMailbox, resolvePlatformEmailDelivery } from "@salanor/platform-auth";
 import {
   getGovernanceSettings,
   type GovernanceSettings,
@@ -29,6 +29,12 @@ async function sendPlatformTransactionalEmail(
 ): Promise<"sent" | "skipped"> {
   const delivery = await resolvePlatformEmailDelivery(client);
   if (delivery.mode === "none") {
+    return "skipped";
+  }
+  if (!isDeliverableMailbox(input.to)) {
+    console.log(
+      "[aegis-api] email skipped: recipient is a demo or test address and is not sent.",
+    );
     return "skipped";
   }
 

@@ -147,7 +147,8 @@ export async function deriveApprovalMetadata(
         obl.release_requires_role) ||
       (typeof obl.required_role === "string" && obl.required_role) ||
       topRole;
-    const isFraudBlock = stopRule.rule_id.startsWith("FRD-");
+    // Pack apply stores `pol_…_FRD-SCORE-RET`, not a bare FRD- prefix.
+    const isFraudBlock = /(^|_)FRD-/.test(stopRule.rule_id);
     return {
       hard_stop: true,
       fraud_block: isFraudBlock,

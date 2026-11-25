@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   canDecideApprovals,
+  canManageIngestKeys,
   canReadOrgConsole,
   canWriteOrgConsole,
   isOrgConsoleReadOnly,
+  isSandboxInviteRole,
 } from "./org-console-access.js";
 import type { ConsoleSession } from "./session.js";
 
@@ -36,6 +38,22 @@ describe("org-console-access", () => {
     expect(canDecideApprovals(session("approver"), "org-1")).toBe(true);
     expect(canWriteOrgConsole(session("approver"), "org-1")).toBe(false);
     expect(canDecideApprovals(session("auditor"), "org-1")).toBe(false);
+  });
+
+  it("lets admin/owner manage keys; blocks approver and auditor", () => {
+    expect(canManageIngestKeys(session("admin"), "org-1")).toBe(true);
+    expect(canManageIngestKeys(session("owner"), "org-1")).toBe(true);
+    expect(canManageIngestKeys(session("approver"), "org-1")).toBe(false);
+    expect(canManageIngestKeys(session("auditor"), "org-1")).toBe(false);
+  });
+
+  it("limits sandbox invite roles to admin, approver, auditor", () => {
+    expect(isSandboxInviteRole("admin")).toBe(true);
+    expect(isSandboxInviteRole("approver")).toBe(true);
+    expect(isSandboxInviteRole("auditor")).toBe(true);
+    expect(isSandboxInviteRole("owner")).toBe(false);
+    expect(isSandboxInviteRole("engineer")).toBe(false);
+    expect(isSandboxInviteRole("viewer")).toBe(false);
   });
 
   it("blocks cross-org access", () => {

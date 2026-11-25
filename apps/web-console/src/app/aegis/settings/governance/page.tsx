@@ -56,7 +56,7 @@ export default function GovernanceSettingsPage() {
     "allow" | "allow_with_obligation" | "deny"
   >("allow_with_obligation");
   const [signalStaleHours, setSignalStaleHours] = useState("24");
-  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [emailEnabled, setEmailEnabled] = useState(false);
   const [slackWebhook, setSlackWebhook] = useState("");
   const [teamsWebhook, setTeamsWebhook] = useState("");
   const [pagerdutyKey, setPagerdutyKey] = useState("");
@@ -322,10 +322,12 @@ export default function GovernanceSettingsPage() {
                   Email people who can approve
                 </label>
                 <p className={settings.settingsRowHint}>
-                  When a hold needs a human, email active members who can act: org
-                  owners, admins, approvers, and bank-role holders (resolved from
-                  membership - not a hardcoded address list). Requires Resend on the
-                  Aegis API host. Toggle only; recipients stay role-based.
+                  Off until you turn it on. When a hold needs a human, email active
+                  members who can act: org owners, admins, approvers, and bank-role
+                  holders (resolved from membership — not a hardcoded address list).
+                  Needs a provider on the API host, and AEGIS_EMAIL_ENABLED=1 outside
+                  production. Local demo and tests do not send. demo.test addresses
+                  are never delivered.
                 </p>
               </div>
             </div>

@@ -39,6 +39,7 @@ export default function AuditorsSettingsPage() {
       setCreatedUrl(data.invite.portal_url);
       setEmail("");
       void queryClient.invalidateQueries({ queryKey: ["console", "auditor-invites"] });
+      void queryClient.invalidateQueries({ queryKey: ["console", "sandbox", "status"] });
     },
   });
 

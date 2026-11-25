@@ -304,12 +304,19 @@ describeIfDb("trusted time queue (integration)", () => {
   beforeAll(async () => {
     await migrateUp();
     await applyIntegrationFixture(getPool());
+    // Drain leftover pending stamps from other suites sharing this DB so
+    // stampReceiptNow → processPendingTimestamps (limit 20) only sees ours.
+    await getPool().query(
+      `DELETE FROM forensic_receipt_timestamp
+       WHERE status = 'pending' OR receipt_id LIKE 'rcpt_tt_%'`,
+    );
   });
 
   afterEach(async () => {
     restoreEnv();
     await getPool().query(
-      `DELETE FROM forensic_receipt_timestamp WHERE receipt_id LIKE 'rcpt_tt_%'`,
+      `DELETE FROM forensic_receipt_timestamp
+       WHERE status = 'pending' OR receipt_id LIKE 'rcpt_tt_%'`,
     );
   });
 

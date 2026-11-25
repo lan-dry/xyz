@@ -1,37 +1,51 @@
 # Ready to sell — 12-point checklist
 
+Honest status after Round 3. **Code on this branch ≠ live staging, managed keys, lawyer, or website.**
+
 | # | Item | Status | Evidence |
 |---|------|--------|----------|
-| 1 | Single launch branch / provenance merged | **Partly verified** | `STAGE_0_REPORT.md` + `r1-provenance-ancestors.txt` (g3-kms tip **not** ancestor; empty+demo migrate logs live; full suite/runbook/redteam-lab not green) |
-| 2 | Tenant isolation tests in CI path | **Verified** | `tenant-isolation.test.ts` in quality-gate aegis-api suite |
-| 3 | Rate limits + clear 429 + usage page | **Partly verified** | rate-limit helpers + `/aegis/usage`; not all quota 429 paths live-smoked |
-| 4 | Staging promote gate | **Not verified** | Script exists; staging stack not smoked |
-| 5 | Monitoring /ops page | **Partly verified** | `OPERATIONS.md` + existing `/ready` |
-| 6 | Backup restore drill | **Not verified** | Founder must run `pnpm launch:restore-check` |
-| 7 | Managed key default / REQUIRE_MANAGED_KEY | **Partly verified** | Code in production-guards; prod flag not flipped live |
-| 8 | Secrets hygiene / ENV.md | **Partly verified** | ENV.md + existing gitleaks CI |
-| 9 | Sandbox tenant type + Ops + expiry emails | **Partly verified** | Migration 016 + Ops; expiry emails **captured** in `_raw/sandbox-expiry-email-test.json` (Resend live still founder) |
-| 10 | Sign-up approval + email verify | **Partly verified** | Access request + Ops approve; Resend verify not live |
-| 11 | Onboarding + test sender + quickstarts | **Verified** (quickstarts CI) | `_raw/quickstart-run-latest.json`; quality-gate runs `pnpm launch:quickstarts` |
-| 12 | Stranger test (CI) | **Verified** (automated) | `_raw/stranger-run-latest.json` + bundle; human UI walk still recommended |
+| 1 | Single launch branch / provenance merged | **Partly verified** | Tip `feature/provenance-g3-kms` is not an ancestor of `main`, but Ops Populate content is already on `main` (different SHAs). Evidence: `_raw/g3-kms-vs-main.json` — main is ahead on exceptions/permit/lock; abandoning the tip loses no Ops work |
+| 2 | Tenant isolation tests in CI path | **Verified** (code) | `tenant-isolation.test.ts`; quality-gate runs `pnpm --filter aegis-api test` |
+| 3 | Rate limits + clear 429 + usage page | **Verified** (code) | Per-org ingest + export limits; sandbox daily/storage refuse; `/aegis/usage` |
+| 4 | Staging promote gate | **Not verified** | Script exists; staging stack not smoked on this pass |
+| 5 | Monitoring / ops page | **Partly verified** | `/metrics` + `/v1/ops/status` now require ops token; alerts: witness, queue lag, **DB down**, **KMS error**, **5xx spike**. Webhook/phone delivery = founder |
+| 6 | Backup restore drill | **Not verified** | Founder: `pnpm launch:restore-check` |
+| 7 | Managed key default / REQUIRE_MANAGED_KEY | **Partly verified** | Guards in code; prod flag + live KMS not flipped here |
+| 8 | Secrets hygiene / ENV.md | **Partly verified** | ENV.md + gitleaks CI; email off unless `AEGIS_EMAIL_ENABLED=1` |
+| 9 | Sandbox tenant + Ops + expiry | **Verified** (code) | Migrations 016–019; banner; synthetic guard; quotas; starter pack seeds on approve/status/test-events |
+| 10 | Sign-up approval + email verify | **Verified** (code) | `/request-access` → Ops approve → invite URL (email optional) |
+| 11 | Onboarding + test sender + quickstarts | **Verified** (code) | Checklist; held/override/split named via starter pack; Postman + quickstart artifacts |
+| 12 | Stranger test | **Verified** (automated) | `pnpm launch:stranger` — held scenario + API approve + Chromium through get-started/approvals/cases with screenshots + video (`_raw/stranger-browser-latest.json`). Human walk still founder |
 
-## Also from earlier prompts (status)
+## Gate 2 (code-only, this PR)
 
-| Item | In this PR? |
-|------|-------------|
-| Realistic bank rules / demo.banking pack | **Already on main** (not introduced by Gate 0/1); pack apply + bank-sim stories. Not a Gate 1 gap. |
-| Case “Decided by” when `decision_source` present | **Still open** for case pages. Approvals UI has Approved/Declined/Decided by; case/trace page shows Rule + approval actor, not a `decision_source` field (none in schema). |
-| Demo tenants Ops page | **Already in PR / on main** — `apps/web-platform/.../demo-tenants` + platform API populate/wipe/reset. |
+| Item | Status |
+|------|--------|
+| Record-only default for new workflows | **Done** (018). Sandbox pack workflows stay **enforce** so holds pause for a person |
+| “Decided by” on cases / traces | **Done** |
+| Feeds admin upload screen | **Done** |
+| Realistic bank rules | **Done** (`demo.banking` v6 + override/alter/split rules) |
+
+## Enforce vs record-only (sandboxes)
+
+- **Record-only:** evaluate + seal “would have held/stopped”; do **not** block or queue for approval. Default for **new** workflows you create (migration 018).
+- **Enforce (decision mode):** holds and stops actually pause work for a person. The sandbox **starter pack** installs `retail_loan` / `payment_transfer` with `record_only: false` so the named test scenarios (held, override, split, altered) behave as labeled.
+- Demo Bank pack is the same: decision mode on purpose.
 
 ## Founder manual steps (exact)
 
-1. Paste **DEMO_RUNBOOK v2** text when ready → replace `docs/DEMO_RUNBOOK.md`.  
-2. Apply migration 016 on prod/staging: `MIGRATION_DATABASE_URL=… pnpm db:migrate`.  
-3. Create staging stack per `STAGING.md`; run `pnpm launch:release-staging`.  
-4. Set `REQUIRE_MANAGED_KEY=true` only after `AEGIS_RECEIPT_KMS_KEY_ID` works (`pnpm smoke:kms`).  
-5. Configure Resend; test invite to corporate + Gmail; attach notes under `_raw/`.  
-6. Run `pnpm launch:restore-check` with Neon PITR scratch branch.  
-7. Optional human stranger walk; file `docs/launch/_raw/stranger-human-YYYYMMDD.md`.  
-8. Legal review of sandbox terms / synthetic-data banner.  
-9. DNS + TLS for staging domains.  
-10. Lawyer / DPA checklist for first design partner (outside this repo).
+1. Apply migrations 017–019: `MIGRATION_DATABASE_URL=… pnpm db:migrate`.
+2. Staging stack + `pnpm launch:release-staging`.
+3. `REQUIRE_MANAGED_KEY=true` only after `pnpm smoke:kms`.
+4. Set `OPS_METRICS_TOKEN` (scrapers must send Bearer / X-Ops-Token).
+5. `ALERT_WEBHOOK_URL` (+ optional `ALERT_5XX_SPIKE_THRESHOLD`) to a phone channel.
+6. Resend with `AEGIS_EMAIL_ENABLED=1` when you mean to send.
+7. `pnpm launch:restore-check` with Neon PITR.
+8. Optional human stranger: `docs/launch/_raw/stranger-human-YYYYMMDD.md`.
+9. Legal review of sandbox terms / synthetic banner.
+10. DNS + TLS for staging; lawyer / DPA for first design partner.
+11. Merge or cherry-pick g3-kms unique commits onto main after reading `_raw/g3-kms-vs-main.json`.
+
+## Not in this pass (by design)
+
+SSO, self-hosted package, WebAuthn, load test, public status page, website, pricing, trust-model lawyer note.

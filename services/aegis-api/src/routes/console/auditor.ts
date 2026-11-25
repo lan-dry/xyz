@@ -6,6 +6,7 @@ import {
   requireConsoleSession,
   type ConsoleVariables,
 } from "../../middleware/console-session.js";
+import { markOnboardingStep } from "../../tenants/onboarding-checklist.js";
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -108,6 +109,7 @@ auditorRoutes.post("/auditor/invites", requireConsoleSession, async (c) => {
     resourceId: inviteId,
     metadata: { email },
   });
+  await markOnboardingStep(getPool(), session.organizationId, "invite_colleague");
 
   const consoleOrigin =
     process.env.CONSOLE_PUBLIC_URL?.trim() ||

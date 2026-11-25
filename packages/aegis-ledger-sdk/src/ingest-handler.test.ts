@@ -4,25 +4,21 @@ import { createMemoryIngestStore } from "./ingest-memory-store.js";
 import type { ApsEvent } from "./types.js";
 
 const SAMPLE_EVENT: ApsEvent = {
-  aps_version: "0.1",
-  event_id: "22222222-2222-4222-8222-222222222201",
-  recorded_at: "2026-05-16T12:00:00.000Z",
-  tenant_id: "p2-test",
-  actor: { id: "agent:test", type: "software_agent" },
-  action: "decision.record",
-  subject: { type: "workflow_step", id: "step-1" },
-  context: {
+  schema_version: 1,
+  event_id: "evt_222222222222422282222222222201",
+  organization_id: "p2-test",
+  trace_id: "trc_33333333333343338333333333301",
+  agent_id: "agent:test",
+  key_id: "key:test",
+  emitted_at: "2026-05-16T12:00:00.000Z",
+  actor_type: "agent",
+  actor_principal: "agent:test",
+  action_kind: "decision",
+  policy_decision: "allow",
+  payload: {
+    subject: { type: "workflow_step", id: "step-1" },
     inputs: { amount: 100 },
     outcome: { decision: "approve" },
-  },
-  signature: {
-    alg: "local-placeholder",
-    value:
-      "placeholder:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  },
-  chain: {
-    prev_event_hash: null,
-    event_hash: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   },
 };
 

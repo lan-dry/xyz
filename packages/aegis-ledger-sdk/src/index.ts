@@ -22,7 +22,7 @@ export {
   type VerifyExportPackResult,
 } from "./verify-export-pack.js";
 export { verify } from "./verify.js";
-export { canonicalize, eventHashFromBody, sha256Hex } from "./canonical.js";
+export { canonicalize, eventDigest, eventHashFromBody, sha256Hex } from "./canonical.js";
 export { validateEvent, ApsValidationError } from "./schema.js";
 export { readEvents, writeEvents } from "./store.js";
 export type {

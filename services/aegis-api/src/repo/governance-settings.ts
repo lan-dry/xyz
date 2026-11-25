@@ -30,7 +30,7 @@ const DEFAULTS: GovernanceSettings = {
   on_expiry: "deny",
   two_person_policy_activate: false,
   notifications: {
-    email_enabled: true,
+    email_enabled: false,
     slack_webhook_url: null,
     teams_webhook_url: null,
     pagerduty_routing_key: null,
@@ -51,7 +51,7 @@ function normalizeNotifications(raw: unknown): GovernanceNotifications {
     ? obj.sms_numbers.map((v) => String(v).trim()).filter(Boolean)
     : [];
   return {
-    email_enabled: obj.email_enabled !== false,
+    email_enabled: obj.email_enabled === true,
     slack_webhook_url:
       typeof obj.slack_webhook_url === "string" && obj.slack_webhook_url.trim()
         ? obj.slack_webhook_url.trim()

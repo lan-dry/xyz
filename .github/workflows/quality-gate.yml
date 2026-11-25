@@ -27,6 +27,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/salanor_test
       AEGIS_BRIDGE_MASTER_KEY: quality-gate-encryption-key
+      PLATFORM_BOOTSTRAP_SECRET: quality-gate-platform-secret
       NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
@@ -93,7 +94,10 @@ jobs:
       - name: Gate 1 quickstarts (fresh sandbox)
         run: pnpm launch:quickstarts
 
-      - name: Gate 1 stranger path (request → approve → ingest → auditor)
+      - name: Gate 1 stranger path (sign-up → checklist → verify → reset)
+        env:
+          # API path is the release gate; skip Next.js boot for speed/stability.
+          STRANGER_SKIP_BROWSER: "1"
         run: pnpm launch:stranger
 
       - name: Upload launch artifacts

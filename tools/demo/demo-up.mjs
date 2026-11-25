@@ -54,6 +54,7 @@ const ALLOW_WIPE_ENV = "AEGIS_ALLOW_TENANT_WIPE";
 // come from a (possibly production-flavoured) .env file.
 const shellDemoBankKey = process.env.DEMO_BANK_INGEST_KEY?.trim() || "";
 const shellAllowWipe = process.env[ALLOW_WIPE_ENV];
+const shellEmailEnabled = process.env.AEGIS_EMAIL_ENABLED;
 
 function loadDotEnv() {
   for (const name of [".env.local", ".env"]) {
@@ -403,6 +404,7 @@ const LOCAL_PERSONAS = {
   officer: { email: "officer@demo.test", display_name: "Patience Ingabire" },
   manager: { email: "manager@demo.test", display_name: "Jean Mutabazi" },
   compliance: { email: "comp@demo.test", display_name: "Diane Uwizeye" },
+  fraud: { email: "fraud@demo.test", display_name: "Eric Habimana" },
   head: { email: "head@demo.test", display_name: "Olivier Kayitesi" },
   dpo: { email: "dpo@demo.test", display_name: "Sandra Murekatete" },
   deputy: { email: "deputy@demo.test", display_name: "Aimee Nyirahabimana" },
@@ -469,6 +471,15 @@ function assertLoopbackTenantFile(path) {
 
 async function main() {
   loadDotEnv();
+  // An .env file cannot turn mail on. Local demo stays silent unless the shell opted in.
+  if (shellEmailEnabled === undefined) delete process.env.AEGIS_EMAIL_ENABLED;
+  const emailOn = /^(1|true|yes)$/i.test((process.env.AEGIS_EMAIL_ENABLED || "").trim());
+  if (!emailOn) {
+    delete process.env.RESEND_API_KEY;
+    console.log(
+      "Transactional email is off. Approval and invite mail will not be sent. Set AEGIS_EMAIL_ENABLED=1 in the shell before demo:up to send.",
+    );
+  }
   // An .env file can never authorise a wipe, and never supplies the Demo Bank ingest key for
   // the local stack (that variable usually names the hosted tenant's key).
   if (shellAllowWipe === undefined) delete process.env[ALLOW_WIPE_ENV];

@@ -225,6 +225,7 @@ export async function writeConnectorConfigFile(
     sync_wait_ms: 15_000,
     request_timeout_ms: 20_000,
     retry: { initial_ms: 500, max_ms: 30_000, factor: 2, jitter: 0.2 },
+    demo_seq_catchup: true,
     ...(opts.ingestBearer ? { ingest_bearer: opts.ingestBearer } : {}),
   };
   const path = configPath(root, def.source_id);
@@ -387,6 +388,7 @@ export function connectorConfigFor(
     sync_wait_ms: 15_000,
     request_timeout_ms: 20_000,
     retry: { initial_ms: 400, max_ms: 8_000, factor: 2, jitter: 0.1 },
+    demo_seq_catchup: true,
   };
 }
 

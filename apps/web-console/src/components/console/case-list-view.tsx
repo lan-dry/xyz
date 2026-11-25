@@ -25,6 +25,7 @@ import {
   approversLabel,
   bankVocabChip,
   chipFromSummary,
+  decidedByFromSummary,
   productFromSummary,
   ruleLabels,
   whatFromSummary,
@@ -33,6 +34,7 @@ import { formatMoney, kigaliDayBounds } from "@/lib/format-display";
 import { isBankDemoProfile } from "@/lib/ui-profile";
 import { TRACE_PAGE_SIZES, useTraceListParams } from "@/hooks/use-trace-list-params";
 import { consoleApi } from "@/lib/api";
+import { emptyActionHref, useTenantCopy } from "@/lib/tenant-copy";
 import { agentLabel } from "@/lib/agent-label";
 import { listSentenceFromTrace } from "@/lib/case-story";
 import { readConsoleEnvironment } from "@/lib/console-environment";
@@ -77,6 +79,7 @@ export type CaseListVariant = "live" | "cases";
  * - cases: browsable list (no auto-refresh); used by /aegis/traces
  */
 export function CaseListView({ variant }: { variant: CaseListVariant }) {
+  const copy = useTenantCopy();
   const isLive = variant === "live";
   const {
     q,
@@ -185,32 +188,9 @@ export function CaseListView({ variant }: { variant: CaseListVariant }) {
       <PageHeader
         title={isLive ? "Live feed" : "Cases"}
         subtitle={
-          isLive ? (
-            <>
-              {isBankDemoProfile() ? (
-                <>Cases as they happen in the demo environment.</>
-              ) : (
-                <>
-                  Streaming cases for <strong>{environment}</strong>.
-                </>
-              )}{" "}
-              Updates every few seconds. Click a row for a preview; open the case for the full
-              story.
-            </>
-          ) : (
-            <>
-              Browse and search sealed cases
-              {isBankDemoProfile() ? (
-                <> in the demo environment</>
-              ) : (
-                <>
-                  {" "}
-                  for <strong>{environment}</strong>
-                </>
-              )}
-              . Click a row for a preview; open the case for the full story.
-            </>
-          )
+          isLive
+            ? "Sealed cases as they arrive — a record of what happened, not a chat."
+            : "Browse sealed cases: what happened, whether it was allowed, and a link to the receipt."
         }
       />
 
@@ -325,23 +305,36 @@ export function CaseListView({ variant }: { variant: CaseListVariant }) {
       {traces.length === 0 && !isLoading && !error && !waitingForFacts ? (
         <EmptyStatePanel
           mark={<AegisMark />}
-          title={hasFilters ? "No rows match" : "Connect an agent or workflow"}
+          title={
+            hasFilters
+              ? "No rows match"
+              : isLive
+                ? copy.live_empty_title
+                : copy.cases_empty_title
+          }
           description={
             hasFilters
               ? "Try clearing filters or switch environment."
-              : "Once an agent runs a governed action, you will see plain-language cards here: what happened, whether it was allowed, and a link to the receipt."
+              : isLive
+                ? copy.live_empty_body
+                : copy.cases_empty_body
           }
           action={
             hasFilters ? undefined : (
-              <Link href="/aegis/agents" className={`${ui.btn} ${ui.btnPrimary}`}>
-                Connect an agent
-              </Link>
-            )
-          }
-          secondary={
-            hasFilters ? undefined : (
-              <Link href="/aegis/get-started" className={`${ui.btn} ${ui.btnGhost}`}>
-                Open get started
+              <Link
+                href={emptyActionHref(
+                  isLive ? copy.live_empty_action : copy.cases_empty_action,
+                )}
+                className={`${ui.btn} ${ui.btnPrimary}`}
+                title={
+                  (isLive ? copy.live_empty_action : copy.cases_empty_action).includes(
+                    "test",
+                  )
+                    ? copy.tooltip_test_event
+                    : copy.tooltip_live_feed
+                }
+              >
+                {isLive ? copy.live_empty_action : copy.cases_empty_action}
               </Link>
             )
           }
@@ -373,6 +366,7 @@ export function CaseListView({ variant }: { variant: CaseListVariant }) {
                   const amount = formatMoney(s?.amount, s?.currency);
                   const caseId = s?.case_id ?? t.trace_id;
                   const rules = ruleLabels(s);
+                  const decidedBy = decidedByFromSummary(s);
                   return (
                     <tr
                       key={t.trace_id}
@@ -414,6 +408,17 @@ export function CaseListView({ variant }: { variant: CaseListVariant }) {
                       </td>
                       <td style={{ maxWidth: "28rem" }}>
                         {whatFromSummary(s) ?? row.sentence}
+                        {decidedBy ? (
+                          <div
+                            style={{
+                              marginTop: "0.25rem",
+                              fontSize: "0.75rem",
+                              color: "var(--console-fg-muted)",
+                            }}
+                          >
+                            {decidedBy}
+                          </div>
+                        ) : null}
                       </td>
                       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                         {amount ?? "-"}
@@ -464,6 +469,7 @@ export function CaseListView({ variant }: { variant: CaseListVariant }) {
           {traces.map((t) => {
             const row = listSentenceFromTrace(t);
             const statusLabel = row.outcome.chip;
+            const decidedBy = decidedByFromSummary(summaries?.[t.trace_id]);
             return (
               <article
                 key={t.trace_id}
@@ -502,6 +508,17 @@ export function CaseListView({ variant }: { variant: CaseListVariant }) {
                     <p style={{ margin: 0, fontWeight: 600, fontSize: "0.9375rem" }}>
                       {row.sentence}
                     </p>
+                    {decidedBy ? (
+                      <p
+                        style={{
+                          margin: "0.35rem 0 0",
+                          fontSize: "0.8125rem",
+                          color: "var(--console-fg-muted)",
+                        }}
+                      >
+                        {decidedBy}
+                      </p>
+                    ) : null}
                     <p
                       style={{
                         margin: "0.35rem 0 0",
@@ -547,6 +564,12 @@ export function CaseListView({ variant }: { variant: CaseListVariant }) {
             <p style={{ margin: 0, fontSize: "0.875rem" }}>
               <OutcomeChip chip={selectedStory.outcome.chip} kind={selectedStory.outcome.kind} />
             </p>
+            {selected ? (
+              <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 600 }}>
+                {decidedByFromSummary(summaries?.[selected.trace_id]) ??
+                  "Decided by policy"}
+              </p>
+            ) : null}
             <dl style={{ margin: 0, fontSize: "0.8125rem" }}>
               <dt style={{ color: "var(--console-fg-subtle)" }}>Agent</dt>
               <dd style={{ margin: "0 0 0.5rem" }}>

@@ -1,20 +1,17 @@
 {
-  "aps_version": "0.1",
-  "event_id": "550e8400-e29b-41d4-a716-446655440002",
-  "recorded_at": "2026-05-16T12:00:02.000Z",
-  "actor": { "id": "agent:demo", "type": "software_agent" },
-  "action": "decision.record",
-  "subject": { "type": "workflow_step", "id": "credit-approval" },
-  "context": {
-    "inputs": {},
+  "schema_version": 1,
+  "event_id": "evt_550e8400e29b41d4a716446655440002",
+  "organization_id": "local-demo",
+  "trace_id": "trc_bad_sig",
+  "agent_id": "agent:demo",
+  "key_id": "key:local-demo",
+  "emitted_at": "2026-05-16T12:00:02.000Z",
+  "actor_type": "agent",
+  "actor_principal": "agent:demo",
+  "action_kind": "decision",
+  "policy_decision": "allow",
+  "payload": {
     "outcome": { "decision": "review" }
   },
-  "signature": {
-    "alg": "rsa2048",
-    "value": "not-a-valid-placeholder"
-  },
-  "chain": {
-    "prev_event_hash": null,
-    "event_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
-  }
+  "sig_alg": "ed25519"
 }

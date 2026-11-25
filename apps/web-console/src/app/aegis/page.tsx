@@ -18,6 +18,8 @@ import { ConsoleTime } from "@/components/console/console-time";
 import { SystemStatusStrip } from "@/components/console/system-status-strip";
 import { useCaseSummaries } from "@/hooks/use-case-summaries";
 import { consoleApi } from "@/lib/api";
+import { emptyActionHref, useTenantCopy } from "@/lib/tenant-copy";
+import { SandboxChecklist } from "./get-started/checklist";
 import { agentLabel } from "@/lib/agent-label";
 import { bankVocabChip, chipFromSummary, whatFromSummary } from "@/lib/case-row";
 import { listSentenceFromTrace } from "@/lib/case-story";
@@ -49,6 +51,7 @@ type OverviewMetrics = {
 };
 
 export default function AegisDashboardPage() {
+  const copy = useTenantCopy();
   const [environment, setEnvironment] = useState<ConsoleEnvironment>("production");
 
   useEffect(() => {
@@ -117,11 +120,17 @@ export default function AegisDashboardPage() {
         title="Overview"
         subtitle={`What needs attention in ${environmentLabel(environment)}, and what ran recently.`}
         actions={
-          <Link href="/aegis/live" className={`${ui.btn} ${ui.btnPrimary}`}>
+          <Link
+            href="/aegis/live"
+            className={`${ui.btn} ${ui.btnPrimary}`}
+            title={copy.tooltip_live_feed}
+          >
             Open live feed
           </Link>
         }
       />
+
+      <SandboxChecklist />
 
       <SystemStatusStrip />
 
@@ -290,11 +299,19 @@ export default function AegisDashboardPage() {
 
             {recent.length === 0 ? (
               <EmptyStatePanel
-                title="No cases yet"
-                description="When an agent runs a governed action, you will see a plain-language case here."
+                title={copy.home_empty_title}
+                description={copy.home_empty_body}
                 action={
-                  <Link href="/aegis/agents" className={`${ui.btn} ${ui.btnPrimary}`}>
-                    Connect an agent
+                  <Link
+                    href={emptyActionHref(copy.home_empty_action)}
+                    className={`${ui.btn} ${ui.btnPrimary}`}
+                    title={
+                      copy.home_empty_action.includes("test")
+                        ? copy.tooltip_test_event
+                        : copy.tooltip_live_feed
+                    }
+                  >
+                    {copy.home_empty_action}
                   </Link>
                 }
               />

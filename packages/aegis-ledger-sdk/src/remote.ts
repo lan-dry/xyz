@@ -1,21 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { eventHashFromBody } from "./canonical.js";
 import { validateEvent } from "./schema.js";
-import { lastEventHash } from "./store.js";
+import { lastEventId } from "./store.js";
 import type { ApsEvent, RecordInput, RecordOptions } from "./types.js";
-
-const DEFAULT_SIGNATURE = {
-  alg: "local-placeholder" as const,
-  value:
-    "placeholder:0000000000000000000000000000000000000000000000000000000000000000",
-};
 
 export interface RemoteRecordOptions extends RecordOptions {
   baseUrl: string;
   apiKey: string;
   traceId?: string;
   idempotencyKey?: string;
-  /** When set, chain prev hash from this local NDJSON path before posting. */
+  /** When set, chain parent_event_id from this local NDJSON path before posting. */
   localChainStorePath?: string;
   fetchImpl?: typeof fetch;
 }
@@ -39,27 +32,29 @@ export class AegisRemoteError extends Error {
 
 function buildEvent(
   input: RecordInput,
-  options: RecordOptions,
-  prev: string | null,
+  options: RecordOptions & { traceId?: string },
+  parentEventId: string | null,
 ): ApsEvent {
-  const body: Omit<ApsEvent, "chain"> & { chain: { prev_event_hash: string | null } } = {
-    aps_version: "0.1",
+  const event: ApsEvent = {
+    schema_version: 1,
     event_id: options.event_id ?? randomUUID(),
-    recorded_at: options.recorded_at ?? new Date().toISOString(),
-    tenant_id: input.tenant_id ?? "local",
-    actor: input.actor,
-    action: input.action,
-    subject: input.subject,
-    context: input.context,
-    signature: input.signature ?? DEFAULT_SIGNATURE,
-    chain: { prev_event_hash: prev },
+    organization_id: input.organization_id ?? "local",
+    trace_id: options.traceId ?? options.trace_id ?? randomUUID(),
+    agent_id: input.agent_id ?? "agent:local",
+    key_id: input.key_id ?? "key:local",
+    emitted_at: options.emitted_at ?? options.recorded_at ?? new Date().toISOString(),
+    actor_type: input.actor_type ?? "agent",
+    actor_principal: input.actor_principal ?? "agent:local",
+    action_kind: input.action_kind ?? "decision",
+    policy_decision: input.policy_decision ?? "allow",
+    payload: input.payload ?? {},
   };
 
-  const event_hash = eventHashFromBody(body as unknown as Record<string, unknown>);
-  const event: ApsEvent = {
-    ...body,
-    chain: { prev_event_hash: prev, event_hash },
-  };
+  if (parentEventId) event.parent_event_id = parentEventId;
+  if (input.policy_id) event.policy_id = input.policy_id;
+  if (input.tool_name) event.tool_name = input.tool_name;
+  if (input.sig_alg) event.sig_alg = input.sig_alg;
+  if (input.sig_value_b64) event.sig_value_b64 = input.sig_value_b64;
 
   validateEvent(event);
   return event;
@@ -76,14 +71,14 @@ export async function remoteRecord(
   const base = options.baseUrl.replace(/\/$/, "");
   const url = `${base}/api/aegis/ingest`;
 
-  let prev: string | null = null;
+  let parent: string | null = null;
   if (options.localChainStorePath) {
     const { readEvents } = await import("./store.js");
-    prev = lastEventHash(readEvents(options.localChainStorePath));
+    parent = lastEventId(readEvents(options.localChainStorePath));
   }
 
-  const event = buildEvent(input, options, prev);
-  const traceId = options.traceId ?? randomUUID();
+  const event = buildEvent(input, options, parent);
+  const traceId = options.traceId ?? event.trace_id;
 
   const headers: Record<string, string> = {
     "content-type": "application/json",

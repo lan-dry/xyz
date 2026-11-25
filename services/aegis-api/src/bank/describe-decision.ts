@@ -32,6 +32,7 @@ export const RULE_TITLES: Record<string, string> = {
   "LN-07": "High model score requires Credit Manager",
   "VEL-SEG-DAY": "Segment daily limit (Aegis-reported)",
   "BEN-NEW-OFF": "New beneficiary off-hours",
+  "CHN-AGT": "Agent or USSD off-hours",
   "FRD-SCORE-RET": "Retail fraud score hard stop",
   "AUTH-XFER-1": "Within transfer officer limit",
   "AUTH-XFER-2": "Above transfer officer limit",
@@ -118,7 +119,46 @@ export type DescribeDecisionInput = {
   approval_reason?: string | null;
   would_have?: BankOutcome | string | null;
   mode?: "enforce" | "record_only" | string | null;
+  /** Human release of an FRD-* hard stop. */
+  fraud_block_override?: boolean | null;
 };
+
+/** Case and trace screens: record-only never reads as a decision. */
+export const RECORD_ONLY_DECISION_LINE = "Record only — no decision";
+
+function isFraudRuleId(ruleId: string | null | undefined): boolean {
+  const code = ruleIdCode(ruleId);
+  return Boolean(code?.startsWith("FRD-"));
+}
+
+/**
+ * One line for every case and trace: a person, a rule name, or record-only.
+ * A fraud hard-stop release names the person as a fraud override.
+ */
+export function decidedByLine(input: DescribeDecisionInput): string {
+  if (input.mode === "record_only") return RECORD_ONLY_DECISION_LINE;
+  const ruleId =
+    input.decision_basis?.decided_by_rule_id ?? input.decided_by_rule_id ?? null;
+  const who = formatApprover(input.approver_name, input.approver_role);
+  const human =
+    input.outcome === "released" ||
+    input.outcome === "approved" ||
+    input.outcome === "declined" ||
+    input.outcome === "rejected";
+  const fraud =
+    input.fraud_block_override === true || (human && isFraudRuleId(ruleId));
+  if (who && human) {
+    return fraud ? `Decided by ${who} (fraud override)` : `Decided by ${who}`;
+  }
+  const effect =
+    input.outcome === "stop" || input.outcome === "allow" || input.outcome === "hold"
+      ? input.outcome
+      : null;
+  const rule = formatRuleLabel(ruleId, effect);
+  if (rule) return `Decided by ${rule}`;
+  if (who) return `Decided by ${who}`;
+  return "Decided by policy";
+}
 
 function formatAmount(amount: number | null | undefined, currency?: string | null): string | null {
   if (amount == null || !Number.isFinite(amount)) return null;
@@ -310,6 +350,18 @@ export function describeDecision(receipt: DescribeDecisionInput): string {
   }
 
   if (outcome === "released" || outcome === "approved") {
+    const fraudRelease =
+      receipt.fraud_block_override === true ||
+      Boolean(ruleIdCode(ruleId)?.startsWith("FRD-"));
+    if (fraudRelease) {
+      return (
+        `${subject} was stopped` +
+        (rule ? ` by rule ${rule}` : "") +
+        `. Fraud override by ${who ?? "an authorised approver"}${when}` +
+        (reasonText ? ` with the reason: ${reasonText}` : "") +
+        `. ${pol}`
+      ).trim();
+    }
     const needRole =
       receipt.required_role_label ??
       formatRoleLabel(receipt.required_role) ??

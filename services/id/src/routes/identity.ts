@@ -49,11 +49,12 @@ import {
   getAccountPlatformRole,
   canReadOrgConsole,
   canWriteOrgConsole,
+  isSandboxInviteRole,
   type ConsoleSession,
   type OrgRole,
 } from "@salanor/platform-auth";
 import { sendInviteEmail } from "../email/send-invite.js";
-import { EmailDeliveryError } from "../email/email-delivery.js";
+import { EmailDeliveryError, logEmailDeliveryFailure } from "../email/email-delivery.js";
 import { sendEmailVerificationEmail } from "../email/send-email-verification.js";
 import { sendPasswordResetEmail } from "../email/send-password-reset.js";
 import {
@@ -72,6 +73,22 @@ function inviteAcceptOrigin(): string {
 
 function passwordResetOrigin(): string {
   return inviteAcceptOrigin();
+}
+
+/** Checklist tick when a sandbox admin invites a colleague. Failures stay non-blocking. */
+async function markSandboxColleagueInvited(organizationId: string): Promise<void> {
+  try {
+    await getPool().query(
+      `UPDATE organization
+          SET onboarding_checklist =
+                COALESCE(onboarding_checklist, '{}'::jsonb)
+                || '{"invite_colleague": true}'::jsonb
+        WHERE organization_id = $1 AND tenant_kind = 'sandbox'`,
+      [organizationId],
+    );
+  } catch (err) {
+    console.error("[id] sandbox checklist invite", err);
+  }
 }
 
 function serializeUser(session: ConsoleSession) {
@@ -549,6 +566,20 @@ identityRoutes.patch("/orgs/:orgId/members/:membershipId", async (c) => {
   if (role && status) {
     return c.json({ error: "Provide role or status, not both" }, 422);
   }
+  if (role) {
+    const kind = await getPool().query<{ tenant_kind: string | null }>(
+      `SELECT tenant_kind FROM organization WHERE organization_id = $1`,
+      [orgId],
+    );
+    if (kind.rows[0]?.tenant_kind === "sandbox" && !isSandboxInviteRole(role)) {
+      return c.json(
+        {
+          error: "Sandbox roles are Admin, Approver, or Auditor.",
+        },
+        422,
+      );
+    }
+  }
 
   const client = await getPool().connect();
   try {
@@ -619,7 +650,7 @@ identityRoutes.post("/orgs/:orgId/invitations", async (c) => {
     return c.json({ error: "Invalid JSON" }, 422);
   }
   const email = body.email?.trim();
-  const role = (body.role ?? "viewer") as OrgRole;
+  const role = (body.role ?? "approver") as OrgRole;
   const allowed: OrgRole[] = [
     "owner",
     "admin",
@@ -636,13 +667,26 @@ identityRoutes.post("/orgs/:orgId/invitations", async (c) => {
     return c.json({ error: "invalid role" }, 422);
   }
 
-  const orgRow = await getPool().query<{ name: string; slug: string }>(
-    `SELECT name, slug FROM organization WHERE organization_id = $1`,
+  const orgRow = await getPool().query<{
+    name: string;
+    slug: string;
+    tenant_kind: string | null;
+  }>(
+    `SELECT name, slug, tenant_kind FROM organization WHERE organization_id = $1`,
     [orgId],
   );
   const org = orgRow.rows[0];
   if (!org) {
     return c.json({ error: "Organization not found" }, 404);
+  }
+  if (org.tenant_kind === "sandbox" && !isSandboxInviteRole(role)) {
+    return c.json(
+      {
+        error: "invalid role",
+        message: "Sandbox invites are Admin, Approver, or Auditor.",
+      },
+      422,
+    );
   }
 
   const token = generateInviteToken();
@@ -666,6 +710,7 @@ identityRoutes.post("/orgs/:orgId/invitations", async (c) => {
       metadata: { email, role },
     });
     await client.query("COMMIT");
+    await markSandboxColleagueInvited(orgId);
 
     const inviteUrl = `${inviteAcceptOrigin()}/invite?token=${encodeURIComponent(token)}`;
     let emailDelivered = true;
@@ -691,7 +736,7 @@ identityRoutes.post("/orgs/:orgId/invitations", async (c) => {
       });
     } catch (emailErr) {
       emailDelivered = false;
-      console.error("[id] invitation email failed after create", emailErr);
+      logEmailDeliveryFailure("[id] invitation email after create", emailErr);
       await writeAuditEvent(getPool(), {
         organizationId: orgId,
         membershipId: session.userId,
@@ -812,7 +857,7 @@ identityRoutes.post("/orgs/:orgId/invitations/:invitationId/resend", async (c) =
       });
     } catch (emailErr) {
       emailDelivered = false;
-      console.error("[id] invitation resend email failed", emailErr);
+      logEmailDeliveryFailure("[id] invitation resend email", emailErr);
       await writeAuditEvent(getPool(), {
         organizationId: orgId,
         membershipId: session.userId,
@@ -1338,7 +1383,7 @@ identityRoutes.post("/auth/forgot-password", async (c) => {
           organizationId: orgFrom?.orgId ?? null,
         });
       } catch (emailErr) {
-        console.error("[id] password reset email failed", emailErr);
+        logEmailDeliveryFailure("[id] password reset email", emailErr);
       }
     }
     return c.json({

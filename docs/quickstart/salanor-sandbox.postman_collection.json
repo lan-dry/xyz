@@ -1,0 +1,60 @@
+{
+  "info": {
+    "name": "Salanor sandbox quickstart",
+    "description": "Public access request, ingest, and evidence verify. Replace {{baseUrl}} and {{ingestKey}}. Synthetic data only.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8080" },
+    { "key": "ingestKey", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Request sandbox access",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/v1/public/access-request",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"work_email\": \"risk@example-bank.test\",\n  \"company\": \"Example Bank\",\n  \"role\": \"Risk\",\n  \"country\": \"RW\",\n  \"use_case\": \"Evaluate sealed decisions in a sandbox\",\n  \"website\": \"\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Public receipt keys",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/v1/public/keys"
+      }
+    },
+    {
+      "name": "Send a synthetic bank event",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{ingestKey}}" }
+        ],
+        "url": "{{baseUrl}}/v1/aegis/bank/events",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"schema_version\": 1,\n  \"case_id\": \"SBX-POSTMAN-1\",\n  \"idempotency_key\": \"00000000-0000-4000-8000-0000000000aa\",\n  \"event_type\": \"loan_decision\",\n  \"product\": \"retail_loan\",\n  \"emitted_at\": \"2026-01-15T09:00:00.000Z\",\n  \"actor\": { \"type\": \"system\", \"id\": \"postman\" },\n  \"attributes\": {\n    \"amount\": 1200000,\n    \"currency\": \"RWF\",\n    \"beneficiary_account\": \"ACCT-DEMO-001\",\n    \"applicant_name\": \"Sandbox Applicant\"\n  },\n  \"trace_id\": \"tr_postman_1\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Verify an evidence bundle file",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/v1/public/evidence-bundle/verify",
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "description": "Replace the body with a downloaded sample evidence bundle JSON."
+      }
+    }
+  ]
+}

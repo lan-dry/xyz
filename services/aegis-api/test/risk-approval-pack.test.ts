@@ -61,7 +61,7 @@ describe("B3 Risk Approval Pack PDF", () => {
         },
       ],
       key_custody: {
-        label: "Key custody: software key (demo tenant)",
+        label: "Key custody: software key (non-production)",
         key_id: "receipt_dev",
         fingerprint: "sha256:deadbeef",
       },

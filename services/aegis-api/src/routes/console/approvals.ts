@@ -7,6 +7,7 @@ import type pg from "pg";
 import { auditFromConsoleSession } from "../../console/audit-from-session.js";
 import { getPool } from "../../db/pool.js";
 import { ingestHumanApprovalEvent } from "../../console/human-approval-event.js";
+import { markOnboardingStep } from "../../tenants/onboarding-checklist.js";
 import { issueApprovalOutcomeReceipt } from "../../forensic/issue-approval-outcome.js";
 import { buildRequestPreview } from "../../approvals/request-preview.js";
 import {
@@ -255,6 +256,10 @@ async function finalizeHumanApproval(
       approver_binding: params.approverBinding ?? null,
       approver_bindings: approverBindings,
     });
+  }
+
+  if (params.decision === "approved") {
+    await markOnboardingStep(client, params.organizationId, "approve_held");
   }
 
   return decided;
@@ -1167,6 +1172,7 @@ approvalRoutes.post(
         session.organizationId,
         approvalId,
       );
+      await markOnboardingStep(client, session.organizationId, "approve_held");
       await client.query("COMMIT");
       return c.json({
         approval: updated ? serializeApproval(updated) : null,

@@ -32,6 +32,12 @@ export interface ConnectorConfig {
   sync_wait_ms: number;
   request_timeout_ms: number;
   retry: RetryConfig;
+  /**
+   * Demo/sandbox connectors only. On the first successful last-seq read, if this
+   * tenant is demo or sandbox and local last_seq is behind, adopt the remote value.
+   * Omitted or false: production behaviour (a gap stays an ownership conflict).
+   */
+  demo_seq_catchup?: boolean;
 }
 
 export const DEFAULT_INGEST_PATH = "/v1/aegis/source-events";
@@ -119,6 +125,7 @@ export function parseConfig(raw: unknown, baseDir: string, env: Env = process.en
       factor: num(retry.factor, "retry.factor", 2, 1),
       jitter: num(retry.jitter, "retry.jitter", 0.2, 0),
     },
+    demo_seq_catchup: c.demo_seq_catchup === true,
   };
   if (config.retry.jitter > 1) throw new Error("retry.jitter must be <= 1");
   if (config.retry.max_ms < config.retry.initial_ms) {

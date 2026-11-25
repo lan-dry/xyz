@@ -1,15 +1,16 @@
 /**
- * Gate 1 stranger Playwright specs.
- * Full path (request → approve → checklist → ingest → auditor) runs via
- * `pnpm launch:stranger` (services/aegis-api/scripts/run-stranger-test.mts)
- * which writes docs/launch/_raw/stranger-run-*.json. These specs cover the public gate.
+ * Soft Playwright smoke for the public access-request gate.
+ *
+ * The release-blocking stranger path is `pnpm launch:stranger`
+ * (services/aegis-api/scripts/run-stranger-test.mts) — already in quality-gate.
+ * These specs only check the public form API shape when AEGIS_API_URL is up.
  */
 import { test, expect } from "playwright/test";
 
 const API = process.env.AEGIS_API_URL ?? "http://127.0.0.1:8080";
 
-test.describe("stranger sandbox path", () => {
-  test("access-request accepts work email shape", async ({ request }) => {
+test.describe("stranger public gate", () => {
+  test("access-request accepts a work email", async ({ request }) => {
     const res = await request.post(`${API}/v1/public/access-request`, {
       data: {
         work_email: `stranger.${Date.now()}@example-bank.test`,
@@ -20,22 +21,23 @@ test.describe("stranger sandbox path", () => {
         website: "",
       },
     });
-    expect([200, 404, 500, 503]).toContain(res.status());
+    expect(res.status(), await res.text()).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
   });
 
-  test("personal email is refused when API is up", async ({ request }) => {
+  test("personal email is refused", async ({ request }) => {
     const res = await request.post(`${API}/v1/public/access-request`, {
       data: {
         work_email: "person@gmail.com",
         company: "X",
         role: "X",
         country: "X",
-        use_case: "X",
+        use_case: "long enough use case text",
       },
     });
-    if (res.status() === 422) {
-      const body = await res.json();
-      expect(String(body.message ?? "")).toMatch(/work email/i);
-    }
+    expect(res.status()).toBe(422);
+    const body = await res.json();
+    expect(String(body.message ?? "")).toMatch(/work email/i);
   });
 });

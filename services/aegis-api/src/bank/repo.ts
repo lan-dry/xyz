@@ -132,19 +132,45 @@ export async function listFieldPolicies(
   return result.rows;
 }
 
+/**
+ * Record-only when the named workflow says so.
+ * Sandbox / self-serve with no decision-mode workflow also records only.
+ * Demo Bank stays in decision mode: tenant_kind demo, or a workflow with
+ * record_only false (demo.banking pack). Real tenants without a bound
+ * workflow keep enforce.
+ */
 export async function getWorkflowRecordOnly(
   client: pg.Pool | pg.PoolClient,
   organizationId: string,
   workflowId: string | undefined,
 ): Promise<boolean> {
-  if (!workflowId) return false;
-  const result = await client.query<{ record_only: boolean }>(
-    `SELECT COALESCE(record_only, false) AS record_only
-     FROM governed_workflow
-     WHERE organization_id = $1 AND workflow_id = $2`,
-    [organizationId, workflowId],
+  if (workflowId) {
+    const result = await client.query<{ record_only: boolean }>(
+      `SELECT COALESCE(record_only, false) AS record_only
+       FROM governed_workflow
+       WHERE organization_id = $1 AND workflow_id = $2`,
+      [organizationId, workflowId],
+    );
+    if (result.rows[0]) return result.rows[0].record_only;
+  }
+  const org = await client.query<{ tenant_kind: string; is_demo: boolean }>(
+    `SELECT COALESCE(tenant_kind, 'real') AS tenant_kind,
+            COALESCE(is_demo, false) AS is_demo
+       FROM organization
+      WHERE organization_id = $1`,
+    [organizationId],
   );
-  return result.rows[0]?.record_only ?? false;
+  const row = org.rows[0];
+  if (!row || row.is_demo || row.tenant_kind === "demo" || row.tenant_kind === "real") {
+    return false;
+  }
+  const deciding = await client.query(
+    `SELECT 1 FROM governed_workflow
+      WHERE organization_id = $1 AND record_only = false
+      LIMIT 1`,
+    [organizationId],
+  );
+  return deciding.rows.length === 0;
 }
 
 export type BankCaseRow = {

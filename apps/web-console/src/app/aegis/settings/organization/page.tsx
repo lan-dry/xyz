@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { ErrorAlert, ui } from "@/components/console/console-ui";
+import { ResetSandboxPanel } from "@/components/console/reset-sandbox";
 import { consoleApi } from "@/lib/api";
 import { IdApiError, idApi } from "@/lib/id-api";
 import type { MeResponse } from "@/lib/types";
@@ -30,6 +31,106 @@ type RequireSignedState = {
     created_at: string;
   } | null;
 };
+
+function SandboxTypeCard({ isAdmin }: { isAdmin: boolean }) {
+  const queryClient = useQueryClient();
+  const statusQuery = useQuery({
+    queryKey: ["console", "sandbox", "status"],
+    queryFn: () =>
+      consoleApi<{
+        is_sandbox: boolean;
+        tenant_kind?: string;
+        banner: string | null;
+        days_remaining: number | null;
+        sandbox_expires_at: string | null;
+      }>("/sandbox/status"),
+  });
+  const enable = useMutation({
+    mutationFn: () =>
+      consoleApi<{
+        ok: boolean;
+        unchanged?: boolean;
+        tenant_kind: string;
+        days_remaining: number | null;
+        banner: string;
+        error?: string;
+        message?: string;
+      }>("/sandbox/enable", { method: "POST", body: JSON.stringify({}) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["console", "sandbox"] });
+      void queryClient.invalidateQueries({ queryKey: ["console", "organization"] });
+    },
+  });
+
+  const isSandbox = statusQuery.data?.is_sandbox === true;
+  const days = statusQuery.data?.days_remaining;
+
+  return (
+    <section className={settings.settingCard}>
+      <h2>Sandbox tenant</h2>
+      <p>
+        A sandbox organisation only accepts synthetic data, has daily quotas, and
+        expires after 30 days. Production and demo organisations stay unchanged.
+      </p>
+      {statusQuery.isLoading ? <p className={ui.muted}>Loading…</p> : null}
+      {statusQuery.isError ? (
+        <ErrorAlert message={(statusQuery.error as Error).message} />
+      ) : null}
+      {statusQuery.data ? (
+        <>
+          <p style={{ margin: "0 0 0.75rem", fontWeight: 600 }}>
+            {isSandbox
+              ? "Sandbox · synthetic data only"
+              : `Type: ${statusQuery.data.tenant_kind ?? "real"}`}
+          </p>
+          {isSandbox ? (
+            <p className={ui.muted} style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem" }}>
+              {days == null
+                ? "Expiry not set."
+                : days === 0
+                  ? "Expires today."
+                  : `${days} day${days === 1 ? "" : "s"} left` +
+                    (statusQuery.data.sandbox_expires_at
+                      ? ` (until ${statusQuery.data.sandbox_expires_at.slice(0, 10)})`
+                      : "")}
+              . Banner and synthetic-data checks are on for every page and ingest route.
+            </p>
+          ) : (
+            <p className={ui.muted} style={{ margin: "0 0 0.75rem", fontSize: "0.8125rem" }}>
+              Switching on sets a 30-day expiry, 5,000 events/day and 512 MB storage
+              quotas, and refuses real-looking customer data.
+            </p>
+          )}
+          {isAdmin && !isSandbox ? (
+            <button
+              type="button"
+              className={`${ui.btn} ${ui.btnPrimary}`}
+              disabled={enable.isPending}
+              onClick={() => enable.mutate()}
+            >
+              {enable.isPending ? "Switching…" : "Switch this organisation to sandbox"}
+            </button>
+          ) : null}
+          {enable.isError ? (
+            <ErrorAlert message={(enable.error as Error).message} />
+          ) : null}
+          {enable.isSuccess && enable.data.ok ? (
+            <p className={ui.muted} style={{ marginTop: "0.75rem", fontSize: "0.8125rem" }}>
+              {enable.data.unchanged
+                ? "Already a sandbox."
+                : "Switched to sandbox. Reload to see the banner."}
+            </p>
+          ) : null}
+          {isSandbox && isAdmin ? (
+            <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border, #d5ddd8)" }}>
+              <ResetSandboxPanel />
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </section>
+  );
+}
 
 function RequireSignedEventsCard({ isAdmin }: { isAdmin: boolean }) {
   const queryClient = useQueryClient();
@@ -451,6 +552,7 @@ export default function OrganizationSettingsPage() {
 
       <div className={settings.settingsSectionGrid}>
         <RequireSignedEventsCard isAdmin={Boolean(isAdmin)} />
+        <SandboxTypeCard isAdmin={Boolean(isAdmin)} />
       </div>
 
       <div className={settings.settingsSectionGrid}>

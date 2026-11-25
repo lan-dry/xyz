@@ -311,6 +311,20 @@
   background: var(--console-accent-soft);
 }
 
+.sandboxBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--console-warning);
+  background: var(--console-warning-soft);
+  color: var(--console-fg);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
 .demoStrip {
   display: flex;
   align-items: center;

@@ -18,12 +18,16 @@ import {
   ui,
 } from "@/components/console/console-ui";
 import { consoleApi } from "@/lib/api";
+import { idApi } from "@/lib/id-api";
+import { canManageOrg } from "@/lib/org-roles";
 import { formatRelativeTime, keyPermissionLabel } from "@/lib/relative-time";
-import type { IngestKeySummary } from "@/lib/types";
+import { useTenantCopy } from "@/lib/tenant-copy";
+import type { IngestKeySummary, MeResponse } from "@/lib/types";
 
 type KeyPermission = "ingest_write" | "ingest_read";
 
 export default function IngestKeysPage() {
+  const copy = useTenantCopy();
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editKey, setEditKey] = useState<IngestKeySummary | null>(null);
@@ -34,9 +38,16 @@ export default function IngestKeysPage() {
   const [permFilter, setPermFilter] = useState<"all" | "full" | "read">("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  const meQuery = useQuery({
+    queryKey: ["id", "me"],
+    queryFn: () => idApi<MeResponse>("/auth/me"),
+  });
+  const canManageKeys = canManageOrg(meQuery.data?.user?.role);
+
   const keysQuery = useQuery({
     queryKey: ["console", "ingest-keys"],
     queryFn: () => consoleApi<{ keys: IngestKeySummary[] }>("/ingest-keys"),
+    enabled: canManageKeys,
   });
 
   const createKey = useMutation({
@@ -50,6 +61,7 @@ export default function IngestKeysPage() {
       setName("");
       setModalOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["console", "ingest-keys"] });
+      void queryClient.invalidateQueries({ queryKey: ["console", "sandbox", "status"] });
     },
   });
 
@@ -136,11 +148,36 @@ export default function IngestKeysPage() {
     URL.revokeObjectURL(url);
   }
 
+  if (meQuery.isPending) {
+    return (
+      <ConsolePage>
+        <PageHeader title="API keys" subtitle="Loading…" />
+        <LoadingBlock />
+      </ConsolePage>
+    );
+  }
+
+  if (!canManageKeys) {
+    return (
+      <ConsolePage>
+        <PageHeader
+          title="API keys"
+          subtitle="Ingest keys are managed by organisation admins."
+        />
+        <EmptyStatePanel
+          icon={KeyRound}
+          title="Admin access required"
+          description="Approvers and auditors cannot create or view API keys. Ask an admin if you need a key."
+        />
+      </ConsolePage>
+    );
+  }
+
   return (
     <ConsolePage>
       <PageHeader
         title="API keys"
-        subtitle="Create and revoke ingest keys for agent event submission to your organization ledger."
+        subtitle="Keys your systems use to send events into this organisation."
       />
       <div className={ui.toolbar} style={{ justifyContent: "flex-end", marginTop: 0 }}>
         <button
@@ -159,6 +196,7 @@ export default function IngestKeysPage() {
         <button
           type="button"
           className={`${ui.btn} ${ui.btnPrimary}`}
+          title={copy.keys_empty_body}
           onClick={() => {
             setName("");
             setPermission("ingest_write");
@@ -166,7 +204,7 @@ export default function IngestKeysPage() {
           }}
         >
           <Plus size={16} aria-hidden />
-          Create API key
+          {copy.keys_empty_action}
         </button>
       </div>
 
@@ -220,16 +258,17 @@ export default function IngestKeysPage() {
       {!keysQuery.isLoading && !hasKeys ? (
         <EmptyStatePanel
           icon={KeyRound}
-          title="No API keys yet"
-          description="API keys authenticate ingest to your org. Agent signing keys (Agents page) sign APS-1 events; use this Bearer token on POST /v1/aegis/events."
+          title={copy.keys_empty_title}
+          description={copy.keys_empty_body}
           action={
             <button
               type="button"
               className={`${ui.btn} ${ui.btnPrimary}`}
+              title={copy.keys_empty_body}
               onClick={() => setModalOpen(true)}
             >
               <Plus size={16} aria-hidden />
-              Create API key
+              {copy.keys_empty_action}
             </button>
           }
         />
