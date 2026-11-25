@@ -2,8 +2,10 @@
  * Organization setting: require_signed_events.
  *
  * Enabling is single-admin (apply + seal). Disabling requires a second distinct
- * admin to confirm. Every applied change is sealed as a forensic receipt with
- * outcome `setting_change` so it appears in the tenant chain / evidence bundles.
+ * admin to confirm — except on `is_test` orgs (smoke / redteam), where a single
+ * admin may disable so unsigned ingest smoke can run without a second seat.
+ * Every applied change is sealed as a forensic receipt with outcome
+ * `setting_change` so it appears in the tenant chain / evidence bundles.
  */
 import { randomUUID } from "node:crypto";
 import type pg from "pg";
@@ -118,7 +120,7 @@ async function sealSettingChange(
     matched_rules: [],
     plain_summary: input.to_value
       ? "Organisation now requires signed source events (require_signed_events=true)."
-      : "Organisation no longer requires signed source events (require_signed_events=false). Two-person confirmation applied.",
+      : "Organisation no longer requires signed source events (require_signed_events=false).",
     sealed_events: [],
     attributes: {
       setting_change: {
@@ -154,8 +156,8 @@ export type SetRequireSignedEventsResult =
     };
 
 /**
- * Enable immediately (single admin). Disable creates a pending change; a second
- * distinct admin calling with enabled=false confirms and applies.
+ * Enable immediately (single admin). Disable: two-person on production orgs;
+ * single-admin apply on `is_test` (smoke) so provision can leave unsigned ingest on.
  */
 export async function setRequireSignedEvents(
   db: Db,
@@ -165,6 +167,16 @@ export async function setRequireSignedEvents(
     actor_membership_id: string;
   },
 ): Promise<SetRequireSignedEventsResult> {
+  const orgMeta = await db.query<{ is_test: boolean }>(
+    `SELECT COALESCE(is_test, false) AS is_test
+       FROM organization WHERE organization_id = $1`,
+    [input.organization_id],
+  );
+  if (!orgMeta.rows[0]) {
+    throw new Error("organization_not_found");
+  }
+  const isTestOrg = orgMeta.rows[0].is_test === true;
+
   const state = await getRequireSignedEventsState(db, input.organization_id);
   const current = state.require_signed_events;
 
@@ -181,47 +193,30 @@ export async function setRequireSignedEvents(
     if (current === true) {
       return { status: "unchanged", require_signed_events: true };
     }
-    const changeId = `osc_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
-    await db.query(
-      `INSERT INTO organization_setting_change (
-         change_id, organization_id, setting_key, from_value, to_value,
-         requested_by, confirmed_by, status, decided_at
-       ) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $6, 'applied', now())`,
-      [
-        changeId,
-        input.organization_id,
-        REQUIRE_SIGNED_EVENTS_KEY,
-        asJsonbBool(false),
-        asJsonbBool(true),
-        input.actor_membership_id,
-      ],
-    );
-    await db.query(
-      `UPDATE organization
-          SET require_signed_events = true, updated_at = now()
-        WHERE organization_id = $1`,
-      [input.organization_id],
-    );
-    const receipt = await sealSettingChange(db, {
+    return applyRequireSignedEventsChange(db, {
       organization_id: input.organization_id,
-      change_id: changeId,
+      actor_membership_id: input.actor_membership_id,
       from_value: false,
       to_value: true,
-      requested_by: input.actor_membership_id,
-      confirmed_by: input.actor_membership_id,
+      pending_change_id: null,
     });
-    return {
-      status: "applied",
-      require_signed_events: true,
-      change_id: changeId,
-      receipt_id: receipt?.receipt_id ?? null,
-      receipt_hash: receipt?.receipt_hash ?? null,
-    };
   }
 
-  // Disabling: two-person rule.
+  // Disabling.
   if (current === false && !state.pending_change) {
     return { status: "unchanged", require_signed_events: false };
+  }
+
+  // Smoke / is_test: single admin may disable (and clear a pending four-eyes row).
+  if (isTestOrg) {
+    return applyRequireSignedEventsChange(db, {
+      organization_id: input.organization_id,
+      actor_membership_id: input.actor_membership_id,
+      from_value: true,
+      to_value: false,
+      pending_change_id: state.pending_change?.change_id ?? null,
+      requested_by: state.pending_change?.requested_by,
+    });
   }
 
   if (!state.pending_change) {
@@ -257,30 +252,73 @@ export async function setRequireSignedEvents(
     throw err;
   }
 
-  const changeId = state.pending_change.change_id;
-  await db.query(
-    `UPDATE organization_setting_change
-        SET status = 'applied', confirmed_by = $2, decided_at = now()
-      WHERE change_id = $1 AND status = 'pending'`,
-    [changeId, input.actor_membership_id],
-  );
+  return applyRequireSignedEventsChange(db, {
+    organization_id: input.organization_id,
+    actor_membership_id: input.actor_membership_id,
+    from_value: true,
+    to_value: false,
+    pending_change_id: state.pending_change.change_id,
+    requested_by: state.pending_change.requested_by,
+  });
+}
+
+async function applyRequireSignedEventsChange(
+  db: Db,
+  input: {
+    organization_id: string;
+    actor_membership_id: string;
+    from_value: boolean;
+    to_value: boolean;
+    pending_change_id: string | null;
+    requested_by?: string;
+  },
+): Promise<SetRequireSignedEventsResult> {
+  const requestedBy = input.requested_by ?? input.actor_membership_id;
+  let changeId = input.pending_change_id;
+
+  if (changeId) {
+    await db.query(
+      `UPDATE organization_setting_change
+          SET status = 'applied', confirmed_by = $2, decided_at = now()
+        WHERE change_id = $1 AND status = 'pending'`,
+      [changeId, input.actor_membership_id],
+    );
+  } else {
+    changeId = `osc_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+    await db.query(
+      `INSERT INTO organization_setting_change (
+         change_id, organization_id, setting_key, from_value, to_value,
+         requested_by, confirmed_by, status, decided_at
+       ) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, 'applied', now())`,
+      [
+        changeId,
+        input.organization_id,
+        REQUIRE_SIGNED_EVENTS_KEY,
+        asJsonbBool(input.from_value),
+        asJsonbBool(input.to_value),
+        requestedBy,
+        input.actor_membership_id,
+      ],
+    );
+  }
+
   await db.query(
     `UPDATE organization
-        SET require_signed_events = false, updated_at = now()
+        SET require_signed_events = $2, updated_at = now()
       WHERE organization_id = $1`,
-    [input.organization_id],
+    [input.organization_id, input.to_value],
   );
   const receipt = await sealSettingChange(db, {
     organization_id: input.organization_id,
     change_id: changeId,
-    from_value: true,
-    to_value: false,
-    requested_by: state.pending_change.requested_by,
+    from_value: input.from_value,
+    to_value: input.to_value,
+    requested_by: requestedBy,
     confirmed_by: input.actor_membership_id,
   });
   return {
     status: "applied",
-    require_signed_events: false,
+    require_signed_events: input.to_value,
     change_id: changeId,
     receipt_id: receipt?.receipt_id ?? null,
     receipt_hash: receipt?.receipt_hash ?? null,

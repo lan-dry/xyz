@@ -351,22 +351,28 @@ async function main(): Promise<void> {
   );
   log("Signed in as the organisation admin.");
 
-  // Explicit: Demo Bank always requires signed source events (Stage 1).
-  // Enabling is single-admin and seals a setting_change receipt when the flag flips.
+  // Demo Bank (non-test): require signed source events (Stage 1).
+  // Smoke / is_test: leave unsigned ingest on — smoke uses an ingest key, not Ed25519.
   {
+    const wantSigned = !orgDemoFlags(orgSlug(file)).is_test;
     const flag = await admin.call<{
       require_signed_events: boolean;
       unchanged?: boolean;
       sealed?: boolean;
+      pending_confirmation?: boolean;
     }>("/organization/require-signed-events", {
       method: "POST",
-      body: { enabled: true },
+      body: { enabled: wantSigned },
     });
-    if (flag.data.unchanged) {
-      log("require_signed_events already true.");
+    if (flag.data.pending_confirmation) {
+      fail(
+        "require_signed_events disable is pending four-eyes; smoke orgs must be is_test so a single admin can clear it.",
+      );
+    } else if (flag.data.unchanged) {
+      log(`require_signed_events already ${wantSigned}.`);
     } else {
       log(
-        `require_signed_events set to true${flag.data.sealed ? " (sealed)" : ""}.`,
+        `require_signed_events set to ${wantSigned}${flag.data.sealed ? " (sealed)" : ""}.`,
       );
     }
   }
